@@ -128,21 +128,33 @@ class DevCredentials {
 }
 
 /// Connects to the PowerSync service in development mode.
+///
 /// Development mode has the following functionality:
 ///   1. Login using static username & password combinations, returning DevCredentials.
 ///   2. Refresh PowerSync token using DevCredentials.
 ///   3. Write directly to the SQL database using a basic update endpoint.
 ///
+/// Subclass and override storeDevCredentials() and loadDevCredentials() to
+/// use persistent storage.
+///
 /// Development mode is intended to get up and running quickly, but is not for
 /// production use. For production, it is recommended to write a custom connector.
-abstract class DevConnector extends PowerSyncBackendConnector {
+class DevConnector extends PowerSyncBackendConnector {
   PowerSyncCredentials? credentials;
 
+  DevCredentials? _inMemoryDevCredentials;
+
   /// Store the credentials after login, or when clearing / changing it.
-  Future<void> storeDevCredentials(DevCredentials credentials);
+  /// Default implementation stores in memory - override to use persistent storage.
+  Future<void> storeDevCredentials(DevCredentials credentials) async {
+    _inMemoryDevCredentials = credentials;
+  }
 
   /// Load the stored credentials.
-  Future<DevCredentials?> loadDevCredentials();
+  /// Default implementation stores in memory - override to use persistent storage.
+  Future<DevCredentials?> loadDevCredentials() async {
+    return _inMemoryDevCredentials;
+  }
 
   Future<String?> getUserId() async {
     final credentials = await loadDevCredentials();

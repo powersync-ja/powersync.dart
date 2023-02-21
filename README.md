@@ -9,12 +9,9 @@ PowerSync makes it easy to keep a local SQLite database in sync with backend SQL
 
 ## Getting started
 
-Import PowerSync
 
 ```dart
 import 'package:powersync/powersync.dart';
-
-// To get a database path on Flutter
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart';
 
@@ -34,18 +31,20 @@ Future<void> openDatabase() {
 
   // Run local statements
   await db.execute('INSERT INTO customers(id, name, email) VALUES(uuid(), ?, ?)', ['Fred', 'fred@example.org']);
+}
+
+Future<void> connectPowerSync() {
+  // DevConnector stores credentials in-memory by default.
+  // Extend the class to persist credentials.
+  final connector = DevConnector();
+
+  // Login in dev mode
+  await demoConnector.devLogin(
+      endpoint: 'https://myinstance.powersync.co',
+      user: 'demo',
+      password: 'demo');
 
   // Connect to PowerSync cloud service and start sync
-  db.connect(
-      connector:
-          const DevConnector(credentialsCallback: loadPowerSyncCredentials));
+  db.connect(connector: connector);
 }
-
-
-Future<String> loadPowerSyncCredentials() {
-  return Future.value(
-      """{"token":"my_token","endpoint":"https://myinstance.powersync.co"}""");
-}
-
-
 ```
