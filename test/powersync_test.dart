@@ -46,9 +46,15 @@ void main() {
       final result = await db.get('SELECT make FROM assets');
       expect(result, equals({'make': 'Test Make'}));
       expect(
-          await db.get('PRAGMA journal_mode'), equals({'journal_mode': 'wal'}));
-      expect(await db.get('PRAGMA locking_mode'),
-          equals({'locking_mode': 'normal'}));
+          await db.execute('PRAGMA journal_mode'),
+          equals([
+            {'journal_mode': 'wal'}
+          ]));
+      expect(
+          await db.execute('PRAGMA locking_mode'),
+          equals([
+            {'locking_mode': 'normal'}
+          ]));
     });
 
     test('Concurrency', () async {

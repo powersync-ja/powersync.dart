@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:isolate';
+import 'dart:math';
 
 import './sqlite_connection.dart';
 
@@ -199,6 +200,10 @@ void _sqliteConnectionIsolate(_SqliteConnectionParams params) async {
         await completer.handle(() async {
           String query = data[2];
           List<Object?> args = data[3];
+          var readOnly = data[4] == 'readonly';
+          if (readOnly) {
+            _validateReadOnly(query);
+          }
           var results = db.select(query, args);
           return results;
         }, ignoreStackTrace: true);
@@ -211,6 +216,20 @@ void _sqliteConnectionIsolate(_SqliteConnectionParams params) async {
       }
     }
   });
+}
+
+void _validateReadOnly(String statement) {
+  final start = statement
+      .substring(0, min(20, statement.length))
+      .trimLeft()
+      .toUpperCase();
+  // Note: WITH can also be used for write queries - this is not fool-proof.
+  // It is also possible to have some other read-only statements, e.g. some
+  // PRAGMA statements.
+  if (start.startsWith('SELECT') || start.startsWith('WITH')) {
+    return;
+  }
+  throw AssertionError("Read transactions may only use SELECT queries");
 }
 
 class _SqliteConnectionParams {

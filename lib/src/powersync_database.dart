@@ -65,8 +65,10 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
   ///
   /// Only a single PowerSyncDatabase per file should be opened at a time.
   ///
-  /// For concurrent queries, use `openConnection()` to open additional
-  /// connections.
+  /// A connection pool is used by default, allowing multiple concurrent read
+  /// transactions, and a single concurrent write transaction. Write transactions
+  /// do not block read transactions, and read transactions will see the state
+  /// from the last commited write transation.
   PowerSyncDatabase(
       {required this.schema,
       required this.path,
