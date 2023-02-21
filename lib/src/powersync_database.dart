@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:isolate';
 
+import './connection_pool.dart';
 import './connector.dart';
 import './background_database.dart';
 import './sqlite_connection.dart';
@@ -29,7 +30,7 @@ class SqliteConnectionSetup {
 }
 
 /// A PowerSync managed database
-class PowerSyncDatabase implements SqliteConnection {
+class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
   /// Database path
   final String path;
   final Schema schema;
@@ -39,6 +40,7 @@ class PowerSyncDatabase implements SqliteConnection {
   final Mutex mutex = Mutex.shared();
 
   /// Use this stream to subscribe to notifications of updates to tables.
+  @override
   late final Stream<TableUpdate> updates;
 
   /// Use this stream to subscribe to connection status updates.
@@ -53,6 +55,7 @@ class PowerSyncDatabase implements SqliteConnection {
       StreamController<SyncStatus>.broadcast();
 
   late final SqliteConnectionImpl _internalConnection;
+  late final SqliteConnectionPool _pool;
   late final Future<void> _initialized;
   late List<String> _initializeStatements;
 
@@ -65,10 +68,18 @@ class PowerSyncDatabase implements SqliteConnection {
   /// For concurrent queries, use `openConnection()` to open additional
   /// connections.
   PowerSyncDatabase(
-      {required this.schema, required this.path, this.sqliteSetup}) {
+      {required this.schema,
+      required this.path,
+      this.sqliteSetup,
+      int maxReaders = 5}) {
     updates = _updatesController.stream;
     statusStream = _statusStreamController.stream;
-    _internalConnection = _openPrimaryConnection();
+    _internalConnection = _openPrimaryConnection(debugName: 'powersync-writer');
+    _pool = SqliteConnectionPool(_dbref(),
+        updates: updates,
+        writeConnection: _internalConnection,
+        debugName: 'powersync',
+        maxReaders: maxReaders);
 
     _listenForEvents();
 
@@ -204,13 +215,12 @@ class PowerSyncDatabase implements SqliteConnection {
   Future<UploadQueueStats> getUploadQueueStats(
       {bool includeSize = false}) async {
     if (includeSize) {
-      final row = await _internalConnection.getOptional(
+      final row = await getOptional(
           'SELECT SUM(cast(data as blob) + 20) as size, count(*) as count FROM crud');
       return UploadQueueStats(
           count: row?['count'] ?? 0, size: row?['size'] ?? 0);
     } else {
-      final row = await _internalConnection
-          .getOptional('SELECT count(*) as count FROM crud');
+      final row = await getOptional('SELECT count(*) as count FROM crud');
       return UploadQueueStats(count: row?['count'] ?? 0);
     }
   }
@@ -221,7 +231,7 @@ class PowerSyncDatabase implements SqliteConnection {
   /// Once the data have been sucessfully uploaded, call `batch.complete()` before
   /// requesting the next batch.
   Future<CrudBatch?> getCrudBatch({limit = 100}) async {
-    final rows = await _internalConnection.getAll(
+    final rows = await getAll(
         'SELECT id, data FROM crud ORDER BY id ASC LIMIT ?', [limit + 1]);
     List<CrudEntry> all = [for (var row in rows) CrudEntry.fromRow(row)];
 
@@ -238,7 +248,7 @@ class PowerSyncDatabase implements SqliteConnection {
         crud: all,
         haveMore: haveMore,
         complete: () async {
-          await _internalConnection.writeTransaction((db) async {
+          await writeTransaction((db) async {
             await db.execute('DELETE FROM crud WHERE id <= ?', [last.clientId]);
             await db.execute(
                 'UPDATE buckets SET target_op = $maxOpId WHERE name=\'\$local\'');
@@ -247,50 +257,17 @@ class PowerSyncDatabase implements SqliteConnection {
   }
 
   @override
-  Future<sqlite.ResultSet> execute(String sql,
-      [List<Object?> parameters = const []]) {
-    return _internalConnection.execute(sql, parameters);
-  }
-
-  @override
-  Future<sqlite.Row> get(String sql, [List<Object?> parameters = const []]) {
-    return _internalConnection.get(sql, parameters);
-  }
-
-  @override
-  Future<sqlite.ResultSet> getAll(String sql,
-      [List<Object?> parameters = const []]) {
-    return _internalConnection.getAll(sql, parameters);
-  }
-
-  @override
-  Future<sqlite.Row?> getOptional(String sql,
-      [List<Object?> parameters = const []]) {
-    return _internalConnection.getOptional(sql, parameters);
-  }
-
-  @override
   Future<T> readTransaction<T>(
       Future<T> Function(SqliteReadTransactionContext tx) callback,
       {Duration? lockTimeout}) {
-    return _internalConnection.readTransaction(callback,
-        lockTimeout: lockTimeout);
-  }
-
-  @override
-  Stream<sqlite.ResultSet> watch(String sql,
-      {List<Object?> parameters = const [],
-      Duration throttle = const Duration(milliseconds: 30)}) {
-    return _internalConnection.watch(sql,
-        parameters: parameters, throttle: throttle);
+    return _pool.readTransaction(callback, lockTimeout: lockTimeout);
   }
 
   @override
   Future<T> writeTransaction<T>(
       Future<T> Function(SqliteWriteTransactionContext tx) callback,
       {Duration? lockTimeout}) {
-    return _internalConnection.writeTransaction(callback,
-        lockTimeout: lockTimeout);
+    return _pool.writeTransaction(callback, lockTimeout: lockTimeout);
   }
 }
 

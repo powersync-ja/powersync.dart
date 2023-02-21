@@ -8,7 +8,7 @@ import './isolate_completer.dart';
 
 abstract class Mutex {
   factory Mutex() {
-    return SimpleMutex._();
+    return SimpleMutex();
   }
 
   factory Mutex.shared() {
@@ -35,7 +35,7 @@ class SimpleMutex implements Mutex {
   // ignore: unused_field
   final Finalizer _f = Finalizer((_) {});
 
-  SimpleMutex._();
+  SimpleMutex();
 
   bool get locked => last != null;
 

@@ -11,11 +11,11 @@ import 'package:sqlite3/sqlite3.dart' as sqlite;
 
 typedef TxCallback<T> = Future<T> Function(sqlite.Database db);
 
-class SqliteConnectionImpl implements SqliteConnection {
+class SqliteConnectionImpl with SqliteQueries implements SqliteConnection {
   final SqliteConnectionFactory _factory;
 
   /// Private to this connection
-  final Mutex _connectionMutex = Mutex();
+  final SimpleMutex _connectionMutex = SimpleMutex();
 
   final Stream<TableUpdate>? updates;
   late final Future<SendPort> sendPortFuture;
@@ -36,35 +36,8 @@ class SqliteConnectionImpl implements SqliteConnection {
     });
   }
 
-  @override
-  Future<sqlite.ResultSet> execute(String sql,
-      [List<Object?> parameters = const []]) async {
-    return writeTransaction((ctx) async {
-      return ctx.execute(sql, parameters);
-    });
-  }
-
-  @override
-  Future<sqlite.ResultSet> getAll(String sql,
-      [List<Object?> parameters = const []]) {
-    return readTransaction((ctx) async {
-      return ctx.getAll(sql, parameters);
-    });
-  }
-
-  @override
-  Future<sqlite.Row> get(String sql, [List<Object?> parameters = const []]) {
-    return readTransaction((ctx) async {
-      return ctx.get(sql, parameters);
-    });
-  }
-
-  @override
-  Future<sqlite.Row?> getOptional(String sql,
-      [List<Object?> parameters = const []]) {
-    return readTransaction((ctx) async {
-      return ctx.getOptional(sql, parameters);
-    });
+  bool get locked {
+    return _connectionMutex.locked;
   }
 
   /// Run code within the database isolate, in a write (exclusive transaction).
@@ -78,6 +51,11 @@ class SqliteConnectionImpl implements SqliteConnection {
     });
   }
 
+  /// For internal use only
+  Future<T> lock<T>(Future<T> Function() callback, {Duration? timeout}) async {
+    return _connectionMutex.lock(callback, timeout: timeout);
+  }
+
   @override
   Future<T> readTransaction<T>(
       Future<T> Function(SqliteReadTransactionContext tx) callback,
@@ -85,24 +63,30 @@ class SqliteConnectionImpl implements SqliteConnection {
     // Private lock to synchronize this with other statements on the same connection,
     // to ensure that transactions aren't interleaved.
     return _connectionMutex.lock(() async {
-      final ctx = _TransactionContext(await sendPortFuture);
-      await ctx.execute('BEGIN');
-      try {
-        final result = await callback(ctx);
-        await ctx.execute('END TRANSACTION');
-        return result;
-      } catch (e) {
-        try {
-          await ctx.execute('ROLLBACK');
-        } catch (e) {
-          // In rare cases, a ROLLBACK may fail.
-          // Safe to ignore.
-        }
-        rethrow;
-      } finally {
-        ctx.close();
-      }
+      return readTransactionInLock(callback);
     }, timeout: lockTimeout);
+  }
+
+  /// For internal use only
+  Future<T> readTransactionInLock<T>(
+      Future<T> Function(SqliteReadTransactionContext tx) callback) async {
+    final ctx = _TransactionContext(await sendPortFuture);
+    await ctx.execute('BEGIN');
+    try {
+      final result = await callback(ctx);
+      await ctx.execute('END TRANSACTION');
+      return result;
+    } catch (e) {
+      try {
+        await ctx.execute('ROLLBACK');
+      } catch (e) {
+        // In rare cases, a ROLLBACK may fail.
+        // Safe to ignore.
+      }
+      rethrow;
+    } finally {
+      ctx.close();
+    }
   }
 
   @override
@@ -145,22 +129,6 @@ class SqliteConnectionImpl implements SqliteConnection {
         return Future<T>.error(error, stackTrace);
       });
     }, timeout: lockTimeout);
-  }
-
-  @override
-  Stream<sqlite.ResultSet> watch(String sql,
-      {List<Object?> parameters = const [],
-      Duration throttle = const Duration(milliseconds: 30)}) async* {
-    assert(updates != null,
-        'updates stream must be provided to allow query watching');
-    yield await getAll(sql, parameters);
-    var throttled = updates!
-        .transform(throttleTransformer(const Duration(milliseconds: 30)));
-    await for (var _ in throttled) {
-      // TODO: Check that that is cancelled properly if the listener is closed.
-      // TODO: Only refresh if a relevant table is modified
-      yield await getAll(sql, parameters);
-    }
   }
 }
 
@@ -250,4 +218,63 @@ class _SqliteConnectionParams {
   PortCompleter<SendPort> portCompleter;
 
   _SqliteConnectionParams(this.factory, this.portCompleter);
+}
+
+mixin SqliteQueries implements SqliteWriteTransactionContext {
+  Stream<TableUpdate>? get updates;
+
+  Future<T> readTransaction<T>(
+      Future<T> Function(SqliteReadTransactionContext tx) callback,
+      {Duration? lockTimeout});
+
+  Future<T> writeTransaction<T>(
+      Future<T> Function(SqliteWriteTransactionContext tx) callback,
+      {Duration? lockTimeout});
+
+  @override
+  Future<sqlite.ResultSet> execute(String sql,
+      [List<Object?> parameters = const []]) async {
+    return writeTransaction((ctx) async {
+      return ctx.execute(sql, parameters);
+    });
+  }
+
+  @override
+  Future<sqlite.ResultSet> getAll(String sql,
+      [List<Object?> parameters = const []]) {
+    return readTransaction((ctx) async {
+      return ctx.getAll(sql, parameters);
+    });
+  }
+
+  @override
+  Future<sqlite.Row> get(String sql, [List<Object?> parameters = const []]) {
+    return readTransaction((ctx) async {
+      return ctx.get(sql, parameters);
+    });
+  }
+
+  @override
+  Future<sqlite.Row?> getOptional(String sql,
+      [List<Object?> parameters = const []]) {
+    return readTransaction((ctx) async {
+      return ctx.getOptional(sql, parameters);
+    });
+  }
+
+  @override
+  Stream<sqlite.ResultSet> watch(String sql,
+      {List<Object?> parameters = const [],
+      Duration throttle = const Duration(milliseconds: 30)}) async* {
+    assert(updates != null,
+        'updates stream must be provided to allow query watching');
+    yield await getAll(sql, parameters);
+    var throttled = updates!
+        .transform(throttleTransformer(const Duration(milliseconds: 30)));
+    await for (var _ in throttled) {
+      // TODO: Check that that is cancelled properly if the listener is closed.
+      // TODO: Only refresh if a relevant table is modified
+      yield await getAll(sql, parameters);
+    }
+  }
 }

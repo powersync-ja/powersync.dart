@@ -1,4 +1,6 @@
 import 'dart:convert';
+import 'dart:io';
+import 'dart:isolate';
 
 import './mutex.dart';
 import 'package:sqlite3/sqlite3.dart' as sqlite;
@@ -87,6 +89,24 @@ class DatabaseInit {
 
           return jsonEncode(result);
         });
+
+    db.createFunction(
+      functionName: 'powersync_sleep',
+      argumentCount: const sqlite.AllowedArgumentCount(1),
+      function: (args) {
+        final millis = args[0] as int;
+        sleep(Duration(milliseconds: millis));
+        return millis;
+      },
+    );
+
+    db.createFunction(
+      functionName: 'powersync_connection_name',
+      argumentCount: const sqlite.AllowedArgumentCount(0),
+      function: (args) {
+        return Isolate.current.debugName;
+      },
+    );
   }
 
   close() {
