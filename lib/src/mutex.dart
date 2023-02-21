@@ -6,8 +6,6 @@ import 'dart:isolate';
 
 import './isolate_completer.dart';
 
-typedef _Task = void Function();
-
 abstract class Mutex {
   factory Mutex() {
     return SimpleMutex._();
@@ -34,6 +32,7 @@ class SimpleMutex implements Mutex {
   Future<dynamic>? last;
 
   // Hack to make sure the Mutex is not copied to another isolate.
+  // ignore: unused_field
   final Finalizer _f = Finalizer((_) {});
 
   SimpleMutex._();
@@ -182,13 +181,6 @@ class SharedMutex implements Mutex {
     }
     return await handledLockFuture;
   }
-}
-
-class _LockResult {
-  final Object? error;
-  final bool aborted;
-
-  const _LockResult({this.error, this.aborted = false});
 }
 
 class _CloseMessage {

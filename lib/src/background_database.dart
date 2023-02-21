@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:isolate';
 
+import './sqlite_connection.dart';
+
 import './isolate_completer.dart';
 import './mutex.dart';
 import './powersync_database.dart';
@@ -9,32 +11,17 @@ import 'package:sqlite3/sqlite3.dart' as sqlite;
 
 typedef TxCallback<T> = Future<T> Function(sqlite.Database db);
 
-abstract class SqliteAsyncReadContext {
-  Future<sqlite.ResultSet> getAll(String sql,
-      [List<Object?> parameters = const []]);
-
-  Future<sqlite.Row> get(String sql, [List<Object?> parameters = const []]);
-
-  Future<sqlite.Row?> getOptional(String sql,
-      [List<Object?> parameters = const []]);
-}
-
-abstract class SqliteAsyncContext extends SqliteAsyncReadContext {
-  Future<sqlite.ResultSet> execute(String sql,
-      [List<Object?> parameters = const []]);
-}
-
-class SqliteConnection implements SqliteAsyncContext {
+class SqliteConnectionImpl implements SqliteConnection {
   final SqliteConnectionFactory _factory;
 
   /// Private to this connection
   final Mutex _connectionMutex = Mutex();
 
-  final Stream<TableUpdate> updates;
+  final Stream<TableUpdate>? updates;
   late final Future<SendPort> sendPortFuture;
   final String? debugName;
 
-  SqliteConnection(this._factory, {required this.updates, this.debugName}) {
+  SqliteConnectionImpl(this._factory, {this.updates, this.debugName}) {
     sendPortFuture = _open();
   }
 
@@ -91,8 +78,9 @@ class SqliteConnection implements SqliteAsyncContext {
     });
   }
 
+  @override
   Future<T> readTransaction<T>(
-      Future<T> Function(SqliteAsyncReadContext tx) callback,
+      Future<T> Function(SqliteReadTransactionContext tx) callback,
       {Duration? lockTimeout}) async {
     // Private lock to synchronize this with other statements on the same connection,
     // to ensure that transactions aren't interleaved.
@@ -117,8 +105,9 @@ class SqliteConnection implements SqliteAsyncContext {
     }, timeout: lockTimeout);
   }
 
+  @override
   Future<T> writeTransaction<T>(
-      Future<T> Function(SqliteAsyncContext tx) callback,
+      Future<T> Function(SqliteWriteTransactionContext tx) callback,
       {Duration? lockTimeout}) async {
     // Private lock to synchronize this with other statements on the same connection,
     // to ensure that transactions aren't interleaved.
@@ -158,13 +147,16 @@ class SqliteConnection implements SqliteAsyncContext {
     }, timeout: lockTimeout);
   }
 
+  @override
   Stream<sqlite.ResultSet> watch(String sql,
       {List<Object?> parameters = const [],
       Duration throttle = const Duration(milliseconds: 30)}) async* {
+    assert(updates != null,
+        'updates stream must be provided to allow query watching');
     yield await getAll(sql, parameters);
-    var throttled = updates
+    var throttled = updates!
         .transform(throttleTransformer(const Duration(milliseconds: 30)));
-    await for (var update in throttled) {
+    await for (var _ in throttled) {
       // TODO: Check that that is cancelled properly if the listener is closed.
       // TODO: Only refresh if a relevant table is modified
       yield await getAll(sql, parameters);
@@ -172,7 +164,7 @@ class SqliteConnection implements SqliteAsyncContext {
   }
 }
 
-class _TransactionContext implements SqliteAsyncContext {
+class _TransactionContext implements SqliteWriteTransactionContext {
   final SendPort _sendPort;
   bool _closed = false;
 
@@ -226,7 +218,7 @@ class _TransactionContext implements SqliteAsyncContext {
 }
 
 void _sqliteConnectionIsolate(_SqliteConnectionParams params) async {
-  final db = await params.factory.open();
+  final db = await params.factory.openRawDatabase();
 
   final commandPort = ReceivePort();
   params.portCompleter.complete(commandPort.sendPort);

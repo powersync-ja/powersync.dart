@@ -78,9 +78,9 @@ class BucketStorage {
       return;
     }
 
-    String? last_op;
-    String? first_op;
-    BigInt? target_op;
+    String? lastOp;
+    String? firstOp;
+    BigInt? targetOp;
 
     List<Map<String, dynamic>> inserts = [];
     Map<String, Map<String, dynamic>> lastInsert = {};
@@ -89,8 +89,8 @@ class BucketStorage {
     List<SqliteOp> clearOps = [];
 
     for (final op in data) {
-      last_op = op.opId;
-      first_op ??= op.opId;
+      lastOp = op.opId;
+      firstOp ??= op.opId;
 
       final Map<String, dynamic> insert = {
         'op_id': op.opId,
@@ -125,8 +125,8 @@ class BucketStorage {
         final target = op.data?['target'] as String?;
         if (target != null) {
           final l = BigInt.parse(target, radix: 10);
-          if (target_op == null || l < target_op) {
-            target_op = l;
+          if (targetOp == null || l < targetOp) {
+            targetOp = l;
           }
         }
       } else if (op.op == OpType.clear) {
@@ -178,14 +178,14 @@ class BucketStorage {
 
     db.execute("INSERT OR IGNORE INTO buckets(name) VALUES(?)", [bucket]);
 
-    if (last_op != null) {
+    if (lastOp != null) {
       db.execute(
-          "UPDATE buckets SET last_op = ? WHERE name = ?", [last_op, bucket]);
+          "UPDATE buckets SET last_op = ? WHERE name = ?", [lastOp, bucket]);
     }
-    if (target_op != null) {
+    if (targetOp != null) {
       db.execute(
           "UPDATE buckets SET target_op = MAX(?, buckets.target_op) WHERE name = ?",
-          [target_op.toString(), bucket]);
+          [targetOp.toString(), bucket]);
     }
 
     for (final op in clearOps) {
@@ -193,7 +193,7 @@ class BucketStorage {
     }
 
     // Compact superseded ops immediately, but only _after_ clearing
-    if (first_op != null && last_op != null) {
+    if (firstOp != null && lastOp != null) {
       db.execute("""UPDATE buckets
     SET add_checksum = add_checksum + (SELECT IFNULL(SUM(hash), 0)
     FROM oplog
@@ -201,14 +201,14 @@ class BucketStorage {
     AND oplog.bucket = ?
     AND oplog.op_id >= ?
     AND oplog.op_id <= ?)
-    WHERE buckets.name = ?""", [bucket, first_op, last_op, bucket]);
+    WHERE buckets.name = ?""", [bucket, firstOp, lastOp, bucket]);
 
       db.execute("""DELETE
               FROM oplog
               WHERE superseded = 1
               AND bucket = ?
               AND op_id >= ?
-              AND op_id <= ?""", [bucket, first_op, last_op]);
+              AND op_id <= ?""", [bucket, firstOp, lastOp]);
     }
   }
 
@@ -464,10 +464,10 @@ class BucketStorage {
               "assertion failed: ${row['last_applied_op']} > ${_checksumCache!.lastOpId}");
         }
         int checksum;
-        String? last_op_id = row['last_op_id'];
+        String? lastOpId = row['last_op_id'];
         if (checksums.containsKey(bucket)) {
           // All rows may have been filtered out, in which case we use the previous one
-          last_op_id ??= checksums[bucket]!.lastOpId;
+          lastOpId ??= checksums[bucket]!.lastOpId;
           checksum =
               (checksums[bucket]!.checksum + row['oplog_checksum'] as int)
                   .toSigned(32);
@@ -475,7 +475,7 @@ class BucketStorage {
           checksum = (row['add_checksum'] + row['oplog_checksum']).toSigned(32);
         }
         byBucket[bucket] = BucketChecksum(bucket, checksum, row['count'])
-          ..lastOpId = last_op_id;
+          ..lastOpId = lastOpId;
       }
     } else {
       for (final row in rows) {
@@ -507,7 +507,7 @@ class BucketStorage {
       return SyncLocalDatabaseResult(true, true, null);
     } else {
       _checksumCache = null;
-      print("Checksums failed: ${failedChecksums}");
+      print("Checksums failed: $failedChecksums");
       return SyncLocalDatabaseResult(false, false, failedChecksums);
     }
   }
@@ -526,10 +526,11 @@ class BucketStorage {
     // 2. Clear REMOVE operations, only keeping PUT ones
     await _clearRemoveOps();
 
-    // await _compact();
+    // await _compactWal();
   }
 
-  Future<void> _compact() async {
+  // ignore: unused_element
+  Future<void> _compactWal() async {
     try {
       await writeTransaction((db) {
         db.select('PRAGMA wal_checkpoint(TRUNCATE)');
@@ -699,7 +700,9 @@ Future<T> asyncTransaction<T>(sqlite.Database db,
       } catch (e) {
         try {
           db.execute('ROLLBACK');
-        } catch (e2) {}
+        } catch (e2) {
+          // Safe to ignore
+        }
         rethrow;
       }
 
@@ -890,13 +893,13 @@ Set<String> _createTablesAndTriggersOps(
     }
     addedTypes.add(type);
 
-    db.execute("""CREATE TABLE "${tableName}"
+    db.execute("""CREATE TABLE "$tableName"
     (
     id   TEXT,
     data TEXT,
     PRIMARY KEY (id)
     )""");
-    db.execute("""INSERT INTO "${tableName}"(id, data)
+    db.execute("""INSERT INTO "$tableName"(id, data)
     SELECT id, data
     FROM objects_untyped
     WHERE type = ?""", [type]);
@@ -912,9 +915,9 @@ Set<String> _createTablesAndTriggersOps(
     }
     final type = typeMatch[1];
     db.execute(
-        'INSERT INTO objects_untyped(type, id, data) SELECT ?, id, data FROM "${tableName}"',
+        'INSERT INTO objects_untyped(type, id, data) SELECT ?, id, data FROM "$tableName"',
         [type]);
-    db.execute('DROP TABLE "${tableName}"');
+    db.execute('DROP TABLE "$tableName"');
   }
 
   return updatedTableList;

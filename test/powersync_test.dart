@@ -15,15 +15,15 @@ final testSetup = SqliteConnectionSetup(() async {
 
 const schema = Schema([
   Table('assets', [
-    Column('created_at', 'TEXT'),
-    Column('make', 'TEXT'),
-    Column('model', 'TEXT'),
-    Column('serial_number', 'TEXT'),
-    Column('quantity', 'INTEGER'),
-    Column('user_id', 'TEXT'),
-    Column('customer_id', 'TEXT'),
+    Column.text('created_at'),
+    Column.text('make'),
+    Column.text('model'),
+    Column.text('serial_number'),
+    Column.integer('quantity'),
+    Column.text('user_id'),
+    Column.text('customer_id'),
   ]),
-  Table('customers', [Column('name', 'TEXT'), Column('email', 'TEXT')])
+  Table('customers', [Column.text('name'), Column.text('email')])
 ]);
 
 void main() {
@@ -37,11 +37,9 @@ void main() {
     });
 
     test('Basic Setup', () async {
-      final powerSyncDatabase = PowerSyncDatabase(
+      final db = PowerSyncDatabase(
           schema: schema, path: 'test.db', sqliteSetup: testSetup);
-      await powerSyncDatabase.initialize();
-
-      var db = powerSyncDatabase.openConnection(debugName: 'db-read');
+      await db.initialize();
       await db.execute(
           'INSERT INTO assets(id, make) VALUES(uuid(), ?)', ['Test Make']);
       final result = await db.get('SELECT make FROM assets');

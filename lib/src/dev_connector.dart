@@ -40,7 +40,7 @@ class DevConnector implements PowerSyncBackendConnector {
       throw HttpException(response.reasonPhrase ?? "Request failed", uri: uri);
     }
 
-    final body = jsonDecode(response.body);
+    final _ = jsonDecode(response.body);
     await batch.complete();
   }
 }

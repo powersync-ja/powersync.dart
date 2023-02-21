@@ -67,8 +67,9 @@ class StreamingSyncImplementation {
     crudLoop();
     while (true) {
       try {
-        bool retry = await streamingSyncIteration();
+        await streamingSyncIteration();
       } catch (e, stacktrace) {
+        // TODO: Better error reporting
         print(e);
         print(stacktrace);
       }
@@ -81,7 +82,7 @@ class StreamingSyncImplementation {
   Future<void> crudLoop() async {
     await uploadAllCrud();
 
-    await for (var update in updateStream) {
+    await for (var _ in updateStream) {
       await uploadAllCrud();
     }
   }

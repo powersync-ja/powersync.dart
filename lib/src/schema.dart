@@ -13,7 +13,26 @@ class Table {
 
 class Column {
   final String name;
-  final String type;
+  final ColumnType type;
 
   const Column(this.name, this.type);
+
+  const Column.text(this.name) : type = ColumnType.text;
+  const Column.integer(this.name) : type = ColumnType.integer;
+  const Column.real(this.name) : type = ColumnType.real;
+}
+
+enum ColumnType {
+  text('TEXT'),
+  integer('INTEGER'),
+  real('REAL');
+
+  final String sqlite;
+
+  const ColumnType(this.sqlite);
+
+  @override
+  toString() {
+    return sqlite;
+  }
 }
