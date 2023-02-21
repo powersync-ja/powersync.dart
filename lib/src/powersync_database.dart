@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:isolate';
 
+import './connector.dart';
 import './background_database.dart';
 import './sqlite_connection.dart';
 import './bucket_storage.dart';
@@ -13,14 +14,6 @@ import './schema_logic.dart';
 import './streaming_sync.dart';
 import './thottle.dart';
 import 'package:sqlite3/sqlite3.dart' as sqlite;
-
-abstract class PowerSyncBackendConnector {
-  /// Get credentials for PowerSync.
-  /// Return null if no credentials are available.
-  Future<String?> getCredentials();
-
-  Future<void> uploadData(PowerSyncDatabase database);
-}
 
 /// Use to define custom setup for each SQLite connection
 class SqliteConnectionSetup {
@@ -140,10 +133,14 @@ class PowerSyncDatabase implements SqliteConnection {
     rPort.listen((data) async {
       if (data is List) {
         String action = data[0];
-        if (action == "getToken") {
+        if (action == "getCredentials") {
           await (data[1] as PortCompleter).handle(() async {
             final token = await connector.getCredentials();
             return token;
+          });
+        } else if (action == "invalidateCredentials") {
+          await (data[1] as PortCompleter).handle(() async {
+            await connector.refreshCredentials();
           });
         } else if (action == 'init') {
           SendPort port = data[1];
@@ -481,9 +478,15 @@ Future<void> _powerSyncDatabaseIsolate(
   });
   sPort.send(["init", rPort.sendPort]);
 
-  Future<String?> loadCredentials() async {
-    final r = IsolateResult<String?>();
-    sPort.send(["getToken", r.completer]);
+  Future<PowerSyncCredentials?> loadCredentials() async {
+    final r = IsolateResult<PowerSyncCredentials?>();
+    sPort.send(["getCredentials", r.completer]);
+    return r.future;
+  }
+
+  Future<void> invalidateCredentials() async {
+    final r = IsolateResult<void>();
+    sPort.send(["invalidateCredentials", r.completer]);
     return r.future;
   }
 
@@ -498,6 +501,7 @@ Future<void> _powerSyncDatabaseIsolate(
   final sync = StreamingSyncImplementation(
       adapter: storage,
       credentialsCallback: loadCredentials,
+      invalidCredentialsCallback: invalidateCredentials,
       uploadCrud: uploadCrud,
       updateStream: updateController.stream
           .transform(throttleTransformer(const Duration(milliseconds: 10))));

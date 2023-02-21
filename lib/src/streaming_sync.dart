@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/http.dart';
 import 'dart:convert' as convert;
 import 'package:async/async.dart';
+import './connector.dart';
 
 class SyncStatus {
   /// true if currently connected
@@ -38,7 +39,9 @@ class SyncStatus {
 class StreamingSyncImplementation {
   BucketStorage adapter;
 
-  final Future<String?> Function() credentialsCallback;
+  final Future<PowerSyncCredentials?> Function() credentialsCallback;
+  final Future<void> Function()? invalidCredentialsCallback;
+
   final Future<void> Function() uploadCrud;
 
   late http.Client _client;
@@ -56,6 +59,7 @@ class StreamingSyncImplementation {
   StreamingSyncImplementation(
       {required this.adapter,
       required this.credentialsCallback,
+      this.invalidCredentialsCallback,
       required this.uploadCrud,
       required this.updateStream}) {
     _client = http.Client();
@@ -68,14 +72,16 @@ class StreamingSyncImplementation {
     while (true) {
       try {
         await streamingSyncIteration();
+        // Continue immediately
       } catch (e, stacktrace) {
         // TODO: Better error reporting
         print(e);
         print(stacktrace);
+
+        _statusStreamController
+            .add(SyncStatus(connected: false, lastSyncedAt: lastSyncedAt));
+        await Future.delayed(const Duration(milliseconds: 5000));
       }
-      _statusStreamController
-          .add(SyncStatus(connected: false, lastSyncedAt: lastSyncedAt));
-      await Future.delayed(const Duration(milliseconds: 5000));
     }
   }
 
@@ -121,45 +127,26 @@ class StreamingSyncImplementation {
       }
     }
 
-    // final credentialsRaw = await credentialsCallback();
-    // if (credentialsRaw == null) {
-    //   throw AssertionError("Not logged in");
-    // }
-    // final credentials = convert.jsonDecode(credentialsRaw);
-    // final uri = Uri.parse(credentials['endpoint']).resolve('crud.json');
-
-    // final response = await _client.post(uri,
-    //     headers: {
-    //       'Content-Type': 'application/json',
-    //       'User-Id': credentials['user_id'],
-    //       'Authorization': "Token ${credentials['token']}"
-    //     },
-    //     body: convert.jsonEncode({'data': batch.crud}));
-    // if (response.statusCode != 200) {
-    //   throw HttpException(response.reasonPhrase ?? "Request failed", uri: uri);
-    // }
-
-    // final body = convert.jsonDecode(response.body);
-
-    // await batch.complete();
-
     return false;
   }
 
   Future<String> getWriteCheckpoint() async {
-    final credentialsRaw = await credentialsCallback();
-    if (credentialsRaw == null) {
+    final credentials = await credentialsCallback();
+    if (credentials == null) {
       throw AssertionError("Not logged in");
     }
-    final credentials = convert.jsonDecode(credentialsRaw);
-    final uri =
-        Uri.parse(credentials['endpoint']).resolve('write-checkpoint.json');
+    final uri = credentials.endpointUri('write-checkpoint.json');
 
     final response = await _client.get(uri, headers: {
       'Content-Type': 'application/json',
-      'User-Id': credentials['user_id'],
-      'Authorization': "Token ${credentials['token']}"
+      'User-Id': credentials.userId ?? '',
+      'Authorization': "Token ${credentials.token}"
     });
+    if (response.statusCode == 401) {
+      if (invalidCredentialsCallback != null) {
+        await invalidCredentialsCallback!();
+      }
+    }
     if (response.statusCode != 200) {
       throw HttpException(response.reasonPhrase ?? "Request failed", uri: uri);
     }
@@ -276,31 +263,50 @@ class StreamingSyncImplementation {
   }
 
   Stream<Object?> streamingSyncRequest(StreamingSyncRequest data) async* {
-    final credentialsRaw = await credentialsCallback();
-    if (credentialsRaw == null) {
-      throw AssertionError("Not logged in");
+    final credentials = await credentialsCallback();
+    if (credentials == null) {
+      throw AssertionError('Not logged in');
     }
-    final credentials = convert.jsonDecode(credentialsRaw);
-    final uri = Uri.parse(credentials['endpoint']).resolve('sync/stream');
+    final uri = credentials.endpointUri('sync/stream');
 
     final request = http.Request('POST', uri);
     request.headers['Content-Type'] = 'application/json';
-    request.headers['User-Id'] = credentials['user_id'];
-    request.headers['Authorization'] = "Token ${credentials['token']}";
+    request.headers['User-Id'] = credentials.userId ?? '';
+    request.headers['Authorization'] = "Token ${credentials.token}";
     request.body = convert.jsonEncode(data);
 
     final res = await _client.send(request);
+    if (res.statusCode == 401) {
+      if (invalidCredentialsCallback != null) {
+        await invalidCredentialsCallback!();
+      }
+    }
     if (res.statusCode != 200) {
       throw HttpException(res.reasonPhrase ?? 'Invalid http response',
           uri: uri);
     }
 
+    Future<void>? credentialsInvalidation;
+    bool haveInvalidated = false;
+
     // Note: The response stream is automatically closed when this loop errors
     await for (var line in ndjson(res.stream)) {
-      // print('Sync line: ${line}');
       if (line != null) {
         final parsed = parseStreamingSyncLine(line as Map<String, dynamic>);
         yield parsed;
+      }
+      if (haveInvalidated) {
+        // Start new connection
+        break;
+      }
+      if (credentials.expiresSoon() &&
+          credentialsInvalidation == null &&
+          invalidCredentialsCallback != null) {
+        credentialsInvalidation = invalidCredentialsCallback!().then((_) {
+          haveInvalidated = true;
+        }, onError: (_) {
+          // Ignore
+        });
       }
     }
   }
