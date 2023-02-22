@@ -15,9 +15,9 @@ class DatabaseInit {
 
   DatabaseInit(this.path);
 
-  Future<sqlite.Database> open() async {
-    // db = sqlite.sqlite3.openInMemory();
-    db = sqlite.sqlite3.open(path);
+  Future<sqlite.Database> open(
+      {sqlite.OpenMode mode = sqlite.OpenMode.readWriteCreate}) async {
+    db = sqlite.sqlite3.open(path, mode: mode, mutex: false);
     await _init();
     return db;
   }
@@ -29,18 +29,13 @@ class DatabaseInit {
 
   void _setupParams() {
     // These must all be connection-scoped, and may not lock the database.
-    // TODO: How do we confirm that it does not lock the database?
-    // Maybe lock the database in a different connection and make sure this still
-    // works?
 
     // Done on the main connection:
     //   db.execute('PRAGMA journal_mode = WAL');
     // Can investigate using no journal for bucket data
-    // Note sure if this has an effect
-    db.execute('PRAGMA busy_timeout = 2000');
 
     // Default is FULL.
-    // NORMAL is faster, and still safe for WAL mode
+    // NORMAL is faster, and still safe for WAL mode.
     // Can investigate synchronous = OFF for the bucket data
     // > If the application running SQLite crashes, the data will be safe, but the database might become corrupted if the operating system crashes or the computer loses power before that data has been written to the disk surface. On the other hand, commits can be orders of magnitude faster with synchronous OFF.
     db.execute('PRAGMA synchronous = NORMAL');

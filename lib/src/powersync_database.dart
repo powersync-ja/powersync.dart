@@ -311,8 +311,11 @@ class SqliteConnectionFactory {
   /// Open a SQLite database connection.
   /// A dedicated Isolate is spawned for running the actual queries.
   SqliteConnection openConnection(
-      {String? debugName, Stream<TableUpdate>? updates}) {
-    return SqliteConnectionImpl(this, debugName: debugName, updates: updates);
+      {String? debugName,
+      Stream<TableUpdate>? updates,
+      bool readOnly = false}) {
+    return SqliteConnectionImpl(this,
+        debugName: debugName, updates: updates, readOnly: readOnly);
   }
 
   /// Open a raw sqlite.Database, providing direct access to the SQLite APIs.
@@ -320,7 +323,7 @@ class SqliteConnectionFactory {
   /// Use with care - this can easily result in DATABASE_LOCKED or other errors.
   /// All operations on this database are synchronous, and blocks the current
   /// isolate.
-  Future<sqlite.Database> openRawDatabase() async {
+  Future<sqlite.Database> openRawDatabase({bool readOnly = false}) async {
     if (setup != null) {
       await setup!.setup();
     }
@@ -337,7 +340,16 @@ class SqliteConnectionFactory {
     } else {
       ps = DatabaseInit(path);
     }
-    final db = await ps.open();
+    sqlite.OpenMode mode;
+    if (primary) {
+      mode = sqlite.OpenMode.readWriteCreate;
+    } else if (readOnly) {
+      mode = sqlite.OpenMode.readOnly;
+    } else {
+      mode = sqlite.OpenMode.readWrite;
+    }
+
+    final db = await ps.open(mode: mode);
     for (var statement in initializeStatements) {
       db.execute(statement);
     }

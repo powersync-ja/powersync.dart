@@ -32,17 +32,28 @@ class SqliteConnectionPool with SqliteQueries implements SqliteConnection {
     _expandPool();
 
     bool haveLock = false;
-    T? result;
+    var completer = Completer<T>();
 
     var futures = _readConnections.map((connection) async {
       try {
         return await connection.lock(() async {
           if (haveLock) {
+            // Alreay have a different lock - release this one.
             return false;
           }
           haveLock = true;
 
-          result = await connection.readTransactionInLock(callback);
+          var future = connection.readTransactionInLock(callback);
+          completer.complete(future);
+
+          // We have to wait for the future to complete before we can release the
+          // lock.
+          try {
+            await future;
+          } catch (_) {
+            // Ignore
+          }
+
           return true;
         }, timeout: lockTimeout);
       } on TimeoutException {
@@ -58,7 +69,12 @@ class SqliteConnectionPool with SqliteQueries implements SqliteConnection {
       throw TimeoutException('Failed to get a read connection', lockTimeout);
     }
 
-    return result as T;
+    try {
+      return await completer.future;
+    } catch (e) {
+      // throw e;
+      rethrow;
+    }
   }
 
   @override
@@ -81,7 +97,9 @@ class SqliteConnectionPool with SqliteQueries implements SqliteConnection {
           ? null
           : '$debugName-${_readConnections.length + 1}';
       _readConnections.add(_factory.openConnection(
-          updates: updates, debugName: name) as SqliteConnectionImpl);
+          updates: updates,
+          debugName: name,
+          readOnly: true) as SqliteConnectionImpl);
     }
   }
 }

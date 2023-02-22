@@ -21,16 +21,20 @@ class SqliteConnectionImpl with SqliteQueries implements SqliteConnection {
   final Stream<TableUpdate>? updates;
   late final Future<SendPort> sendPortFuture;
   final String? debugName;
+  final bool readOnly;
 
-  SqliteConnectionImpl(this._factory, {this.updates, this.debugName}) {
+  SqliteConnectionImpl(this._factory,
+      {this.updates, this.debugName, this.readOnly = false}) {
     sendPortFuture = _open();
   }
 
   Future<SendPort> _open() async {
     return await _connectionMutex.lock(() async {
       final portResult = IsolateResult<SendPort>();
-      Isolate.spawn(_sqliteConnectionIsolate,
-          _SqliteConnectionParams(_factory, portResult.completer),
+      Isolate.spawn(
+          _sqliteConnectionIsolate,
+          _SqliteConnectionParams(_factory, portResult.completer,
+              readOnly: readOnly),
           debugName: debugName);
 
       return await portResult.future;
@@ -72,8 +76,8 @@ class SqliteConnectionImpl with SqliteQueries implements SqliteConnection {
   Future<T> readTransactionInLock<T>(
       Future<T> Function(SqliteReadTransactionContext tx) callback) async {
     final ctx = _TransactionContext(await sendPortFuture);
-    await ctx.execute('BEGIN');
     try {
+      await ctx.execute('BEGIN');
       final result = await callback(ctx);
       await ctx.execute('END TRANSACTION');
       return result;
@@ -106,8 +110,8 @@ class SqliteConnectionImpl with SqliteQueries implements SqliteConnection {
       // DB lock so that only one write happens at a time
       return await _factory.mutex.lock(() async {
         final ctx = _TransactionContext(await sendPortFuture);
-        await ctx.execute('BEGIN IMMEDIATE');
         try {
+          await ctx.execute('BEGIN IMMEDIATE');
           final result = await callback(ctx);
           await ctx.execute('COMMIT');
           return result;
@@ -158,7 +162,19 @@ class _TransactionContext implements SqliteWriteTransactionContext {
     }
     var result = IsolateResult<sqlite.ResultSet>();
     _sendPort.send(['select', result.completer, sql, parameters, 'readonly']);
-    return await result.future;
+    try {
+      return await result.future;
+    } on sqlite.SqliteException catch (e) {
+      if (e.resultCode == 8) {
+        // SQLITE_READONLY
+        throw sqlite.SqliteException(
+            e.extendedResultCode,
+            'attempt to write in a read-only transaction',
+            null,
+            e.causingStatement);
+      }
+      rethrow;
+    }
   }
 
   @override
@@ -187,7 +203,7 @@ class _TransactionContext implements SqliteWriteTransactionContext {
 }
 
 void _sqliteConnectionIsolate(_SqliteConnectionParams params) async {
-  final db = await params.factory.openRawDatabase();
+  final db = await params.factory.openRawDatabase(readOnly: params.readOnly);
 
   final commandPort = ReceivePort();
   params.portCompleter.complete(commandPort.sendPort);
@@ -200,10 +216,6 @@ void _sqliteConnectionIsolate(_SqliteConnectionParams params) async {
         await completer.handle(() async {
           String query = data[2];
           List<Object?> args = data[3];
-          var readOnly = data[4] == 'readonly';
-          if (readOnly) {
-            _validateReadOnly(query);
-          }
           var results = db.select(query, args);
           return results;
         }, ignoreStackTrace: true);
@@ -218,25 +230,13 @@ void _sqliteConnectionIsolate(_SqliteConnectionParams params) async {
   });
 }
 
-void _validateReadOnly(String statement) {
-  final start = statement
-      .substring(0, min(20, statement.length))
-      .trimLeft()
-      .toUpperCase();
-  // Note: WITH can also be used for write queries - this is not fool-proof.
-  // It is also possible to have some other read-only statements, e.g. some
-  // PRAGMA statements.
-  if (start.startsWith('SELECT') || start.startsWith('WITH')) {
-    return;
-  }
-  throw AssertionError("Read transactions may only use SELECT queries");
-}
-
 class _SqliteConnectionParams {
   SqliteConnectionFactory factory;
   PortCompleter<SendPort> portCompleter;
+  bool readOnly;
 
-  _SqliteConnectionParams(this.factory, this.portCompleter);
+  _SqliteConnectionParams(this.factory, this.portCompleter,
+      {required this.readOnly});
 }
 
 mixin SqliteQueries implements SqliteWriteTransactionContext {

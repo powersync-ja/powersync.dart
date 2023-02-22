@@ -44,7 +44,9 @@ class SimpleMutex implements Mutex {
     if (Zone.current[this] != null) {
       throw AssertionError('Recursive lock is not allowed');
     }
-    return runZoned(() async {
+    var zone = Zone.current.fork(zoneValues: {this: true});
+
+    return zone.run(() async {
       final prev = last;
       final completer = Completer<void>.sync();
       last = completer.future;
@@ -68,8 +70,7 @@ class SimpleMutex implements Mutex {
         }
 
         // Run the function and return the result
-        var result = callback();
-        return await result;
+        return await callback();
       } finally {
         // Cleanup
         // waiting for the previous task to be done in case of timeout
@@ -92,7 +93,7 @@ class SimpleMutex implements Mutex {
           complete();
         }
       }
-    }, zoneValues: {this: true});
+    });
   }
 
   @override
