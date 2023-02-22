@@ -457,7 +457,10 @@ class BucketStorage {
     if (_checksumCache != null) {
       final checksums = _checksumCache!.checksums;
       for (var row in rows) {
-        final bucket = row['bucket'];
+        final String? bucket = row['bucket'];
+        if (bucket == null) {
+          continue;
+        }
         if (BigInt.parse(row['last_applied_op']) >
             BigInt.parse(_checksumCache!.lastOpId)) {
           throw AssertionError(

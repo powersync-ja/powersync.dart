@@ -174,12 +174,11 @@ class StreamingSyncImplementation {
     Checkpoint? validatedCheckpoint;
     Checkpoint? appliedCheckpoint;
 
-    final streams = StreamGroup.merge([
-      _localPingController.stream,
-      streamingSyncRequest(StreamingSyncRequest(req))
-    ]);
+    var requestStream = streamingSyncRequest(StreamingSyncRequest(req));
 
-    await for (var line in streams) {
+    var merged = addBroadcast(requestStream, _localPingController.stream);
+
+    await for (var line in merged) {
       _statusStreamController
           .add(SyncStatus(connected: true, lastSyncedAt: lastSyncedAt));
       if (line is Checkpoint) {
@@ -260,6 +259,40 @@ class StreamingSyncImplementation {
       }
     }
     return true;
+  }
+
+  Stream<T> addBroadcast<T>(Stream<T> a, Stream<T> broadcast) {
+    var controller = StreamController<T>();
+
+    StreamSubscription<T>? sub1;
+    StreamSubscription<T>? sub2;
+
+    void close() {
+      controller.close();
+      sub1!.cancel();
+      sub2!.cancel();
+    }
+
+    // TODO: backpressure?
+    sub1 = a.listen((event) {
+      controller.add(event);
+    }, onDone: () {
+      close();
+    }, onError: (e) {
+      controller.addError(e);
+      close();
+    });
+
+    sub2 = broadcast.listen((event) {
+      controller.add(event);
+    }, onDone: () {
+      close();
+    }, onError: (e) {
+      controller.addError(e);
+      close();
+    });
+
+    return controller.stream;
   }
 
   Stream<Object?> streamingSyncRequest(StreamingSyncRequest data) async* {

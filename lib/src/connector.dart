@@ -50,7 +50,7 @@ class PowerSyncCredentials {
     if (expiresAt == null) {
       return false;
     }
-    if (DateTime.now().difference(expiresAt!) < const Duration(seconds: 0)) {
+    if (expiresAt!.difference(DateTime.now()) < const Duration(seconds: 0)) {
       return true;
     }
     return false;
@@ -61,7 +61,7 @@ class PowerSyncCredentials {
     if (expiresAt == null) {
       return false;
     }
-    if (DateTime.now().difference(expiresAt!) < const Duration(minutes: 1)) {
+    if (expiresAt!.difference(DateTime.now()) < const Duration(minutes: 1)) {
       return true;
     }
     return false;
@@ -88,7 +88,7 @@ class PowerSyncCredentials {
 
   @override
   toString() {
-    return "PowerSyncCredentials<endpoint: $endpoint userId: $userId expiresAT: $expiresAt>";
+    return "PowerSyncCredentials<endpoint: $endpoint userId: $userId expiresAt: $expiresAt>";
   }
 
   Uri endpointUri(String path) {
