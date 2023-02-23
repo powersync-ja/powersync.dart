@@ -67,7 +67,7 @@ class StreamingSyncImplementation {
   }
 
   Future<void> streamingSync() async {
-    print('${DateTime.now()} Start Sync');
+    // print('${DateTime.now()} Start Sync');
     crudLoop();
     while (true) {
       try {

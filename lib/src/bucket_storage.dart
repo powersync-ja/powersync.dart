@@ -348,7 +348,7 @@ class BucketStorage {
                 SET last_applied_op = last_op
                 WHERE last_applied_op != last_op""");
 
-      print('${DateTime.now()} Updated local state');
+      // print('${DateTime.now()} Updated local state');
       return true;
     });
   }
@@ -410,7 +410,7 @@ class BucketStorage {
     final invalidBuckets = db.select(
         "SELECT name, target_op, last_op, last_applied_op FROM buckets WHERE target_op > last_op AND (name = '\$local' OR pending_delete = 0)");
     if (invalidBuckets.isNotEmpty) {
-      print('cant update local: $invalidBuckets');
+      // print('cant update local: $invalidBuckets');
       return false;
     }
     // This is specifically relevant for when data is added to crud before another batch is completed.
