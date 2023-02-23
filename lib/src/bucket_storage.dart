@@ -482,7 +482,10 @@ class BucketStorage {
       }
     } else {
       for (final row in rows) {
-        final bucket = row['bucket'];
+        final String? bucket = row['bucket'];
+        if (bucket == null) {
+          continue;
+        }
         final int c1 = row['add_checksum'];
         final int c2 = row['oplog_checksum'];
 
