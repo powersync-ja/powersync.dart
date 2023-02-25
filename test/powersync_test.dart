@@ -78,7 +78,7 @@ void main() {
           'SELECT ? as i, powersync_sleep(?) as sleep, powersync_connection_name() as connection',
           [i, 5 + Random().nextInt(10)]));
       await for (var result in Stream.fromFutures(futures)) {
-        print("${DateTime.now()} ${result}");
+        print("${DateTime.now()} $result");
       }
     });
 

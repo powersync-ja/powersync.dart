@@ -5,7 +5,6 @@ import './bucket_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/http.dart';
 import 'dart:convert' as convert;
-import 'package:async/async.dart';
 import './connector.dart';
 
 class SyncStatus {

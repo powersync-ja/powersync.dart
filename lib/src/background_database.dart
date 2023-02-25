@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:isolate';
-import 'dart:math';
 
 import './sqlite_connection.dart';
 
@@ -18,6 +17,7 @@ class SqliteConnectionImpl with SqliteQueries implements SqliteConnection {
   /// Private to this connection
   final SimpleMutex _connectionMutex = SimpleMutex();
 
+  @override
   final Stream<TableUpdate>? updates;
   late final Future<SendPort> sendPortFuture;
   final String? debugName;

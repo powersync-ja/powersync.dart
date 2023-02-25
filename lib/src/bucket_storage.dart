@@ -652,8 +652,6 @@ class BucketStorage {
     final rows = select('SELECT * FROM crud ORDER BY id ASC LIMIT ?', [limit]);
     List<CrudEntry> all = [];
     for (var row in rows) {
-      final data = jsonDecode(row['data']);
-      final id = row['id'];
       all.add(CrudEntry.fromRow(row));
     }
     if (all.isEmpty) {
