@@ -1,11 +1,14 @@
+# PowerSync SDK for Dart/Flutter
+
 PowerSync makes it easy to keep a local SQLite database in sync with backend SQL databases.
 
-## Features
+## SDK Features
 
  * Direct access to the SQLite database - use SQL on the client and server.
  * Operations are asynchronous by default, avoiding blocking the UI.
  * Supports one write and many reads concurrently.
  * Client-side migrations are handled automatically.
+ * Watch queries for live updates.
 
 ## Getting started
 
@@ -25,11 +28,11 @@ late PowerSyncDatabase db;
 Future<void> openDatabase() {
   final dir = await getApplicationSupportDirectory();
   final path = join(dir.path, 'powersync-dart.db');
-  // Setup the database
+  // Setup the database.
   db = PowerSyncDatabase(schema: schema, path: await getDatabasePath());
   await db.initialize();
 
-  // Run local statements
+  // Run local statements.
   await db.execute('INSERT INTO customers(id, name, email) VALUES(uuid(), ?, ?)', ['Fred', 'fred@example.org']);
 }
 
@@ -38,13 +41,13 @@ Future<void> connectPowerSync() {
   // Extend the class to persist credentials.
   final connector = DevConnector();
 
-  // Login in dev mode
-  await demoConnector.devLogin(
+  // Login in dev mode.
+  await connector.devLogin(
       endpoint: 'https://myinstance.powersync.co',
       user: 'demo',
       password: 'demo');
 
-  // Connect to PowerSync cloud service and start sync
+  // Connect to PowerSync cloud service and start sync.
   db.connect(connector: connector);
 }
 ```

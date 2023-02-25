@@ -7,7 +7,7 @@ import './sqlite_connection.dart';
 import './isolate_completer.dart';
 import './mutex.dart';
 import './powersync_database.dart';
-import './thottle.dart';
+import 'throttle.dart';
 import 'package:sqlite3/sqlite3.dart' as sqlite;
 
 typedef TxCallback<T> = Future<T> Function(sqlite.Database db);
@@ -180,9 +180,6 @@ class _TransactionContext implements SqliteWriteTransactionContext {
   @override
   Future<sqlite.Row> get(String sql,
       [List<Object?> parameters = const []]) async {
-    if (_closed) {
-      throw AssertionError('Transaction closed');
-    }
     final rows = await getAll(sql, parameters);
     return rows.first;
   }
@@ -190,9 +187,6 @@ class _TransactionContext implements SqliteWriteTransactionContext {
   @override
   Future<sqlite.Row?> getOptional(String sql,
       [List<Object?> parameters = const []]) async {
-    if (_closed) {
-      throw AssertionError('Transaction closed');
-    }
     final rows = await getAll(sql, parameters);
     return rows.elementAt(0);
   }
@@ -239,13 +233,15 @@ class _SqliteConnectionParams {
       {required this.readOnly});
 }
 
-mixin SqliteQueries implements SqliteWriteTransactionContext {
+mixin SqliteQueries implements SqliteWriteTransactionContext, SqliteConnection {
   Stream<TableUpdate>? get updates;
 
+  @override
   Future<T> readTransaction<T>(
       Future<T> Function(SqliteReadTransactionContext tx) callback,
       {Duration? lockTimeout});
 
+  @override
   Future<T> writeTransaction<T>(
       Future<T> Function(SqliteWriteTransactionContext tx) callback,
       {Duration? lockTimeout});

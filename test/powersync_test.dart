@@ -135,7 +135,8 @@ void main() {
           'CREATE TABLE data(id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, email TEXT)');
       final timer = Stopwatch()..start();
 
-      final con = db.openConnection() as SqliteConnectionImpl;
+      final con = db.connectionFactory().openConnection(updates: db.updates)
+          as SqliteConnectionImpl;
       await con.inIsolateWriteTransaction((db) async {
         for (var i = 0; i < 1000; i++) {
           db.execute('INSERT INTO data(name, email) VALUES(?, ?)',
@@ -159,7 +160,8 @@ void main() {
           'CREATE TABLE data(id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, email TEXT)');
       final timer = Stopwatch()..start();
 
-      final con = db.openConnection() as SqliteConnectionImpl;
+      final con = db.connectionFactory().openConnection(updates: db.updates)
+          as SqliteConnectionImpl;
       await con.inIsolateWriteTransaction((db) async {
         var stmt = db.prepare('INSERT INTO data(name, email) VALUES(?, ?)');
         for (var i = 0; i < 1000; i++) {

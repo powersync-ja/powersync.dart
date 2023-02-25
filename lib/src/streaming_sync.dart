@@ -152,7 +152,7 @@ class StreamingSyncImplementation {
     }
 
     final body = convert.jsonDecode(response.body);
-    return body['checkpoint'] as String;
+    return body['data']['checkpoint'] as String;
   }
 
   Future<bool> streamingSyncIteration() async {
@@ -291,6 +291,10 @@ class StreamingSyncImplementation {
       controller.addError(e);
       close();
     });
+
+    controller.onCancel = () {
+      sub1?.cancel();
+    };
 
     return controller.stream;
   }

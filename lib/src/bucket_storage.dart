@@ -1,10 +1,11 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:powersync/powersync.dart';
+
 import './mutex.dart';
 import 'package:sqlite3/common.dart';
 
-import './schema.dart';
 import './schema_logic.dart';
 import 'package:sqlite3/sqlite3.dart' as sqlite;
 import 'package:uuid/uuid.dart';
@@ -649,11 +650,11 @@ class BucketStorage {
     }
 
     final rows = select('SELECT * FROM crud ORDER BY id ASC LIMIT ?', [limit]);
-    List<dynamic> all = [];
+    List<CrudEntry> all = [];
     for (var row in rows) {
       final data = jsonDecode(row['data']);
       final id = row['id'];
-      all.add({...data, 'op_id': id});
+      all.add(CrudEntry.fromRow(row));
     }
     if (all.isEmpty) {
       return null;
@@ -664,7 +665,7 @@ class BucketStorage {
         haveMore: true,
         complete: () async {
           await writeTransaction((db) {
-            db.execute('DELETE FROM crud WHERE id <= ?', [last['op_id']]);
+            db.execute('DELETE FROM crud WHERE id <= ?', [last.clientId]);
             db.execute(
                 'UPDATE buckets SET target_op = $maxOpId WHERE name=\'\$local\'');
           });
@@ -683,15 +684,6 @@ class BucketStorage {
       return r;
     });
   }
-}
-
-class CrudBatch {
-  List<dynamic> crud;
-  bool haveMore;
-  Future<void> Function() complete;
-
-  CrudBatch(
-      {required this.crud, required this.haveMore, required this.complete});
 }
 
 Future<T> asyncTransaction<T>(sqlite.Database db,
