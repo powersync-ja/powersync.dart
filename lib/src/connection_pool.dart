@@ -1,8 +1,8 @@
 import 'dart:async';
 
-import 'package:powersync/src/background_database.dart';
-import 'package:powersync/src/powersync_database.dart';
-import 'package:powersync/src/sqlite_connection.dart';
+import './background_database.dart';
+import './powersync_database.dart';
+import './sqlite_connection.dart';
 
 class SqliteConnectionPool with SqliteQueries implements SqliteConnection {
   SqliteConnection? _writeConnection;

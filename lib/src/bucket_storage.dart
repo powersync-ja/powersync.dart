@@ -1,12 +1,13 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:powersync/powersync.dart';
-
+import './log.dart';
+import './crud.dart';
 import './mutex.dart';
-import 'package:sqlite3/common.dart';
-
 import './schema_logic.dart';
+import './schema.dart';
+
+import 'package:sqlite3/common.dart';
 import 'package:sqlite3/sqlite3.dart' as sqlite;
 import 'package:uuid/uuid.dart';
 import 'package:uuid/uuid_util.dart';
@@ -349,7 +350,7 @@ class BucketStorage {
                 SET last_applied_op = last_op
                 WHERE last_applied_op != last_op""");
 
-      // print('${DateTime.now()} Updated local state');
+      log.fine('Updated local database');
       return true;
     });
   }
@@ -411,7 +412,7 @@ class BucketStorage {
     final invalidBuckets = db.select(
         "SELECT name, target_op, last_op, last_applied_op FROM buckets WHERE target_op > last_op AND (name = '\$local' OR pending_delete = 0)");
     if (invalidBuckets.isNotEmpty) {
-      // print('cant update local: $invalidBuckets');
+      log.fine('Cannot update local database: $invalidBuckets');
       return false;
     }
     // This is specifically relevant for when data is added to crud before another batch is completed.
@@ -503,8 +504,8 @@ class BucketStorage {
           byBucket[checksum.bucket] ?? BucketChecksum(checksum.bucket, 0, 0);
       // Note: Count is informational only.
       if (local.checksum != checksum.checksum) {
-        print(
-            "Checksum failed: local ${local.checksum} != remote ${checksum.checksum}");
+        log.warning(
+            'Checksum mismatch for ${checksum.bucket}: local ${local.checksum} != remote ${checksum.checksum}');
         failedChecksums.add(checksum.bucket);
       }
     }
@@ -514,7 +515,6 @@ class BucketStorage {
       return SyncLocalDatabaseResult(true, true, null);
     } else {
       _checksumCache = null;
-      print("Checksums failed: $failedChecksums");
       return SyncLocalDatabaseResult(false, false, failedChecksums);
     }
   }

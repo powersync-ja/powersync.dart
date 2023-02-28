@@ -1,11 +1,13 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:convert' as convert;
 
+import './log.dart';
 import './bucket_storage.dart';
+import './connector.dart';
+
 import 'package:http/http.dart' as http;
 import 'package:http/http.dart';
-import 'dart:convert' as convert;
-import './connector.dart';
 
 class SyncStatus {
   /// true if currently connected
@@ -66,16 +68,13 @@ class StreamingSyncImplementation {
   }
 
   Future<void> streamingSync() async {
-    // print('${DateTime.now()} Start Sync');
     crudLoop();
     while (true) {
       try {
         await streamingSyncIteration();
         // Continue immediately
       } catch (e, stacktrace) {
-        // TODO: Better error reporting
-        print(e);
-        print(stacktrace);
+        log.warning('Sync error', e, stacktrace);
 
         _statusStreamController
             .add(SyncStatus(connected: false, lastSyncedAt: lastSyncedAt));
@@ -100,8 +99,7 @@ class StreamingSyncImplementation {
           break;
         }
       } catch (e, stacktrace) {
-        print(e);
-        print(stacktrace);
+        log.warning('Data upload error', e, stacktrace);
         await Future.delayed(const Duration(milliseconds: 5000));
       }
     }

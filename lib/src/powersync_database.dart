@@ -1,8 +1,10 @@
 import 'dart:async';
 import 'dart:isolate';
 
+import 'package:logging/logging.dart';
 import 'package:sqlite3/sqlite3.dart' as sqlite;
 
+import './log.dart';
 import './connection_pool.dart';
 import './connector.dart';
 import './background_database.dart';
@@ -123,7 +125,7 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
   ///
   /// While initializing is automatic, this helps to catch and report initialization errors.
   Future<void> initialize() async {
-    return _initialized;
+    await _initialized;
   }
 
   void _listenForEvents() {
@@ -202,6 +204,10 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
           _setStatus(SyncStatus(
               connected: false, lastSyncedAt: currentStatus.lastSyncedAt));
           rPort.close();
+        } else if (action == 'log') {
+          LogRecord record = data[1];
+          log.log(
+              record.level, record.message, record.error, record.stackTrace);
         }
       }
     });
@@ -508,6 +514,13 @@ Future<void> _powerSyncDatabaseIsolate(
   });
   Isolate.current.addOnExitListener(sPort, response: const ['close']);
   sPort.send(["init", rPort.sendPort]);
+
+  // Is there a way to avoid the overhead if logging is not enabled?
+  // This only takes effect in this isolate.
+  Logger.root.level = Level.ALL;
+  log.onRecord.listen((record) {
+    sPort.send(["log", record]);
+  });
 
   Future<PowerSyncCredentials?> loadCredentials() async {
     final r = IsolateResult<PowerSyncCredentials?>();

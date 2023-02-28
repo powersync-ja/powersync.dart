@@ -2,11 +2,11 @@ import 'dart:async';
 import 'dart:isolate';
 
 import './sqlite_connection.dart';
-
 import './isolate_completer.dart';
 import './mutex.dart';
 import './powersync_database.dart';
-import 'throttle.dart';
+import './throttle.dart';
+
 import 'package:sqlite3/sqlite3.dart' as sqlite;
 
 typedef TxCallback<T> = Future<T> Function(sqlite.Database db);
