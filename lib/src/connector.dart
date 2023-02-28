@@ -219,6 +219,7 @@ class DevConnector extends PowerSyncBackendConnector {
       existing.token = null;
       storeDevCredentials(existing);
     }
+    credentials = null;
   }
 
   /// Whether a dev token is available.

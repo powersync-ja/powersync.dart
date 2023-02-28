@@ -59,6 +59,10 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
   @override
   late final Stream<TableUpdate> updates;
 
+  /// Current connection status.
+  SyncStatus currentStatus =
+      const SyncStatus(connected: false, lastSyncedAt: null);
+
   /// Use this stream to subscribe to connection status updates.
   late final Stream<SyncStatus> statusStream;
 
@@ -66,7 +70,6 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
       StreamController.broadcast();
 
   final ReceivePort _eventsPort = ReceivePort();
-  SyncStatus _status = const SyncStatus(connected: false, lastSyncedAt: null);
   final StreamController<SyncStatus> _statusStreamController =
       StreamController<SyncStatus>.broadcast();
 
@@ -167,10 +170,7 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
   connect({required PowerSyncBackendConnector connector}) async {
     final dbref = _dbref();
     ReceivePort rPort = ReceivePort();
-    if (_streamingSyncPort != null) {
-      _streamingSyncPort!.send(['close']);
-      _streamingSyncPort = null;
-    }
+    disconnect();
     rPort.listen((data) async {
       if (data is List) {
         String action = data[0];
@@ -197,10 +197,11 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
           });
         } else if (action == 'status') {
           final SyncStatus status = data[1];
-          if (status != _status) {
-            _status = status;
-            _statusStreamController.add(status);
-          }
+          _setStatus(status);
+        } else if (action == 'close') {
+          _setStatus(SyncStatus(
+              connected: false, lastSyncedAt: currentStatus.lastSyncedAt));
+          rPort.close();
         }
       }
     });
@@ -208,6 +209,46 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
     Isolate.spawn(_powerSyncDatabaseIsolate,
         _PowerSyncDatabaseIsolateArgs(rPort.sendPort, dbref, mutex),
         debugName: 'PowerSyncDatabase');
+  }
+
+  void _setStatus(SyncStatus status) {
+    if (status != currentStatus) {
+      currentStatus = status;
+      _statusStreamController.add(status);
+    }
+  }
+
+  /// Close the sync connection.
+  ///
+  /// Use [connect] to connect again.
+  void disconnect() {
+    if (_streamingSyncPort != null) {
+      _streamingSyncPort!.send(['close']);
+      _streamingSyncPort = null;
+    }
+  }
+
+  /// Disconnect and clear the database.
+  ///
+  /// Use this when logging out.
+  ///
+  /// The database can still be queried after this is called, but the tables
+  /// would be empty.
+  Future<void> disconnectedAndClear() async {
+    disconnect();
+
+    await writeTransaction((tx) async {
+      await tx.execute('DELETE FROM oplog WHERE 1');
+      await tx.execute('DELETE FROM crud WHERE 1');
+      await tx.execute('DELETE FROM buckets WHERE 1');
+
+      final existingTableRows = await tx.getAll(
+          "SELECT name FROM sqlite_master WHERE type='table' AND name GLOB 'objects__*'");
+
+      for (var row in existingTableRows) {
+        await tx.execute('DELETE FROM "${row['name']}" WHERE 1');
+      }
+    });
   }
 
   SqliteConnectionImpl _openPrimaryConnection({String? debugName}) {
@@ -234,7 +275,7 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
 
   /// Whether a connection to the PowerSync service is currently open.
   bool get connected {
-    return _status.connected;
+    return currentStatus.connected;
   }
 
   /// Get upload queue size estimate and count.
@@ -452,14 +493,20 @@ Future<void> _powerSyncDatabaseIsolate(
   final sPort = args.sPort;
   ReceivePort rPort = ReceivePort();
   StreamController updateController = StreamController.broadcast();
+
+  sqlite.Database? db;
   rPort.listen((message) {
     if (message is List) {
       String action = message[0];
       if (action == 'update') {
         updateController.add('update');
+      } else if (action == 'close') {
+        db?.dispose();
+        Isolate.current.kill();
       }
     }
   });
+  Isolate.current.addOnExitListener(sPort, response: const ['close']);
   sPort.send(["init", rPort.sendPort]);
 
   Future<PowerSyncCredentials?> loadCredentials() async {
@@ -480,7 +527,7 @@ Future<void> _powerSyncDatabaseIsolate(
     return r.future;
   }
 
-  final db = await args.dbRef.openRawDatabase();
+  db = await args.dbRef.openRawDatabase();
   final storage = BucketStorage(db, mutex: args.mutex);
   final sync = StreamingSyncImplementation(
       adapter: storage,
