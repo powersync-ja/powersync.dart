@@ -110,7 +110,7 @@ class StreamingSyncImplementation {
       await uploadCrud();
       return false;
     } else {
-      final batch = adapter.getCrudBatch();
+      final batch = adapter.getCrudBatch(limit: 1);
       if (batch == null) {
         // This isolate is the only one triggering
         final updated = await adapter.updateLocalTarget(() async {
