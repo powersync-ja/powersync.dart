@@ -508,6 +508,7 @@ Future<void> _powerSyncDatabaseIsolate(
         updateController.add('update');
       } else if (action == 'close') {
         db?.dispose();
+        updateController.close();
         Isolate.current.kill();
       }
     }
