@@ -1,4 +1,4 @@
-## 0.1.0-preview7
+## 0.1.0-preview8
 
 - Add logging.
 - Fix issue with removing buckets.

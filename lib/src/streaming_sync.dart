@@ -181,7 +181,7 @@ class StreamingSyncImplementation {
           .add(SyncStatus(connected: true, lastSyncedAt: lastSyncedAt));
       if (line is Checkpoint) {
         targetCheckpoint = line;
-        final Set<String> bucketsToDelete = {...initialBucketStates.keys};
+        final Set<String> bucketsToDelete = {...bucketSet};
         final Set<String> newBuckets = {};
         for (final checksum in line.checksums) {
           newBuckets.add(checksum.bucket);
