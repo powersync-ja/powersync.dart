@@ -158,20 +158,21 @@ class StreamingSyncImplementation {
     adapter.startSession();
     final bucketEntries = adapter.getBucketStates();
 
-    Map<String, String> bucketStates = {};
+    Map<String, String> initialBucketStates = {};
 
     for (final entry in bucketEntries) {
-      bucketStates[entry.bucket] = entry.opId;
+      initialBucketStates[entry.bucket] = entry.opId;
     }
 
     final List<BucketRequest> req = [];
-    for (var entry in bucketStates.entries) {
+    for (var entry in initialBucketStates.entries) {
       req.add(BucketRequest(entry.key, entry.value));
     }
 
     Checkpoint? targetCheckpoint;
     Checkpoint? validatedCheckpoint;
     Checkpoint? appliedCheckpoint;
+    var bucketSet = Set<String>.from(initialBucketStates.keys);
 
     var requestStream = streamingSyncRequest(StreamingSyncRequest(req));
 
@@ -182,16 +183,13 @@ class StreamingSyncImplementation {
           .add(SyncStatus(connected: true, lastSyncedAt: lastSyncedAt));
       if (line is Checkpoint) {
         targetCheckpoint = line;
-        final Set<String> bucketsToDelete = {...bucketStates.keys};
-        final Map<String, String> newBuckets = {};
+        final Set<String> bucketsToDelete = {...initialBucketStates.keys};
+        final Set<String> newBuckets = {};
         for (final checksum in line.checksums) {
-          newBuckets[checksum.bucket] = bucketStates[checksum.bucket] ?? '0';
+          newBuckets.add(checksum.bucket);
           bucketsToDelete.remove(checksum.bucket);
         }
-        if (bucketsToDelete.isNotEmpty) {
-          // console.debug('Remove buckets', [...bucketsToDelete]);
-        }
-        bucketStates = newBuckets;
+        bucketSet = newBuckets;
         await adapter.removeBuckets([...bucketsToDelete]);
         adapter.setTargetCheckpoint(targetCheckpoint);
       } else if (line is StreamingSyncCheckpointComplete) {
@@ -231,6 +229,10 @@ class StreamingSyncImplementation {
 
         final newCheckpoint = Checkpoint(diff.lastOpId, [...newBuckets.values]);
         targetCheckpoint = newCheckpoint;
+
+        bucketSet = Set.from(newBuckets.keys);
+        await adapter.removeBuckets(diff.removedBuckets);
+        adapter.setTargetCheckpoint(targetCheckpoint);
       } else if (line is SyncBucketData) {
         await adapter.saveSyncData(SyncDataBatch([line]));
       } else {
