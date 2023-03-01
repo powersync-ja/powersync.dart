@@ -305,7 +305,8 @@ class DevConnector extends PowerSyncBackendConnector {
     }
 
     if (response.statusCode != 200) {
-      throw HttpException(response.reasonPhrase ?? "Authentication failed",
+      throw HttpException(
+          response.reasonPhrase ?? "Failed due to server error.",
           uri: uri);
     }
 
