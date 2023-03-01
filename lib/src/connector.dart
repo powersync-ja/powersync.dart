@@ -35,7 +35,9 @@ abstract class PowerSyncBackendConnector {
 
   /// Upload local changes to the app backend.
   ///
-  /// Use [PowerSyncDatabase.getCrudBatch] to get a batch of changes to upload.
+  /// Use [PowerSyncDatabase.getCrudBatch] to get a batch of changes to upload. See [DevConnector] for an example implementation.
+  ///
+  /// Any thrown errors will result in a retry after the configured wait period (default: 5 seconds).
   Future<void> uploadData(PowerSyncDatabase database);
 }
 
