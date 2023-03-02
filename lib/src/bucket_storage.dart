@@ -657,7 +657,7 @@ class BucketStorage {
     return anyData.isNotEmpty;
   }
 
-  CrudBatch? getCrudBatch({limit = 100}) {
+  CrudBatch? getCrudBatch({int limit = 100}) {
     if (!hasCrud()) {
       return null;
     }

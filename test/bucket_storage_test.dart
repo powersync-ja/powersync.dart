@@ -409,20 +409,217 @@ void main() {
       expectAsset1_3();
     });
 
-    test('should compact', () async {});
+    test('should compact', () async {
+      // Test compacting behaviour.
+      // This test relies heavily on internals, and will have to be updated when the compact implementation is updated.
+
+      await bucketStorage.saveSyncData(SyncDataBatch([
+        SyncBucketData(
+            bucket: 'bucket1',
+            data: [PUT_ASSET1_1, PUT_ASSET2_2, REMOVE_ASSET1_4])
+      ]));
+
+      await syncLocalChecked(Checkpoint(
+          lastOpId: '4',
+          checksums: [BucketChecksum(bucket: 'bucket1', checksum: 7)]));
+
+      await bucketStorage.forceCompact();
+
+      await syncLocalChecked(Checkpoint(
+          lastOpId: '4',
+          checksums: [BucketChecksum(bucket: 'bucket1', checksum: 7)]));
+
+      final stats = db.select(
+          'SELECT object_type as type, object_id as id, count(*) as count FROM oplog GROUP BY object_type, object_id ORDER BY object_type, object_id');
+      expect(
+          stats,
+          equals([
+            {'type': 'assets', 'id': 'O2', 'count': 1}
+          ]));
+    });
 
     test('should not sync local db with pending crud - server removed',
-        () async {});
+        () async {
+      await bucketStorage.saveSyncData(SyncDataBatch([
+        SyncBucketData(
+          bucket: 'bucket1',
+          data: [PUT_ASSET1_1, PUT_ASSET2_2, PUT_ASSET1_3],
+        ),
+      ]));
+
+      await syncLocalChecked(Checkpoint(
+          lastOpId: '3',
+          checksums: [BucketChecksum(bucket: 'bucket1', checksum: 6)]));
+
+      // Local save
+      db.execute('INSERT INTO assets(id) VALUES(?)', ['O3']);
+      expect(
+          db.select('SELECT id FROM assets WHERE id = \'O3\''),
+          equals([
+            {'id': 'O3'}
+          ]));
+
+      // At this point, we have data in the crud table, and are not able to sync the local db.
+      final result = await bucketStorage.syncLocalDatabase(Checkpoint(
+          lastOpId: '3',
+          checksums: [BucketChecksum(bucket: 'bucket1', checksum: 6)]));
+      expect(result, equals(SyncLocalDatabaseResult(ready: false)));
+
+      final batch = bucketStorage.getCrudBatch();
+      await batch!.complete();
+      await bucketStorage.updateLocalTarget(() async {
+        return '4';
+      });
+
+      // At this point, the data has been uploaded, but not synced back yet.
+      final result3 = await bucketStorage.syncLocalDatabase(Checkpoint(
+          lastOpId: '3',
+          checksums: [BucketChecksum(bucket: 'bucket1', checksum: 6)]));
+      expect(result3, equals(SyncLocalDatabaseResult(ready: false)));
+
+      // The data must still be present locally.
+      expect(
+          db.select('SELECT id FROM assets WHERE id = \'O3\''),
+          equals([
+            {'id': 'O3'}
+          ]));
+
+      await bucketStorage.saveSyncData(
+          SyncDataBatch([SyncBucketData(bucket: 'bucket1', data: [])]));
+
+      // No we have synced the data back (or lack of data in this case),
+      // so we can do a local sync.
+      await syncLocalChecked(Checkpoint(
+          lastOpId: '5',
+          checksums: [BucketChecksum(bucket: 'bucket1', checksum: 6)]));
+
+      // Since the object was not in the sync response, it is deleted.
+      expect(db.select('SELECT id FROM assets WHERE id = \'O3\''), equals([]));
+    });
 
     test(
         'should not sync local db with pending crud when more crud is added (1)',
-        () async {});
+        () async {
+      await bucketStorage.saveSyncData(SyncDataBatch([
+        SyncBucketData(
+          bucket: 'bucket1',
+          data: [PUT_ASSET1_1, PUT_ASSET2_2, PUT_ASSET1_3],
+        ),
+      ]));
+
+      await syncLocalChecked(Checkpoint(
+          lastOpId: '3',
+          checksums: [BucketChecksum(bucket: 'bucket1', checksum: 6)]));
+
+      // Local save
+      db.execute('INSERT INTO assets(id) VALUES(?)', ['O3']);
+
+      final batch = bucketStorage.getCrudBatch();
+      await batch!.complete();
+      await bucketStorage.updateLocalTarget(() async {
+        return '4';
+      });
+
+      final result3 = await bucketStorage.syncLocalDatabase(Checkpoint(
+          lastOpId: '3',
+          checksums: [BucketChecksum(bucket: 'bucket1', checksum: 6)]));
+      expect(result3, equals(SyncLocalDatabaseResult(ready: false)));
+
+      await bucketStorage.saveSyncData(
+          SyncDataBatch([SyncBucketData(bucket: 'bucket1', data: [])]));
+
+      // Add more data before syncLocalDatabase.
+      db.execute('INSERT INTO assets(id) VALUES(?)', ['O4']);
+
+      final result4 = await bucketStorage.syncLocalDatabase(Checkpoint(
+          lastOpId: '5',
+          checksums: [BucketChecksum(bucket: 'bucket1', checksum: 6)]));
+      expect(result4, equals(SyncLocalDatabaseResult(ready: false)));
+    });
 
     test(
         'should not sync local db with pending crud when more crud is added (2)',
-        () async {});
+        () async {
+      await bucketStorage.saveSyncData(SyncDataBatch([
+        SyncBucketData(
+          bucket: 'bucket1',
+          data: [PUT_ASSET1_1, PUT_ASSET2_2, PUT_ASSET1_3],
+        ),
+      ]));
+
+      await syncLocalChecked(Checkpoint(
+          lastOpId: '3',
+          checksums: [BucketChecksum(bucket: 'bucket1', checksum: 6)]));
+
+      // Local save
+      db.execute('INSERT INTO assets(id) VALUES(?)', ['O3']);
+      final batch = bucketStorage.getCrudBatch();
+      // Add more data before the complete() call
+
+      db.execute('INSERT INTO assets(id) VALUES(?)', ['O4']);
+      await batch!.complete();
+      await bucketStorage.updateLocalTarget(() async {
+        return '4';
+      });
+
+      await bucketStorage.saveSyncData(SyncDataBatch([
+        SyncBucketData(
+          bucket: 'bucket1',
+          data: [],
+        ),
+      ]));
+
+      final result4 = await bucketStorage.syncLocalDatabase(Checkpoint(
+          lastOpId: '5',
+          checksums: [BucketChecksum(bucket: 'bucket1', checksum: 6)]));
+      expect(result4, equals(SyncLocalDatabaseResult(ready: false)));
+    });
 
     test('should not sync local db with pending crud - update on server',
-        () async {});
+        () async {
+      await bucketStorage.saveSyncData(SyncDataBatch([
+        SyncBucketData(
+          bucket: 'bucket1',
+          data: [PUT_ASSET1_1, PUT_ASSET2_2, PUT_ASSET1_3],
+        ),
+      ]));
+
+      await syncLocalChecked(Checkpoint(
+          lastOpId: '3',
+          checksums: [BucketChecksum(bucket: 'bucket1', checksum: 6)]));
+
+      // Local save
+      db.execute('INSERT INTO assets(id) VALUES(?)', ['O3']);
+      final batch = bucketStorage.getCrudBatch();
+      await batch!.complete();
+      await bucketStorage.updateLocalTarget(() async {
+        return '4';
+      });
+
+      await bucketStorage.saveSyncData(SyncDataBatch([
+        SyncBucketData(
+          bucket: 'bucket1',
+          data: [
+            OplogEntry(
+                opId: '5',
+                op: OpType.put,
+                objectType: 'assets',
+                objectId: 'O3',
+                checksum: 5,
+                data: {'description': 'server updated'})
+          ],
+        ),
+      ]));
+
+      await syncLocalChecked(Checkpoint(
+          lastOpId: '5',
+          checksums: [BucketChecksum(bucket: 'bucket1', checksum: 11)]));
+
+      expect(
+          db.select('SELECT description FROM assets WHERE id = \'O3\''),
+          equals([
+            {'description': 'server updated'}
+          ]));
+    });
   });
 }
