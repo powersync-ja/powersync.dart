@@ -1,16 +1,16 @@
 import 'dart:async';
 import 'dart:convert';
 
-import './log.dart';
-import './crud.dart';
-import './mutex.dart';
-import './schema_logic.dart';
-import './schema.dart';
-
 import 'package:sqlite3/common.dart';
 import 'package:sqlite3/sqlite3.dart' as sqlite;
 import 'package:uuid/uuid.dart';
 import 'package:uuid/uuid_util.dart';
+
+import './crud.dart';
+import './log.dart';
+import './mutex.dart';
+import './schema.dart';
+import './schema_logic.dart';
 
 const compactOperationInterval = 1000;
 
@@ -55,7 +55,10 @@ class BucketStorage {
   List<BucketState> getBucketStates() {
     final rows = select(
         'SELECT name as bucket, cast(last_op as TEXT) as op_id FROM buckets WHERE pending_delete = 0');
-    return [for (var row in rows) BucketState(row['bucket'], row['op_id'])];
+    return [
+      for (var row in rows)
+        BucketState(bucket: row['bucket'], opId: row['op_id'])
+    ];
   }
 
   Future<void> saveSyncData(SyncDataBatch batch) async {
@@ -274,12 +277,12 @@ class BucketStorage {
 
     final valid = await updateObjectsFromBuckets(checkpoint);
     if (!valid) {
-      return SyncLocalDatabaseResult(false, true, null);
+      return SyncLocalDatabaseResult(ready: false);
     }
 
     await forceCompact();
 
-    return SyncLocalDatabaseResult(true, true, null);
+    return SyncLocalDatabaseResult(ready: true);
   }
 
   Future<bool> updateObjectsFromBuckets(Checkpoint checkpoint) async {
@@ -479,8 +482,11 @@ class BucketStorage {
         } else {
           checksum = (row['add_checksum'] + row['oplog_checksum']).toSigned(32);
         }
-        byBucket[bucket] = BucketChecksum(bucket, checksum, row['count'])
-          ..lastOpId = lastOpId;
+        byBucket[bucket] = BucketChecksum(
+            bucket: bucket,
+            checksum: checksum,
+            count: row['count'],
+            lastOpId: lastOpId);
       }
     } else {
       for (final row in rows) {
@@ -493,15 +499,18 @@ class BucketStorage {
 
         final checksum = (c1 + c2).toSigned(32);
 
-        byBucket[bucket] = BucketChecksum(bucket, checksum, row['count'])
-          ..lastOpId = row['last_op_id'];
+        byBucket[bucket] = BucketChecksum(
+            bucket: bucket,
+            checksum: checksum,
+            count: row['count'],
+            lastOpId: row['last_op_id']);
       }
     }
 
     List<String> failedChecksums = [];
     for (final checksum in checkpoint.checksums) {
-      final local =
-          byBucket[checksum.bucket] ?? BucketChecksum(checksum.bucket, 0, 0);
+      final local = byBucket[checksum.bucket] ??
+          BucketChecksum(bucket: checksum.bucket, checksum: 0, count: 0);
       // Note: Count is informational only.
       if (local.checksum != checksum.checksum) {
         log.warning(
@@ -512,10 +521,13 @@ class BucketStorage {
     if (failedChecksums.isEmpty) {
       // FIXME: Checksum cache disabled since it's broken when add_checksum is modified
       // _checksumCache = ChecksumCache(checkpoint.lastOpId, byBucket);
-      return SyncLocalDatabaseResult(true, true, null);
+      return SyncLocalDatabaseResult(ready: true);
     } else {
       _checksumCache = null;
-      return SyncLocalDatabaseResult(false, false, failedChecksums);
+      return SyncLocalDatabaseResult(
+          ready: false,
+          checkpointValid: false,
+          checkpointFailures: failedChecksums);
     }
   }
 
@@ -721,7 +733,22 @@ class BucketState {
   final String bucket;
   final String opId;
 
-  BucketState(this.bucket, this.opId);
+  const BucketState({required this.bucket, required this.opId});
+
+  @override
+  String toString() {
+    return "BucketState<$bucket:$opId>";
+  }
+
+  @override
+  int get hashCode {
+    return Object.hash(bucket, opId);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is BucketState && other.bucket == bucket && other.opId == opId;
+  }
 }
 
 class SyncDataBatch {
@@ -731,14 +758,18 @@ class SyncDataBatch {
 }
 
 class SyncBucketData {
-  String bucket;
-  List<OplogEntry> data;
-  bool hasMore;
-  String after;
-  String nextAfter;
+  final String bucket;
+  final List<OplogEntry> data;
+  final bool hasMore;
+  final String after;
+  final String nextAfter;
 
-  SyncBucketData(
-      this.bucket, this.data, this.hasMore, this.after, this.nextAfter);
+  const SyncBucketData(
+      {required this.bucket,
+      required this.data,
+      this.hasMore = false,
+      required this.after,
+      required this.nextAfter});
 
   SyncBucketData.fromJson(Map<String, dynamic> json)
       : bucket = json['bucket'],
@@ -750,15 +781,20 @@ class SyncBucketData {
 }
 
 class OplogEntry {
-  String opId;
-  OpType? op;
-  String? objectType;
-  String? objectId;
-  Map<String, dynamic>? data;
-  int checksum;
+  final String opId;
+  final OpType? op;
+  final String? objectType;
+  final String? objectId;
+  final Map<String, dynamic>? data;
+  final int checksum;
 
-  OplogEntry(this.opId, this.op, this.objectType, this.objectId, this.data,
-      this.checksum);
+  const OplogEntry(
+      {required this.opId,
+      required this.op,
+      this.objectType,
+      this.objectId,
+      this.data,
+      required this.checksum});
 
   OplogEntry.fromJson(Map<String, dynamic> json)
       : opId = json['op_id'],
@@ -777,10 +813,10 @@ class SqliteOp {
 }
 
 class Checkpoint {
-  String lastOpId;
-  List<BucketChecksum> checksums;
+  final String lastOpId;
+  final List<BucketChecksum> checksums;
 
-  Checkpoint(this.lastOpId, this.checksums);
+  const Checkpoint({required this.lastOpId, required this.checksums});
 
   Checkpoint.fromJson(Map<String, dynamic> json)
       : lastOpId = json['last_op_id'],
@@ -790,12 +826,16 @@ class Checkpoint {
 }
 
 class BucketChecksum {
-  String bucket;
-  int checksum;
-  int count;
-  String? lastOpId;
+  final String bucket;
+  final int checksum;
+  final int count;
+  final String? lastOpId;
 
-  BucketChecksum(this.bucket, this.checksum, this.count);
+  const BucketChecksum(
+      {required this.bucket,
+      required this.checksum,
+      required this.count,
+      this.lastOpId});
 
   BucketChecksum.fromJson(Map<String, dynamic> json)
       : bucket = json['bucket'],
@@ -805,12 +845,32 @@ class BucketChecksum {
 }
 
 class SyncLocalDatabaseResult {
-  bool ready;
-  bool checkpointValid;
-  List<String>? checkpointFailures;
+  final bool ready;
+  final bool checkpointValid;
+  final List<String>? checkpointFailures;
 
-  SyncLocalDatabaseResult(
-      this.ready, this.checkpointValid, this.checkpointFailures);
+  const SyncLocalDatabaseResult(
+      {this.ready = true,
+      this.checkpointValid = true,
+      this.checkpointFailures});
+
+  @override
+  String toString() {
+    return "SyncLocalDatabaseResult<ready=$ready, checkpointValid=$checkpointValid, failures=$checkpointFailures>";
+  }
+
+  @override
+  int get hashCode {
+    return Object.hash(ready, checkpointValid, checkpointFailures);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is SyncLocalDatabaseResult &&
+        other.ready == ready &&
+        other.checkpointValid == checkpointValid &&
+        other.checkpointFailures == checkpointFailures;
+  }
 }
 
 class ChecksumCache {

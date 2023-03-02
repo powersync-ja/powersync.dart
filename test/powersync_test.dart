@@ -1,47 +1,26 @@
-import 'dart:ffi';
-import 'dart:io';
 import 'dart:math';
-import 'package:powersync/src/background_database.dart';
-import 'package:sqlite3/open.dart' as sqlite_open;
 
 import 'package:powersync/powersync.dart';
+import 'package:powersync/src/background_database.dart';
 import 'package:test/test.dart';
 
-DynamicLibrary _openOnLinux() {
-  return DynamicLibrary.open('libsqlite3.so.0');
-}
-
-final testSetup = SqliteConnectionSetup(() async {
-  sqlite_open.open.overrideFor(sqlite_open.OperatingSystem.linux, _openOnLinux);
-});
-
-const schema = Schema([
-  Table('assets', [
-    Column.text('created_at'),
-    Column.text('make'),
-    Column.text('model'),
-    Column.text('serial_number'),
-    Column.integer('quantity'),
-    Column.text('user_id'),
-    Column.text('customer_id'),
-  ]),
-  Table('customers', [Column.text('name'), Column.text('email')])
-]);
+import 'util.dart';
 
 void main() {
   group('Basic Tests', () {
+    late String path;
+
     setUp(() async {
-      try {
-        await File('test.db').delete();
-      } on PathNotFoundException {
-        // Not an issue
-      }
+      path = dbPath();
+      await cleanDb(path: path);
+    });
+
+    tearDown(() async {
+      await cleanDb(path: path);
     });
 
     test('Basic Setup', () async {
-      final db = PowerSyncDatabase(
-          schema: schema, path: 'test.db', sqliteSetup: testSetup);
-      await db.initialize();
+      final db = await setupPowerSync(path: path);
       await db.execute(
           'INSERT INTO assets(id, make) VALUES(uuid(), ?)', ['Test Make']);
       final result = await db.get('SELECT make FROM assets');
@@ -67,10 +46,7 @@ void main() {
 // )
 // SELECT i FROM r WHERE i = 1""";
       final db = PowerSyncDatabase(
-          schema: schema,
-          path: 'test.db',
-          sqliteSetup: testSetup,
-          maxReaders: 3);
+          schema: schema, path: path, sqliteSetup: testSetup, maxReaders: 3);
       await db.initialize();
 
       print("${DateTime.now()} start");
@@ -84,10 +60,7 @@ void main() {
 
     test('Insert Performance 1', () async {
       final db = PowerSyncDatabase(
-          schema: schema,
-          path: 'test.db',
-          sqliteSetup: testSetup,
-          maxReaders: 3);
+          schema: schema, path: path, sqliteSetup: testSetup, maxReaders: 3);
       await db.initialize();
       await db.execute(
           'CREATE TABLE data(id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, email TEXT)');
@@ -104,10 +77,7 @@ void main() {
 
     test('Insert Performance 2', () async {
       final db = PowerSyncDatabase(
-          schema: schema,
-          path: 'test.db',
-          sqliteSetup: testSetup,
-          maxReaders: 3);
+          schema: schema, path: path, sqliteSetup: testSetup, maxReaders: 3);
       await db.initialize();
       await db.execute(
           'CREATE TABLE data(id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, email TEXT)');
@@ -126,10 +96,7 @@ void main() {
 
     test('Insert Performance 3', () async {
       final db = PowerSyncDatabase(
-          schema: schema,
-          path: 'test.db',
-          sqliteSetup: testSetup,
-          maxReaders: 3);
+          schema: schema, path: path, sqliteSetup: testSetup, maxReaders: 3);
       await db.initialize();
       await db.execute(
           'CREATE TABLE data(id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, email TEXT)');
@@ -151,10 +118,7 @@ void main() {
 
     test('Insert Performance 3b', () async {
       final db = PowerSyncDatabase(
-          schema: schema,
-          path: 'test.db',
-          sqliteSetup: testSetup,
-          maxReaders: 3);
+          schema: schema, path: path, sqliteSetup: testSetup, maxReaders: 3);
       await db.initialize();
       await db.execute(
           'CREATE TABLE data(id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, email TEXT)');
@@ -177,17 +141,14 @@ void main() {
 
     test('Insert Performance 4', () async {
       final db = PowerSyncDatabase(
-          schema: schema,
-          path: 'test.db',
-          sqliteSetup: testSetup,
-          maxReaders: 3);
+          schema: schema, path: path, sqliteSetup: testSetup, maxReaders: 3);
       await db.initialize();
       await db.execute(
           'CREATE TABLE data(id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, email TEXT)');
       final timer = Stopwatch()..start();
 
       await db.writeTransaction((tx) async {
-        // Note safe yet!
+        // Not safe yet!
         List<Future> futures = [];
         for (var i = 0; i < 1000; i++) {
           var future = tx.execute('INSERT INTO data(name, email) VALUES(?, ?)',
