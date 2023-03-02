@@ -118,6 +118,21 @@ void main() {
       });
     });
 
+    test('does allow read-only db calls within lock callback', () async {
+      final db = await setupPowerSync(path: path);
+      // Locks - should behave the same as transactions above
+
+      await db.writeLock((tx) async {
+        await db.getAll('SELECT * FROM assets');
+      });
+
+      await db.readLock((tx) async {
+        await expectLater(() async {
+          await db.getAll('SELECT * FROM assets');
+        }, throwsA((e) => e is AssertionError));
+      });
+    });
+
     test('should allow PRAMGAs', () async {
       final db = await setupPowerSync(path: path);
       // Not allowed in transactions, but does work as a direct statement.
