@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:collection/equality.dart';
 import 'package:sqlite3/common.dart';
 import 'package:sqlite3/sqlite3.dart' as sqlite;
 import 'package:uuid/uuid.dart';
@@ -761,15 +762,15 @@ class SyncBucketData {
   final String bucket;
   final List<OplogEntry> data;
   final bool hasMore;
-  final String after;
-  final String nextAfter;
+  final String? after;
+  final String? nextAfter;
 
   const SyncBucketData(
       {required this.bucket,
       required this.data,
       this.hasMore = false,
-      required this.after,
-      required this.nextAfter});
+      this.after,
+      this.nextAfter});
 
   SyncBucketData.fromJson(Map<String, dynamic> json)
       : bucket = json['bucket'],
@@ -828,13 +829,15 @@ class Checkpoint {
 class BucketChecksum {
   final String bucket;
   final int checksum;
-  final int count;
+
+  /// Count is informational only
+  final int? count;
   final String? lastOpId;
 
   const BucketChecksum(
       {required this.bucket,
       required this.checksum,
-      required this.count,
+      this.count,
       this.lastOpId});
 
   BucketChecksum.fromJson(Map<String, dynamic> json)
@@ -861,7 +864,8 @@ class SyncLocalDatabaseResult {
 
   @override
   int get hashCode {
-    return Object.hash(ready, checkpointValid, checkpointFailures);
+    return Object.hash(
+        ready, checkpointValid, const ListEquality().hash(checkpointFailures));
   }
 
   @override
@@ -869,7 +873,8 @@ class SyncLocalDatabaseResult {
     return other is SyncLocalDatabaseResult &&
         other.ready == ready &&
         other.checkpointValid == checkpointValid &&
-        other.checkpointFailures == checkpointFailures;
+        const ListEquality()
+            .equals(other.checkpointFailures, checkpointFailures);
   }
 }
 

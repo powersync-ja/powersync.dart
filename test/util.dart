@@ -1,6 +1,7 @@
 import 'dart:ffi';
 import 'dart:io';
 
+import 'package:logging/logging.dart';
 import 'package:powersync/powersync.dart';
 import 'package:sqlite3/open.dart' as sqlite_open;
 import 'package:sqlite3/sqlite3.dart' as sqlite;
@@ -69,4 +70,11 @@ String dbPath() {
   var dbName = "test-db/$testShortName.db";
   Directory("test-db").createSync(recursive: false);
   return dbName;
+}
+
+setupLogger() {
+  Logger.root.level = Level.ALL;
+  Logger.root.onRecord.listen((event) {
+    print(event);
+  });
 }
