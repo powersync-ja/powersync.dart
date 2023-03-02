@@ -1,13 +1,13 @@
 import 'dart:async';
 import 'dart:isolate';
 
-import './sqlite_connection.dart';
+import 'package:sqlite3/sqlite3.dart' as sqlite;
+
 import './isolate_completer.dart';
 import './mutex.dart';
 import './powersync_database.dart';
+import './sqlite_connection.dart';
 import './throttle.dart';
-
-import 'package:sqlite3/sqlite3.dart' as sqlite;
 
 typedef TxCallback<T> = Future<T> Function(sqlite.Database db);
 
@@ -26,6 +26,10 @@ class SqliteConnectionImpl with SqliteQueries implements SqliteConnection {
   SqliteConnectionImpl(this._factory,
       {this.updates, this.debugName, this.readOnly = false}) {
     sendPortFuture = _open();
+  }
+
+  Future<void> get ready {
+    return sendPortFuture;
   }
 
   Future<SendPort> _open() async {
