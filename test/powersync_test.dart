@@ -117,5 +117,12 @@ void main() {
         }, throwsA((e) => e is AssertionError));
       });
     });
+
+    test('should allow PRAMGAs', () async {
+      final db = await setupPowerSync(path: path);
+      // Not allowed in transactions, but does work as a direct statement.
+      await db.execute('PRAGMA wal_checkpoint(TRUNCATE)');
+      await db.execute('VACUUM');
+    });
   });
 }

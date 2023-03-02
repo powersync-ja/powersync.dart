@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:isolate';
 
+import 'package:powersync/src/database_utils.dart';
 import 'package:sqlite3/sqlite3.dart' as sqlite;
 
 import './isolate_completer.dart';
@@ -66,45 +67,28 @@ class SqliteConnectionImpl with SqliteQueries implements SqliteConnection {
   }
 
   @override
-  Future<T> readTransaction<T>(
+  Future<T> readLock<T>(
       Future<T> Function(SqliteReadTransactionContext tx) callback,
       {Duration? lockTimeout}) async {
     // Private lock to synchronize this with other statements on the same connection,
     // to ensure that transactions aren't interleaved.
     return _connectionMutex.lock(() async {
-      return readTransactionInLock(callback);
+      final ctx = _TransactionContext(await sendPortFuture);
+      try {
+        return await callback(ctx);
+      } finally {
+        ctx.close();
+      }
     }, timeout: lockTimeout);
   }
 
-  /// For internal use only
-  Future<T> readTransactionInLock<T>(
-      Future<T> Function(SqliteReadTransactionContext tx) callback) async {
-    final ctx = _TransactionContext(await sendPortFuture);
-    try {
-      await ctx.execute('BEGIN');
-      final result = await callback(ctx);
-      await ctx.execute('END TRANSACTION');
-      return result;
-    } catch (e) {
-      try {
-        await ctx.execute('ROLLBACK');
-      } catch (e) {
-        // In rare cases, a ROLLBACK may fail.
-        // Safe to ignore.
-      }
-      rethrow;
-    } finally {
-      ctx.close();
-    }
-  }
-
   @override
-  Future<T> writeTransaction<T>(
+  Future<T> writeLock<T>(
       Future<T> Function(SqliteWriteTransactionContext tx) callback,
       {Duration? lockTimeout}) async {
+    final stopWatch = lockTimeout == null ? null : (Stopwatch()..start());
     // Private lock to synchronize this with other statements on the same connection,
     // to ensure that transactions aren't interleaved.
-    final stopWatch = lockTimeout == null ? null : (Stopwatch()..start());
     return _connectionMutex.lock(() async {
       Duration? innerTimeout;
       if (lockTimeout != null && stopWatch != null) {
@@ -115,18 +99,7 @@ class SqliteConnectionImpl with SqliteQueries implements SqliteConnection {
       return await _factory.mutex.lock(() async {
         final ctx = _TransactionContext(await sendPortFuture);
         try {
-          await ctx.execute('BEGIN IMMEDIATE');
-          final result = await callback(ctx);
-          await ctx.execute('COMMIT');
-          return result;
-        } catch (e) {
-          try {
-            await ctx.execute('ROLLBACK');
-          } catch (e) {
-            // In rare cases, a ROLLBACK may fail.
-            // Safe to ignore.
-          }
-          rethrow;
+          return await callback(ctx);
         } finally {
           ctx.close();
         }
@@ -235,65 +208,4 @@ class _SqliteConnectionParams {
 
   _SqliteConnectionParams(this.factory, this.portCompleter,
       {required this.readOnly});
-}
-
-mixin SqliteQueries implements SqliteWriteTransactionContext, SqliteConnection {
-  Stream<TableUpdate>? get updates;
-
-  @override
-  Future<T> readTransaction<T>(
-      Future<T> Function(SqliteReadTransactionContext tx) callback,
-      {Duration? lockTimeout});
-
-  @override
-  Future<T> writeTransaction<T>(
-      Future<T> Function(SqliteWriteTransactionContext tx) callback,
-      {Duration? lockTimeout});
-
-  @override
-  Future<sqlite.ResultSet> execute(String sql,
-      [List<Object?> parameters = const []]) async {
-    return writeTransaction((ctx) async {
-      return ctx.execute(sql, parameters);
-    });
-  }
-
-  @override
-  Future<sqlite.ResultSet> getAll(String sql,
-      [List<Object?> parameters = const []]) {
-    return readTransaction((ctx) async {
-      return ctx.getAll(sql, parameters);
-    });
-  }
-
-  @override
-  Future<sqlite.Row> get(String sql, [List<Object?> parameters = const []]) {
-    return readTransaction((ctx) async {
-      return ctx.get(sql, parameters);
-    });
-  }
-
-  @override
-  Future<sqlite.Row?> getOptional(String sql,
-      [List<Object?> parameters = const []]) {
-    return readTransaction((ctx) async {
-      return ctx.getOptional(sql, parameters);
-    });
-  }
-
-  @override
-  Stream<sqlite.ResultSet> watch(String sql,
-      {List<Object?> parameters = const [],
-      Duration throttle = const Duration(milliseconds: 30)}) async* {
-    assert(updates != null,
-        'updates stream must be provided to allow query watching');
-    yield await getAll(sql, parameters);
-    var throttled = updates!
-        .transform(throttleTransformer(const Duration(milliseconds: 30)));
-    await for (var _ in throttled) {
-      // TODO: Check that that is cancelled properly if the listener is closed.
-      // TODO: Only refresh if a relevant table is modified
-      yield await getAll(sql, parameters);
-    }
-  }
 }

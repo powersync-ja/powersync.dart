@@ -26,7 +26,7 @@ class SqliteConnectionPool with SqliteQueries implements SqliteConnection {
       : _writeConnection = writeConnection;
 
   @override
-  Future<T> readTransaction<T>(
+  Future<T> readLock<T>(
       Future<T> Function(SqliteReadTransactionContext tx) callback,
       {Duration? lockTimeout}) async {
     await _expandPool();
@@ -36,14 +36,14 @@ class SqliteConnectionPool with SqliteQueries implements SqliteConnection {
 
     var futures = _readConnections.map((connection) async {
       try {
-        return await connection.lock(() async {
+        return await connection.readLock((ctx) async {
           if (haveLock) {
             // Already have a different lock - release this one.
             return false;
           }
           haveLock = true;
 
-          var future = connection.readTransactionInLock(callback);
+          var future = callback(ctx);
           completer.complete(future);
 
           // We have to wait for the future to complete before we can release the
@@ -55,7 +55,7 @@ class SqliteConnectionPool with SqliteQueries implements SqliteConnection {
           }
 
           return true;
-        }, timeout: lockTimeout);
+        }, lockTimeout: lockTimeout);
       } on TimeoutException {
         return false;
       }
@@ -78,13 +78,12 @@ class SqliteConnectionPool with SqliteQueries implements SqliteConnection {
   }
 
   @override
-  Future<T> writeTransaction<T>(
+  Future<T> writeLock<T>(
       Future<T> Function(SqliteWriteTransactionContext tx) callback,
       {Duration? lockTimeout}) {
     _writeConnection ??= _factory.openConnection(
         debugName: debugName != null ? '$debugName-writer' : null);
-    return _writeConnection!
-        .writeTransaction(callback, lockTimeout: lockTimeout);
+    return _writeConnection!.writeLock(callback, lockTimeout: lockTimeout);
   }
 
   Future<void> _expandPool() async {

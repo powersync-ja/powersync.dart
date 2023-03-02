@@ -364,6 +364,20 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
       {Duration? lockTimeout}) {
     return _pool.writeTransaction(callback, lockTimeout: lockTimeout);
   }
+
+  @override
+  Future<T> readLock<T>(
+      Future<T> Function(SqliteReadTransactionContext tx) callback,
+      {Duration? lockTimeout}) {
+    return _pool.readLock(callback, lockTimeout: lockTimeout);
+  }
+
+  @override
+  Future<T> writeLock<T>(
+      Future<T> Function(SqliteWriteTransactionContext tx) callback,
+      {Duration? lockTimeout}) {
+    return _pool.writeLock(callback, lockTimeout: lockTimeout);
+  }
 }
 
 /// Stats of the local upload queue.
@@ -457,32 +471,6 @@ class SqliteConnectionFactory {
       }
     });
     return db;
-  }
-}
-
-/// Represents an update to a single table, for the purpose of realtime change
-/// notifications.
-///
-/// The update could be from a local or remote change.
-class TableUpdate {
-  /// Table name
-  final String name;
-
-  const TableUpdate(this.name);
-
-  @override
-  bool operator ==(Object other) {
-    return other is TableUpdate && other.name == name;
-  }
-
-  @override
-  int get hashCode {
-    return name.hashCode;
-  }
-
-  @override
-  String toString() {
-    return "TableUpdate<$name>";
   }
 }
 

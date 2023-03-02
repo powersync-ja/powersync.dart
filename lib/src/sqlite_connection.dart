@@ -1,3 +1,5 @@
+import 'package:powersync/src/database_utils.dart';
+import 'package:powersync/src/throttle.dart';
 import 'package:sqlite3/sqlite3.dart' as sqlite;
 
 /// Abstract class representing calls available in a read-only or read-write context.
@@ -51,4 +53,113 @@ abstract class SqliteConnection extends SqliteWriteTransactionContext {
   Stream<sqlite.ResultSet> watch(String sql,
       {List<Object?> parameters = const [],
       Duration throttle = const Duration(milliseconds: 30)});
+
+  /// Takes a read lock, without starting a transaction.
+  ///
+  /// In most cases, [readTransaction] should be used instead.
+  Future<T> readLock<T>(
+      Future<T> Function(SqliteReadTransactionContext tx) callback,
+      {Duration? lockTimeout});
+
+  /// Takes a global lock, without starting a transaction.
+  ///
+  /// In most cases, [writeTransaction] should be used instead.
+  Future<T> writeLock<T>(
+      Future<T> Function(SqliteWriteTransactionContext tx) callback,
+      {Duration? lockTimeout});
+}
+
+/// Represents an update to a single table, for the purpose of realtime change
+/// notifications.
+///
+/// The update could be from a local or remote change.
+class TableUpdate {
+  /// Table name
+  final String name;
+
+  const TableUpdate(this.name);
+
+  @override
+  bool operator ==(Object other) {
+    return other is TableUpdate && other.name == name;
+  }
+
+  @override
+  int get hashCode {
+    return name.hashCode;
+  }
+
+  @override
+  String toString() {
+    return "TableUpdate<$name>";
+  }
+}
+
+mixin SqliteQueries implements SqliteWriteTransactionContext, SqliteConnection {
+  Stream<TableUpdate>? get updates;
+
+  @override
+  Future<sqlite.ResultSet> execute(String sql,
+      [List<Object?> parameters = const []]) async {
+    return writeLock((ctx) async {
+      return ctx.execute(sql, parameters);
+    });
+  }
+
+  @override
+  Future<sqlite.ResultSet> getAll(String sql,
+      [List<Object?> parameters = const []]) {
+    return readLock((ctx) async {
+      return ctx.getAll(sql, parameters);
+    });
+  }
+
+  @override
+  Future<sqlite.Row> get(String sql, [List<Object?> parameters = const []]) {
+    return readLock((ctx) async {
+      return ctx.get(sql, parameters);
+    });
+  }
+
+  @override
+  Future<sqlite.Row?> getOptional(String sql,
+      [List<Object?> parameters = const []]) {
+    return readLock((ctx) async {
+      return ctx.getOptional(sql, parameters);
+    });
+  }
+
+  @override
+  Stream<sqlite.ResultSet> watch(String sql,
+      {List<Object?> parameters = const [],
+      Duration throttle = const Duration(milliseconds: 30)}) async* {
+    assert(updates != null,
+        'updates stream must be provided to allow query watching');
+    yield await getAll(sql, parameters);
+    var throttled = updates!
+        .transform(throttleTransformer(const Duration(milliseconds: 30)));
+    await for (var _ in throttled) {
+      // TODO: Check that that is cancelled properly if the listener is closed.
+      // TODO: Only refresh if a relevant table is modified
+      yield await getAll(sql, parameters);
+    }
+  }
+
+  @override
+  Future<T> readTransaction<T>(
+      Future<T> Function(SqliteReadTransactionContext tx) callback,
+      {Duration? lockTimeout}) async {
+    return readLock((ctx) async {
+      return await internalReadTransaction(ctx, callback);
+    }, lockTimeout: lockTimeout);
+  }
+
+  @override
+  Future<T> writeTransaction<T>(
+      Future<T> Function(SqliteWriteTransactionContext tx) callback,
+      {Duration? lockTimeout}) async {
+    return writeLock((ctx) async {
+      return await internalWriteTransaction(ctx, callback);
+    }, lockTimeout: lockTimeout);
+  }
 }
