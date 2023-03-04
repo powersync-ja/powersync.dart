@@ -34,7 +34,7 @@ class BucketStorage {
 
   _init() {
     final existingTableRows = select(
-        "SELECT name FROM sqlite_master WHERE type='table' AND name GLOB 'objects__*'");
+        "SELECT name FROM sqlite_master WHERE type='table' AND (name GLOB 'objects__*' OR name GLOB 'local__*')");
     for (final row in existingTableRows) {
       tableNames.add(row['name'] as String);
     }
@@ -952,9 +952,8 @@ void _createTablesAndTriggersOps(sqlite.Database db, Schema schema) {
 
     db.execute("""CREATE TABLE "$tableName"
     (
-    id   TEXT,
-    data TEXT,
-    PRIMARY KEY (id)
+    id   TEXT PRIMARY KEY NOT NULL,
+    data TEXT
     )""");
 
     if (!table.localOnly) {

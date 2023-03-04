@@ -137,7 +137,9 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
         if (type == 'update') {
           sqlite.SqliteUpdate event = message[1];
           final re = RegExp(r"^objects__(.+)$");
-          final match = re.firstMatch(event.tableName);
+          final re2 = RegExp(r"^local__(.+)$");
+          final match =
+              re.firstMatch(event.tableName) ?? re2.firstMatch(event.tableName);
           if (match != null) {
             final name = match[1];
             final update = TableUpdate(name!);
@@ -249,7 +251,7 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
       await tx.execute('DELETE FROM buckets WHERE 1');
 
       final existingTableRows = await tx.getAll(
-          "SELECT name FROM sqlite_master WHERE type='table' AND name GLOB 'objects__*'");
+          "SELECT name FROM sqlite_master WHERE type='table' AND (name GLOB 'objects__*' OR name GLOB 'local__*')");
 
       for (var row in existingTableRows) {
         await tx.execute('DELETE FROM "${row['name']}" WHERE 1');

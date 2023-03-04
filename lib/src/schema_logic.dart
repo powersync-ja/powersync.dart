@@ -6,7 +6,7 @@ String createViewStatement(Table table) {
   final columnNames =
       table.columns.map((column) => '"${column.name}"').join(', ');
   final select = table.columns.map(mapColumn).join(', ');
-  return 'CREATE TEMP VIEW IF NOT EXISTS "${table.name}"("id", $columnNames) AS SELECT "id", $select FROM "objects__${table.name}"';
+  return 'CREATE TEMP VIEW IF NOT EXISTS "${table.name}"("id", $columnNames) AS SELECT "id", $select FROM "${table.internalName}"';
 }
 
 String mapColumn(Column column) {
@@ -32,6 +32,10 @@ CREATE TEMP TRIGGER IF NOT EXISTS "view_insert_$type"
 INSTEAD OF INSERT ON "$type"
 FOR EACH ROW
 BEGIN
+  SELECT CASE
+    WHEN (NEW.id IS NULL)
+    THEN RAISE (FAIL, 'id is required')
+  END;
   INSERT INTO $internalNameE(id, data)
     SELECT NEW.id, json_object($jsonFragment);
   INSERT INTO crud(data) SELECT json_object('op', 'PUT', 'type', '$type', 'id', NEW.id, 'data', json(powersync_diff('{}', json_object($jsonFragment))));
