@@ -49,10 +49,6 @@ class BucketStorage {
     _checksumCache = null;
   }
 
-  bool canQueryType(String type) {
-    return tableNames.contains(_getTableName(type));
-  }
-
   List<BucketState> getBucketStates() {
     final rows = select(
         'SELECT name as bucket, cast(last_op as TEXT) as op_id FROM buckets WHERE pending_delete = 0');
@@ -369,7 +365,7 @@ class BucketStorage {
     for (final entry in byType.entries) {
       final type = entry.key;
       final typeRows = entry.value;
-      final table = _getTableName(type);
+      final table = _getTypeTableName(type);
 
       // Note that "PUT" and "DELETE" are split, and not applied in row order.
       // So we only do either PUT or DELETE for each individual object, not both.
@@ -915,8 +911,7 @@ List<String> updateSchema(sqlite.Database db, Schema schema) {
   List<String> secondaryConnectionOps = [];
 
   secondaryConnectionOps = [];
-  final types = schema.tables.map((table) => table.name).toList();
-  _createTablesAndTriggersOps(db, types);
+  _createTablesAndTriggersOps(db, schema);
 
   for (var model in schema.tables) {
     var createViewOp = createViewStatement(model);
@@ -931,28 +926,29 @@ List<String> updateSchema(sqlite.Database db, Schema schema) {
   return secondaryConnectionOps;
 }
 
-Set<String> _createTablesAndTriggersOps(
-    sqlite.Database db, List<String> types) {
+void _createTablesAndTriggersOps(sqlite.Database db, Schema schema) {
   // Make sure to refresh tables in the same transaction as updating them
-  Set<String> tableNames = {};
   final existingTableRows = db.select(
-      "SELECT name FROM sqlite_master WHERE type='table' AND name GLOB 'objects__*'");
-  for (final row in existingTableRows) {
-    tableNames.add(row['name'] as String);
-  }
-  final Set<String> remainingTables = {...tableNames};
-  final Set<String> updatedTableList = {};
-  final List<String> addedTypes = [];
+      "SELECT name FROM sqlite_master WHERE type='table' AND (name GLOB 'objects__*' OR name GLOB 'local__*')");
+  final existingIndexRows = db.select(
+      "SELECT name, sql FROM sqlite_master WHERE type='index' AND (name GLOB 'objects__*' OR name GLOB 'local__*')");
 
-  for (final type in types) {
-    final tableName = _getTableName(type);
-    updatedTableList.add(tableName);
+  final Set<String> remainingTables = {};
+  final Map<String, String> remainingIndexes = {};
+  for (final row in existingTableRows) {
+    remainingTables.add(row['name'] as String);
+  }
+  for (final row in existingIndexRows) {
+    remainingIndexes[row['name'] as String] = row['sql'] as String;
+  }
+
+  for (final table in schema.tables) {
+    final tableName = table.internalName;
     final exists = remainingTables.contains(tableName);
     remainingTables.remove(tableName);
     if (exists) {
       continue;
     }
-    addedTypes.add(type);
 
     db.execute("""CREATE TABLE "$tableName"
     (
@@ -960,18 +956,40 @@ Set<String> _createTablesAndTriggersOps(
     data TEXT,
     PRIMARY KEY (id)
     )""");
-    db.execute("""INSERT INTO "$tableName"(id, data)
+
+    if (!table.localOnly) {
+      db.execute("""INSERT INTO "$tableName"(id, data)
     SELECT id, data
     FROM objects_untyped
-    WHERE type = ?""", [type]);
-    db.execute("""DELETE
+    WHERE type = ?""", [table.name]);
+      db.execute("""DELETE
     FROM objects_untyped
-    WHERE type = ?""", [type]);
+    WHERE type = ?""", [table.name]);
+    }
+
+    for (final index in table.indexes) {
+      final fullName = index.fullName(table);
+      final sql = index.toSqlDefinition(table);
+      if (remainingIndexes.containsKey(fullName)) {
+        final existingSql = remainingIndexes[fullName];
+        if (existingSql == sql) {
+          continue;
+        } else {
+          db.execute('DROP INDEX "$fullName"');
+        }
+      }
+      db.execute(sql);
+    }
+  }
+
+  for (final indexName in remainingIndexes.keys) {
+    db.execute('DROP INDEX "$indexName"');
   }
 
   for (final tableName in remainingTables) {
     final typeMatch = RegExp("^objects__(.+)\$").firstMatch(tableName);
     if (typeMatch == null) {
+      db.execute('DROP TABLE "$tableName"');
       continue;
     }
     final type = typeMatch[1];
@@ -980,8 +998,6 @@ Set<String> _createTablesAndTriggersOps(
         [type]);
     db.execute('DROP TABLE "$tableName"');
   }
-
-  return updatedTableList;
 }
 
 /// Get a table name for a specific type. The table may or may not exist.
@@ -989,7 +1005,7 @@ Set<String> _createTablesAndTriggersOps(
 /// The table name must always be enclosed in "quotes" when using inside a SQL query.
 ///
 /// @param type
-_getTableName(String type) {
+String _getTypeTableName(String type) {
   // Test for invalid characters rather than escaping.
   if (invalidSqliteCharacters.hasMatch(type)) {
     throw AssertionError("Invalid characters in type name: $type");

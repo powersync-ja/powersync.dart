@@ -17,6 +17,8 @@ const schema = Schema([
     Column.text('user_id'),
     Column.text('customer_id'),
     Column.text('description'),
+  ], indexes: [
+    Index('makemodel', [IndexedColumn('make'), IndexedColumn('model')])
   ]),
   Table('customers', [Column.text('name'), Column.text('email')])
 ]);

@@ -1,3 +1,5 @@
+import 'package:powersync/src/schema_logic.dart';
+
 /// The schema used by the database.
 ///
 /// The implementation uses the schema as a "VIEW" on top of JSON data.
@@ -17,7 +19,70 @@ class Table {
   /// List of columns.
   final List<Column> columns;
 
-  const Table(this.name, this.columns);
+  final List<Index> indexes;
+
+  final bool localOnly;
+
+  String get internalName {
+    if (localOnly) {
+      return "local__$name";
+    } else {
+      return "objects__$name";
+    }
+  }
+
+  const Table(this.name, this.columns, {this.indexes = const []})
+      : localOnly = false;
+
+  /// Create a table that only exists locally.
+  ///
+  /// This table does not record changes, and is not synchronized from the service.
+  const Table.localOnly(this.name, this.columns, {this.indexes = const []})
+      : localOnly = true;
+
+  Column operator [](String columnName) {
+    return columns.firstWhere((element) => element.name == columnName);
+  }
+}
+
+class Index {
+  final String name;
+  final List<IndexedColumn> columns;
+
+  const Index(this.name, this.columns);
+
+  factory Index.ascending(String name, List<String> columns) {
+    return Index(name,
+        columns.map((e) => IndexedColumn.ascending(e)).toList(growable: false));
+  }
+
+  String fullName(Table table) {
+    return "${table.internalName}__$name";
+  }
+
+  String toSqlDefinition(Table table) {
+    var fields = columns.map((column) => column.toSql(table)).join(', ');
+    return 'CREATE INDEX "${fullName(table)}" ON "${table.internalName}"($fields)';
+  }
+}
+
+class IndexedColumn {
+  final String column;
+  final bool ascending;
+
+  const IndexedColumn(this.column, {this.ascending = true});
+  const IndexedColumn.ascending(this.column) : ascending = true;
+  const IndexedColumn.descending(this.column) : ascending = false;
+
+  String toSql(Table table) {
+    final fullColumn = table[column]; // errors if not found
+
+    if (ascending) {
+      return mapColumn(fullColumn);
+    } else {
+      return "${mapColumn(fullColumn)} DESC";
+    }
+  }
 }
 
 /// A single column in a table schema.
