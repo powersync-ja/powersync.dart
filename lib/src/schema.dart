@@ -19,11 +19,18 @@ class Table {
   /// List of columns.
   final List<Column> columns;
 
+  /// List of indexes.
   final List<Index> indexes;
 
+  /// Whether the table only exists only.
   final bool localOnly;
+
+  /// Whether this is an insert-only table.
   final bool insertOnly;
 
+  /// Internal use only.
+  ///
+  /// Name of the table that stores the underlying data.
   String get internalName {
     if (localOnly) {
       return "ps_data_local__$name";
@@ -32,6 +39,9 @@ class Table {
     }
   }
 
+  /// Create a synced table.
+  ///
+  /// Local changes are recorded, and remote changes are synced to the local table.
   const Table(this.name, this.columns, {this.indexes = const []})
       : localOnly = false,
         insertOnly = false;
@@ -45,7 +55,9 @@ class Table {
 
   /// Create a table that only supports inserts.
   ///
-  /// This table records INSERTS, but does not persist data locally.
+  /// This table records INSERT statements, but does not persist data locally.
+  ///
+  /// SELECT queries on the table will always return 0 rows.
   const Table.insertOnly(this.name, this.columns)
       : localOnly = false,
         insertOnly = true,
@@ -61,28 +73,43 @@ class Table {
 }
 
 class Index {
+  /// Descriptive name of the index.
   final String name;
+
+  /// List of columns used for the index.
   final List<IndexedColumn> columns;
 
+  /// Construct a new index with the specified columns.
   const Index(this.name, this.columns);
 
+  /// Construct a new index with the specified column names.
   factory Index.ascending(String name, List<String> columns) {
     return Index(name,
         columns.map((e) => IndexedColumn.ascending(e)).toList(growable: false));
   }
 
+  /// Internal use only.
+  ///
+  /// Specifies the full name of this index on a table.
   String fullName(Table table) {
     return "${table.internalName}__$name";
   }
 
+  /// Internal use only.
+  ///
+  /// Returns a SQL statement that creates this index.
   String toSqlDefinition(Table table) {
     var fields = columns.map((column) => column.toSql(table)).join(', ');
     return 'CREATE INDEX "${fullName(table)}" ON "${table.internalName}"($fields)';
   }
 }
 
+/// Describes an indexed column.
 class IndexedColumn {
+  /// Name of the column to index.
   final String column;
+
+  /// Whether this column is stored in ascending order in the index.
   final bool ascending;
 
   const IndexedColumn(this.column, {this.ascending = true});
