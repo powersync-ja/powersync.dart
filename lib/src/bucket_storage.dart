@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:collection/equality.dart';
+import 'package:powersync/src/database_utils.dart';
 import 'package:sqlite3/common.dart';
 import 'package:sqlite3/sqlite3.dart' as sqlite;
 import 'package:uuid/uuid.dart';
@@ -690,43 +691,10 @@ class BucketStorage {
       FutureOr<T> Function(sqlite.Database tx) callback,
       {Duration? lockTimeout}) async {
     return mutex.lock(() async {
-      final r = await asyncTransaction(_internalDb, callback);
+      final r = await asyncDirectTransaction(_internalDb, callback);
       return r;
     });
   }
-}
-
-Future<T> asyncTransaction<T>(sqlite.Database db,
-    FutureOr<T> Function(sqlite.Database db) callback) async {
-  for (var i = 50; i >= 0; i--) {
-    try {
-      db.execute('BEGIN IMMEDIATE');
-      late T result;
-      try {
-        result = await callback(db);
-        db.execute('COMMIT');
-      } catch (e) {
-        try {
-          db.execute('ROLLBACK');
-        } catch (e2) {
-          // Safe to ignore
-        }
-        rethrow;
-      }
-
-      return result;
-    } catch (e) {
-      if (e is sqlite.SqliteException) {
-        if (e.resultCode == 5 && i != 0) {
-          // SQLITE_BUSY
-          await Future.delayed(const Duration(milliseconds: 50));
-          continue;
-        }
-      }
-      rethrow;
-    }
-  }
-  throw AssertionError('Should not reach this');
 }
 
 class BucketState {

@@ -4,6 +4,8 @@ import 'dart:isolate';
 import 'dart:math';
 import 'dart:typed_data';
 
+import 'package:powersync/src/db_migration.dart';
+
 import './mutex.dart';
 import 'package:sqlite3/sqlite3.dart' as sqlite;
 import 'package:uuid/uuid.dart';
@@ -145,8 +147,29 @@ class DatabaseInitPrimary extends DatabaseInit {
 
   Future<void> _migrate() async {
     await mutex.lock(() async {
-      db.execute('''
-    CREATE TABLE IF NOT EXISTS ps_oplog(
+      await migrations.migrate(db);
+    });
+  }
+}
+
+final DatabaseMigrations migrations = DatabaseMigrations()
+  ..add(Migration(1, (db) {
+    db.execute('''
+      DROP TABLE IF EXISTS crud;
+      DROP TABLE IF EXISTS oplog;
+      DROP TABLE IF EXISTS buckets;
+      DROP TABLE IF EXISTS objects_untyped;
+    ''');
+
+    final existingTableRows = db.select(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name GLOB 'objects__*'");
+
+    for (var row in existingTableRows) {
+      db.execute('DROP TABLE ${row['name']}');
+    }
+
+    db.execute('''
+    CREATE TABLE ps_oplog(
       bucket TEXT NOT NULL,
       op_id INTEGER NOT NULL,
       op INTEGER NOT NULL,
@@ -156,10 +179,10 @@ class DatabaseInitPrimary extends DatabaseInit {
       hash INTEGER NOT NULL,
       superseded INTEGER NOT NULL);
       
-    CREATE INDEX IF NOT EXISTS ps_oplog_by_row ON ps_oplog (row_type, row_id) WHERE superseded = 0;
-    CREATE INDEX IF NOT EXISTS ps_oplog_by_opid ON ps_oplog (bucket, op_id);
+    CREATE INDEX ps_oplog_by_row ON ps_oplog (row_type, row_id) WHERE superseded = 0;
+    CREATE INDEX ps_oplog_by_opid ON ps_oplog (bucket, op_id);
     
-    CREATE TABLE IF NOT EXISTS ps_buckets(
+    CREATE TABLE ps_buckets(
       name TEXT PRIMARY KEY,
       last_applied_op INTEGER NOT NULL DEFAULT 0,
       last_op INTEGER NOT NULL DEFAULT 0,
@@ -168,10 +191,8 @@ class DatabaseInitPrimary extends DatabaseInit {
       pending_delete INTEGER NOT NULL DEFAULT 0
     );
     
-    CREATE TABLE IF NOT EXISTS ps_untyped(type TEXT NOT NULL, id TEXT NOT NULL, data TEXT, PRIMARY KEY (type, id));
+    CREATE TABLE ps_untyped(type TEXT NOT NULL, id TEXT NOT NULL, data TEXT, PRIMARY KEY (type, id));
     
-    CREATE TABLE IF NOT EXISTS ps_crud (id INTEGER PRIMARY KEY AUTOINCREMENT, data TEXT);
+    CREATE TABLE ps_crud (id INTEGER PRIMARY KEY AUTOINCREMENT, data TEXT);
   ''');
-    });
-  }
-}
+  }));
