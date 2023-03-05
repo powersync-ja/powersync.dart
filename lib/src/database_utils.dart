@@ -71,3 +71,19 @@ Future<T> asyncDirectTransaction<T>(sqlite.Database db,
   }
   throw AssertionError('Should not reach this');
 }
+
+/// Given a SELECT query, return the tables that the query depends on.
+Future<Set<String>> getSourceTables(
+    SqliteReadTransactionContext ctx, String sql) async {
+  final rows = await ctx.getAll('EXPLAIN QUERY PLAN $sql');
+  Set<String> tables = {};
+  final re = RegExp(r'^(SCAN|SEARCH)( TABLE)? (.+?)( USING .+)?$');
+  for (var row in rows) {
+    final detail = row['detail'];
+    final match = re.firstMatch(detail);
+    if (match != null) {
+      tables.add(match.group(3)!);
+    }
+  }
+  return tables;
+}

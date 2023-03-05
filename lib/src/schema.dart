@@ -54,6 +54,10 @@ class Table {
   Column operator [](String columnName) {
     return columns.firstWhere((element) => element.name == columnName);
   }
+
+  bool get validName {
+    return !invalidSqliteCharacters.hasMatch(name);
+  }
 }
 
 class Index {

@@ -132,15 +132,17 @@ mixin SqliteQueries implements SqliteWriteTransactionContext, SqliteConnection {
   @override
   Stream<sqlite.ResultSet> watch(String sql,
       {List<Object?> parameters = const [],
-      Duration throttle = const Duration(milliseconds: 30)}) async* {
+      Duration throttle = const Duration(milliseconds: 30),
+      Iterable<String>? triggerOnTables}) async* {
     assert(updates != null,
         'updates stream must be provided to allow query watching');
+    final tables = triggerOnTables ?? await getSourceTables(this, sql);
+    final filteredStream = updates!.transform(filterTablesTransformer(tables));
+    final throttledStream =
+        throttleStream(filteredStream, throttle, throttleFirst: true);
     yield await getAll(sql, parameters);
-    var throttled = updates!
-        .transform(throttleTransformer(const Duration(milliseconds: 30)));
-    await for (var _ in throttled) {
-      // TODO: Check that that is cancelled properly if the listener is closed.
-      // TODO: Only refresh if a relevant table is modified
+
+    await for (var _ in throttledStream) {
       yield await getAll(sql, parameters);
     }
   }

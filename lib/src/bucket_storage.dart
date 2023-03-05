@@ -10,12 +10,9 @@ import 'package:sqlite3/sqlite3.dart' as sqlite;
 import './crud.dart';
 import './log.dart';
 import './mutex.dart';
-import './schema.dart';
 import './schema_logic.dart';
 
 const compactOperationInterval = 1000;
-
-final invalidSqliteCharacters = RegExp('"\'%,\\.#\\s');
 
 class BucketStorage {
   final sqlite.Database _internalDb;

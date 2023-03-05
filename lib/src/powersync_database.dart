@@ -136,18 +136,14 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
         String type = message[0];
         if (type == 'update') {
           sqlite.SqliteUpdate event = message[1];
-          final re = RegExp(r"^ps_data__(.+)$");
-          final re2 = RegExp(r"^ps_data_local__(.+)$");
-          final match =
-              re.firstMatch(event.tableName) ?? re2.firstMatch(event.tableName);
-          if (match != null) {
-            final name = match[1];
-            final update = TableUpdate(name!);
+          String? friendlyName = friendlyTableName(event.tableName);
+          if (friendlyName != null) {
+            final update = TableUpdate(friendlyName);
             updates.add(update);
           }
           mutex.lock(() async {
             if (updates.isNotEmpty) {
-              // TODO: throttle?
+              // TODO: throttle here?
               for (var update in updates) {
                 _updatesController.add(update);
               }
@@ -469,9 +465,7 @@ class SqliteConnectionFactory {
     }
 
     db.updates.listen((event) {
-      if (event.tableName.startsWith('objects_')) {
-        port.send(['update', event]);
-      }
+      port.send(['update', event]);
     });
     return db;
   }

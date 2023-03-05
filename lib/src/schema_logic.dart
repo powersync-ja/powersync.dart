@@ -4,6 +4,8 @@ import 'package:sqlite3/sqlite3.dart' as sqlite;
 
 const String maxOpId = '9223372036854775807';
 
+final invalidSqliteCharacters = RegExp(r'''["'%,\.#\s\[\]]''');
+
 String createViewStatement(Table table) {
   final columnNames =
       table.columns.map((column) => '"${column.name}"').join(', ');
@@ -159,11 +161,13 @@ List<String> updateSchema(sqlite.Database db, Schema schema) {
   secondaryConnectionOps = [];
   _createTablesAndIndexes(db, schema);
 
-  for (var model in schema.tables) {
-    var createViewOp = createViewStatement(model);
+  for (var table in schema.tables) {
+    assert(table.validName, "Invalid characters in table name: ${table.name}");
+
+    var createViewOp = createViewStatement(table);
     secondaryConnectionOps.add(createViewOp);
     db.execute(createViewOp);
-    for (final op in createViewTriggerStatements(model)) {
+    for (final op in createViewTriggerStatements(table)) {
       secondaryConnectionOps.add(op);
       db.execute(op);
     }
@@ -251,4 +255,11 @@ void _createTablesAndIndexes(sqlite.Database db, Schema schema) {
     }
     db.execute('DROP TABLE "$tableName"');
   }
+}
+
+String? friendlyTableName(String table) {
+  final re = RegExp(r"^ps_data__(.+)$");
+  final re2 = RegExp(r"^ps_data_local__(.+)$");
+  final match = re.firstMatch(table) ?? re2.firstMatch(table);
+  return match?.group(1);
 }
