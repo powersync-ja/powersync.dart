@@ -26,8 +26,7 @@ class SqliteConnectionPool with SqliteQueries implements SqliteConnection {
       : _writeConnection = writeConnection;
 
   @override
-  Future<T> readLock<T>(
-      Future<T> Function(SqliteReadTransactionContext tx) callback,
+  Future<T> readLock<T>(Future<T> Function(SqliteReadContext tx) callback,
       {Duration? lockTimeout}) async {
     await _expandPool();
 
@@ -78,8 +77,7 @@ class SqliteConnectionPool with SqliteQueries implements SqliteConnection {
   }
 
   @override
-  Future<T> writeLock<T>(
-      Future<T> Function(SqliteWriteTransactionContext tx) callback,
+  Future<T> writeLock<T>(Future<T> Function(SqliteWriteContext tx) callback,
       {Duration? lockTimeout}) {
     _writeConnection ??= _factory.openConnection(
         debugName: debugName != null ? '$debugName-writer' : null);

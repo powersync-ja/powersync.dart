@@ -3,8 +3,8 @@ import 'dart:async';
 import 'package:powersync/powersync.dart';
 import 'package:sqlite3/sqlite3.dart' as sqlite;
 
-Future<T> internalReadTransaction<T>(SqliteReadTransactionContext ctx,
-    Future<T> Function(SqliteReadTransactionContext tx) callback) async {
+Future<T> internalReadTransaction<T>(SqliteReadContext ctx,
+    Future<T> Function(SqliteReadContext tx) callback) async {
   try {
     await ctx.getAll('BEGIN');
     final result = await callback(ctx);
@@ -21,8 +21,8 @@ Future<T> internalReadTransaction<T>(SqliteReadTransactionContext ctx,
   }
 }
 
-Future<T> internalWriteTransaction<T>(SqliteWriteTransactionContext ctx,
-    Future<T> Function(SqliteWriteTransactionContext tx) callback) async {
+Future<T> internalWriteTransaction<T>(SqliteWriteContext ctx,
+    Future<T> Function(SqliteWriteContext tx) callback) async {
   try {
     await ctx.execute('BEGIN IMMEDIATE');
     final result = await callback(ctx);
@@ -73,8 +73,7 @@ Future<T> asyncDirectTransaction<T>(sqlite.Database db,
 }
 
 /// Given a SELECT query, return the tables that the query depends on.
-Future<Set<String>> getSourceTables(
-    SqliteReadTransactionContext ctx, String sql) async {
+Future<Set<String>> getSourceTables(SqliteReadContext ctx, String sql) async {
   final rows = await ctx.getAll('EXPLAIN QUERY PLAN $sql');
   Set<String> tables = {};
   final re = RegExp(r'^(SCAN|SEARCH)( TABLE)? (.+?)( USING .+)?$');

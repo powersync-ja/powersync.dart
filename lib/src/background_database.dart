@@ -50,25 +50,13 @@ class SqliteConnectionImpl with SqliteQueries implements SqliteConnection {
     return _connectionMutex.locked;
   }
 
-  /// Run code within the database isolate, in a write (exclusive transaction).
-  Future<T> inIsolateWriteTransaction<T>(TxCallback<T> callback) async {
-    // TODO: Test properly before making public
-    return await writeTransaction((tx) async {
-      var sendPort = await sendPortFuture;
-      var result = IsolateResult();
-      sendPort.send(['tx', result.completer, callback]);
-      return await result.future;
-    });
-  }
-
   /// For internal use only
   Future<T> lock<T>(Future<T> Function() callback, {Duration? timeout}) async {
     return _connectionMutex.lock(callback, timeout: timeout);
   }
 
   @override
-  Future<T> readLock<T>(
-      Future<T> Function(SqliteReadTransactionContext tx) callback,
+  Future<T> readLock<T>(Future<T> Function(SqliteReadContext tx) callback,
       {Duration? lockTimeout}) async {
     // Private lock to synchronize this with other statements on the same connection,
     // to ensure that transactions aren't interleaved.
@@ -83,8 +71,7 @@ class SqliteConnectionImpl with SqliteQueries implements SqliteConnection {
   }
 
   @override
-  Future<T> writeLock<T>(
-      Future<T> Function(SqliteWriteTransactionContext tx) callback,
+  Future<T> writeLock<T>(Future<T> Function(SqliteWriteContext tx) callback,
       {Duration? lockTimeout}) async {
     final stopWatch = lockTimeout == null ? null : (Stopwatch()..start());
     // Private lock to synchronize this with other statements on the same connection,
@@ -114,7 +101,7 @@ class SqliteConnectionImpl with SqliteQueries implements SqliteConnection {
   }
 }
 
-class _TransactionContext implements SqliteWriteTransactionContext {
+class _TransactionContext implements SqliteWriteContext {
   final SendPort _sendPort;
   bool _closed = false;
 
@@ -155,6 +142,14 @@ class _TransactionContext implements SqliteWriteTransactionContext {
   }
 
   @override
+  Future<T> computeWithDatabase<T>(
+      Future<T> Function(sqlite.Database db) compute) async {
+    var result = IsolateResult();
+    _sendPort.send(['tx', result.completer, compute]);
+    return await result.future;
+  }
+
+  @override
   Future<sqlite.Row> get(String sql,
       [List<Object?> parameters = const []]) async {
     final rows = await getAll(sql, parameters);
@@ -170,6 +165,20 @@ class _TransactionContext implements SqliteWriteTransactionContext {
 
   close() {
     _closed = true;
+  }
+
+  @override
+  Future<void> executeBatch(String sql, List<List<Object?>> parameterSets) {
+    return computeWithDatabase((db) async {
+      final statement = db.prepare(sql);
+      try {
+        for (var parameters in parameterSets) {
+          statement.execute(parameters);
+        }
+      } finally {
+        statement.dispose();
+      }
+    });
   }
 }
 

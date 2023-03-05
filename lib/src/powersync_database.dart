@@ -345,7 +345,7 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
   /// started before it.
   @override
   Future<T> readTransaction<T>(
-      Future<T> Function(SqliteReadTransactionContext tx) callback,
+      Future<T> Function(SqliteReadContext tx) callback,
       {Duration? lockTimeout}) {
     return _pool.readTransaction(callback, lockTimeout: lockTimeout);
   }
@@ -359,21 +359,19 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
   /// or rolled back on any error.
   @override
   Future<T> writeTransaction<T>(
-      Future<T> Function(SqliteWriteTransactionContext tx) callback,
+      Future<T> Function(SqliteWriteContext tx) callback,
       {Duration? lockTimeout}) {
     return _pool.writeTransaction(callback, lockTimeout: lockTimeout);
   }
 
   @override
-  Future<T> readLock<T>(
-      Future<T> Function(SqliteReadTransactionContext tx) callback,
+  Future<T> readLock<T>(Future<T> Function(SqliteReadContext tx) callback,
       {Duration? lockTimeout}) {
     return _pool.readLock(callback, lockTimeout: lockTimeout);
   }
 
   @override
-  Future<T> writeLock<T>(
-      Future<T> Function(SqliteWriteTransactionContext tx) callback,
+  Future<T> writeLock<T>(Future<T> Function(SqliteWriteContext tx) callback,
       {Duration? lockTimeout}) {
     return _pool.writeLock(callback, lockTimeout: lockTimeout);
   }
@@ -542,8 +540,8 @@ Future<void> _powerSyncDatabaseIsolate(
 }
 
 Future<List<String>> _initializePrimaryDatabase(
-    SqliteConnectionImpl asyncdb, Mutex mutex, Schema schema) async {
-  return await asyncdb.inIsolateWriteTransaction((db) async {
+    SqliteConnection asyncdb, Mutex mutex, Schema schema) async {
+  return await asyncdb.computeWithDatabase((db) async {
     List<String> ops = updateSchema(db, schema);
     return ops;
   });
