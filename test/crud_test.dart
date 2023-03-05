@@ -116,5 +116,30 @@ void main() {
               e is sqlite.SqliteException &&
               e.message.contains('cannot UPSERT a view')));
     });
+
+    test('INSERT-only tables', () async {
+      await powersync.disconnectedAndClear();
+      powersync = await setupPowerSync(
+          path: path,
+          schema: const Schema([
+            Table.insertOnly(
+                'logs', [Column.text('level'), Column.text('content')])
+          ]));
+      expect(await powersync.getAll('SELECT * FROM ps_crud'), equals([]));
+      await powersync.execute(
+          'INSERT INTO logs(id, level, content) VALUES(?, ?, ?)',
+          [testId, 'INFO', 'test log']);
+
+      expect(
+          await powersync.getAll('SELECT data FROM ps_crud ORDER BY id'),
+          equals([
+            {
+              'data':
+                  '{"op":"PUT","type":"logs","id":"$testId","data":{"level":"INFO","content":"test log"}}'
+            }
+          ]));
+
+      expect(await powersync.getAll('SELECT * FROM logs'), equals([]));
+    });
   });
 }

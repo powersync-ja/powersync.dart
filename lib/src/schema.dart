@@ -22,6 +22,7 @@ class Table {
   final List<Index> indexes;
 
   final bool localOnly;
+  final bool insertOnly;
 
   String get internalName {
     if (localOnly) {
@@ -32,13 +33,23 @@ class Table {
   }
 
   const Table(this.name, this.columns, {this.indexes = const []})
-      : localOnly = false;
+      : localOnly = false,
+        insertOnly = false;
 
   /// Create a table that only exists locally.
   ///
   /// This table does not record changes, and is not synchronized from the service.
   const Table.localOnly(this.name, this.columns, {this.indexes = const []})
-      : localOnly = true;
+      : localOnly = true,
+        insertOnly = false;
+
+  /// Create a table that only supports inserts.
+  ///
+  /// This table records INSERTS, but does not persist data locally.
+  const Table.insertOnly(this.name, this.columns)
+      : localOnly = false,
+        insertOnly = true,
+        indexes = const [];
 
   Column operator [](String columnName) {
     return columns.firstWhere((element) => element.name == columnName);

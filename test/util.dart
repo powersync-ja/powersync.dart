@@ -23,6 +23,8 @@ const schema = Schema([
   Table('customers', [Column.text('name'), Column.text('email')])
 ]);
 
+const defaultSchema = schema;
+
 DynamicLibrary _openOnLinux() {
   return DynamicLibrary.open('libsqlite3.so.0');
 }
@@ -31,9 +33,10 @@ final testSetup = SqliteConnectionSetup(() async {
   sqlite_open.open.overrideFor(sqlite_open.OperatingSystem.linux, _openOnLinux);
 });
 
-Future<PowerSyncDatabase> setupPowerSync({required String path}) async {
-  final db =
-      PowerSyncDatabase(schema: schema, path: path, sqliteSetup: testSetup);
+Future<PowerSyncDatabase> setupPowerSync(
+    {required String path, Schema? schema}) async {
+  final db = PowerSyncDatabase(
+      schema: schema ?? defaultSchema, path: path, sqliteSetup: testSetup);
   await db.initialize();
   return db;
 }
