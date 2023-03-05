@@ -28,7 +28,7 @@ List<String> createViewTriggerStatements(Table table) {
       .join(', ');
   return [
     """
-CREATE TEMP TRIGGER IF NOT EXISTS "view_insert_$type"
+CREATE TEMP TRIGGER IF NOT EXISTS "ps_view_insert_$type"
 INSTEAD OF INSERT ON "$type"
 FOR EACH ROW
 BEGIN
@@ -38,8 +38,8 @@ BEGIN
   END;
   INSERT INTO $internalNameE(id, data)
     SELECT NEW.id, json_object($jsonFragment);
-  INSERT INTO crud(data) SELECT json_object('op', 'PUT', 'type', '$type', 'id', NEW.id, 'data', json(powersync_diff('{}', json_object($jsonFragment))));
-  INSERT INTO oplog(bucket, op_id, op, object_type, object_id, hash, superseded)
+  INSERT INTO ps_crud(data) SELECT json_object('op', 'PUT', 'type', '$type', 'id', NEW.id, 'data', json(powersync_diff('{}', json_object($jsonFragment))));
+  INSERT INTO ps_oplog(bucket, op_id, op, object_type, object_id, hash, superseded)
     SELECT '\$local',
            1,
            'REMOVE',
@@ -47,10 +47,10 @@ BEGIN
            NEW.id,
            0,
            0;
-  INSERT OR REPLACE INTO buckets(name, pending_delete, last_op, target_op) VALUES('\$local', 1, 0, $maxOpId);
+  INSERT OR REPLACE INTO ps_buckets(name, pending_delete, last_op, target_op) VALUES('\$local', 1, 0, $maxOpId);
 END;""",
     """
-CREATE TEMP TRIGGER IF NOT EXISTS "view_update_$type"
+CREATE TEMP TRIGGER IF NOT EXISTS "ps_view_update_$type"
 INSTEAD OF UPDATE ON "$type"
 FOR EACH ROW
 BEGIN
@@ -61,8 +61,8 @@ BEGIN
   UPDATE $internalNameE
         SET data = json_object($jsonFragment)
         WHERE id = NEW.id;
-  INSERT INTO crud(data) SELECT json_object('op', 'PATCH', 'type', '$type', 'id', NEW.id, 'data', json(powersync_diff(json_object($jsonFragmentOld), json_object($jsonFragment))));
-  INSERT INTO oplog(bucket, op_id, op, object_type, object_id, hash, superseded)
+  INSERT INTO ps_crud(data) SELECT json_object('op', 'PATCH', 'type', '$type', 'id', NEW.id, 'data', json(powersync_diff(json_object($jsonFragmentOld), json_object($jsonFragment))));
+  INSERT INTO ps_oplog(bucket, op_id, op, object_type, object_id, hash, superseded)
     SELECT '\$local',
            1,
            'REMOVE',
@@ -70,15 +70,15 @@ BEGIN
            NEW.id,
            0,
            0;
-  INSERT OR REPLACE INTO buckets(name, pending_delete, last_op, target_op) VALUES('\$local', 1, 0, $maxOpId);
+  INSERT OR REPLACE INTO ps_buckets(name, pending_delete, last_op, target_op) VALUES('\$local', 1, 0, $maxOpId);
 END;""",
     """
-CREATE TEMP TRIGGER IF NOT EXISTS "view_delete_$type"
+CREATE TEMP TRIGGER IF NOT EXISTS "ps_view_delete_$type"
 INSTEAD OF DELETE ON "$type"
 FOR EACH ROW
 BEGIN
   DELETE FROM $internalNameE WHERE id = OLD.id;
-  INSERT INTO crud(data) SELECT json_object('op', 'DELETE', 'type', '$type', 'id', OLD.id);
+  INSERT INTO ps_crud(data) SELECT json_object('op', 'DELETE', 'type', '$type', 'id', OLD.id);
 END;"""
   ];
 }
@@ -92,7 +92,7 @@ List<String> createViewTriggerStatementsLocal(Table table) {
       .join(', ');
   return [
     """
-CREATE TEMP TRIGGER IF NOT EXISTS "view_insert_$type"
+CREATE TEMP TRIGGER IF NOT EXISTS "ps_view_insert_$type"
 INSTEAD OF INSERT ON "$type"
 FOR EACH ROW
 BEGIN
@@ -100,7 +100,7 @@ BEGIN
     SELECT NEW.id, json_object($jsonFragment);
 END;""",
     """
-CREATE TEMP TRIGGER IF NOT EXISTS "view_update_$type"
+CREATE TEMP TRIGGER IF NOT EXISTS "ps_view_update_$type"
 INSTEAD OF UPDATE ON "$type"
 FOR EACH ROW
 BEGIN
@@ -113,7 +113,7 @@ BEGIN
         WHERE id = NEW.id;
 END;""",
     """
-CREATE TEMP TRIGGER IF NOT EXISTS "view_delete_$type"
+CREATE TEMP TRIGGER IF NOT EXISTS "ps_view_delete_$type"
 INSTEAD OF DELETE ON "$type"
 FOR EACH ROW
 BEGIN

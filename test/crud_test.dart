@@ -21,12 +21,12 @@ void main() {
     });
 
     test('INSERT', () async {
-      expect(await powersync.getAll('SELECT * FROM crud'), equals([]));
+      expect(await powersync.getAll('SELECT * FROM ps_crud'), equals([]));
       await powersync.execute(
           'INSERT INTO assets(id, description) VALUES(?, ?)', [testId, 'test']);
 
       expect(
-          await powersync.getAll('SELECT data FROM crud ORDER BY id'),
+          await powersync.getAll('SELECT data FROM ps_crud ORDER BY id'),
           equals([
             {
               'data':
@@ -34,13 +34,13 @@ void main() {
             }
           ]));
 
-      await powersync.execute('DELETE FROM crud WHERE 1');
+      await powersync.execute('DELETE FROM ps_crud WHERE 1');
     });
 
     test('INSERT OR REPLACE', () async {
       await powersync.execute(
           'INSERT INTO assets(id, description) VALUES(?, ?)', [testId, 'test']);
-      await powersync.execute('DELETE FROM crud WHERE 1');
+      await powersync.execute('DELETE FROM ps_crud WHERE 1');
 
       // Replace
       await powersync.execute(
@@ -49,7 +49,7 @@ void main() {
 
       // This generates another PUT
       expect(
-          await powersync.getAll('SELECT data FROM crud ORDER BY id'),
+          await powersync.getAll('SELECT data FROM ps_crud ORDER BY id'),
           equals([
             {
               'data':
@@ -75,13 +75,13 @@ void main() {
       await powersync.execute(
           'INSERT INTO assets(id, description, make) VALUES(?, ?, ?)',
           [testId, 'test', 'test']);
-      await powersync.execute('DELETE FROM crud WHERE 1');
+      await powersync.execute('DELETE FROM ps_crud WHERE 1');
 
       await powersync.execute(
           'UPDATE assets SET description = ? WHERE id = ?', ['test2', testId]);
 
       expect(
-          await powersync.getAll('SELECT data FROM crud ORDER BY id'),
+          await powersync.getAll('SELECT data FROM ps_crud ORDER BY id'),
           equals([
             {
               'data':
@@ -94,12 +94,12 @@ void main() {
       await powersync.execute(
           'INSERT INTO assets(id, description, make) VALUES(?, ?, ?)',
           [testId, 'test', 'test']);
-      await powersync.execute('DELETE FROM crud WHERE 1');
+      await powersync.execute('DELETE FROM ps_crud WHERE 1');
 
       await powersync.execute('DELETE FROM assets WHERE id = ?', [testId]);
 
       expect(
-          await powersync.getAll('SELECT data FROM crud ORDER BY id'),
+          await powersync.getAll('SELECT data FROM ps_crud ORDER BY id'),
           equals([
             {'data': '{"op":"DELETE","type":"assets","id":"$testId"}'}
           ]));

@@ -136,8 +136,8 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
         String type = message[0];
         if (type == 'update') {
           sqlite.SqliteUpdate event = message[1];
-          final re = RegExp(r"^objects__(.+)$");
-          final re2 = RegExp(r"^local__(.+)$");
+          final re = RegExp(r"^ps_data__(.+)$");
+          final re2 = RegExp(r"^ps_data_local__(.+)$");
           final match =
               re.firstMatch(event.tableName) ?? re2.firstMatch(event.tableName);
           if (match != null) {
@@ -246,12 +246,12 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
     disconnect();
 
     await writeTransaction((tx) async {
-      await tx.execute('DELETE FROM oplog WHERE 1');
-      await tx.execute('DELETE FROM crud WHERE 1');
-      await tx.execute('DELETE FROM buckets WHERE 1');
+      await tx.execute('DELETE FROM ps_oplog WHERE 1');
+      await tx.execute('DELETE FROM ps_crud WHERE 1');
+      await tx.execute('DELETE FROM ps_buckets WHERE 1');
 
       final existingTableRows = await tx.getAll(
-          "SELECT name FROM sqlite_master WHERE type='table' AND (name GLOB 'objects__*' OR name GLOB 'local__*')");
+          "SELECT name FROM sqlite_master WHERE type='table' AND name GLOB 'ps_data_*'");
 
       for (var row in existingTableRows) {
         await tx.execute('DELETE FROM "${row['name']}" WHERE 1');
@@ -291,11 +291,11 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
       {bool includeSize = false}) async {
     if (includeSize) {
       final row = await getOptional(
-          'SELECT SUM(cast(data as blob) + 20) as size, count(*) as count FROM crud');
+          'SELECT SUM(cast(data as blob) + 20) as size, count(*) as count FROM ps_crud');
       return UploadQueueStats(
           count: row?['count'] ?? 0, size: row?['size'] ?? 0);
     } else {
-      final row = await getOptional('SELECT count(*) as count FROM crud');
+      final row = await getOptional('SELECT count(*) as count FROM ps_crud');
       return UploadQueueStats(count: row?['count'] ?? 0);
     }
   }
@@ -313,7 +313,7 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
   /// batch.
   Future<CrudBatch?> getCrudBatch({limit = 100}) async {
     final rows = await getAll(
-        'SELECT id, data FROM crud ORDER BY id ASC LIMIT ?', [limit + 1]);
+        'SELECT id, data FROM ps_crud ORDER BY id ASC LIMIT ?', [limit + 1]);
     List<CrudEntry> all = [for (var row in rows) CrudEntry.fromRow(row)];
 
     var haveMore = false;
@@ -330,9 +330,10 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
         haveMore: haveMore,
         complete: () async {
           await writeTransaction((db) async {
-            await db.execute('DELETE FROM crud WHERE id <= ?', [last.clientId]);
+            await db
+                .execute('DELETE FROM ps_crud WHERE id <= ?', [last.clientId]);
             await db.execute(
-                'UPDATE buckets SET target_op = $maxOpId WHERE name=\'\$local\'');
+                'UPDATE ps_buckets SET target_op = $maxOpId WHERE name=\'\$local\'');
           });
         });
   }

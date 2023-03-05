@@ -430,7 +430,7 @@ void main() {
           checksums: [BucketChecksum(bucket: 'bucket1', checksum: 7)]));
 
       final stats = db.select(
-          'SELECT object_type as type, object_id as id, count(*) as count FROM oplog GROUP BY object_type, object_id ORDER BY object_type, object_id');
+          'SELECT object_type as type, object_id as id, count(*) as count FROM ps_oplog GROUP BY object_type, object_id ORDER BY object_type, object_id');
       expect(
           stats,
           equals([

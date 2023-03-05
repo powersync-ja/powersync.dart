@@ -1,13 +1,32 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:isolate';
+import 'dart:math';
+import 'dart:typed_data';
 
 import './mutex.dart';
 import 'package:sqlite3/sqlite3.dart' as sqlite;
 import 'package:uuid/uuid.dart';
-import 'package:uuid/uuid_util.dart';
 
-const uuid = Uuid(options: {'grng': UuidUtil.cryptoRNG});
+final _secureRandom = Random.secure();
+
+// Around 2x faster than the implementation from package:uuid/uuid_util.dart
+Uint8List cryptoRNG() {
+  final b = Uint8List(16);
+
+  for (var i = 0; i < 16; i += 4) {
+    var k = _secureRandom.nextInt(1 << 32);
+    b[i] = k;
+    b[i + 1] = k >> 8;
+    b[i + 2] = k >> 16;
+    b[i + 3] = k >> 24;
+  }
+
+  return b;
+}
+
+const uuid = Uuid(options: {'grng': cryptoRNG});
+// const uuid = Uuid();
 
 class DatabaseInit {
   late final sqlite.Database db;
@@ -127,7 +146,7 @@ class DatabaseInitPrimary extends DatabaseInit {
   Future<void> _migrate() async {
     await mutex.lock(() async {
       db.execute('''
-    CREATE TABLE IF NOT EXISTS oplog(
+    CREATE TABLE IF NOT EXISTS ps_oplog(
       bucket TEXT NOT NULL,
       op_id INTEGER NOT NULL,
       op INTEGER NOT NULL,
@@ -137,10 +156,10 @@ class DatabaseInitPrimary extends DatabaseInit {
       hash INTEGER NOT NULL,
       superseded INTEGER NOT NULL);
       
-    CREATE INDEX IF NOT EXISTS oplog_by_object ON oplog (object_type, object_id) WHERE superseded = 0;
-    CREATE INDEX IF NOT EXISTS oplog_by_opid ON oplog (bucket, op_id);
+    CREATE INDEX IF NOT EXISTS ps_oplog_by_object ON ps_oplog (object_type, object_id) WHERE superseded = 0;
+    CREATE INDEX IF NOT EXISTS ps_oplog_by_opid ON ps_oplog (bucket, op_id);
     
-    CREATE TABLE IF NOT EXISTS buckets(
+    CREATE TABLE IF NOT EXISTS ps_buckets(
       name TEXT PRIMARY KEY,
       last_applied_op INTEGER NOT NULL DEFAULT 0,
       last_op INTEGER NOT NULL DEFAULT 0,
@@ -149,9 +168,9 @@ class DatabaseInitPrimary extends DatabaseInit {
       pending_delete INTEGER NOT NULL DEFAULT 0
     );
     
-    CREATE TABLE IF NOT EXISTS objects_untyped(type TEXT NOT NULL, id TEXT NOT NULL, data TEXT, PRIMARY KEY (type, id));
+    CREATE TABLE IF NOT EXISTS ps_untyped(type TEXT NOT NULL, id TEXT NOT NULL, data TEXT, PRIMARY KEY (type, id));
     
-    CREATE TABLE IF NOT EXISTS crud (id INTEGER PRIMARY KEY AUTOINCREMENT, data TEXT);
+    CREATE TABLE IF NOT EXISTS ps_crud (id INTEGER PRIMARY KEY AUTOINCREMENT, data TEXT);
   ''');
     });
   }

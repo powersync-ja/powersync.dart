@@ -25,9 +25,9 @@ class Table {
 
   String get internalName {
     if (localOnly) {
-      return "local__$name";
+      return "ps_data_local__$name";
     } else {
-      return "objects__$name";
+      return "ps_data__$name";
     }
   }
 
