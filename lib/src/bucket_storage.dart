@@ -1,12 +1,11 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:collection/equality.dart';
+import 'package:collection/collection.dart';
 import 'package:powersync/src/database_utils.dart';
+import 'package:powersync/src/uuid.dart';
 import 'package:sqlite3/common.dart';
 import 'package:sqlite3/sqlite3.dart' as sqlite;
-import 'package:uuid/uuid.dart';
-import 'package:uuid/uuid_util.dart';
 
 import './crud.dart';
 import './log.dart';
@@ -17,8 +16,6 @@ import './schema_logic.dart';
 const compactOperationInterval = 1000;
 
 final invalidSqliteCharacters = RegExp('"\'%,\\.#\\s');
-
-const uuid = Uuid(options: {'grng': UuidUtil.cryptoRNG});
 
 class BucketStorage {
   final sqlite.Database _internalDb;
