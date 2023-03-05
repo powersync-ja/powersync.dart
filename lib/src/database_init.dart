@@ -150,13 +150,13 @@ class DatabaseInitPrimary extends DatabaseInit {
       bucket TEXT NOT NULL,
       op_id INTEGER NOT NULL,
       op INTEGER NOT NULL,
-      object_type TEXT,
-      object_id TEXT,
+      row_type TEXT,
+      row_id TEXT,
       data TEXT,
       hash INTEGER NOT NULL,
       superseded INTEGER NOT NULL);
       
-    CREATE INDEX IF NOT EXISTS ps_oplog_by_object ON ps_oplog (object_type, object_id) WHERE superseded = 0;
+    CREATE INDEX IF NOT EXISTS ps_oplog_by_row ON ps_oplog (row_type, row_id) WHERE superseded = 0;
     CREATE INDEX IF NOT EXISTS ps_oplog_by_opid ON ps_oplog (bucket, op_id);
     
     CREATE TABLE IF NOT EXISTS ps_buckets(

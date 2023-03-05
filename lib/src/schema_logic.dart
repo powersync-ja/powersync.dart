@@ -39,7 +39,7 @@ BEGIN
   INSERT INTO $internalNameE(id, data)
     SELECT NEW.id, json_object($jsonFragment);
   INSERT INTO ps_crud(data) SELECT json_object('op', 'PUT', 'type', '$type', 'id', NEW.id, 'data', json(powersync_diff('{}', json_object($jsonFragment))));
-  INSERT INTO ps_oplog(bucket, op_id, op, object_type, object_id, hash, superseded)
+  INSERT INTO ps_oplog(bucket, op_id, op, row_type, row_id, hash, superseded)
     SELECT '\$local',
            1,
            'REMOVE',
@@ -62,7 +62,7 @@ BEGIN
         SET data = json_object($jsonFragment)
         WHERE id = NEW.id;
   INSERT INTO ps_crud(data) SELECT json_object('op', 'PATCH', 'type', '$type', 'id', NEW.id, 'data', json(powersync_diff(json_object($jsonFragmentOld), json_object($jsonFragment))));
-  INSERT INTO ps_oplog(bucket, op_id, op, object_type, object_id, hash, superseded)
+  INSERT INTO ps_oplog(bucket, op_id, op, row_type, row_id, hash, superseded)
     SELECT '\$local',
            1,
            'REMOVE',

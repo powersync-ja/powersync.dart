@@ -98,8 +98,8 @@ class BucketStorage {
         'op_id': op.opId,
         'op': op.op!.value,
         'bucket': bucket,
-        'object_type': op.objectType,
-        'object_id': op.objectId,
+        'row_type': op.rowType,
+        'row_id': op.rowId,
         'data': op.data,
         'checksum': op.checksum,
         'superseded': 0
@@ -116,13 +116,13 @@ class BucketStorage {
       }
 
       if (op.op == OpType.put || op.op == OpType.remove) {
-        final key = '${op.objectType}/${op.objectId}';
+        final key = '${op.rowType}/${op.rowId}';
         final prev = lastInsert[key];
         if (prev != null) {
           prev['superseded'] = 1;
         }
         lastInsert[key] = insert;
-        allEntries.add({'type': op.objectType, 'id': op.objectId});
+        allEntries.add({'type': op.rowType, 'id': op.rowId});
       } else if (op.op == OpType.move) {
         final target = op.data?['target'] as String?;
         if (target != null) {
@@ -152,7 +152,7 @@ class BucketStorage {
     data = NULL
     WHERE oplog.superseded = 0
     AND unlikely(oplog.bucket = ?)
-    AND(oplog.object_type, oplog.object_id) IN(
+    AND(oplog.row_type, oplog.row_id) IN(
         SELECT json_extract(json_each.value,
         '\$.type'), json_extract(json_each.value, '\$.id')
     FROM json_each(?)
@@ -160,15 +160,15 @@ class BucketStorage {
     """, [bucket, jsonEncode(allEntries)]);
 
     var stmt = db.prepare(
-        'INSERT INTO ps_oplog(op_id, op, bucket, object_type, object_id, data, hash, superseded) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
+        'INSERT INTO ps_oplog(op_id, op, bucket, row_type, row_id, data, hash, superseded) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
     try {
       for (var insert in inserts) {
         stmt.execute([
           insert['op_id'],
           insert['op'],
           insert['bucket'],
-          insert['object_type'],
-          insert['object_id'],
+          insert['row_type'],
+          insert['row_id'],
           insert['data'] == null ? null : jsonEncode(insert['data']),
           insert['checksum'],
           insert['superseded']
@@ -303,13 +303,13 @@ class BucketStorage {
       // QUERY PLAN
       // |--SCAN buckets
       // |--SEARCH b USING INDEX sqlite_autoindex_oplog_1 (bucket=? AND op_id>?)
-      // |--SEARCH r USING INDEX oplog_by_object (object_type=? AND object_id=?)
+      // |--SEARCH r USING INDEX oplog_by_object (row_type=? AND row_id=?)
       // `--USE TEMP B-TREE FOR GROUP BY
       // language=DbSqlite
       var stmt = db.prepare(
           """-- 3. Group the objects from different buckets together into a single one (ops).
-         SELECT r.object_type as type,
-                r.object_id as id,
+         SELECT r.row_type as type,
+                r.row_id as id,
                 r.data as data,
                 json_group_array(r.bucket) FILTER (WHERE r.op=${OpType.put.value}) as buckets,
                 /* max() affects which row is used for 'data' */
@@ -320,12 +320,12 @@ class BucketStorage {
               AND (b.op_id > buckets.last_applied_op)
                 -- 2. Find *all* current ops over different buckets for those objects (oplog r).
                 INNER JOIN ps_oplog AS r
-                           ON r.object_type = b.object_type
-                             AND r.object_id = b.object_id
+                           ON r.row_type = b.row_type
+                             AND r.row_id = b.row_id
          WHERE r.superseded = 0
            AND b.superseded = 0
          -- Group for (3)
-         GROUP BY r.object_type, r.object_id
+         GROUP BY r.row_type, r.row_id
         """);
       try {
         // TODO: Perhaps we don't need batching for this?
@@ -783,24 +783,24 @@ class SyncBucketData {
 class OplogEntry {
   final String opId;
   final OpType? op;
-  final String? objectType;
-  final String? objectId;
+  final String? rowType;
+  final String? rowId;
   final Map<String, dynamic>? data;
   final int checksum;
 
   const OplogEntry(
       {required this.opId,
       required this.op,
-      this.objectType,
-      this.objectId,
+      this.rowType,
+      this.rowId,
       this.data,
       required this.checksum});
 
   OplogEntry.fromJson(Map<String, dynamic> json)
       : opId = json['op_id'],
         op = OpType.fromJson(json['op']),
-        objectType = json['object_type'],
-        objectId = json['object_id'],
+        rowType = json['object_type'],
+        rowId = json['object_id'],
         checksum = json['checksum'],
         data = json['data'];
 }

@@ -9,40 +9,32 @@ import 'util.dart';
 const PUT_ASSET1_1 = OplogEntry(
     opId: '1',
     op: OpType.put,
-    objectType: 'assets',
-    objectId: 'O1',
+    rowType: 'assets',
+    rowId: 'O1',
     data: {'description': 'bar'},
     checksum: 1);
 
 const PUT_ASSET2_2 = OplogEntry(
     opId: '2',
     op: OpType.put,
-    objectType: 'assets',
-    objectId: 'O2',
+    rowType: 'assets',
+    rowId: 'O2',
     data: {'description': 'bar'},
     checksum: 2);
 
 const PUT_ASSET1_3 = OplogEntry(
     opId: '3',
     op: OpType.put,
-    objectType: 'assets',
-    objectId: 'O1',
+    rowType: 'assets',
+    rowId: 'O1',
     data: {'description': 'bard'},
     checksum: 3);
 
 const REMOVE_ASSET1_4 = OplogEntry(
-    opId: '4',
-    op: OpType.remove,
-    objectType: 'assets',
-    objectId: 'O1',
-    checksum: 4);
+    opId: '4', op: OpType.remove, rowType: 'assets', rowId: 'O1', checksum: 4);
 
 const REMOVE_ASSET1_5 = OplogEntry(
-    opId: '5',
-    op: OpType.remove,
-    objectType: 'assets',
-    objectId: 'O1',
-    checksum: 5);
+    opId: '5', op: OpType.remove, rowType: 'assets', rowId: 'O1', checksum: 5);
 
 void main() {
   setupLogger();
@@ -320,8 +312,8 @@ void main() {
                 checksum: 3,
                 op: PUT_ASSET2_2.op,
                 data: PUT_ASSET2_2.data,
-                objectId: PUT_ASSET2_2.objectId,
-                objectType: PUT_ASSET2_2.objectType)
+                rowId: PUT_ASSET2_2.rowId,
+                rowType: PUT_ASSET2_2.rowType)
           ],
         ),
       ]));
@@ -430,7 +422,7 @@ void main() {
           checksums: [BucketChecksum(bucket: 'bucket1', checksum: 7)]));
 
       final stats = db.select(
-          'SELECT object_type as type, object_id as id, count(*) as count FROM ps_oplog GROUP BY object_type, object_id ORDER BY object_type, object_id');
+          'SELECT row_type as type, row_id as id, count(*) as count FROM ps_oplog GROUP BY row_type, row_id ORDER BY row_type, row_id');
       expect(
           stats,
           equals([
@@ -603,8 +595,8 @@ void main() {
             OplogEntry(
                 opId: '5',
                 op: OpType.put,
-                objectType: 'assets',
-                objectId: 'O3',
+                rowType: 'assets',
+                rowId: 'O3',
                 checksum: 5,
                 data: {'description': 'server updated'})
           ],
