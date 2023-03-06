@@ -1,0 +1,23 @@
+name: Test
+
+on:
+  push:
+    branches:
+      - "**"
+    tags-ignore:
+      - "**"
+
+jobs:
+  run-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.7.1'
+          channel: 'stable'
+      - name: Install app dependencies
+        run: dart pub get
+      - name: Test app
+        run: dart test
