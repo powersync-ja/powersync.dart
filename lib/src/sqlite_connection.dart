@@ -258,6 +258,12 @@ mixin SqliteQueries implements SqliteWriteContext, SqliteConnection {
     });
   }
 
+  /// Execute a write query (INSERT, UPDATE, DELETE) multiple times with each
+  /// parameter set. This is more faster than executing separately with each
+  /// parameter set.
+  ///
+  /// When called here directly on the connection, the batch is wrapped in a
+  /// write transaction.
   @override
   Future<void> executeBatch(String sql, List<List<Object?>> parameterSets) {
     return writeTransaction((tx) async {
