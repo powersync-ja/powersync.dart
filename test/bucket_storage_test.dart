@@ -6,7 +6,7 @@ import 'package:test/test.dart';
 
 import 'util.dart';
 
-const PUT_ASSET1_1 = OplogEntry(
+const putAsset1_1 = OplogEntry(
     opId: '1',
     op: OpType.put,
     rowType: 'assets',
@@ -14,7 +14,7 @@ const PUT_ASSET1_1 = OplogEntry(
     data: {'description': 'bar'},
     checksum: 1);
 
-const PUT_ASSET2_2 = OplogEntry(
+const putAsset2_2 = OplogEntry(
     opId: '2',
     op: OpType.put,
     rowType: 'assets',
@@ -22,7 +22,7 @@ const PUT_ASSET2_2 = OplogEntry(
     data: {'description': 'bar'},
     checksum: 2);
 
-const PUT_ASSET1_3 = OplogEntry(
+const putAsset1_3 = OplogEntry(
     opId: '3',
     op: OpType.put,
     rowType: 'assets',
@@ -30,10 +30,10 @@ const PUT_ASSET1_3 = OplogEntry(
     data: {'description': 'bard'},
     checksum: 3);
 
-const REMOVE_ASSET1_4 = OplogEntry(
+const removeAsset1_4 = OplogEntry(
     opId: '4', op: OpType.remove, rowType: 'assets', rowId: 'O1', checksum: 4);
 
-const REMOVE_ASSET1_5 = OplogEntry(
+const remoteAsset1_5 = OplogEntry(
     opId: '5', op: OpType.remove, rowType: 'assets', rowId: 'O1', checksum: 5);
 
 void main() {
@@ -83,7 +83,7 @@ void main() {
       await bucketStorage.saveSyncData(SyncDataBatch([
         SyncBucketData(
           bucket: 'bucket1',
-          data: [PUT_ASSET1_1, PUT_ASSET2_2, PUT_ASSET1_3],
+          data: [putAsset1_1, putAsset2_2, putAsset1_3],
         )
       ]));
 
@@ -101,9 +101,9 @@ void main() {
       await bucketStorage.saveSyncData(SyncDataBatch([
         SyncBucketData(
           bucket: 'bucket1',
-          data: [PUT_ASSET1_3],
+          data: [putAsset1_3],
         ),
-        SyncBucketData(bucket: 'bucket2', data: [PUT_ASSET1_3])
+        SyncBucketData(bucket: 'bucket2', data: [putAsset1_3])
       ]));
 
       await syncLocalChecked(Checkpoint(lastOpId: '3', checksums: [
@@ -120,8 +120,8 @@ void main() {
       // While we should not get this with our server implementation, the client still specifies this behaviour:
       // The largest op_id wins.
       await bucketStorage.saveSyncData(SyncDataBatch([
-        SyncBucketData(bucket: 'bucket1', data: [PUT_ASSET1_3]),
-        SyncBucketData(bucket: 'bucket2', data: [PUT_ASSET1_1])
+        SyncBucketData(bucket: 'bucket1', data: [putAsset1_3]),
+        SyncBucketData(bucket: 'bucket2', data: [putAsset1_1])
       ]));
 
       await syncLocalChecked(Checkpoint(lastOpId: '3', checksums: [
@@ -135,8 +135,8 @@ void main() {
     test('should ignore a remove from one bucket', () async {
       // When we have 1 PUT and 1 REMOVE, the object must be kept.
       await bucketStorage.saveSyncData(SyncDataBatch([
-        SyncBucketData(bucket: 'bucket1', data: [PUT_ASSET1_3]),
-        SyncBucketData(bucket: 'bucket2', data: [PUT_ASSET1_3, REMOVE_ASSET1_4])
+        SyncBucketData(bucket: 'bucket1', data: [putAsset1_3]),
+        SyncBucketData(bucket: 'bucket2', data: [putAsset1_3, removeAsset1_4])
       ]));
 
       await syncLocalChecked(Checkpoint(lastOpId: '4', checksums: [
@@ -150,9 +150,8 @@ void main() {
     test('should remove when removed from all buckets', () async {
       // When we only have REMOVE left for an object, it must be deleted.
       await bucketStorage.saveSyncData(SyncDataBatch([
-        SyncBucketData(
-            bucket: 'bucket1', data: [PUT_ASSET1_3, REMOVE_ASSET1_5]),
-        SyncBucketData(bucket: 'bucket2', data: [PUT_ASSET1_3, REMOVE_ASSET1_4])
+        SyncBucketData(bucket: 'bucket1', data: [putAsset1_3, remoteAsset1_5]),
+        SyncBucketData(bucket: 'bucket2', data: [putAsset1_3, removeAsset1_4])
       ]));
 
       await syncLocalChecked(Checkpoint(lastOpId: '5', checksums: [
@@ -167,8 +166,7 @@ void main() {
       // Simple checksum validation
       await bucketStorage.saveSyncData(SyncDataBatch([
         SyncBucketData(
-            bucket: 'bucket1',
-            data: [PUT_ASSET1_1, PUT_ASSET2_2, PUT_ASSET1_3]),
+            bucket: 'bucket1', data: [putAsset1_1, putAsset2_2, putAsset1_3]),
       ]));
 
       var result = await bucketStorage
@@ -190,11 +188,11 @@ void main() {
       await bucketStorage.saveSyncData(SyncDataBatch([
         SyncBucketData(
           bucket: 'bucket1',
-          data: [PUT_ASSET1_3],
+          data: [putAsset1_3],
         ),
         SyncBucketData(
           bucket: 'bucket2',
-          data: [PUT_ASSET1_3],
+          data: [putAsset1_3],
         ),
       ]));
 
@@ -219,7 +217,7 @@ void main() {
       await bucketStorage.saveSyncData(SyncDataBatch([
         SyncBucketData(
           bucket: 'bucket1',
-          data: [PUT_ASSET1_1],
+          data: [putAsset1_1],
         ),
       ]));
 
@@ -230,7 +228,7 @@ void main() {
       await bucketStorage.saveSyncData(SyncDataBatch([
         SyncBucketData(
           bucket: 'bucket1',
-          data: [PUT_ASSET1_1, PUT_ASSET1_3],
+          data: [putAsset1_1, putAsset1_3],
         ),
       ]));
       // Delete again
@@ -240,7 +238,7 @@ void main() {
       await bucketStorage.saveSyncData(SyncDataBatch([
         SyncBucketData(
           bucket: 'bucket1',
-          data: [PUT_ASSET1_1, PUT_ASSET1_3],
+          data: [putAsset1_1, putAsset1_3],
         ),
       ]));
 
@@ -277,7 +275,7 @@ void main() {
       await bucketStorage.saveSyncData(SyncDataBatch([
         SyncBucketData(
           bucket: 'bucket1',
-          data: [PUT_ASSET1_3],
+          data: [putAsset1_3],
         ),
       ]));
 
@@ -293,7 +291,7 @@ void main() {
       await bucketStorage.saveSyncData(SyncDataBatch([
         SyncBucketData(
           bucket: 'bucket1',
-          data: [PUT_ASSET1_1],
+          data: [putAsset1_1],
         ),
       ]));
 
@@ -310,10 +308,10 @@ void main() {
             OplogEntry(
                 opId: '3',
                 checksum: 3,
-                op: PUT_ASSET2_2.op,
-                data: PUT_ASSET2_2.data,
-                rowId: PUT_ASSET2_2.rowId,
-                rowType: PUT_ASSET2_2.rowType)
+                op: putAsset2_2.op,
+                data: putAsset2_2.data,
+                rowId: putAsset2_2.rowId,
+                rowType: putAsset2_2.rowType)
           ],
         ),
       ]));
@@ -346,7 +344,7 @@ void main() {
       await bucketStorage.saveSyncData(SyncDataBatch([
         SyncBucketData(
           bucket: 'bucket1',
-          data: [PUT_ASSET1_1, PUT_ASSET2_2, PUT_ASSET1_3],
+          data: [putAsset1_1, putAsset2_2, putAsset1_3],
         ),
       ]));
 
@@ -372,7 +370,7 @@ void main() {
       await bucketStorage.saveSyncData(SyncDataBatch([
         SyncBucketData(
           bucket: 'bucket1',
-          data: [PUT_ASSET1_1, PUT_ASSET2_2, PUT_ASSET1_3],
+          data: [putAsset1_1, putAsset2_2, putAsset1_3],
         ),
       ]));
 
@@ -407,8 +405,7 @@ void main() {
 
       await bucketStorage.saveSyncData(SyncDataBatch([
         SyncBucketData(
-            bucket: 'bucket1',
-            data: [PUT_ASSET1_1, PUT_ASSET2_2, REMOVE_ASSET1_4])
+            bucket: 'bucket1', data: [putAsset1_1, putAsset2_2, removeAsset1_4])
       ]));
 
       await syncLocalChecked(Checkpoint(
@@ -435,7 +432,7 @@ void main() {
       await bucketStorage.saveSyncData(SyncDataBatch([
         SyncBucketData(
           bucket: 'bucket1',
-          data: [PUT_ASSET1_1, PUT_ASSET2_2, PUT_ASSET1_3],
+          data: [putAsset1_1, putAsset2_2, putAsset1_3],
         ),
       ]));
 
@@ -495,7 +492,7 @@ void main() {
       await bucketStorage.saveSyncData(SyncDataBatch([
         SyncBucketData(
           bucket: 'bucket1',
-          data: [PUT_ASSET1_1, PUT_ASSET2_2, PUT_ASSET1_3],
+          data: [putAsset1_1, putAsset2_2, putAsset1_3],
         ),
       ]));
 
@@ -535,7 +532,7 @@ void main() {
       await bucketStorage.saveSyncData(SyncDataBatch([
         SyncBucketData(
           bucket: 'bucket1',
-          data: [PUT_ASSET1_1, PUT_ASSET2_2, PUT_ASSET1_3],
+          data: [putAsset1_1, putAsset2_2, putAsset1_3],
         ),
       ]));
 
@@ -572,7 +569,7 @@ void main() {
       await bucketStorage.saveSyncData(SyncDataBatch([
         SyncBucketData(
           bucket: 'bucket1',
-          data: [PUT_ASSET1_1, PUT_ASSET2_2, PUT_ASSET1_3],
+          data: [putAsset1_1, putAsset2_2, putAsset1_3],
         ),
       ]));
 

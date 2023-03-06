@@ -1,5 +1,4 @@
 import 'package:powersync/powersync.dart';
-import 'package:powersync/src/background_database.dart';
 import 'package:test/test.dart';
 
 import 'util.dart';

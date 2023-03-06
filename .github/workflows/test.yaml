@@ -21,3 +21,5 @@ jobs:
         run: dart pub get
       - name: Test app
         run: dart test
+      - name: Publish lint
+        run: dart pub publish --dry-run
