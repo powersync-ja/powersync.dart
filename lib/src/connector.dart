@@ -7,8 +7,8 @@ import 'package:http/http.dart' as http;
 /// Implement this to connect an app backend.
 ///
 /// The connector is responsible for:
-/// 1. Creating PowerSync credentials.
-/// 2. Applying local changes on the server.
+/// 1. Creating credentials for connecting to the PowerSync cloud service.
+/// 2. Applying local changes against the backend application server.
 ///
 /// [DevConnector] is provided as a quick starting point, without user management
 /// or significant security.
