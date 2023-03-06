@@ -129,7 +129,7 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
   }
 
   void _listenForEvents() {
-    Set<TableUpdate> updates = {};
+    TableUpdate? updates;
 
     _eventsPort.listen((message) async {
       if (message is List) {
@@ -138,17 +138,17 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
           sqlite.SqliteUpdate event = message[1];
           String? friendlyName = friendlyTableName(event.tableName);
           if (friendlyName != null) {
-            final update = TableUpdate(friendlyName);
-            updates.add(update);
+            if (updates == null) {
+              updates = TableUpdate({friendlyName});
+            } else {
+              updates = TableUpdate(
+                  {for (var table in updates!.tables) table, friendlyName});
+            }
           }
           mutex.lock(() async {
-            if (updates.isNotEmpty) {
-              // TODO: throttle here?
-              for (var update in updates) {
-                _updatesController.add(update);
-              }
-
-              updates = {};
+            if (updates != null) {
+              _updatesController.add(updates!);
+              updates = null;
             }
           });
         } else if (type == 'init-db') {

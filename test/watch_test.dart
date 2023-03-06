@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:powersync/powersync.dart';
@@ -107,6 +108,43 @@ void main() {
       } finally {
         done = true;
       }
+    });
+
+    test('onChange', () async {
+      final powersync = await setupPowerSync(path: path, schema: testSchema);
+
+      const baseTime = 20;
+
+      const throttleDuration = Duration(milliseconds: baseTime);
+
+      var done = false;
+      inserts() async {
+        while (!done) {
+          await powersync.execute(
+              'INSERT INTO assets(id, make) VALUES (uuid(), ?)', ['test']);
+          await Future.delayed(
+              Duration(milliseconds: Random().nextInt(baseTime)));
+        }
+      }
+
+      inserts();
+
+      final stream = powersync.onChange({'assets', 'customers'},
+          throttle: throttleDuration).asyncMap((event) async {
+        // This is where queries would typically be executed
+        return event;
+      });
+
+      var events = await stream.take(3).toList();
+      done = true;
+
+      expect(
+          events,
+          equals([
+            TableUpdate.empty(),
+            TableUpdate.single('assets'),
+            TableUpdate.single('assets')
+          ]));
     });
   });
 }

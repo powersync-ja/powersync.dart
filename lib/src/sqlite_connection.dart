@@ -1,3 +1,4 @@
+import 'package:collection/collection.dart';
 import 'package:powersync/src/database_utils.dart';
 import 'package:powersync/src/throttle.dart';
 import 'package:sqlite3/sqlite3.dart' as sqlite;
@@ -103,29 +104,42 @@ abstract class SqliteConnection extends SqliteWriteContext {
       {Duration? lockTimeout});
 }
 
-/// Represents an update to a single table, for the purpose of realtime change
+/// Represents an update to one or more tables, for the purpose of realtime change
 /// notifications.
 ///
-/// The update could be from a local or remote change.
+/// The update could be from local or remote changes.
 class TableUpdate {
   /// Table name
-  final String name;
+  final Set<String> tables;
 
-  const TableUpdate(this.name);
+  const TableUpdate(this.tables);
+
+  const TableUpdate.empty() : tables = const {};
+  TableUpdate.single(String table) : tables = {table};
 
   @override
   bool operator ==(Object other) {
-    return other is TableUpdate && other.name == name;
+    return other is TableUpdate &&
+        const SetEquality<String>().equals(other.tables, tables);
   }
 
   @override
   int get hashCode {
-    return name.hashCode;
+    return Object.hashAllUnordered(tables);
   }
 
   @override
   String toString() {
-    return "TableUpdate<$name>";
+    return "TableUpdate<$tables>";
+  }
+
+  bool containsAny(Set<String> tableFilter) {
+    for (var table in tables) {
+      if (tableFilter.contains(table.toLowerCase())) {
+        return true;
+      }
+    }
+    return false;
   }
 }
 
@@ -172,13 +186,46 @@ mixin SqliteQueries implements SqliteWriteContext, SqliteConnection {
         'updates stream must be provided to allow query watching');
     final tables = triggerOnTables ?? await getSourceTables(this, sql);
     final filteredStream = updates!.transform(filterTablesTransformer(tables));
-    final throttledStream =
-        throttleStream(filteredStream, throttle, throttleFirst: true);
-    yield await getAll(sql, parameters);
+    final throttledStream = throttleTableUpdates(filteredStream, throttle,
+        addOne: TableUpdate.empty());
 
+    // FIXME:
+    // When the subscription is cancelled, this performs a final query on the next
+    // update.
+    // The loop only stops once the "yield" is reached.
+    // Using asyncMap instead of a generator would solve it, but then the body
+    // here can't be async for getSourceTables().
     await for (var _ in throttledStream) {
       yield await getAll(sql, parameters);
     }
+  }
+
+  /// Create a Stream of changes to any of the specified tables.
+  ///
+  /// Example to get the same effect as [watch]:
+  ///
+  /// ```dart
+  /// var subscription = db.onChange({'mytable'}).asyncMap((event) async {
+  ///   var data = await db.getAll('SELECT * FROM mytable');
+  ///   return data;
+  /// }).listen((data) {
+  ///   // Do something with the data here
+  /// });
+  /// ```
+  ///
+  /// This is preferred over [watch] when multiple queries need to be performed
+  /// together when data is changed.
+  Stream<TableUpdate> onChange(Iterable<String>? tables,
+      {Duration throttle = const Duration(milliseconds: 30),
+      bool triggerImmediately = true}) {
+    assert(updates != null,
+        'updates stream must be provided to allow query watching');
+    final filteredStream = tables != null
+        ? updates!.transform(filterTablesTransformer(tables))
+        : updates!;
+    final throttledStream = throttleTableUpdates(filteredStream, throttle,
+        addOne: triggerImmediately ? TableUpdate.empty() : null);
+    return throttledStream;
   }
 
   @override
