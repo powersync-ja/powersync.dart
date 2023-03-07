@@ -141,5 +141,63 @@ void main() {
 
       expect(await powersync.getAll('SELECT * FROM logs'), equals([]));
     });
+
+    test('big numbers - integer', () async {
+      const bigNumber = 1 << 62;
+      await powersync.execute(
+          'INSERT INTO assets(id, quantity) VALUES(?, ?)', [testId, bigNumber]);
+
+      expect(
+          await powersync
+              .get('SELECT quantity FROM assets WHERE id = ?', [testId]),
+          equals({'quantity': bigNumber}));
+      expect(
+          await powersync.getAll('SELECT data FROM ps_crud ORDER BY id'),
+          equals([
+            {
+              'data':
+                  '{"op":"PUT","type":"assets","id":"$testId","data":{"quantity":$bigNumber}}'
+            }
+          ]));
+
+      await powersync.execute('DELETE FROM ps_crud WHERE 1');
+    });
+
+    test('big numbers - text', () async {
+      const bigNumber = 1 << 62;
+      await powersync.execute('INSERT INTO assets(id, quantity) VALUES(?, ?)',
+          [testId, '$bigNumber']);
+
+      // Cast as INTEGER when querying
+      expect(
+          await powersync
+              .get('SELECT quantity FROM assets WHERE id = ?', [testId]),
+          equals({'quantity': bigNumber}));
+
+      // Not cast as part of crud / persistance
+      expect(
+          await powersync.getAll('SELECT data FROM ps_crud ORDER BY id'),
+          equals([
+            {
+              'data':
+                  '{"op":"PUT","type":"assets","id":"$testId","data":{"quantity":"$bigNumber"}}'
+            }
+          ]));
+
+      await powersync.execute('DELETE FROM ps_crud WHERE 1');
+
+      await powersync.execute(
+          'UPDATE assets SET description = ?, quantity = quantity + 1 WHERE id = ?',
+          ['updated', testId]);
+
+      expect(
+          await powersync.getAll('SELECT data FROM ps_crud ORDER BY id'),
+          equals([
+            {
+              'data':
+                  '{"op":"PATCH","type":"assets","id":"$testId","data":{"quantity":${bigNumber + 1},"description":"updated"}}'
+            }
+          ]));
+    });
   });
 }
