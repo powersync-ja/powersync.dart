@@ -119,7 +119,7 @@ class BucketStorage {
         lastInsert[key] = insert;
         allEntries.add({'type': op.rowType, 'id': op.rowId});
       } else if (op.op == OpType.move) {
-        final target = op.data?['target'] as String?;
+        final target = op.parsedData?['target'] as String?;
         if (target != null) {
           final l = BigInt.parse(target, radix: 10);
           if (targetOp == null || l < targetOp) {
@@ -164,7 +164,7 @@ class BucketStorage {
           insert['bucket'],
           insert['row_type'],
           insert['row_id'],
-          insert['data'] == null ? null : jsonEncode(insert['data']),
+          insert['data'],
           insert['checksum'],
           insert['superseded']
         ]);
@@ -747,7 +747,7 @@ class OplogEntry {
   final OpType? op;
   final String? rowType;
   final String? rowId;
-  final Map<String, dynamic>? data;
+  final String? data;
   final int checksum;
 
   const OplogEntry(
@@ -764,7 +764,11 @@ class OplogEntry {
         rowType = json['object_type'],
         rowId = json['object_id'],
         checksum = json['checksum'],
-        data = json['data'];
+        data = json['data'] is String ? json['data'] : jsonEncode(json['data']);
+
+  Map<String, dynamic>? get parsedData {
+    return data == null ? null : jsonDecode(data!);
+  }
 }
 
 class SqliteOp {

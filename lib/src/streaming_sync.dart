@@ -414,8 +414,12 @@ class StreamingSyncRequest {
 
   StreamingSyncRequest(this.buckets);
 
-  Map<String, dynamic> toJson() =>
-      {'buckets': buckets, 'include_checksum': includeChecksum};
+  Map<String, dynamic> toJson() => {
+        'buckets': buckets,
+        'include_checksum': includeChecksum,
+        // We want the JSON row data as a string
+        'raw_data': true
+      };
 }
 
 class BucketRequest {
