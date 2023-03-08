@@ -1,13 +1,13 @@
 import 'dart:async';
-import 'dart:io';
 import 'dart:convert' as convert;
-
-import './log.dart';
-import './bucket_storage.dart';
-import './connector.dart';
+import 'dart:io';
 
 import 'package:http/http.dart' as http;
 import 'package:http/http.dart';
+
+import './bucket_storage.dart';
+import './connector.dart';
+import './log.dart';
 
 class SyncStatus {
   /// true if currently connected
@@ -225,7 +225,8 @@ class StreamingSyncImplementation {
           newBuckets.remove(bucket);
         }
 
-        final newCheckpoint = Checkpoint(diff.lastOpId, [...newBuckets.values]);
+        final newCheckpoint = Checkpoint(
+            lastOpId: diff.lastOpId, checksums: [...newBuckets.values]);
         targetCheckpoint = newCheckpoint;
 
         bucketSet = Set.from(newBuckets.keys);

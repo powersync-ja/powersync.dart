@@ -129,28 +129,26 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
   }
 
   void _listenForEvents() {
-    Set<TableUpdate> updates = {};
+    TableUpdate? updates;
 
     _eventsPort.listen((message) async {
       if (message is List) {
         String type = message[0];
         if (type == 'update') {
           sqlite.SqliteUpdate event = message[1];
-          final re = RegExp(r"^objects__(.+)$");
-          final match = re.firstMatch(event.tableName);
-          if (match != null) {
-            final name = match[1];
-            final update = TableUpdate(name!);
-            updates.add(update);
+          String? friendlyName = friendlyTableName(event.tableName);
+          if (friendlyName != null) {
+            if (updates == null) {
+              updates = TableUpdate({friendlyName});
+            } else {
+              updates = TableUpdate(
+                  {for (var table in updates!.tables) table, friendlyName});
+            }
           }
           mutex.lock(() async {
-            if (updates.isNotEmpty) {
-              // TODO: throttle?
-              for (var update in updates) {
-                _updatesController.add(update);
-              }
-
-              updates = {};
+            if (updates != null) {
+              _updatesController.add(updates!);
+              updates = null;
             }
           });
         } else if (type == 'init-db') {
@@ -244,12 +242,12 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
     disconnect();
 
     await writeTransaction((tx) async {
-      await tx.execute('DELETE FROM oplog WHERE 1');
-      await tx.execute('DELETE FROM crud WHERE 1');
-      await tx.execute('DELETE FROM buckets WHERE 1');
+      await tx.execute('DELETE FROM ps_oplog WHERE 1');
+      await tx.execute('DELETE FROM ps_crud WHERE 1');
+      await tx.execute('DELETE FROM ps_buckets WHERE 1');
 
       final existingTableRows = await tx.getAll(
-          "SELECT name FROM sqlite_master WHERE type='table' AND name GLOB 'objects__*'");
+          "SELECT name FROM sqlite_master WHERE type='table' AND name GLOB 'ps_data_*'");
 
       for (var row in existingTableRows) {
         await tx.execute('DELETE FROM "${row['name']}" WHERE 1');
@@ -289,11 +287,11 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
       {bool includeSize = false}) async {
     if (includeSize) {
       final row = await getOptional(
-          'SELECT SUM(cast(data as blob) + 20) as size, count(*) as count FROM crud');
+          'SELECT SUM(cast(data as blob) + 20) as size, count(*) as count FROM ps_crud');
       return UploadQueueStats(
           count: row?['count'] ?? 0, size: row?['size'] ?? 0);
     } else {
-      final row = await getOptional('SELECT count(*) as count FROM crud');
+      final row = await getOptional('SELECT count(*) as count FROM ps_crud');
       return UploadQueueStats(count: row?['count'] ?? 0);
     }
   }
@@ -311,7 +309,7 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
   /// batch.
   Future<CrudBatch?> getCrudBatch({limit = 100}) async {
     final rows = await getAll(
-        'SELECT id, data FROM crud ORDER BY id ASC LIMIT ?', [limit + 1]);
+        'SELECT id, data FROM ps_crud ORDER BY id ASC LIMIT ?', [limit + 1]);
     List<CrudEntry> all = [for (var row in rows) CrudEntry.fromRow(row)];
 
     var haveMore = false;
@@ -328,9 +326,10 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
         haveMore: haveMore,
         complete: () async {
           await writeTransaction((db) async {
-            await db.execute('DELETE FROM crud WHERE id <= ?', [last.clientId]);
+            await db
+                .execute('DELETE FROM ps_crud WHERE id <= ?', [last.clientId]);
             await db.execute(
-                'UPDATE buckets SET target_op = $maxOpId WHERE name=\'\$local\'');
+                'UPDATE ps_buckets SET target_op = $maxOpId WHERE name=\'\$local\'');
           });
         });
   }
@@ -346,7 +345,7 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
   /// started before it.
   @override
   Future<T> readTransaction<T>(
-      Future<T> Function(SqliteReadTransactionContext tx) callback,
+      Future<T> Function(SqliteReadContext tx) callback,
       {Duration? lockTimeout}) {
     return _pool.readTransaction(callback, lockTimeout: lockTimeout);
   }
@@ -360,9 +359,21 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
   /// or rolled back on any error.
   @override
   Future<T> writeTransaction<T>(
-      Future<T> Function(SqliteWriteTransactionContext tx) callback,
+      Future<T> Function(SqliteWriteContext tx) callback,
       {Duration? lockTimeout}) {
     return _pool.writeTransaction(callback, lockTimeout: lockTimeout);
+  }
+
+  @override
+  Future<T> readLock<T>(Future<T> Function(SqliteReadContext tx) callback,
+      {Duration? lockTimeout}) {
+    return _pool.readLock(callback, lockTimeout: lockTimeout);
+  }
+
+  @override
+  Future<T> writeLock<T>(Future<T> Function(SqliteWriteContext tx) callback,
+      {Duration? lockTimeout}) {
+    return _pool.writeLock(callback, lockTimeout: lockTimeout);
   }
 }
 
@@ -452,37 +463,9 @@ class SqliteConnectionFactory {
     }
 
     db.updates.listen((event) {
-      if (event.tableName.startsWith('objects_')) {
-        port.send(['update', event]);
-      }
+      port.send(['update', event]);
     });
     return db;
-  }
-}
-
-/// Represents an update to a single table, for the purpose of realtime change
-/// notifications.
-///
-/// The update could be from a local or remote change.
-class TableUpdate {
-  /// Table name
-  final String name;
-
-  const TableUpdate(this.name);
-
-  @override
-  bool operator ==(Object other) {
-    return other is TableUpdate && other.name == name;
-  }
-
-  @override
-  int get hashCode {
-    return name.hashCode;
-  }
-
-  @override
-  String toString() {
-    return "TableUpdate<$name>";
   }
 }
 
@@ -557,8 +540,8 @@ Future<void> _powerSyncDatabaseIsolate(
 }
 
 Future<List<String>> _initializePrimaryDatabase(
-    SqliteConnectionImpl asyncdb, Mutex mutex, Schema schema) async {
-  return await asyncdb.inIsolateWriteTransaction((db) async {
+    SqliteConnection asyncdb, Mutex mutex, Schema schema) async {
+  return await asyncdb.computeWithDatabase((db) async {
     List<String> ops = updateSchema(db, schema);
     return ops;
   });

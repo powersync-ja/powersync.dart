@@ -1,47 +1,27 @@
-import 'dart:ffi';
-import 'dart:io';
 import 'dart:math';
-import 'package:powersync/src/background_database.dart';
-import 'package:sqlite3/open.dart' as sqlite_open;
 
 import 'package:powersync/powersync.dart';
 import 'package:test/test.dart';
-
-DynamicLibrary _openOnLinux() {
-  return DynamicLibrary.open('libsqlite3.so.0');
-}
-
-final testSetup = SqliteConnectionSetup(() async {
-  sqlite_open.open.overrideFor(sqlite_open.OperatingSystem.linux, _openOnLinux);
-});
-
-const schema = Schema([
-  Table('assets', [
-    Column.text('created_at'),
-    Column.text('make'),
-    Column.text('model'),
-    Column.text('serial_number'),
-    Column.integer('quantity'),
-    Column.text('user_id'),
-    Column.text('customer_id'),
-  ]),
-  Table('customers', [Column.text('name'), Column.text('email')])
-]);
+import 'package:sqlite3/sqlite3.dart' as sqlite;
+import 'util.dart';
 
 void main() {
+  setupLogger();
+
   group('Basic Tests', () {
+    late String path;
+
     setUp(() async {
-      try {
-        await File('test.db').delete();
-      } on PathNotFoundException {
-        // Not an issue
-      }
+      path = dbPath();
+      await cleanDb(path: path);
+    });
+
+    tearDown(() async {
+      await cleanDb(path: path);
     });
 
     test('Basic Setup', () async {
-      final db = PowerSyncDatabase(
-          schema: schema, path: 'test.db', sqliteSetup: testSetup);
-      await db.initialize();
+      final db = await setupPowerSync(path: path);
       await db.execute(
           'INSERT INTO assets(id, make) VALUES(uuid(), ?)', ['Test Make']);
       final result = await db.get('SELECT make FROM assets');
@@ -58,19 +38,10 @@ void main() {
           ]));
     });
 
+    // Manual test
     test('Concurrency', () async {
-//       var q = """WITH RECURSIVE r(i) AS (
-//   VALUES(0)
-//   UNION ALL
-//   SELECT i FROM r
-//   LIMIT 1000000
-// )
-// SELECT i FROM r WHERE i = 1""";
       final db = PowerSyncDatabase(
-          schema: schema,
-          path: 'test.db',
-          sqliteSetup: testSetup,
-          maxReaders: 3);
+          schema: schema, path: path, sqliteSetup: testSetup, maxReaders: 3);
       await db.initialize();
 
       print("${DateTime.now()} start");
@@ -82,123 +53,91 @@ void main() {
       }
     });
 
-    test('Insert Performance 1', () async {
-      final db = PowerSyncDatabase(
-          schema: schema,
-          path: 'test.db',
-          sqliteSetup: testSetup,
-          maxReaders: 3);
-      await db.initialize();
-      await db.execute(
-          'CREATE TABLE data(id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, email TEXT)');
-      final timer = Stopwatch()..start();
+    test('read-only transactions', () async {
+      final db = await setupPowerSync(path: path);
 
-      for (var i = 0; i < 1000; i++) {
-        await db.execute('INSERT INTO data(name, email) VALUES(?, ?)',
-            ['Test User', 'user@example.org']);
-      }
-      print("Completed sequential inserts in ${timer.elapsed}");
-      expect(await db.get('SELECT count(*) as count FROM data'),
-          equals({'count': 1000}));
-    });
+      // Can read
+      await db.getAll("WITH test AS (SELECT 1 AS one) SELECT * FROM test");
 
-    test('Insert Performance 2', () async {
-      final db = PowerSyncDatabase(
-          schema: schema,
-          path: 'test.db',
-          sqliteSetup: testSetup,
-          maxReaders: 3);
-      await db.initialize();
-      await db.execute(
-          'CREATE TABLE data(id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, email TEXT)');
-      final timer = Stopwatch()..start();
+      // Cannot write
+      await expectLater(() async {
+        await db.getAll('INSERT INTO assets(id) VALUES(uuid())');
+      },
+          throwsA((e) =>
+              e is sqlite.SqliteException &&
+              e.message
+                  .contains('attempt to write in a read-only transaction')));
+
+      // Can use WITH ... SELECT
+      await db.getAll("WITH test AS (SELECT 1 AS one) SELECT * FROM test");
+
+      // Cannot use WITH .... INSERT
+      await expectLater(() async {
+        await db.getAll(
+            "WITH test AS (SELECT 1 AS one) INSERT INTO assets(id) SELECT one FROM test");
+      },
+          throwsA((e) =>
+              e is sqlite.SqliteException &&
+              e.message
+                  .contains('attempt to write in a read-only transaction')));
 
       await db.writeTransaction((tx) async {
-        for (var i = 0; i < 1000; i++) {
-          await tx.execute('INSERT INTO data(name, email) VALUES(?, ?)',
-              ['Test User', 'user@example.org']);
-        }
+        // Within a write transaction, this is fine
+        await tx.getAll('INSERT INTO assets(id) VALUES(uuid()) RETURNING *');
       });
-      print("Completed transaction inserts in ${timer.elapsed}");
-      expect(await db.get('SELECT count(*) as count FROM data'),
-          equals({'count': 1000}));
     });
 
-    test('Insert Performance 3', () async {
-      final db = PowerSyncDatabase(
-          schema: schema,
-          path: 'test.db',
-          sqliteSetup: testSetup,
-          maxReaders: 3);
-      await db.initialize();
-      await db.execute(
-          'CREATE TABLE data(id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, email TEXT)');
-      final timer = Stopwatch()..start();
-
-      final con = db.connectionFactory().openConnection(updates: db.updates)
-          as SqliteConnectionImpl;
-      await con.inIsolateWriteTransaction((db) async {
-        for (var i = 0; i < 1000; i++) {
-          db.execute('INSERT INTO data(name, email) VALUES(?, ?)',
-              ['Test User', 'user@example.org']);
-        }
-      });
-
-      print("Completed synchronous inserts in ${timer.elapsed}");
-      expect(await db.get('SELECT count(*) as count FROM data'),
-          equals({'count': 1000}));
-    });
-
-    test('Insert Performance 3b', () async {
-      final db = PowerSyncDatabase(
-          schema: schema,
-          path: 'test.db',
-          sqliteSetup: testSetup,
-          maxReaders: 3);
-      await db.initialize();
-      await db.execute(
-          'CREATE TABLE data(id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, email TEXT)');
-      final timer = Stopwatch()..start();
-
-      final con = db.connectionFactory().openConnection(updates: db.updates)
-          as SqliteConnectionImpl;
-      await con.inIsolateWriteTransaction((db) async {
-        var stmt = db.prepare('INSERT INTO data(name, email) VALUES(?, ?)');
-        for (var i = 0; i < 1000; i++) {
-          stmt.execute(['Test User', 'user@example.org']);
-        }
-        stmt.dispose();
-      });
-
-      print("Completed synchronous inserts prepared in ${timer.elapsed}");
-      expect(await db.get('SELECT count(*) as count FROM data'),
-          equals({'count': 1000}));
-    });
-
-    test('Insert Performance 4', () async {
-      final db = PowerSyncDatabase(
-          schema: schema,
-          path: 'test.db',
-          sqliteSetup: testSetup,
-          maxReaders: 3);
-      await db.initialize();
-      await db.execute(
-          'CREATE TABLE data(id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, email TEXT)');
-      final timer = Stopwatch()..start();
+    test('should not allow direct db calls within a transaction callback',
+        () async {
+      final db = await setupPowerSync(path: path);
 
       await db.writeTransaction((tx) async {
-        // Note safe yet!
-        List<Future> futures = [];
-        for (var i = 0; i < 1000; i++) {
-          var future = tx.execute('INSERT INTO data(name, email) VALUES(?, ?)',
-              ['Test User', 'user@example.org']);
-          futures.add(future);
-        }
-        await Future.wait(futures);
+        await expectLater(() async {
+          await db.execute('INSERT INTO assets(id) VALUES(uuid())');
+        }, throwsA((e) => e is AssertionError));
       });
-      print("Completed pipelined inserts in ${timer.elapsed}");
-      expect(await db.get('SELECT count(*) as count FROM data'),
-          equals({'count': 1000}));
+    });
+
+    test('does allow read-only db calls within transaction callback', () async {
+      final db = await setupPowerSync(path: path);
+
+      await db.writeTransaction((tx) async {
+        // This uses a different connection, so it's fine.
+        // Perhaps we should warn on this, since it's likely unintentional?
+        await db.getAll('SELECT * FROM assets');
+      });
+
+      await db.readTransaction((tx) async {
+        // This does actually attempt a lock on the same connection, so it
+        // errors.
+        // This also exposes an interesting test case where the read transaction
+        // opens another connection, but doesn't use it.
+        await expectLater(() async {
+          await db.getAll('SELECT * FROM assets');
+        }, throwsA((e) => e is AssertionError));
+      });
+    });
+
+    test('does allow read-only db calls within lock callback', () async {
+      final db = await setupPowerSync(path: path);
+      // Locks - should behave the same as transactions above
+
+      await db.writeLock((tx) async {
+        await db.getAll('SELECT * FROM assets');
+      });
+
+      await db.readLock((tx) async {
+        await expectLater(() async {
+          await db.getAll('SELECT * FROM assets');
+        }, throwsA((e) => e is AssertionError));
+      });
+    });
+
+    test('should allow PRAMGAs', () async {
+      final db = await setupPowerSync(path: path);
+      // Not allowed in transactions, but does work as a direct statement.
+      await db.execute('PRAGMA wal_checkpoint(TRUNCATE)');
+      await db.execute('VACUUM');
     });
   });
 }

@@ -26,24 +26,23 @@ class SqliteConnectionPool with SqliteQueries implements SqliteConnection {
       : _writeConnection = writeConnection;
 
   @override
-  Future<T> readTransaction<T>(
-      Future<T> Function(SqliteReadTransactionContext tx) callback,
+  Future<T> readLock<T>(Future<T> Function(SqliteReadContext tx) callback,
       {Duration? lockTimeout}) async {
-    _expandPool();
+    await _expandPool();
 
     bool haveLock = false;
     var completer = Completer<T>();
 
     var futures = _readConnections.map((connection) async {
       try {
-        return await connection.lock(() async {
+        return await connection.readLock((ctx) async {
           if (haveLock) {
-            // Alreay have a different lock - release this one.
+            // Already have a different lock - release this one.
             return false;
           }
           haveLock = true;
 
-          var future = connection.readTransactionInLock(callback);
+          var future = callback(ctx);
           completer.complete(future);
 
           // We have to wait for the future to complete before we can release the
@@ -55,7 +54,7 @@ class SqliteConnectionPool with SqliteQueries implements SqliteConnection {
           }
 
           return true;
-        }, timeout: lockTimeout);
+        }, lockTimeout: lockTimeout);
       } on TimeoutException {
         return false;
       }
@@ -78,16 +77,14 @@ class SqliteConnectionPool with SqliteQueries implements SqliteConnection {
   }
 
   @override
-  Future<T> writeTransaction<T>(
-      Future<T> Function(SqliteWriteTransactionContext tx) callback,
+  Future<T> writeLock<T>(Future<T> Function(SqliteWriteContext tx) callback,
       {Duration? lockTimeout}) {
     _writeConnection ??= _factory.openConnection(
         debugName: debugName != null ? '$debugName-writer' : null);
-    return _writeConnection!
-        .writeTransaction(callback, lockTimeout: lockTimeout);
+    return _writeConnection!.writeLock(callback, lockTimeout: lockTimeout);
   }
 
-  void _expandPool() {
+  Future<void> _expandPool() async {
     if (_readConnections.length >= maxReaders) {
       return;
     }
@@ -96,10 +93,18 @@ class SqliteConnectionPool with SqliteQueries implements SqliteConnection {
       var name = debugName == null
           ? null
           : '$debugName-${_readConnections.length + 1}';
-      _readConnections.add(_factory.openConnection(
+      var connection = _factory.openConnection(
           updates: updates,
           debugName: name,
-          readOnly: true) as SqliteConnectionImpl);
+          readOnly: true) as SqliteConnectionImpl;
+      _readConnections.add(connection);
+
+      // Edge case:
+      // If we don't await here, there is a chance that a different connection
+      // is used for the transaction, and that it finishes and deletes the database
+      // while this one is still opening. This is specifically triggered in tests.
+      // To avoid that, we wait for the connection to be ready.
+      await connection.ready;
     }
   }
 }

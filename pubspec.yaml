@@ -1,5 +1,5 @@
 name: powersync
-version: 0.1.1-preview.2
+version: 0.2.0-preview.1
 homepage: https://powersync.co
 description: PowerSync Flutter SDK - keep PostgreSQL databases in sync with on-device SQLite databases.
 environment:
@@ -15,9 +15,14 @@ dependencies:
   uuid: ^3.0.7
   async: ^2.10.0
   logging: ^1.1.1
+  collection: ^1.17.0
+
 dev_dependencies:
   lints: ^2.0.0
   test: ^1.21.0
+  test_api: ^0.4.18
+  path_provider: ^2.0.13
+
 platforms:
   android:
   ios:
