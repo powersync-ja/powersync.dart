@@ -182,7 +182,11 @@ final DatabaseMigrations migrations = DatabaseMigrations()
   }))
   ..add(Migration(2, (db) {
     db.execute("ALTER TABLE ps_oplog ADD column key TEXT");
-    db.execute("UPDATE ps_oplog SET key = row_type || '/' || row_id");
+
+    // The existing keys aren't valid anymore.
+    // Invalidate checksum for any existing buckets.
+    // This will trigger a complete re-sync, while remaining fully consistent.
+    db.execute("UPDATE ps_oplog SET hash = 0");
 
     // Used to supersede old entries per bucket
     db.execute(
