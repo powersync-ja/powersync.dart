@@ -33,7 +33,7 @@ const putAsset1_3 = OplogEntry(
 const removeAsset1_4 = OplogEntry(
     opId: '4', op: OpType.remove, rowType: 'assets', rowId: 'O1', checksum: 4);
 
-const remoteAsset1_5 = OplogEntry(
+const removeAsset1_5 = OplogEntry(
     opId: '5', op: OpType.remove, rowType: 'assets', rowId: 'O1', checksum: 5);
 
 void main() {
@@ -150,7 +150,7 @@ void main() {
     test('should remove when removed from all buckets', () async {
       // When we only have REMOVE left for an object, it must be deleted.
       await bucketStorage.saveSyncData(SyncDataBatch([
-        SyncBucketData(bucket: 'bucket1', data: [putAsset1_3, remoteAsset1_5]),
+        SyncBucketData(bucket: 'bucket1', data: [putAsset1_3, removeAsset1_5]),
         SyncBucketData(bucket: 'bucket2', data: [putAsset1_3, removeAsset1_4])
       ]));
 
@@ -160,6 +160,52 @@ void main() {
       ]));
 
       expectNoAssets();
+    });
+
+    test('should use subkeys', () async {
+      // subkeys cause this to be treated as a separate entity in the oplog,
+      // but same entity in the local db.
+      var put4 = OplogEntry(
+          opId: '4',
+          op: OpType.put,
+          subkey: 'b',
+          rowType: 'assets',
+          rowId: 'O1',
+          data: '{"description": "B"}',
+          checksum: 4);
+
+      var remove5 = OplogEntry(
+          opId: '5',
+          op: OpType.remove,
+          subkey: 'b',
+          rowType: 'assets',
+          rowId: 'O1',
+          checksum: 5);
+
+      await bucketStorage.saveSyncData(SyncDataBatch([
+        SyncBucketData(
+            bucket: 'bucket1', data: [putAsset1_1, putAsset1_3, put4]),
+      ]));
+
+      await syncLocalChecked(Checkpoint(lastOpId: '4', checksums: [
+        BucketChecksum(bucket: 'bucket1', checksum: 8),
+      ]));
+
+      expect(
+          db.select("SELECT id, description, make FROM assets WHERE id = 'O1'"),
+          equals([
+            {'id': 'O1', 'description': 'B', 'make': null}
+          ]));
+
+      await bucketStorage.saveSyncData(SyncDataBatch([
+        SyncBucketData(bucket: 'bucket1', data: [remove5]),
+      ]));
+
+      await syncLocalChecked(Checkpoint(lastOpId: '5', checksums: [
+        BucketChecksum(bucket: 'bucket1', checksum: 13),
+      ]));
+
+      expectAsset1_3();
     });
 
     test('should fail checksum validation', () async {

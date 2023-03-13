@@ -81,7 +81,7 @@ class BucketStorage {
 
     List<Map<String, dynamic>> inserts = [];
     Map<String, Map<String, dynamic>> lastInsert = {};
-    List<Map<String, dynamic>> allEntries = [];
+    List<String> allEntries = [];
 
     List<SqliteOp> clearOps = [];
 
@@ -93,6 +93,7 @@ class BucketStorage {
         'op_id': op.opId,
         'op': op.op!.value,
         'bucket': bucket,
+        'key': op.key,
         'row_type': op.rowType,
         'row_id': op.rowId,
         'data': op.data,
@@ -111,13 +112,13 @@ class BucketStorage {
       }
 
       if (op.op == OpType.put || op.op == OpType.remove) {
-        final key = '${op.rowType}/${op.rowId}';
+        final key = op.key!;
         final prev = lastInsert[key];
         if (prev != null) {
           prev['superseded'] = 1;
         }
         lastInsert[key] = insert;
-        allEntries.add({'type': op.rowType, 'id': op.rowId});
+        allEntries.add(key);
       } else if (op.op == OpType.move) {
         final target = op.parsedData?['target'] as String?;
         if (target != null) {
@@ -147,21 +148,18 @@ class BucketStorage {
     data = NULL
     WHERE oplog.superseded = 0
     AND unlikely(oplog.bucket = ?)
-    AND(oplog.row_type, oplog.row_id) IN(
-        SELECT json_extract(json_each.value,
-        '\$.type'), json_extract(json_each.value, '\$.id')
-    FROM json_each(?)
-    )
+    AND oplog.key IN (SELECT json_each.value FROM json_each(?))
     """, [bucket, jsonEncode(allEntries)]);
 
     var stmt = db.prepare(
-        'INSERT INTO ps_oplog(op_id, op, bucket, row_type, row_id, data, hash, superseded) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
+        'INSERT INTO ps_oplog(op_id, op, bucket, key, row_type, row_id, data, hash, superseded) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)');
     try {
       for (var insert in inserts) {
         stmt.execute([
           insert['op_id'],
           insert['op'],
           insert['bucket'],
+          insert['key'],
           insert['row_type'],
           insert['row_id'],
           insert['data'],
@@ -297,8 +295,8 @@ class BucketStorage {
 
       // QUERY PLAN
       // |--SCAN buckets
-      // |--SEARCH b USING INDEX sqlite_autoindex_oplog_1 (bucket=? AND op_id>?)
-      // |--SEARCH r USING INDEX oplog_by_object (row_type=? AND row_id=?)
+      // |--SEARCH b USING INDEX ps_oplog_by_opid (bucket=? AND op_id>?)
+      // |--SEARCH r USING INDEX ps_oplog_by_row (row_type=? AND row_id=?)
       // `--USE TEMP B-TREE FOR GROUP BY
       // language=DbSqlite
       var stmt = db.prepare(
@@ -744,15 +742,25 @@ class SyncBucketData {
 
 class OplogEntry {
   final String opId;
+
   final OpType? op;
+
+  /// rowType + rowId uniquely identifies an entry in the local database.
   final String? rowType;
   final String? rowId;
+
+  /// Together with rowType and rowId, this uniquely identifies a source entry
+  /// per bucket in the oplog. There may be multiple source entries for a single
+  /// "rowType + rowId" combination.
+  final String? subkey;
+
   final String? data;
   final int checksum;
 
   const OplogEntry(
       {required this.opId,
       required this.op,
+      this.subkey,
       this.rowType,
       this.rowId,
       this.data,
@@ -764,10 +772,18 @@ class OplogEntry {
         rowType = json['object_type'],
         rowId = json['object_id'],
         checksum = json['checksum'],
-        data = json['data'] is String ? json['data'] : jsonEncode(json['data']);
+        data = json['data'] is String ? json['data'] : jsonEncode(json['data']),
+        subkey = json['subkey'] is String ? json['subkey'] : null;
 
   Map<String, dynamic>? get parsedData {
     return data == null ? null : jsonDecode(data!);
+  }
+
+  /// Key to uniquely represent a source entry in a bucket.
+  /// This is used to supersede old entries.
+  /// Required for put and remove ops.
+  String get key {
+    return "$rowType/$rowId/$subkey";
   }
 }
 

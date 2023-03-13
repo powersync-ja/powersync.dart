@@ -179,4 +179,12 @@ final DatabaseMigrations migrations = DatabaseMigrations()
     
     CREATE TABLE ps_crud (id INTEGER PRIMARY KEY AUTOINCREMENT, data TEXT);
   ''');
+  }))
+  ..add(Migration(2, (db) {
+    db.execute("ALTER TABLE ps_oplog ADD column key TEXT");
+    db.execute("UPDATE ps_oplog SET key = row_type || '/' || row_id");
+
+    // Used to supersede old entries per bucket
+    db.execute(
+        'CREATE INDEX ps_oplog_by_key ON ps_oplog (bucket, key) WHERE superseded = 0');
   }));
