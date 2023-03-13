@@ -112,7 +112,7 @@ class BucketStorage {
       }
 
       if (op.op == OpType.put || op.op == OpType.remove) {
-        final key = op.key!;
+        final key = op.key;
         final prev = lastInsert[key];
         if (prev != null) {
           prev['superseded'] = 1;
@@ -781,7 +781,7 @@ class OplogEntry {
 
   /// Key to uniquely represent a source entry in a bucket.
   /// This is used to supersede old entries.
-  /// Required for put and remove ops.
+  /// Relevant for put and remove ops.
   String get key {
     return "$rowType/$rowId/$subkey";
   }
