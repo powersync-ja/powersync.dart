@@ -649,6 +649,40 @@ class BucketStorage {
     return anyData.isNotEmpty;
   }
 
+  /// For tests only. Others should use the version on PowerSyncDatabase.
+  CrudBatch? getCrudBatch({int limit = 100}) {
+    if (!hasCrud()) {
+      return null;
+    }
+
+    final rows =
+        select('SELECT * FROM ps_crud ORDER BY id ASC LIMIT ?', [limit]);
+    List<CrudEntry> all = [];
+    for (var row in rows) {
+      all.add(CrudEntry.fromRow(row));
+    }
+    if (all.isEmpty) {
+      return null;
+    }
+    final last = all[all.length - 1];
+    return CrudBatch(
+        crud: all,
+        haveMore: true,
+        complete: ({String? writeCheckpoint}) async {
+          await writeTransaction((db) {
+            db.execute('DELETE FROM ps_crud WHERE id <= ?', [last.clientId]);
+            if (writeCheckpoint != null &&
+                db.select('SELECT 1 FROM ps_crud LIMIT 1').isEmpty) {
+              db.execute(
+                  'UPDATE ps_buckets SET target_op = $writeCheckpoint WHERE name=\'\$local\'');
+            } else {
+              db.execute(
+                  'UPDATE ps_buckets SET target_op = $maxOpId WHERE name=\'\$local\'');
+            }
+          });
+        });
+  }
+
   /// Note: The asynchronous nature of this is due to this needing a global
   /// lock. The actual database operations are still synchronous, and it
   /// is assumed that multiple functions on this instance won't be called

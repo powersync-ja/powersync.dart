@@ -459,12 +459,14 @@ void main() {
 
       await syncLocalChecked(Checkpoint(
           lastOpId: '4',
+          writeCheckpoint: '4',
           checksums: [BucketChecksum(bucket: 'bucket1', checksum: 7)]));
 
       await bucketStorage.forceCompact();
 
       await syncLocalChecked(Checkpoint(
           lastOpId: '4',
+          writeCheckpoint: '4',
           checksums: [BucketChecksum(bucket: 'bucket1', checksum: 7)]));
 
       final stats = db.select(
@@ -500,6 +502,7 @@ void main() {
       // At this point, we have data in the crud table, and are not able to sync the local db.
       final result = await bucketStorage.syncLocalDatabase(Checkpoint(
           lastOpId: '3',
+          writeCheckpoint: '3',
           checksums: [BucketChecksum(bucket: 'bucket1', checksum: 6)]));
       expect(result, equals(SyncLocalDatabaseResult(ready: false)));
 
@@ -512,6 +515,7 @@ void main() {
       // At this point, the data has been uploaded, but not synced back yet.
       final result3 = await bucketStorage.syncLocalDatabase(Checkpoint(
           lastOpId: '3',
+          writeCheckpoint: '3',
           checksums: [BucketChecksum(bucket: 'bucket1', checksum: 6)]));
       expect(result3, equals(SyncLocalDatabaseResult(ready: false)));
 
@@ -525,10 +529,11 @@ void main() {
       await bucketStorage.saveSyncData(
           SyncDataBatch([SyncBucketData(bucket: 'bucket1', data: [])]));
 
-      // No we have synced the data back (or lack of data in this case),
+      // Now we have synced the data back (or lack of data in this case),
       // so we can do a local sync.
       await syncLocalChecked(Checkpoint(
           lastOpId: '5',
+          writeCheckpoint: '5',
           checksums: [BucketChecksum(bucket: 'bucket1', checksum: 6)]));
 
       // Since the object was not in the sync response, it is deleted.
@@ -547,6 +552,7 @@ void main() {
 
       await syncLocalChecked(Checkpoint(
           lastOpId: '3',
+          writeCheckpoint: '3',
           checksums: [BucketChecksum(bucket: 'bucket1', checksum: 6)]));
 
       // Local save
@@ -560,6 +566,7 @@ void main() {
 
       final result3 = await bucketStorage.syncLocalDatabase(Checkpoint(
           lastOpId: '3',
+          writeCheckpoint: '3',
           checksums: [BucketChecksum(bucket: 'bucket1', checksum: 6)]));
       expect(result3, equals(SyncLocalDatabaseResult(ready: false)));
 
@@ -571,6 +578,7 @@ void main() {
 
       final result4 = await bucketStorage.syncLocalDatabase(Checkpoint(
           lastOpId: '5',
+          writeCheckpoint: '5',
           checksums: [BucketChecksum(bucket: 'bucket1', checksum: 6)]));
       expect(result4, equals(SyncLocalDatabaseResult(ready: false)));
     });
@@ -587,6 +595,7 @@ void main() {
 
       await syncLocalChecked(Checkpoint(
           lastOpId: '3',
+          writeCheckpoint: '3',
           checksums: [BucketChecksum(bucket: 'bucket1', checksum: 6)]));
 
       // Local save
@@ -609,6 +618,7 @@ void main() {
 
       final result4 = await bucketStorage.syncLocalDatabase(Checkpoint(
           lastOpId: '5',
+          writeCheckpoint: '5',
           checksums: [BucketChecksum(bucket: 'bucket1', checksum: 6)]));
       expect(result4, equals(SyncLocalDatabaseResult(ready: false)));
     });
@@ -624,6 +634,7 @@ void main() {
 
       await syncLocalChecked(Checkpoint(
           lastOpId: '3',
+          writeCheckpoint: '3',
           checksums: [BucketChecksum(bucket: 'bucket1', checksum: 6)]));
 
       // Local save
@@ -651,6 +662,7 @@ void main() {
 
       await syncLocalChecked(Checkpoint(
           lastOpId: '5',
+          writeCheckpoint: '5',
           checksums: [BucketChecksum(bucket: 'bucket1', checksum: 11)]));
 
       expect(
