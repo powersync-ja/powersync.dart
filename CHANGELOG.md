@@ -1,3 +1,7 @@
+## 0.2.0-preview.2
+
+- Performance improvements in downloading changes.
+
 ## 0.2.0-preview.1
 
 Breaking change:

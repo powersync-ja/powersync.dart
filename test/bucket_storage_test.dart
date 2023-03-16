@@ -11,7 +11,7 @@ const putAsset1_1 = OplogEntry(
     op: OpType.put,
     rowType: 'assets',
     rowId: 'O1',
-    data: {'description': 'bar'},
+    data: '{"description": "bar"}',
     checksum: 1);
 
 const putAsset2_2 = OplogEntry(
@@ -19,7 +19,7 @@ const putAsset2_2 = OplogEntry(
     op: OpType.put,
     rowType: 'assets',
     rowId: 'O2',
-    data: {'description': 'bar'},
+    data: '{"description": "bar"}',
     checksum: 2);
 
 const putAsset1_3 = OplogEntry(
@@ -27,7 +27,7 @@ const putAsset1_3 = OplogEntry(
     op: OpType.put,
     rowType: 'assets',
     rowId: 'O1',
-    data: {'description': 'bard'},
+    data: '{"description": "bard"}',
     checksum: 3);
 
 const removeAsset1_4 = OplogEntry(
@@ -260,7 +260,10 @@ void main() {
           bucket: 'bucket1',
           data: [
             OplogEntry(
-                opId: '1', op: OpType.move, checksum: 1, data: {'target': '3'})
+                opId: '1',
+                op: OpType.move,
+                checksum: 1,
+                data: '{"target": "3"}')
           ],
         ),
       ]));
@@ -595,7 +598,7 @@ void main() {
                 rowType: 'assets',
                 rowId: 'O3',
                 checksum: 5,
-                data: {'description': 'server updated'})
+                data: '{"description": "server updated"}')
           ],
         ),
       ]));
