@@ -324,12 +324,18 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
     return CrudBatch(
         crud: all,
         haveMore: haveMore,
-        complete: () async {
+        complete: ({String? writeCheckpoint}) async {
           await writeTransaction((db) async {
             await db
                 .execute('DELETE FROM ps_crud WHERE id <= ?', [last.clientId]);
-            await db.execute(
-                'UPDATE ps_buckets SET target_op = $maxOpId WHERE name=\'\$local\'');
+            if (writeCheckpoint != null &&
+                await db.getOptional('SELECT 1 FROM ps_crud LIMIT 1') == null) {
+              await db.execute(
+                  'UPDATE ps_buckets SET target_op = $writeCheckpoint WHERE name=\'\$local\'');
+            } else {
+              await db.execute(
+                  'UPDATE ps_buckets SET target_op = $maxOpId WHERE name=\'\$local\'');
+            }
           });
         });
   }

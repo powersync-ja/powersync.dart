@@ -56,7 +56,7 @@ class DatabaseInit {
     );
     db.createFunction(
       // Postgres compatibility
-      functionName: 'uuid_generate_v4',
+      functionName: 'gen_random_uuid',
       argumentCount: const sqlite.AllowedArgumentCount(0),
       function: (args) => uuid.v4(),
     );

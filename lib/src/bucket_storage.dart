@@ -255,15 +255,16 @@ class BucketStorage {
       }
       return r;
     }
-    final bucketNames = [
-      '\$local',
-      for (final c in checkpoint.checksums) c.bucket
-    ];
+    final bucketNames = [for (final c in checkpoint.checksums) c.bucket];
 
     await writeTransaction((db) {
       db.execute(
           "UPDATE ps_buckets SET last_op = ? WHERE name IN (SELECT json_each.value FROM json_each(?))",
           [checkpoint.lastOpId, jsonEncode(bucketNames)]);
+      if (checkpoint.writeCheckpoint != null) {
+        db.execute("UPDATE ps_buckets SET last_op = ? WHERE name = '\$local'",
+            [checkpoint.writeCheckpoint]);
+      }
     });
 
     final valid = await updateObjectsFromBuckets(checkpoint);
@@ -648,33 +649,6 @@ class BucketStorage {
     return anyData.isNotEmpty;
   }
 
-  CrudBatch? getCrudBatch({int limit = 100}) {
-    if (!hasCrud()) {
-      return null;
-    }
-
-    final rows =
-        select('SELECT * FROM ps_crud ORDER BY id ASC LIMIT ?', [limit]);
-    List<CrudEntry> all = [];
-    for (var row in rows) {
-      all.add(CrudEntry.fromRow(row));
-    }
-    if (all.isEmpty) {
-      return null;
-    }
-    final last = all[all.length - 1];
-    return CrudBatch(
-        crud: all,
-        haveMore: true,
-        complete: () async {
-          await writeTransaction((db) {
-            db.execute('DELETE FROM ps_crud WHERE id <= ?', [last.clientId]);
-            db.execute(
-                'UPDATE ps_buckets SET target_op = $maxOpId WHERE name=\'\$local\'');
-          });
-        });
-  }
-
   /// Note: The asynchronous nature of this is due to this needing a global
   /// lock. The actual database operations are still synchronous, and it
   /// is assumed that multiple functions on this instance won't be called
@@ -796,12 +770,15 @@ class SqliteOp {
 
 class Checkpoint {
   final String lastOpId;
+  final String? writeCheckpoint;
   final List<BucketChecksum> checksums;
 
-  const Checkpoint({required this.lastOpId, required this.checksums});
+  const Checkpoint(
+      {required this.lastOpId, required this.checksums, this.writeCheckpoint});
 
   Checkpoint.fromJson(Map<String, dynamic> json)
       : lastOpId = json['last_op_id'],
+        writeCheckpoint = json['write_checkpoint'],
         checksums = (json['buckets'] as List)
             .map((b) => BucketChecksum.fromJson(b))
             .toList();
