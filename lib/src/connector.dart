@@ -298,7 +298,7 @@ class DevConnector extends PowerSyncBackendConnector {
           'User-Id': credentials.userId ?? '',
           'Authorization': "Token ${credentials.token}"
         },
-        body: jsonEncode({'data': batch.crud}));
+        body: jsonEncode({'data': batch.crud, 'write_checkpoint': true}));
 
     if (response.statusCode == 401) {
       await refreshCredentials();
@@ -310,7 +310,10 @@ class DevConnector extends PowerSyncBackendConnector {
           uri: uri);
     }
 
-    final _ = jsonDecode(response.body);
-    await batch.complete();
+    final body = jsonDecode(response.body);
+    // writeCheckpoint is optional, but reduces latency between writing,
+    // and reading back the same change.
+    final String? writeCheckpoint = body['data']['write_checkpoint'];
+    await batch.complete(writeCheckpoint: writeCheckpoint);
   }
 }

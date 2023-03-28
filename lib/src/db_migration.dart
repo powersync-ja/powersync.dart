@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:powersync/src/database_utils.dart';
+import 'database_utils.dart';
 import 'package:sqlite3/sqlite3.dart' as sqlite;
 
 typedef MigrationFunction = FutureOr<void> Function(sqlite.Database db);

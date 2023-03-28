@@ -56,7 +56,7 @@ class DatabaseInit {
     );
     db.createFunction(
       // Postgres compatibility
-      functionName: 'uuid_generate_v4',
+      functionName: 'gen_random_uuid',
       argumentCount: const sqlite.AllowedArgumentCount(0),
       function: (args) => uuid.v4(),
     );
@@ -179,4 +179,16 @@ final DatabaseMigrations migrations = DatabaseMigrations()
     
     CREATE TABLE ps_crud (id INTEGER PRIMARY KEY AUTOINCREMENT, data TEXT);
   ''');
+  }))
+  ..add(Migration(2, (db) {
+    db.execute("ALTER TABLE ps_oplog ADD column key TEXT");
+
+    // The existing keys aren't valid anymore.
+    // Invalidate checksum for any existing buckets.
+    // This will trigger a complete re-sync, while remaining fully consistent.
+    db.execute("UPDATE ps_oplog SET hash = 0");
+
+    // Used to supersede old entries per bucket
+    db.execute(
+        'CREATE INDEX ps_oplog_by_key ON ps_oplog (bucket, key) WHERE superseded = 0');
   }));

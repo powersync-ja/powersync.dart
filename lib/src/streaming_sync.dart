@@ -110,21 +110,16 @@ class StreamingSyncImplementation {
       await uploadCrud();
       return false;
     } else {
-      final batch = adapter.getCrudBatch(limit: 1);
-      if (batch == null) {
-        // This isolate is the only one triggering
-        final updated = await adapter.updateLocalTarget(() async {
-          return getWriteCheckpoint();
-        });
-        if (updated) {
-          _localPingController.add(null);
-        }
-
-        return true;
+      // This isolate is the only one triggering
+      final updated = await adapter.updateLocalTarget(() async {
+        return getWriteCheckpoint();
+      });
+      if (updated) {
+        _localPingController.add(null);
       }
-    }
 
-    return false;
+      return true;
+    }
   }
 
   Future<String> getWriteCheckpoint() async {
@@ -132,7 +127,7 @@ class StreamingSyncImplementation {
     if (credentials == null) {
       throw AssertionError("Not logged in");
     }
-    final uri = credentials.endpointUri('write-checkpoint.json');
+    final uri = credentials.endpointUri('write-checkpoint2.json');
 
     final response = await _client.get(uri, headers: {
       'Content-Type': 'application/json',
@@ -149,7 +144,7 @@ class StreamingSyncImplementation {
     }
 
     final body = convert.jsonDecode(response.body);
-    return body['data']['checkpoint'] as String;
+    return body['data']['write_checkpoint'] as String;
   }
 
   Future<bool> streamingSyncIteration() async {
@@ -226,7 +221,9 @@ class StreamingSyncImplementation {
         }
 
         final newCheckpoint = Checkpoint(
-            lastOpId: diff.lastOpId, checksums: [...newBuckets.values]);
+            lastOpId: diff.lastOpId,
+            checksums: [...newBuckets.values],
+            writeCheckpoint: diff.writeCheckpoint);
         targetCheckpoint = newCheckpoint;
 
         bucketSet = Set.from(newBuckets.keys);
@@ -362,12 +359,14 @@ class StreamingSyncCheckpointDiff {
   String lastOpId;
   List<BucketChecksum> updatedBuckets;
   List<String> removedBuckets;
+  String? writeCheckpoint;
 
   StreamingSyncCheckpointDiff(
       this.lastOpId, this.updatedBuckets, this.removedBuckets);
 
   StreamingSyncCheckpointDiff.fromJson(Map<String, dynamic> json)
       : lastOpId = json['last_op_id'],
+        writeCheckpoint = json['write_checkpoint'],
         updatedBuckets = (json['updated_buckets'] as List)
             .map((e) => BucketChecksum.fromJson(e))
             .toList(),

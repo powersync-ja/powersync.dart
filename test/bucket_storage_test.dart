@@ -33,7 +33,7 @@ const putAsset1_3 = OplogEntry(
 const removeAsset1_4 = OplogEntry(
     opId: '4', op: OpType.remove, rowType: 'assets', rowId: 'O1', checksum: 4);
 
-const remoteAsset1_5 = OplogEntry(
+const removeAsset1_5 = OplogEntry(
     opId: '5', op: OpType.remove, rowType: 'assets', rowId: 'O1', checksum: 5);
 
 void main() {
@@ -150,7 +150,7 @@ void main() {
     test('should remove when removed from all buckets', () async {
       // When we only have REMOVE left for an object, it must be deleted.
       await bucketStorage.saveSyncData(SyncDataBatch([
-        SyncBucketData(bucket: 'bucket1', data: [putAsset1_3, remoteAsset1_5]),
+        SyncBucketData(bucket: 'bucket1', data: [putAsset1_3, removeAsset1_5]),
         SyncBucketData(bucket: 'bucket2', data: [putAsset1_3, removeAsset1_4])
       ]));
 
@@ -160,6 +160,52 @@ void main() {
       ]));
 
       expectNoAssets();
+    });
+
+    test('should use subkeys', () async {
+      // subkeys cause this to be treated as a separate entity in the oplog,
+      // but same entity in the local db.
+      var put4 = OplogEntry(
+          opId: '4',
+          op: OpType.put,
+          subkey: 'b',
+          rowType: 'assets',
+          rowId: 'O1',
+          data: '{"description": "B"}',
+          checksum: 4);
+
+      var remove5 = OplogEntry(
+          opId: '5',
+          op: OpType.remove,
+          subkey: 'b',
+          rowType: 'assets',
+          rowId: 'O1',
+          checksum: 5);
+
+      await bucketStorage.saveSyncData(SyncDataBatch([
+        SyncBucketData(
+            bucket: 'bucket1', data: [putAsset1_1, putAsset1_3, put4]),
+      ]));
+
+      await syncLocalChecked(Checkpoint(lastOpId: '4', checksums: [
+        BucketChecksum(bucket: 'bucket1', checksum: 8),
+      ]));
+
+      expect(
+          db.select("SELECT id, description, make FROM assets WHERE id = 'O1'"),
+          equals([
+            {'id': 'O1', 'description': 'B', 'make': null}
+          ]));
+
+      await bucketStorage.saveSyncData(SyncDataBatch([
+        SyncBucketData(bucket: 'bucket1', data: [remove5]),
+      ]));
+
+      await syncLocalChecked(Checkpoint(lastOpId: '5', checksums: [
+        BucketChecksum(bucket: 'bucket1', checksum: 13),
+      ]));
+
+      expectAsset1_3();
     });
 
     test('should fail checksum validation', () async {
@@ -413,12 +459,14 @@ void main() {
 
       await syncLocalChecked(Checkpoint(
           lastOpId: '4',
+          writeCheckpoint: '4',
           checksums: [BucketChecksum(bucket: 'bucket1', checksum: 7)]));
 
       await bucketStorage.forceCompact();
 
       await syncLocalChecked(Checkpoint(
           lastOpId: '4',
+          writeCheckpoint: '4',
           checksums: [BucketChecksum(bucket: 'bucket1', checksum: 7)]));
 
       final stats = db.select(
@@ -454,6 +502,7 @@ void main() {
       // At this point, we have data in the crud table, and are not able to sync the local db.
       final result = await bucketStorage.syncLocalDatabase(Checkpoint(
           lastOpId: '3',
+          writeCheckpoint: '3',
           checksums: [BucketChecksum(bucket: 'bucket1', checksum: 6)]));
       expect(result, equals(SyncLocalDatabaseResult(ready: false)));
 
@@ -466,6 +515,7 @@ void main() {
       // At this point, the data has been uploaded, but not synced back yet.
       final result3 = await bucketStorage.syncLocalDatabase(Checkpoint(
           lastOpId: '3',
+          writeCheckpoint: '3',
           checksums: [BucketChecksum(bucket: 'bucket1', checksum: 6)]));
       expect(result3, equals(SyncLocalDatabaseResult(ready: false)));
 
@@ -479,10 +529,11 @@ void main() {
       await bucketStorage.saveSyncData(
           SyncDataBatch([SyncBucketData(bucket: 'bucket1', data: [])]));
 
-      // No we have synced the data back (or lack of data in this case),
+      // Now we have synced the data back (or lack of data in this case),
       // so we can do a local sync.
       await syncLocalChecked(Checkpoint(
           lastOpId: '5',
+          writeCheckpoint: '5',
           checksums: [BucketChecksum(bucket: 'bucket1', checksum: 6)]));
 
       // Since the object was not in the sync response, it is deleted.
@@ -501,6 +552,7 @@ void main() {
 
       await syncLocalChecked(Checkpoint(
           lastOpId: '3',
+          writeCheckpoint: '3',
           checksums: [BucketChecksum(bucket: 'bucket1', checksum: 6)]));
 
       // Local save
@@ -514,6 +566,7 @@ void main() {
 
       final result3 = await bucketStorage.syncLocalDatabase(Checkpoint(
           lastOpId: '3',
+          writeCheckpoint: '3',
           checksums: [BucketChecksum(bucket: 'bucket1', checksum: 6)]));
       expect(result3, equals(SyncLocalDatabaseResult(ready: false)));
 
@@ -525,6 +578,7 @@ void main() {
 
       final result4 = await bucketStorage.syncLocalDatabase(Checkpoint(
           lastOpId: '5',
+          writeCheckpoint: '5',
           checksums: [BucketChecksum(bucket: 'bucket1', checksum: 6)]));
       expect(result4, equals(SyncLocalDatabaseResult(ready: false)));
     });
@@ -541,6 +595,7 @@ void main() {
 
       await syncLocalChecked(Checkpoint(
           lastOpId: '3',
+          writeCheckpoint: '3',
           checksums: [BucketChecksum(bucket: 'bucket1', checksum: 6)]));
 
       // Local save
@@ -563,6 +618,7 @@ void main() {
 
       final result4 = await bucketStorage.syncLocalDatabase(Checkpoint(
           lastOpId: '5',
+          writeCheckpoint: '5',
           checksums: [BucketChecksum(bucket: 'bucket1', checksum: 6)]));
       expect(result4, equals(SyncLocalDatabaseResult(ready: false)));
     });
@@ -578,6 +634,7 @@ void main() {
 
       await syncLocalChecked(Checkpoint(
           lastOpId: '3',
+          writeCheckpoint: '3',
           checksums: [BucketChecksum(bucket: 'bucket1', checksum: 6)]));
 
       // Local save
@@ -605,6 +662,7 @@ void main() {
 
       await syncLocalChecked(Checkpoint(
           lastOpId: '5',
+          writeCheckpoint: '5',
           checksums: [BucketChecksum(bucket: 'bucket1', checksum: 11)]));
 
       expect(

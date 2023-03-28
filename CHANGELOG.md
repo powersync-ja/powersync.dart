@@ -1,3 +1,10 @@
+## 0.2.0-preview.3
+
+- Use new write checkpoint API for reduced latency on data upload.
+- Improve consistency when custom primary keys are used.
+- Fix error on `getOptional()`.
+- Use `gen_random_uuid()` as an alias for `uuid()` (custom function for SQLite).
+
 ## 0.2.0-preview.2
 
 - Performance improvements in downloading changes.

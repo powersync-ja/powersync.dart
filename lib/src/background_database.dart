@@ -158,7 +158,7 @@ class _TransactionContext implements SqliteWriteContext {
   Future<sqlite.Row?> getOptional(String sql,
       [List<Object?> parameters = const []]) async {
     final rows = await getAll(sql, parameters);
-    return rows.elementAt(0);
+    return rows.isEmpty ? null : rows[0];
   }
 
   close() {

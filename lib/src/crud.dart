@@ -11,7 +11,7 @@ class CrudBatch {
   bool haveMore;
 
   /// Call to remove the changes from the local queue, once successfully uploaded.
-  Future<void> Function() complete;
+  Future<void> Function({String? writeCheckpoint}) complete;
 
   CrudBatch(
       {required this.crud, required this.haveMore, required this.complete});
