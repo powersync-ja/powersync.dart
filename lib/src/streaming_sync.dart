@@ -5,9 +5,9 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:http/http.dart';
 
-import './bucket_storage.dart';
-import './connector.dart';
-import './log.dart';
+import 'bucket_storage.dart';
+import 'connector.dart';
+import 'log.dart';
 
 class SyncStatus {
   /// true if currently connected

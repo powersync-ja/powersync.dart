@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:powersync/powersync.dart';
-import 'package:powersync/src/database_utils.dart';
+import 'package:sqlite_async/sqlite_async.dart';
 import 'package:test/test.dart';
 
 import 'util.dart';
@@ -33,18 +33,6 @@ void main() {
     setUp(() async {
       path = dbPath();
       await cleanDb(path: path);
-    });
-
-    test('Basic Setup', () async {
-      final powersync = await setupPowerSync(path: path, schema: testSchema);
-
-      final tables = await getSourceTables(powersync,
-          'SELECT * FROM assets INNER JOIN customers ON assets.customer_id = customers.id');
-      expect(tables, equals({'ps_data__assets', 'ps_data__customers'}));
-
-      final tables2 = await getSourceTables(powersync,
-          'SELECT count() FROM assets INNER JOIN "other_customers" AS oc ON assets.customer_id = oc.id AND assets.make = oc.name');
-      expect(tables2, equals({'ps_data__assets', 'ps_data__other_customers'}));
     });
 
     test('watch', () async {
@@ -141,9 +129,9 @@ void main() {
       expect(
           events,
           equals([
-            TableUpdate.empty(),
-            TableUpdate.single('assets'),
-            TableUpdate.single('assets')
+            UpdateNotification.empty(),
+            UpdateNotification.single('assets'),
+            UpdateNotification.single('assets')
           ]));
     });
   });

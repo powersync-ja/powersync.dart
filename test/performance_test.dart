@@ -34,8 +34,8 @@ void main() {
 
     // Manual tests
     test('Insert Performance 1 - direct', () async {
-      final db = PowerSyncDatabase(
-          schema: pschema, path: path, sqliteSetup: testSetup, maxReaders: 3);
+      final db = PowerSyncDatabase.withFactory(TestOpenFactory(path: path),
+          schema: pschema);
       await db.initialize();
       final timer = Stopwatch()..start();
 
@@ -50,8 +50,8 @@ void main() {
     });
 
     test('Insert Performance 2 - writeTransaction', () async {
-      final db = PowerSyncDatabase(
-          schema: pschema, path: path, sqliteSetup: testSetup, maxReaders: 3);
+      final db = PowerSyncDatabase.withFactory(TestOpenFactory(path: path),
+          schema: pschema);
       await db.initialize();
       final timer = Stopwatch()..start();
 
@@ -68,13 +68,12 @@ void main() {
     });
 
     test('Insert Performance 3a - computeWithDatabase', () async {
-      final db = PowerSyncDatabase(
-          schema: pschema, path: path, sqliteSetup: testSetup, maxReaders: 3);
+      final db = PowerSyncDatabase.withFactory(TestOpenFactory(path: path),
+          schema: pschema);
       await db.initialize();
       final timer = Stopwatch()..start();
 
-      final con = db.connectionFactory().openConnection(updates: db.updates);
-      await con.computeWithDatabase((db) async {
+      await db.computeWithDatabase((db) async {
         for (var i = 0; i < 1000; i++) {
           db.execute(
               'INSERT INTO customers(id, name, email) VALUES(uuid(), ?, ?)',
@@ -88,19 +87,21 @@ void main() {
     });
 
     test('Insert Performance 3b - prepared statement', () async {
-      final db = PowerSyncDatabase(
-          schema: pschema, path: path, sqliteSetup: testSetup, maxReaders: 3);
+      final db = PowerSyncDatabase.withFactory(TestOpenFactory(path: path),
+          schema: pschema);
       await db.initialize();
       final timer = Stopwatch()..start();
 
-      final con = db.connectionFactory().openConnection(updates: db.updates);
-      await con.computeWithDatabase((db) async {
+      await db.computeWithDatabase((db) async {
         var stmt = db.prepare(
             'INSERT INTO customers(id, name, email) VALUES(uuid(), ?, ?)');
-        for (var i = 0; i < 1000; i++) {
-          stmt.execute(['Test User', 'user@example.org']);
+        try {
+          for (var i = 0; i < 1000; i++) {
+            stmt.execute(['Test User', 'user@example.org']);
+          }
+        } finally {
+          stmt.dispose();
         }
-        stmt.dispose();
       });
 
       print("Completed synchronous inserts prepared in ${timer.elapsed}");
@@ -110,21 +111,23 @@ void main() {
 
     test('Insert Performance 3c - prepared statement, dart-generated ids',
         () async {
-      final db = PowerSyncDatabase(
-          schema: pschema, path: path, sqliteSetup: testSetup, maxReaders: 3);
+      final db = PowerSyncDatabase.withFactory(TestOpenFactory(path: path),
+          schema: pschema);
       await db.initialize();
       // Test to exclude the function overhead time of generating uuids
       final timer = Stopwatch()..start();
 
-      final con = db.connectionFactory().openConnection(updates: db.updates);
-      await con.computeWithDatabase((db) async {
+      await db.computeWithDatabase((db) async {
         var ids = List.generate(1000, (index) => uuid.v4());
         var stmt = db
             .prepare('INSERT INTO customers(id, name, email) VALUES(?, ?, ?)');
-        for (var id in ids) {
-          stmt.execute([id, 'Test User', 'user@example.org']);
+        try {
+          for (var id in ids) {
+            stmt.execute([id, 'Test User', 'user@example.org']);
+          }
+        } finally {
+          stmt.dispose();
         }
-        stmt.dispose();
       });
 
       print("Completed synchronous inserts prepared in ${timer.elapsed}");
@@ -133,16 +136,15 @@ void main() {
     });
     test('Insert Performance 3d - prepared statement, pre-generated ids',
         () async {
-      final db = PowerSyncDatabase(
-          schema: pschema, path: path, sqliteSetup: testSetup, maxReaders: 3);
+      final db = PowerSyncDatabase.withFactory(TestOpenFactory(path: path),
+          schema: pschema);
       await db.initialize();
       // Test to completely exclude time taken to generate uuids
       var ids = List.generate(1000, (index) => uuid.v4());
 
       final timer = Stopwatch()..start();
 
-      final con = db.connectionFactory().openConnection(updates: db.updates);
-      await con.computeWithDatabase((db) async {
+      await db.computeWithDatabase((db) async {
         var stmt = db
             .prepare('INSERT INTO customers(id, name, email) VALUES(?, ?, ?)');
         for (var id in ids) {
@@ -157,8 +159,8 @@ void main() {
     });
 
     test('Insert Performance 4 - pipelined', () async {
-      final db = PowerSyncDatabase(
-          schema: pschema, path: path, sqliteSetup: testSetup, maxReaders: 3);
+      final db = PowerSyncDatabase.withFactory(TestOpenFactory(path: path),
+          schema: pschema);
       await db.initialize();
       final timer = Stopwatch()..start();
 
@@ -178,8 +180,8 @@ void main() {
     });
 
     test('Insert Performance 5 - executeBatch', () async {
-      final db = PowerSyncDatabase(
-          schema: pschema, path: path, sqliteSetup: testSetup, maxReaders: 3);
+      final db = PowerSyncDatabase.withFactory(TestOpenFactory(path: path),
+          schema: pschema);
       await db.initialize();
       final timer = Stopwatch()..start();
 

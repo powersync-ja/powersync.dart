@@ -1,4 +1,4 @@
-import 'package:powersync/src/schema_logic.dart';
+import 'schema_logic.dart';
 
 /// The schema used by the database.
 ///
