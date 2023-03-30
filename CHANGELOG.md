@@ -1,3 +1,28 @@
+## 0.3.0-preview.4
+
+The low-level SQLite-related code is extracted into a separate [sqlite_async](https://pub.dev/packages/sqlite_async) package.
+`sqlite_async` handles the the database connection, connection pooling, Isolate management, queries,
+transactions, default options, watching, and migrations.
+
+The `powersync` package now just adds automatic sync and dynamic schema management on top. This makes it easy to switch between
+using PowerSync, or just using a local database directly.
+
+Breaking changes:
+ - `TableUpdate` renamed to `UpdateNotification`.
+ - `PowerSyncDatabase.connectionFactory()` renamed to `PowerSyncDatabase.isolateConnectionFactory()`,
+   and should only be used to pass the connection to a different isolate.
+ - All tables apart from `ps_crud` are dropped and re-created when upgrading to this version.
+   This will not result in any data loss, but a full re-sync is required.
+
+Fixes:
+ - Fix queries not watching the correct tables in some cases.
+ - Fix performance issues on bulk insert/update/delete.
+
+Other changes:
+ - Views and triggers are now persisted in the database, instead of using temporary views.
+    - This allows reading the views using other tools.
+    - It is still not possible to update the views using other tools, since triggers use the custom `powersync_diff` function to compute changes.
+
 ## 0.2.0-preview.3
 
 - Use new write checkpoint API for reduced latency on data upload.

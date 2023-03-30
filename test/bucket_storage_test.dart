@@ -1,7 +1,7 @@
 import 'package:powersync/powersync.dart';
 import 'package:powersync/src/bucket_storage.dart';
-import 'package:powersync/src/mutex.dart';
-import 'package:sqlite3/sqlite3.dart' as sqlite;
+import 'package:sqlite_async/sqlite3.dart' as sqlite;
+import 'package:sqlite_async/mutex.dart';
 import 'package:test/test.dart';
 
 import 'util.dart';
@@ -384,8 +384,8 @@ void main() {
       // Re-initialize with empty database
       await cleanDb(path: path);
 
-      powersync = PowerSyncDatabase(
-          schema: const Schema([]), path: path, sqliteSetup: testSetup);
+      powersync = PowerSyncDatabase.withFactory(TestOpenFactory(path: path),
+          schema: const Schema([]));
       await powersync.initialize();
       db = await setupSqlite(powersync: powersync);
       bucketStorage = BucketStorage(db, mutex: Mutex());
@@ -406,10 +406,11 @@ void main() {
               e is sqlite.SqliteException &&
               e.message.contains('no such table')));
 
+      await powersync.close();
+
       // Now open another instance with new schema
-      // TODO: close existing database when we have an API for that
-      powersync =
-          PowerSyncDatabase(schema: schema, path: path, sqliteSetup: testSetup);
+      powersync = PowerSyncDatabase.withFactory(TestOpenFactory(path: path),
+          schema: schema);
       db = await setupSqlite(powersync: powersync);
 
       expectAsset1_3();
@@ -429,10 +430,11 @@ void main() {
 
       expectAsset1_3();
 
+      await powersync.close();
+
       // Now open another instance with new schema
-      // TODO: close existing database when we have an API for that
-      powersync = PowerSyncDatabase(
-          schema: const Schema([]), path: path, sqliteSetup: testSetup);
+      powersync = PowerSyncDatabase.withFactory(TestOpenFactory(path: path),
+          schema: const Schema([]));
       db = await setupSqlite(powersync: powersync);
       expect(
           () => db.select('SELECT * FROM assets'),
@@ -441,8 +443,8 @@ void main() {
               e.message.contains('no such table')));
 
       // Add schema again
-      powersync =
-          PowerSyncDatabase(schema: schema, path: path, sqliteSetup: testSetup);
+      powersync = PowerSyncDatabase.withFactory(TestOpenFactory(path: path),
+          schema: schema);
       db = await setupSqlite(powersync: powersync);
 
       expectAsset1_3();

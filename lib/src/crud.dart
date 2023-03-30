@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:sqlite3/sqlite3.dart' as sqlite;
+import 'package:sqlite_async/sqlite3.dart' as sqlite;
 
 /// A batch of client-side changes.
 class CrudBatch {

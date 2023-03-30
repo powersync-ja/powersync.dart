@@ -2,35 +2,20 @@ import 'dart:async';
 import 'dart:isolate';
 
 import 'package:logging/logging.dart';
-import 'package:sqlite3/sqlite3.dart' as sqlite;
+import 'package:sqlite_async/sqlite3.dart' as sqlite;
+import 'package:sqlite_async/sqlite_async.dart';
 
-import './log.dart';
-import './connection_pool.dart';
-import './connector.dart';
-import './background_database.dart';
-import './sqlite_connection.dart';
-import './bucket_storage.dart';
-import './database_init.dart';
-import './isolate_completer.dart';
-import './mutex.dart';
-import './schema.dart';
-import './schema_logic.dart';
-import './streaming_sync.dart';
-import './throttle.dart';
-import './crud.dart';
-
-/// Advanced: Define custom setup for each SQLite connection.
-class SqliteConnectionSetup {
-  final FutureOr<void> Function() _setup;
-
-  /// The setup parameter is called every time a database connection is opened.
-  /// This can be used to configure dynamic library loading if required.
-  const SqliteConnectionSetup(FutureOr<void> Function() setup) : _setup = setup;
-
-  Future<void> setup() async {
-    await _setup();
-  }
-}
+import 'bucket_storage.dart';
+import 'connector.dart';
+import 'crud.dart';
+import 'isolate_completer.dart';
+import 'log.dart';
+import 'migrations.dart';
+import 'open_factory.dart';
+import 'powersync_update_notification.dart';
+import 'schema.dart';
+import 'schema_logic.dart';
+import 'streaming_sync.dart';
 
 /// A PowerSync managed database.
 ///
@@ -42,24 +27,16 @@ class SqliteConnectionSetup {
 /// All changes to local tables are automatically recorded, whether connected
 /// or not. Once connected, the changes are uploaded.
 class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
-  /// Database path.
-  final String path;
-
   /// Schema used for the local database.
   final Schema schema;
 
-  /// Maximum number of concurrent read transactions.
-  final int maxReaders;
-
-  /// Global lock to serialize write transactions.
-  final Mutex mutex = Mutex.shared();
-
-  /// Advanced: Custom logic to execute in each database isolate.
-  final SqliteConnectionSetup? sqliteSetup;
-
-  /// Use this stream to subscribe to notifications of updates to tables.
-  @override
-  late final Stream<TableUpdate> updates;
+  /// The underlying database.
+  ///
+  /// For the most part, behavior is the same whether querying on the underlying
+  /// database, or on [PowerSyncDatabase]. The main difference is in update notifications:
+  /// the underlying database reports updates to the underlying tables, while
+  /// [PowerSyncDatabase] reports updates to the higher-level views.
+  final SqliteDatabase database;
 
   /// Current connection status.
   SyncStatus currentStatus =
@@ -68,23 +45,23 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
   /// Use this stream to subscribe to connection status updates.
   late final Stream<SyncStatus> statusStream;
 
-  final StreamController<TableUpdate> _updatesController =
-      StreamController.broadcast();
-
-  final ReceivePort _eventsPort = ReceivePort();
   final StreamController<SyncStatus> _statusStreamController =
       StreamController<SyncStatus>.broadcast();
 
-  late final SqliteConnectionImpl _internalConnection;
-  late final SqliteConnectionPool _pool;
-  late final Future<void> _initialized;
-  late List<String> _initializeStatements;
+  /// Broadcast stream that is notified of any table updates.
+  ///
+  /// Unlike in [SqliteDatabase.updates], the tables reported here are the
+  /// higher-level views as defined in the [Schema], and exclude the low-level
+  /// PowerSync tables.
+  @override
+  late final Stream<UpdateNotification> updates;
 
   SendPort? _streamingSyncPort;
+  late Future<void> _initialized;
 
-  /// Open a PowerSyncDatabase.
+  /// Open a [PowerSyncDatabase].
   ///
-  /// Only a single PowerSyncDatabase per [path] should be opened at a time.
+  /// Only a single [PowerSyncDatabase] per [path] should be opened at a time.
   ///
   /// The specified [schema] is used for the database.
   ///
@@ -94,72 +71,56 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
   /// from the last committed write transaction.
   ///
   /// A maximum of [maxReaders] concurrent read transactions are allowed.
+  factory PowerSyncDatabase(
+      {required Schema schema,
+      required String path,
+      int maxReaders = SqliteDatabase.defaultMaxReaders,
+      @Deprecated("Use [PowerSyncDatabase.withFactory] instead")
+          // ignore: deprecated_member_use_from_same_package
+          SqliteConnectionSetup? sqliteSetup}) {
+    // ignore: deprecated_member_use_from_same_package
+    var factory = PowerSyncOpenFactory(path: path, sqliteSetup: sqliteSetup);
+    return PowerSyncDatabase.withFactory(factory, schema: schema);
+  }
+
+  /// Open a [PowerSyncDatabase] with a [PowerSyncOpenFactory].
   ///
-  /// Advanced: Use [sqliteSetup] to execute custom initialization logic in
-  /// each database isolate.
-  PowerSyncDatabase(
-      {required this.schema,
-      required this.path,
-      this.maxReaders = 5,
-      this.sqliteSetup}) {
-    updates = _updatesController.stream;
-    statusStream = _statusStreamController.stream;
-    _internalConnection = _openPrimaryConnection(debugName: 'powersync-writer');
-    _pool = SqliteConnectionPool(_dbref(),
-        updates: updates,
-        writeConnection: _internalConnection,
-        debugName: 'powersync',
-        maxReaders: maxReaders);
+  /// The factory determines which database file is opened, as well as any
+  /// additional logic to run inside the database isolate before or after opening.
+  ///
+  /// Subclass [PowerSyncOpenFactory] to add custom logic to this process.
+  factory PowerSyncDatabase.withFactory(PowerSyncOpenFactory openFactory,
+      {required Schema schema,
+      int maxReaders = SqliteDatabase.defaultMaxReaders}) {
+    final db = SqliteDatabase.withFactory(openFactory, maxReaders: maxReaders);
+    return PowerSyncDatabase.withDatabase(schema: schema, database: db);
+  }
 
-    _listenForEvents();
-
+  /// Open a PowerSyncDatabase on an existing [SqliteDatabase].
+  ///
+  /// Migrations are run on the database when this constructor is called.
+  PowerSyncDatabase.withDatabase(
+      {required this.schema, required this.database}) {
+    updates = database.updates
+        .map((update) =>
+            PowerSyncUpdateNotification.fromUpdateNotification(update))
+        .where((update) => update.isNotEmpty)
+        .cast<UpdateNotification>();
     _initialized = _init();
   }
 
   Future<void> _init() async {
-    _initializeStatements =
-        await _initializePrimaryDatabase(_internalConnection, mutex, schema);
+    statusStream = _statusStreamController.stream;
+    await database.initialize();
+    await migrations.migrate(database);
+    await updateSchemaInIsolate(database, schema);
   }
 
   /// Wait for initialization to complete.
   ///
   /// While initializing is automatic, this helps to catch and report initialization errors.
-  Future<void> initialize() async {
-    await _initialized;
-  }
-
-  void _listenForEvents() {
-    TableUpdate? updates;
-
-    _eventsPort.listen((message) async {
-      if (message is List) {
-        String type = message[0];
-        if (type == 'update') {
-          sqlite.SqliteUpdate event = message[1];
-          String? friendlyName = friendlyTableName(event.tableName);
-          if (friendlyName != null) {
-            if (updates == null) {
-              updates = TableUpdate({friendlyName});
-            } else {
-              updates = TableUpdate(
-                  {for (var table in updates!.tables) table, friendlyName});
-            }
-          }
-          mutex.lock(() async {
-            if (updates != null) {
-              _updatesController.add(updates!);
-              updates = null;
-            }
-          });
-        } else if (type == 'init-db') {
-          PortCompleter<List<String>> completer = message[1];
-          await completer.handle(() async {
-            await _initialized;
-            return _initializeStatements;
-          });
-        }
-      }
-    });
+  Future<void> initialize() {
+    return _initialized;
   }
 
   /// Connect to the PowerSync service, and keep the databases in sync.
@@ -168,9 +129,11 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
   ///
   /// Status changes are reported on [statusStream].
   connect({required PowerSyncBackendConnector connector}) async {
-    final dbref = _dbref();
+    await _initialized;
+    final dbref = database.isolateConnectionFactory();
     ReceivePort rPort = ReceivePort();
     disconnect();
+    StreamSubscription? updateSubscription;
     rPort.listen((data) async {
       if (data is List) {
         String action = data[0];
@@ -186,9 +149,9 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
         } else if (action == 'init') {
           SendPort port = data[1];
           _streamingSyncPort = port;
-          updates
-              .transform(throttleTransformer(const Duration(milliseconds: 10)))
-              .listen((event) {
+          var throttled = UpdateNotification.throttleStream(
+              updates, const Duration(milliseconds: 10));
+          updateSubscription = throttled.listen((event) {
             port.send(['update']);
           });
         } else if (action == 'uploadCrud') {
@@ -202,6 +165,7 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
           _setStatus(SyncStatus(
               connected: false, lastSyncedAt: currentStatus.lastSyncedAt));
           rPort.close();
+          updateSubscription?.cancel();
         } else if (action == 'log') {
           LogRecord record = data[1];
           log.log(
@@ -211,7 +175,7 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
     });
 
     Isolate.spawn(_powerSyncDatabaseIsolate,
-        _PowerSyncDatabaseIsolateArgs(rPort.sendPort, dbref, mutex),
+        _PowerSyncDatabaseIsolateArgs(rPort.sendPort, dbref),
         debugName: 'PowerSyncDatabase');
   }
 
@@ -255,31 +219,16 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
     });
   }
 
-  SqliteConnectionImpl _openPrimaryConnection({String? debugName}) {
-    return SqliteConnectionImpl(_dbref(primary: true),
-        updates: updates, debugName: debugName);
-  }
-
-  /// Advanced: Get a connection factory.
-  ///
-  /// This factory can be passed to other isolates, to allow querying from
-  /// different isolates.
-  SqliteConnectionFactory connectionFactory() {
-    return _dbref();
-  }
-
-  SqliteConnectionFactory _dbref({bool primary = false}) {
-    return SqliteConnectionFactory._(
-        path: path,
-        port: _eventsPort.sendPort,
-        mutex: mutex,
-        primary: primary,
-        setup: sqliteSetup);
-  }
-
   /// Whether a connection to the PowerSync service is currently open.
   bool get connected {
     return currentStatus.connected;
+  }
+
+  /// A connection factory that can be passed to different isolates.
+  ///
+  /// Use this to access the database in background isolates.
+  IsolateConnectionFactory isolateConnectionFactory() {
+    return database.isolateConnectionFactory();
   }
 
   /// Get upload queue size estimate and count.
@@ -340,46 +289,33 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
         });
   }
 
-  /// Open a read-only transaction.
+  /// Close the database, releasing resources.
   ///
-  /// Up to [maxReaders] read transactions can run concurrently.
-  /// After that, read transactions are queued.
-  ///
-  /// Read transactions can run concurrently to a write transaction.
-  ///
-  /// Changes from any write transaction are not visible to read transactions
-  /// started before it.
+  /// Also [disconnect]s any active connection.
   @override
-  Future<T> readTransaction<T>(
-      Future<T> Function(SqliteReadContext tx) callback,
-      {Duration? lockTimeout}) {
-    return _pool.readTransaction(callback, lockTimeout: lockTimeout);
+  Future<void> close() async {
+    disconnect();
+    await database.close();
   }
 
-  /// Open a read-write transaction.
+  /// Takes a read lock, without starting a transaction.
   ///
-  /// Only a single write transaction can run at a time - any concurrent
-  /// transactions are queued.
-  ///
-  /// The write transaction is automatically committed when the callback finishes,
-  /// or rolled back on any error.
-  @override
-  Future<T> writeTransaction<T>(
-      Future<T> Function(SqliteWriteContext tx) callback,
-      {Duration? lockTimeout}) {
-    return _pool.writeTransaction(callback, lockTimeout: lockTimeout);
-  }
-
+  /// In most cases, [readTransaction] should be used instead.
   @override
   Future<T> readLock<T>(Future<T> Function(SqliteReadContext tx) callback,
-      {Duration? lockTimeout}) {
-    return _pool.readLock(callback, lockTimeout: lockTimeout);
+      {Duration? lockTimeout}) async {
+    await _initialized;
+    return database.readLock(callback);
   }
 
+  /// Takes a global lock, without starting a transaction.
+  ///
+  /// In most cases, [writeTransaction] should be used instead.
   @override
   Future<T> writeLock<T>(Future<T> Function(SqliteWriteContext tx) callback,
-      {Duration? lockTimeout}) {
-    return _pool.writeLock(callback, lockTimeout: lockTimeout);
+      {Duration? lockTimeout}) async {
+    await _initialized;
+    return database.writeLock(callback);
   }
 }
 
@@ -403,84 +339,11 @@ class UploadQueueStats {
   }
 }
 
-/// Advanced: Factory that can safely be serialized and sent to different isolates to
-/// open connections in multiple isolates.
-///
-/// Not required in typical use cases.
-class SqliteConnectionFactory {
-  String path;
-  SendPort port;
-  Mutex mutex;
-  bool primary;
-  SqliteConnectionSetup? setup;
-
-  SqliteConnectionFactory._(
-      {required this.path,
-      required this.port,
-      required this.mutex,
-      this.setup,
-      this.primary = false});
-
-  /// Open a SQLite database connection.
-  /// A dedicated Isolate is spawned for running the actual queries.
-  SqliteConnection openConnection(
-      {String? debugName,
-      Stream<TableUpdate>? updates,
-      bool readOnly = false}) {
-    return SqliteConnectionImpl(this,
-        debugName: debugName, updates: updates, readOnly: readOnly);
-  }
-
-  /// Open a raw sqlite.Database, providing direct access to the SQLite APIs.
-  ///
-  /// The APIs are low-level, and does not include automatic app-level locking.
-  /// Use with care - this can easily result in DATABASE_LOCKED or other errors.
-  /// All operations on this database are synchronous, and blocks the current
-  /// isolate.
-  Future<sqlite.Database> openRawDatabase({bool readOnly = false}) async {
-    if (setup != null) {
-      await setup!.setup();
-    }
-    List<String> initializeStatements = [];
-    if (!primary) {
-      var initialized = IsolateResult<List<String>>();
-      port.send(['init-db', initialized.completer]);
-      initializeStatements = await initialized.future;
-    }
-
-    DatabaseInit ps;
-    if (primary) {
-      ps = DatabaseInitPrimary(path, mutex: mutex);
-    } else {
-      ps = DatabaseInit(path);
-    }
-    sqlite.OpenMode mode;
-    if (primary) {
-      mode = sqlite.OpenMode.readWriteCreate;
-    } else if (readOnly) {
-      mode = sqlite.OpenMode.readOnly;
-    } else {
-      mode = sqlite.OpenMode.readWrite;
-    }
-
-    final db = await ps.open(mode: mode);
-    for (var statement in initializeStatements) {
-      db.execute(statement);
-    }
-
-    db.updates.listen((event) {
-      port.send(['update', event]);
-    });
-    return db;
-  }
-}
-
 class _PowerSyncDatabaseIsolateArgs {
   SendPort sPort;
-  SqliteConnectionFactory dbRef;
-  Mutex mutex;
+  IsolateConnectionFactory dbRef;
 
-  _PowerSyncDatabaseIsolateArgs(this.sPort, this.dbRef, this.mutex);
+  _PowerSyncDatabaseIsolateArgs(this.sPort, this.dbRef);
 }
 
 Future<void> _powerSyncDatabaseIsolate(
@@ -488,6 +351,7 @@ Future<void> _powerSyncDatabaseIsolate(
   final sPort = args.sPort;
   ReceivePort rPort = ReceivePort();
   StreamController updateController = StreamController.broadcast();
+  final upstreamDbClient = args.dbRef.upstreamPort.open();
 
   sqlite.Database? db;
   rPort.listen((message) {
@@ -498,6 +362,7 @@ Future<void> _powerSyncDatabaseIsolate(
       } else if (action == 'close') {
         db?.dispose();
         updateController.close();
+        upstreamDbClient.close();
         Isolate.current.kill();
       }
     }
@@ -509,7 +374,9 @@ Future<void> _powerSyncDatabaseIsolate(
   // This only takes effect in this isolate.
   Logger.root.level = Level.ALL;
   log.onRecord.listen((record) {
-    sPort.send(["log", record]);
+    var copy = LogRecord(record.level, record.message, record.loggerName,
+        record.error, record.stackTrace);
+    sPort.send(["log", copy]);
   });
 
   Future<PowerSyncCredentials?> loadCredentials() async {
@@ -530,25 +397,37 @@ Future<void> _powerSyncDatabaseIsolate(
     return r.future;
   }
 
-  db = await args.dbRef.openRawDatabase();
-  final storage = BucketStorage(db, mutex: args.mutex);
+  db = await args.dbRef.openFactory
+      .open(SqliteOpenOptions(primaryConnection: false, readOnly: false));
+  final mutex = args.dbRef.mutex.open();
+  final storage = BucketStorage(db, mutex: mutex);
   final sync = StreamingSyncImplementation(
       adapter: storage,
       credentialsCallback: loadCredentials,
       invalidCredentialsCallback: invalidateCredentials,
       uploadCrud: uploadCrud,
-      updateStream: updateController.stream
-          .transform(throttleTransformer(const Duration(milliseconds: 10))));
+      updateStream: updateController.stream);
   sync.streamingSync();
   sync.statusStream.listen((event) {
     sPort.send(['status', event]);
   });
-}
 
-Future<List<String>> _initializePrimaryDatabase(
-    SqliteConnection asyncdb, Mutex mutex, Schema schema) async {
-  return await asyncdb.computeWithDatabase((db) async {
-    List<String> ops = updateSchema(db, schema);
-    return ops;
+  Timer? updateDebouncer;
+  Set<String> updatedTables = {};
+
+  void maybeFireUpdates() {
+    if (updatedTables.isNotEmpty) {
+      upstreamDbClient.fire(UpdateNotification(updatedTables));
+      updatedTables.clear();
+      updateDebouncer?.cancel();
+      updateDebouncer = null;
+    }
+  }
+
+  db.updates.listen((event) {
+    updatedTables.add(event.tableName);
+
+    updateDebouncer ??=
+        Timer(const Duration(milliseconds: 10), maybeFireUpdates);
   });
 }

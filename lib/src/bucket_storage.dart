@@ -2,15 +2,14 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:collection/collection.dart';
-import 'package:powersync/src/database_utils.dart';
-import 'package:powersync/src/uuid.dart';
-import 'package:sqlite3/common.dart';
-import 'package:sqlite3/sqlite3.dart' as sqlite;
+import 'package:sqlite_async/sqlite3.dart' as sqlite;
+import 'package:sqlite_async/mutex.dart';
 
-import './crud.dart';
-import './log.dart';
-import './mutex.dart';
-import './schema_logic.dart';
+import 'crud.dart';
+import 'database_utils.dart';
+import 'log.dart';
+import 'schema_logic.dart';
+import 'uuid.dart';
 
 const compactOperationInterval = 1000;
 
@@ -546,7 +545,7 @@ class BucketStorage {
       await writeTransaction((db) {
         db.select('PRAGMA wal_checkpoint(TRUNCATE)');
       });
-    } on SqliteException catch (e) {
+    } on sqlite.SqliteException catch (e) {
       // Ignore SQLITE_BUSY
       if (e.resultCode == 5) {
         // Ignore

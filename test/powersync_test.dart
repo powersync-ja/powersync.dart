@@ -2,7 +2,7 @@ import 'dart:math';
 
 import 'package:powersync/powersync.dart';
 import 'package:test/test.dart';
-import 'package:sqlite3/sqlite3.dart' as sqlite;
+import 'package:sqlite_async/sqlite3.dart' as sqlite;
 import 'util.dart';
 
 void main() {
@@ -40,8 +40,8 @@ void main() {
 
     // Manual test
     test('Concurrency', () async {
-      final db = PowerSyncDatabase(
-          schema: schema, path: path, sqliteSetup: testSetup, maxReaders: 3);
+      final db = PowerSyncDatabase.withFactory(TestOpenFactory(path: path),
+          schema: schema, maxReaders: 3);
       await db.initialize();
 
       print("${DateTime.now()} start");
