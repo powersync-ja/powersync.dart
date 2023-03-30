@@ -30,6 +30,12 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
   /// Schema used for the local database.
   final Schema schema;
 
+  /// The underlying database.
+  ///
+  /// For the most part, behavior is the same whether querying on the underlying
+  /// database, or on [PowerSyncDatabase]. The main difference is in update notifications:
+  /// the underlying database reports updates to the underlying tables, while
+  /// [PowerSyncDatabase] reports updates to the higher-level views.
   final SqliteDatabase database;
 
   /// Current connection status.
@@ -42,15 +48,20 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
   final StreamController<SyncStatus> _statusStreamController =
       StreamController<SyncStatus>.broadcast();
 
+  /// Broadcast stream that is notified of any table updates.
+  ///
+  /// Unlike in [SqliteDatabase.updates], the tables reported here are the
+  /// higher-level views as defined in the [Schema], and exclude the low-level
+  /// PowerSync tables.
   @override
   late final Stream<UpdateNotification> updates;
 
   SendPort? _streamingSyncPort;
   late Future<void> _initialized;
 
-  /// Open a PowerSyncDatabase.
+  /// Open a [PowerSyncDatabase].
   ///
-  /// Only a single PowerSyncDatabase per [path] should be opened at a time.
+  /// Only a single [PowerSyncDatabase] per [path] should be opened at a time.
   ///
   /// The specified [schema] is used for the database.
   ///
@@ -72,6 +83,12 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
     return PowerSyncDatabase.withFactory(factory, schema: schema);
   }
 
+  /// Open a [PowerSyncDatabase] with a [PowerSyncOpenFactory].
+  ///
+  /// The factory determines which database file is opened, as well as any
+  /// additional logic to run inside the database isolate before or after opening.
+  ///
+  /// Subclass [PowerSyncOpenFactory] to add custom logic to this process.
   factory PowerSyncDatabase.withFactory(PowerSyncOpenFactory openFactory,
       {required Schema schema,
       int maxReaders = SqliteDatabase.defaultMaxReaders}) {
@@ -272,8 +289,12 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
         });
   }
 
+  /// Close the database, releasing resources.
+  ///
+  /// Also [disconnect]s any active connection.
   @override
   Future<void> close() async {
+    disconnect();
     await database.close();
   }
 
