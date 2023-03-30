@@ -1,3 +1,7 @@
+## 0.3.0-preview.5
+
+- Link github repository.
+
 ## 0.3.0-preview.4
 
 The low-level SQLite-related code is extracted into a separate [sqlite_async](https://pub.dev/packages/sqlite_async) package.
