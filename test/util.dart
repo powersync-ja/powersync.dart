@@ -42,7 +42,6 @@ Future<PowerSyncDatabase> setupPowerSync(
     {required String path, Schema? schema}) async {
   final db = PowerSyncDatabase.withFactory(TestOpenFactory(path: path),
       schema: schema ?? defaultSchema);
-  await db.initialize();
   return db;
 }
 

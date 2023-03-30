@@ -97,7 +97,6 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
     await database.initialize();
     await migrations.migrate(database);
     await updateSchemaInIsolate(database, schema);
-    await updateSchemaInIsolate(database, schema);
   }
 
   /// Wait for initialization to complete.
@@ -113,6 +112,7 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
   ///
   /// Status changes are reported on [statusStream].
   connect({required PowerSyncBackendConnector connector}) async {
+    await _initialized;
     final dbref = database.isolateConnectionFactory();
     ReceivePort rPort = ReceivePort();
     disconnect();
@@ -282,7 +282,8 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
   /// In most cases, [readTransaction] should be used instead.
   @override
   Future<T> readLock<T>(Future<T> Function(SqliteReadContext tx) callback,
-      {Duration? lockTimeout}) {
+      {Duration? lockTimeout}) async {
+    await _initialized;
     return database.readLock(callback);
   }
 
@@ -291,7 +292,8 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
   /// In most cases, [writeTransaction] should be used instead.
   @override
   Future<T> writeLock<T>(Future<T> Function(SqliteWriteContext tx) callback,
-      {Duration? lockTimeout}) {
+      {Duration? lockTimeout}) async {
+    await _initialized;
     return database.writeLock(callback);
   }
 }
