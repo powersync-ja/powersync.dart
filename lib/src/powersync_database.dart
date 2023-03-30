@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:isolate';
 
 import 'package:logging/logging.dart';
-import 'package:powersync/src/powersync_update_notification.dart';
 import 'package:sqlite_async/sqlite3.dart' as sqlite;
 import 'package:sqlite_async/sqlite_async.dart';
 
@@ -13,6 +12,7 @@ import 'isolate_completer.dart';
 import 'log.dart';
 import 'migrations.dart';
 import 'open_factory.dart';
+import 'powersync_update_notification.dart';
 import 'schema.dart';
 import 'schema_logic.dart';
 import 'streaming_sync.dart';
