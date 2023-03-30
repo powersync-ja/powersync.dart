@@ -330,6 +330,7 @@ Future<void> _powerSyncDatabaseIsolate(
   final sPort = args.sPort;
   ReceivePort rPort = ReceivePort();
   StreamController updateController = StreamController.broadcast();
+  final upstreamDbClient = args.dbRef.upstreamPort.open();
 
   sqlite.Database? db;
   rPort.listen((message) {
@@ -340,6 +341,7 @@ Future<void> _powerSyncDatabaseIsolate(
       } else if (action == 'close') {
         db?.dispose();
         updateController.close();
+        upstreamDbClient.close();
         Isolate.current.kill();
       }
     }
@@ -351,7 +353,9 @@ Future<void> _powerSyncDatabaseIsolate(
   // This only takes effect in this isolate.
   Logger.root.level = Level.ALL;
   log.onRecord.listen((record) {
-    sPort.send(["log", record]);
+    var copy = LogRecord(record.level, record.message, record.loggerName,
+        record.error, record.stackTrace);
+    sPort.send(["log", copy]);
   });
 
   Future<PowerSyncCredentials?> loadCredentials() async {
@@ -385,5 +389,24 @@ Future<void> _powerSyncDatabaseIsolate(
   sync.streamingSync();
   sync.statusStream.listen((event) {
     sPort.send(['status', event]);
+  });
+
+  Timer? updateDebouncer;
+  Set<String> updatedTables = {};
+
+  void maybeFireUpdates() {
+    if (updatedTables.isNotEmpty) {
+      upstreamDbClient.fire(UpdateNotification(updatedTables));
+      updatedTables.clear();
+      updateDebouncer?.cancel();
+      updateDebouncer = null;
+    }
+  }
+
+  db.updates.listen((event) {
+    updatedTables.add(event.tableName);
+
+    updateDebouncer ??=
+        Timer(const Duration(milliseconds: 10), maybeFireUpdates);
   });
 }
