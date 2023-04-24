@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:isolate';
 
 import 'package:logging/logging.dart';
+import 'package:powersync/src/database_utils.dart';
 import 'package:sqlite_async/sqlite3.dart' as sqlite;
 import 'package:sqlite_async/sqlite_async.dart';
 
@@ -256,6 +257,10 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
   ///
   /// Use [limit] to specify the maximum number of updates to return in a single
   /// batch.
+  ///
+  /// This method does include transaction ids in the result, but does not group
+  /// data by transaction. One batch may contain data from multiple transactions,
+  /// and a single transaction may be split over multiple batches.
   Future<CrudBatch?> getCrudBatch({limit = 100}) async {
     final rows = await getAll(
         'SELECT id, data FROM ps_crud ORDER BY id ASC LIMIT ?', [limit + 1]);
@@ -289,6 +294,57 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
         });
   }
 
+  /// Get the next recorded transaction to upload.
+  ///
+  /// Returns null if there is no data to upload.
+  ///
+  /// Use this from the [PowerSyncBackendConnector.uploadData]` callback.
+  ///
+  /// Once the data have been successfully uploaded, call [CrudTransaction.complete] before
+  /// requesting the next transaction.
+  ///
+  /// Unlike [getCrudBatch], this only returns data from a single transaction at a time.
+  /// All data for the transaction is loaded into memory.
+  Future<CrudTransaction?> getNextCrudTransaction() async {
+    return await readTransaction((tx) async {
+      final first = await tx.getOptional(
+          'SELECT id, tx_id, data FROM ps_crud ORDER BY id ASC LIMIT 1');
+      if (first == null) {
+        return null;
+      }
+      final int? txId = first['tx_id'];
+      List<CrudEntry> all;
+      if (txId == null) {
+        all = [CrudEntry.fromRow(first)];
+      } else {
+        final rows = await tx.getAll(
+            'SELECT id, data FROM ps_crud WHERE tx_id = ? ORDER BY id ASC',
+            [txId]);
+        all = [for (var row in rows) CrudEntry.fromRow(row)];
+      }
+
+      final last = all[all.length - 1];
+
+      return CrudTransaction(
+          crud: all,
+          complete: ({String? writeCheckpoint}) async {
+            await writeTransaction((db) async {
+              await db.execute(
+                  'DELETE FROM ps_crud WHERE id <= ?', [last.clientId]);
+              if (writeCheckpoint != null &&
+                  await db.getOptional('SELECT 1 FROM ps_crud LIMIT 1') ==
+                      null) {
+                await db.execute(
+                    'UPDATE ps_buckets SET target_op = $writeCheckpoint WHERE name=\'\$local\'');
+              } else {
+                await db.execute(
+                    'UPDATE ps_buckets SET target_op = $maxOpId WHERE name=\'\$local\'');
+              }
+            });
+          });
+    });
+  }
+
   /// Close the database, releasing resources.
   ///
   /// Also [disconnect]s any active connection.
@@ -303,9 +359,9 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
   /// In most cases, [readTransaction] should be used instead.
   @override
   Future<T> readLock<T>(Future<T> Function(SqliteReadContext tx) callback,
-      {Duration? lockTimeout}) async {
+      {Duration? lockTimeout, String? debugContext}) async {
     await _initialized;
-    return database.readLock(callback);
+    return database.readLock(callback, debugContext: debugContext);
   }
 
   /// Takes a global lock, without starting a transaction.
@@ -313,9 +369,36 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
   /// In most cases, [writeTransaction] should be used instead.
   @override
   Future<T> writeLock<T>(Future<T> Function(SqliteWriteContext tx) callback,
-      {Duration? lockTimeout}) async {
+      {Duration? lockTimeout, String? debugContext}) async {
     await _initialized;
-    return database.writeLock(callback);
+    return database.writeLock(callback,
+        lockTimeout: lockTimeout, debugContext: debugContext);
+  }
+
+  @override
+  Future<T> writeTransaction<T>(
+      Future<T> Function(SqliteWriteContext tx) callback,
+      {Duration? lockTimeout,
+      String? debugContext}) async {
+    return writeLock((ctx) async {
+      return await internalTrackedWriteTransaction(ctx, callback);
+    },
+        lockTimeout: lockTimeout,
+        debugContext: debugContext ?? 'writeTransaction()');
+  }
+
+  @override
+  Future<sqlite.ResultSet> execute(String sql,
+      [List<Object?> parameters = const []]) async {
+    return writeLock((ctx) async {
+      try {
+        await ctx.execute(
+            'UPDATE ps_tx SET current_tx = next_tx, next_tx = next_tx + 1 WHERE id = 1');
+        return ctx.execute(sql, parameters);
+      } finally {
+        await ctx.execute('UPDATE ps_tx SET current_tx = NULL WHERE id = 1');
+      }
+    }, debugContext: 'execute()');
   }
 }
 

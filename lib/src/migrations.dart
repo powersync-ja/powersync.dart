@@ -51,4 +51,17 @@ final migrations = SqliteMigrations(migrationTable: 'ps_migration')
     CREATE TABLE IF NOT EXISTS ps_crud (id INTEGER PRIMARY KEY AUTOINCREMENT, data TEXT);
   ''');
     });
-  }));
+  }))
+  ..add(SqliteMigration(2, (tx) async {
+    await tx.computeWithDatabase((db) async {
+      db.execute('''
+CREATE TABLE ps_tx(id INTEGER PRIMARY KEY NOT NULL, current_tx INTEGER, next_tx INTEGER);
+INSERT INTO ps_tx(id, current_tx, next_tx) VALUES(1, NULL, 1);
+
+ALTER TABLE ps_crud ADD COLUMN tx_id INTEGER;
+    ''');
+    });
+  },
+      downMigration: SqliteDownMigration(toVersion: 1)
+        ..add('DROP TABLE ps_tx')
+        ..add('ALTER TABLE ps_crud DROP COLUMN tx_id')));
