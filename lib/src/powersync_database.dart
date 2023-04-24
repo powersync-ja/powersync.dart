@@ -394,7 +394,7 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
       try {
         await ctx.execute(
             'UPDATE ps_tx SET current_tx = next_tx, next_tx = next_tx + 1 WHERE id = 1');
-        return ctx.execute(sql, parameters);
+        return await ctx.execute(sql, parameters);
       } finally {
         await ctx.execute('UPDATE ps_tx SET current_tx = NULL WHERE id = 1');
       }
