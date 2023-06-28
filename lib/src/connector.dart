@@ -16,23 +16,54 @@ import 'powersync_database.dart';
 ///
 /// For production, use a custom implementation.
 abstract class PowerSyncBackendConnector {
+  PowerSyncCredentials? _cachedCredentials;
+  Future<PowerSyncCredentials?>? _fetchRequest;
+
+  /// Get credentials current cached, or fetch new credentials if none are
+  /// available.
+  ///
+  /// These credentials may have expired already.
+  Future<PowerSyncCredentials?> getCredentialsCached() {
+    if (_cachedCredentials != null) {
+      return Future.value(_cachedCredentials);
+    }
+    return prefetchCredentials();
+  }
+
+  /// Immediately invalidate credentials.
+  ///
+  /// This may be called when the current credentials have expired.
+  void invalidateCredentials() async {
+    _cachedCredentials = null;
+  }
+
+  /// Fetch a new set of credentials and cache it.
+  ///
+  /// Until this call succeeds, `getCredentialsCached()` will still return the
+  /// old credentials.
+  ///
+  /// This may be called before the current credentials have expired.
+  Future<PowerSyncCredentials?> prefetchCredentials() async {
+    _fetchRequest ??= fetchCredentials().then((value) {
+      _cachedCredentials = value;
+      return value;
+    }).whenComplete(() {
+      _fetchRequest = null;
+    });
+
+    return _fetchRequest!;
+  }
+
   /// Get credentials for PowerSync.
   ///
-  /// Return null if no credentials are available.
+  /// This should always fetch a fresh set of credentials - don't use cached
+  /// values.
+  ///
+  /// Return null if the user is not signed in. Throw an error if credentials
+  /// cannot be fetched due to a network error or other temporary error.
   ///
   /// This token is kept for the duration of a sync connection.
-  ///
-  /// If the sync connection is interrupted, new credentials will be requested.
-  /// The credentials may be cached - in that case, make sure to refresh when
-  /// [refreshCredentials] is called.
-  Future<PowerSyncCredentials?> getCredentials();
-
-  /// Refresh credentials.
-  ///
-  /// This may be called pro-actively before new credentials are required,
-  /// allowing time to refresh credentials without adding a delay to the next
-  /// connection.
-  Future<void> refreshCredentials() async {}
+  Future<PowerSyncCredentials?> fetchCredentials();
 
   /// Upload local changes to the app backend.
   ///
@@ -53,7 +84,7 @@ class PowerSyncCredentials {
   /// User ID.
   final String? userId;
 
-  /// When the token expires.
+  /// When the token expires. Only use for debugging purposes.
   final DateTime? expiresAt;
 
   const PowerSyncCredentials(
@@ -71,30 +102,6 @@ class PowerSyncCredentials {
         token: parsed['token'],
         userId: parsed['user_id'],
         expiresAt: expiresAt);
-  }
-
-  /// Whether credentials have expired.
-  bool expired() {
-    if (expiresAt == null) {
-      return false;
-    }
-    if (expiresAt!.difference(DateTime.now()) < const Duration(seconds: 0)) {
-      return true;
-    }
-    return false;
-  }
-
-  /// Whether credentials will soon (within a minute).
-  ///
-  /// When this time is reached, refresh refresh the credentials.
-  bool expiresSoon() {
-    if (expiresAt == null) {
-      return false;
-    }
-    if (expiresAt!.difference(DateTime.now()) < const Duration(minutes: 1)) {
-      return true;
-    }
-    return false;
   }
 
   /// Get an expiry date from a JWT token, if specified.
@@ -183,8 +190,6 @@ class DevCredentials {
 /// Development mode is intended to get up and running quickly, but is not for
 /// production use. For production, write a custom connector.
 class DevConnector extends PowerSyncBackendConnector {
-  PowerSyncCredentials? credentials;
-
   DevCredentials? _inMemoryDevCredentials;
 
   /// Store the credentials after login, or when clearing / changing it.
@@ -222,7 +227,6 @@ class DevConnector extends PowerSyncBackendConnector {
       existing.token = null;
       storeDevCredentials(existing);
     }
-    credentials = null;
   }
 
   /// Whether a dev token is available.
@@ -253,18 +257,11 @@ class DevConnector extends PowerSyncBackendConnector {
   }
 
   @override
-  Future<PowerSyncCredentials?> getCredentials() async {
-    if (credentials == null) {
-      await refreshCredentials();
-    }
-    return credentials;
-  }
-
-  @override
-  Future<void> refreshCredentials() async {
+  Future<PowerSyncCredentials?> fetchCredentials() async {
     final devCredentials = await loadDevCredentials();
     if (devCredentials?.token == null) {
-      return;
+      // Not signed in
+      return null;
     }
     final uri = Uri.parse(devCredentials!.endpoint).resolve('dev/token.json');
     final res = await http
@@ -276,7 +273,7 @@ class DevConnector extends PowerSyncBackendConnector {
       throw HttpException(res.reasonPhrase ?? 'Request failed', uri: uri);
     }
 
-    credentials = PowerSyncCredentials.fromJson(jsonDecode(res.body)['data']);
+    return PowerSyncCredentials.fromJson(jsonDecode(res.body)['data']);
   }
 
   /// Upload changes using the PowerSync dev API.
@@ -287,7 +284,7 @@ class DevConnector extends PowerSyncBackendConnector {
       return;
     }
 
-    final credentials = await getCredentials();
+    final credentials = await getCredentialsCached();
     if (credentials == null) {
       throw AssertionError("Not logged in");
     }
@@ -302,7 +299,8 @@ class DevConnector extends PowerSyncBackendConnector {
         body: jsonEncode({'data': batch.crud, 'write_checkpoint': true}));
 
     if (response.statusCode == 401) {
-      await refreshCredentials();
+      // Credentials have expired - fetch a new token on the next call
+      invalidateCredentials();
     }
 
     if (response.statusCode != 200) {

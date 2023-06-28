@@ -171,6 +171,9 @@ class StreamingSyncImplementation {
 
     var merged = addBroadcast(requestStream, _localPingController.stream);
 
+    Future<void>? credentialsInvalidation;
+    bool haveInvalidated = false;
+
     await for (var line in merged) {
       _statusStreamController
           .add(SyncStatus(connected: true, lastSyncedAt: lastSyncedAt));
@@ -231,6 +234,27 @@ class StreamingSyncImplementation {
         adapter.setTargetCheckpoint(targetCheckpoint);
       } else if (line is SyncBucketData) {
         await adapter.saveSyncData(SyncDataBatch([line]));
+      } else if (line is StreamingSyncKeepalive) {
+        if (line.tokenExpiresIn == 0) {
+          // Token expired already - stop the connection immediately
+          invalidCredentialsCallback?.call().ignore();
+          break;
+        } else if (line.tokenExpiresIn <= 30) {
+          // Token expires soon - refresh it in the background
+          if (credentialsInvalidation == null &&
+              invalidCredentialsCallback != null) {
+            credentialsInvalidation = invalidCredentialsCallback!().then((_) {
+              // Token has been refreshed - we should restart the connection.
+              haveInvalidated = true;
+              // trigger next loop iteration ASAP, don't wait for another
+              // message from the server.
+              _localPingController.add(null);
+            }, onError: (_) {
+              // Token refresh failed - retry on next keepalive.
+              credentialsInvalidation = null;
+            });
+          }
+        }
       } else {
         if (targetCheckpoint == appliedCheckpoint) {
           lastSyncedAt = DateTime.now();
@@ -253,6 +277,11 @@ class StreamingSyncImplementation {
                 .add(SyncStatus(connected: true, lastSyncedAt: lastSyncedAt));
           }
         }
+      }
+
+      if (haveInvalidated) {
+        // Stop this connection, so that a new one will be started
+        break;
       }
     }
     return true;
@@ -320,27 +349,11 @@ class StreamingSyncImplementation {
           uri: uri);
     }
 
-    Future<void>? credentialsInvalidation;
-    bool haveInvalidated = false;
-
     // Note: The response stream is automatically closed when this loop errors
     await for (var line in ndjson(res.stream)) {
       if (line != null) {
         final parsed = parseStreamingSyncLine(line as Map<String, dynamic>);
         yield parsed;
-      }
-      if (haveInvalidated) {
-        // Start new connection
-        break;
-      }
-      if (credentials.expiresSoon() &&
-          credentialsInvalidation == null &&
-          invalidCredentialsCallback != null) {
-        credentialsInvalidation = invalidCredentialsCallback!().then((_) {
-          haveInvalidated = true;
-        }, onError: (_) {
-          // Ignore
-        });
       }
     }
   }
@@ -382,6 +395,15 @@ class StreamingSyncCheckpointComplete {
       : lastOpId = json['last_op_id'];
 }
 
+class StreamingSyncKeepalive {
+  int tokenExpiresIn;
+
+  StreamingSyncKeepalive(this.tokenExpiresIn);
+
+  StreamingSyncKeepalive.fromJson(Map<String, dynamic> json)
+      : tokenExpiresIn = json['token_expires_in'];
+}
+
 Object? parseStreamingSyncLine(Map<String, dynamic> line) {
   if (line.containsKey('checkpoint')) {
     return Checkpoint.fromJson(line['checkpoint']);
@@ -392,6 +414,8 @@ Object? parseStreamingSyncLine(Map<String, dynamic> line) {
         line['checkpoint_complete']);
   } else if (line.containsKey('data')) {
     return SyncBucketData.fromJson(line['data']);
+  } else if (line.containsKey('token_expires_in')) {
+    return StreamingSyncKeepalive.fromJson(line);
   } else {
     return null;
   }

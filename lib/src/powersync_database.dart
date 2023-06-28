@@ -139,12 +139,14 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
         String action = data[0];
         if (action == "getCredentials") {
           await (data[1] as PortCompleter).handle(() async {
-            final token = await connector.getCredentials();
+            final token = await connector.getCredentialsCached();
+            log.fine('Credentials: $token');
             return token;
           });
         } else if (action == "invalidateCredentials") {
+          log.fine('Refreshing credentials');
           await (data[1] as PortCompleter).handle(() async {
-            await connector.refreshCredentials();
+            await connector.prefetchCredentials();
           });
         } else if (action == 'init') {
           SendPort port = data[1];
@@ -174,9 +176,32 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
       }
     });
 
+    var errorPort = ReceivePort();
+    errorPort.listen((message) async {
+      // Sample error:
+      // flutter: [PowerSync] WARNING: 2023-06-28 16:34:11.566122: Sync Isolate error
+      // flutter: [Connection closed while receiving data, #0      IOClient.send.<anonymous closure> (package:http/src/io_client.dart:76:13)
+      // #1      Stream.handleError.<anonymous closure> (dart:async/stream.dart:929:16)
+      // #2      _HandleErrorStream._handleError (dart:async/stream_pipe.dart:269:17)
+      // #3      _ForwardingStreamSubscription._handleError (dart:async/stream_pipe.dart:157:13)
+      // #4      _HttpClientResponse.listen.<anonymous closure> (dart:_http/http_impl.dart:707:16)
+      // ...
+      log.warning('Sync Isolate error', message);
+
+      // Reconnect
+      connect(connector: connector);
+    });
+
+    var exitPort = ReceivePort();
+    exitPort.listen((message) {
+      log.fine('Sync Isolate exit');
+    });
+
     Isolate.spawn(_powerSyncDatabaseIsolate,
         _PowerSyncDatabaseIsolateArgs(rPort.sendPort, dbref),
-        debugName: 'PowerSyncDatabase');
+        debugName: 'PowerSyncDatabase',
+        onError: errorPort.sendPort,
+        onExit: exitPort.sendPort);
   }
 
   void _setStatus(SyncStatus status) {
