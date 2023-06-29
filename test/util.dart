@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ffi';
 import 'dart:io';
 
@@ -91,6 +92,16 @@ setupLogger() {
     }
     if (record.stackTrace != null) {
       print(record.stackTrace);
+    }
+
+    if (record.error != null && record.level >= Level.SEVERE) {
+      // Hack to fail the test if a SEVERE error is logged.
+      // Not ideal, but works to catch "Sync Isolate error".
+      uncaughtError() async {
+        throw record.error!;
+      }
+
+      uncaughtError();
     }
   });
 }

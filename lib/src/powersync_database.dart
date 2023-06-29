@@ -5,6 +5,7 @@ import 'package:logging/logging.dart';
 import 'package:sqlite_async/sqlite3.dart' as sqlite;
 import 'package:sqlite_async/sqlite_async.dart';
 
+import 'aborter.dart';
 import 'bucket_storage.dart';
 import 'connector.dart';
 import 'crud.dart';
@@ -57,10 +58,16 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
   @override
   late final Stream<UpdateNotification> updates;
 
+  /// Delay between retrying failed requests.
+  /// Defaults to 5 seconds.
+  /// Only has an effect if changed before calling [connect].
+  Duration retryDelay = const Duration(seconds: 5);
+
   SendPort? _streamingSyncPort;
   late Future<void> _initialized;
 
-  Completer<void>? _disconnectCompleter;
+  /// null when disconnected, present when connecting or connected
+  AbortController? _disconnecter;
 
   /// Open a [PowerSyncDatabase].
   ///
@@ -126,16 +133,24 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
     return _initialized;
   }
 
+  bool get closed {
+    return database.closed;
+  }
+
   /// Connect to the PowerSync service, and keep the databases in sync.
   ///
   /// The connection is automatically re-opened if it fails for any reason.
   ///
   /// Status changes are reported on [statusStream].
   connect({required PowerSyncBackendConnector connector}) async {
+    // Disconnect if connected
+    await disconnect();
+    final disconnector = AbortController();
+    _disconnecter = disconnector;
+
     await _initialized;
     final dbref = database.isolateConnectionFactory();
     ReceivePort rPort = ReceivePort();
-    disconnect();
     StreamSubscription? updateSubscription;
     rPort.listen((data) async {
       if (data is List) {
@@ -159,6 +174,9 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
           updateSubscription = throttled.listen((event) {
             port.send(['update']);
           });
+          disconnector.onAbort.then((_) {
+            port.send(['close']);
+          }).ignore();
         } else if (action == 'uploadCrud') {
           await (data[1] as PortCompleter).handle(() async {
             await connector.uploadData(this);
@@ -189,22 +207,31 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
       // #3      _ForwardingStreamSubscription._handleError (dart:async/stream_pipe.dart:157:13)
       // #4      _HttpClientResponse.listen.<anonymous closure> (dart:_http/http_impl.dart:707:16)
       // ...
-      log.warning('Sync Isolate error', message);
+      log.severe('Sync Isolate error', message);
 
       // Reconnect
       connect(connector: connector);
     });
 
+    disconnected() {
+      _disconnecter?.completeAbort();
+      _disconnecter = null;
+      rPort.close();
+    }
+
     var exitPort = ReceivePort();
     exitPort.listen((message) {
       log.fine('Sync Isolate exit');
-      if (_disconnectCompleter != null) {
-        _disconnectCompleter!.complete();
-      }
+      disconnected();
     });
 
+    if (_disconnecter?.aborted == true) {
+      disconnected();
+      return;
+    }
+
     Isolate.spawn(_powerSyncDatabaseIsolate,
-        _PowerSyncDatabaseIsolateArgs(rPort.sendPort, dbref),
+        _PowerSyncDatabaseIsolateArgs(rPort.sendPort, dbref, retryDelay),
         debugName: 'PowerSyncDatabase',
         onError: errorPort.sendPort,
         onExit: exitPort.sendPort);
@@ -221,11 +248,8 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
   ///
   /// Use [connect] to connect again.
   Future<void> disconnect() async {
-    if (_streamingSyncPort != null) {
-      _disconnectCompleter = Completer();
-      _streamingSyncPort!.send(['close']);
-      _streamingSyncPort = null;
-      await _disconnectCompleter!.future;
+    if (_disconnecter != null) {
+      await _disconnecter!.abort();
     }
   }
 
@@ -325,9 +349,16 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
   /// Close the database, releasing resources.
   ///
   /// Also [disconnect]s any active connection.
+  ///
+  /// Once close is called, this connection cannot be used again - a new one
+  /// must be constructed.
   @override
   Future<void> close() async {
+    // Don't close in the middle of the initialization process.
+    await _initialized;
+    // Disconnect any active sync connection.
     await disconnect();
+    // Now we can close the database
     await database.close();
   }
 
@@ -336,9 +367,10 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
   /// In most cases, [readTransaction] should be used instead.
   @override
   Future<T> readLock<T>(Future<T> Function(SqliteReadContext tx) callback,
-      {Duration? lockTimeout}) async {
+      {String? debugContext, Duration? lockTimeout}) async {
     await _initialized;
-    return database.readLock(callback);
+    return database.readLock(callback,
+        debugContext: debugContext, lockTimeout: lockTimeout);
   }
 
   /// Takes a global lock, without starting a transaction.
@@ -346,17 +378,19 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
   /// In most cases, [writeTransaction] should be used instead.
   @override
   Future<T> writeLock<T>(Future<T> Function(SqliteWriteContext tx) callback,
-      {Duration? lockTimeout}) async {
+      {String? debugContext, Duration? lockTimeout}) async {
     await _initialized;
-    return database.writeLock(callback);
+    return database.writeLock(callback,
+        debugContext: debugContext, lockTimeout: lockTimeout);
   }
 }
 
 class _PowerSyncDatabaseIsolateArgs {
-  SendPort sPort;
-  IsolateConnectionFactory dbRef;
+  final SendPort sPort;
+  final IsolateConnectionFactory dbRef;
+  final Duration retryDelay;
 
-  _PowerSyncDatabaseIsolateArgs(this.sPort, this.dbRef);
+  _PowerSyncDatabaseIsolateArgs(this.sPort, this.dbRef, this.retryDelay);
 }
 
 Future<void> _powerSyncDatabaseIsolate(
@@ -411,16 +445,18 @@ Future<void> _powerSyncDatabaseIsolate(
   }
 
   runZonedGuarded(() async {
+    final mutex = args.dbRef.mutex.open();
     db = await args.dbRef.openFactory
         .open(SqliteOpenOptions(primaryConnection: false, readOnly: false));
-    final mutex = args.dbRef.mutex.open();
+
     final storage = BucketStorage(db!, mutex: mutex);
     final sync = StreamingSyncImplementation(
         adapter: storage,
         credentialsCallback: loadCredentials,
         invalidCredentialsCallback: invalidateCredentials,
         uploadCrud: uploadCrud,
-        updateStream: updateController.stream);
+        updateStream: updateController.stream,
+        retryDelay: args.retryDelay);
     sync.streamingSync();
     sync.statusStream.listen((event) {
       sPort.send(['status', event]);
@@ -446,6 +482,9 @@ Future<void> _powerSyncDatabaseIsolate(
     });
   }, (error, stack) {
     // Properly dispose the database if an uncaught error occurs.
+    // Unfortunately, this does not handle disposing while the database is opening.
+    // This should be rare - any uncaught error is a bug. And in most cases,
+    // it should occur after the database is already open.
     db?.dispose();
     throw error;
   });

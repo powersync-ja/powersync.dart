@@ -29,6 +29,8 @@ class StreamingSyncImplementation {
 
   final StreamController _localPingController = StreamController.broadcast();
 
+  final Duration retryDelay;
+
   DateTime? lastSyncedAt;
 
   StreamingSyncImplementation(
@@ -36,7 +38,8 @@ class StreamingSyncImplementation {
       required this.credentialsCallback,
       this.invalidCredentialsCallback,
       required this.uploadCrud,
-      required this.updateStream}) {
+      required this.updateStream,
+      required this.retryDelay}) {
     _client = http.Client();
     statusStream = _statusStreamController.stream;
   }
@@ -62,7 +65,7 @@ class StreamingSyncImplementation {
             .add(SyncStatus(connected: false, lastSyncedAt: lastSyncedAt));
 
         // On error, wait a little before retrying
-        await Future.delayed(const Duration(milliseconds: 5000));
+        await Future.delayed(retryDelay);
       }
     }
   }
@@ -84,7 +87,7 @@ class StreamingSyncImplementation {
         }
       } catch (e, stacktrace) {
         log.warning('Data upload error', e, stacktrace);
-        await Future.delayed(const Duration(milliseconds: 5000));
+        await Future.delayed(retryDelay);
       }
     }
   }

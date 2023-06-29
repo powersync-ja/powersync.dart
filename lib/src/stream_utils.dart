@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:http/http.dart';
 import 'dart:convert' as convert;
 
+/// Inject a broadcast stream into a normal stream.
 Stream<T> addBroadcast<T>(Stream<T> a, Stream<T> broadcast) {
   return mergeStreams([a, broadcast]);
 }

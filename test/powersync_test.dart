@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:powersync/powersync.dart';
+import 'package:sqlite_async/mutex.dart';
 import 'package:test/test.dart';
 import 'package:sqlite_async/sqlite3.dart' as sqlite;
 import 'util.dart';
@@ -94,17 +95,21 @@ void main() {
       await db.writeTransaction((tx) async {
         await expectLater(() async {
           await db.execute('INSERT INTO assets(id) VALUES(uuid())');
-        }, throwsA((e) => e is AssertionError));
+        }, throwsA((e) => e is LockError));
       });
     });
 
-    test('does allow read-only db calls within transaction callback', () async {
+    test('should not allow read-only db calls within transaction callback',
+        () async {
       final db = await setupPowerSync(path: path);
 
       await db.writeTransaction((tx) async {
-        // This uses a different connection, so it's fine.
-        // Perhaps we should warn on this, since it's likely unintentional?
-        await db.getAll('SELECT * FROM assets');
+        // This uses a different connection, so it _could_ work.
+        // But it's likely unintentional and could cause weird bugs, so we don't
+        // allow it by default.
+        await expectLater(() async {
+          await db.getAll('SELECT * FROM test_data');
+        }, throwsA((e) => e is LockError && e.message.contains('tx.getAll')));
       });
 
       await db.readTransaction((tx) async {
@@ -113,23 +118,29 @@ void main() {
         // This also exposes an interesting test case where the read transaction
         // opens another connection, but doesn't use it.
         await expectLater(() async {
-          await db.getAll('SELECT * FROM assets');
-        }, throwsA((e) => e is AssertionError));
+          await db.getAll('SELECT * FROM test_data');
+        }, throwsA((e) => e is LockError && e.message.contains('tx.getAll')));
       });
     });
 
-    test('does allow read-only db calls within lock callback', () async {
+    test('should not allow read-only db calls within lock callback', () async {
       final db = await setupPowerSync(path: path);
       // Locks - should behave the same as transactions above
 
       await db.writeLock((tx) async {
-        await db.getAll('SELECT * FROM assets');
+        await expectLater(() async {
+          await db.getOptional('SELECT * FROM test_data');
+        },
+            throwsA(
+                (e) => e is LockError && e.message.contains('tx.getOptional')));
       });
 
       await db.readLock((tx) async {
         await expectLater(() async {
-          await db.getAll('SELECT * FROM assets');
-        }, throwsA((e) => e is AssertionError));
+          await db.getOptional('SELECT * FROM test_data');
+        },
+            throwsA(
+                (e) => e is LockError && e.message.contains('tx.getOptional')));
       });
     });
 
