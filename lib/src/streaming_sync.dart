@@ -43,12 +43,20 @@ class StreamingSyncImplementation {
 
   Future<void> streamingSync() async {
     crudLoop();
+    var invalidCredentials = false;
     while (true) {
       try {
+        if (invalidCredentials && invalidCredentialsCallback != null) {
+          // This may error. In that case it will be retried again on the next
+          // iteration.
+          await invalidCredentialsCallback!();
+          invalidCredentials = false;
+        }
         await streamingSyncIteration();
         // Continue immediately
       } catch (e, stacktrace) {
         log.warning('Sync error', e, stacktrace);
+        invalidCredentials = true;
 
         _statusStreamController
             .add(SyncStatus(connected: false, lastSyncedAt: lastSyncedAt));
