@@ -63,7 +63,6 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
   /// Only has an effect if changed before calling [connect].
   Duration retryDelay = const Duration(seconds: 5);
 
-  SendPort? _streamingSyncPort;
   late Future<void> _initialized;
 
   /// null when disconnected, present when connecting or connected
@@ -133,6 +132,7 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
     return _initialized;
   }
 
+  @override
   bool get closed {
     return database.closed;
   }
@@ -168,7 +168,6 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
           });
         } else if (action == 'init') {
           SendPort port = data[1];
-          _streamingSyncPort = port;
           var throttled = UpdateNotification.throttleStream(
               updates, const Duration(milliseconds: 10));
           updateSubscription = throttled.listen((event) {
