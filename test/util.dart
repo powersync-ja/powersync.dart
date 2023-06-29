@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ffi';
 import 'dart:io';
 
@@ -83,7 +84,24 @@ String dbPath() {
 
 setupLogger() {
   Logger.root.level = Level.ALL;
-  Logger.root.onRecord.listen((event) {
-    print(event);
+  Logger.root.onRecord.listen((record) {
+    print(
+        '[${record.loggerName}] ${record.level.name}: ${record.time}: ${record.message}');
+    if (record.error != null) {
+      print(record.error);
+    }
+    if (record.stackTrace != null) {
+      print(record.stackTrace);
+    }
+
+    if (record.error != null && record.level >= Level.SEVERE) {
+      // Hack to fail the test if a SEVERE error is logged.
+      // Not ideal, but works to catch "Sync Isolate error".
+      uncaughtError() async {
+        throw record.error!;
+      }
+
+      uncaughtError();
+    }
   });
 }

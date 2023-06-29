@@ -34,7 +34,14 @@ void main() {
             }
           ]));
 
-      await powersync.execute('DELETE FROM ps_crud WHERE 1');
+      var tx = (await powersync.getNextCrudTransaction())!;
+      expect(tx.transactionId, equals(1));
+      expect(
+          tx.crud,
+          equals([
+            CrudEntry(
+                1, UpdateType.put, 'assets', testId, 1, {"description": "test"})
+          ]));
     });
 
     test('INSERT OR REPLACE', () async {
@@ -88,6 +95,15 @@ void main() {
                   '{"op":"PATCH","type":"assets","id":"$testId","data":{"description":"test2"}}'
             }
           ]));
+
+      var tx = (await powersync.getNextCrudTransaction())!;
+      expect(tx.transactionId, equals(3));
+      expect(
+          tx.crud,
+          equals([
+            CrudEntry(2, UpdateType.patch, 'assets', testId, 3,
+                {"description": "test2"})
+          ]));
     });
 
     test('DELETE', () async {
@@ -103,6 +119,11 @@ void main() {
           equals([
             {'data': '{"op":"DELETE","type":"assets","id":"$testId"}'}
           ]));
+
+      var tx = (await powersync.getNextCrudTransaction())!;
+      expect(tx.transactionId, equals(3));
+      expect(tx.crud,
+          equals([CrudEntry(2, UpdateType.delete, 'assets', testId, 3, null)]));
     });
 
     test('UPSERT not supported', () async {
@@ -140,6 +161,15 @@ void main() {
           ]));
 
       expect(await powersync.getAll('SELECT * FROM logs'), equals([]));
+
+      var tx = (await powersync.getNextCrudTransaction())!;
+      expect(tx.transactionId, equals(2));
+      expect(
+          tx.crud,
+          equals([
+            CrudEntry(1, UpdateType.put, 'logs', testId, 2,
+                {"level": "INFO", "content": "test log"})
+          ]));
     });
 
     test('big numbers - integer', () async {
@@ -160,7 +190,14 @@ void main() {
             }
           ]));
 
-      await powersync.execute('DELETE FROM ps_crud WHERE 1');
+      var tx = (await powersync.getNextCrudTransaction())!;
+      expect(tx.transactionId, equals(1));
+      expect(
+          tx.crud,
+          equals([
+            CrudEntry(
+                1, UpdateType.put, 'assets', testId, 1, {"quantity": bigNumber})
+          ]));
     });
 
     test('big numbers - text', () async {
@@ -198,6 +235,44 @@ void main() {
                   '{"op":"PATCH","type":"assets","id":"$testId","data":{"quantity":${bigNumber + 1},"description":"updated"}}'
             }
           ]));
+    });
+
+    test('Transaction grouping', () async {
+      expect(await powersync.getAll('SELECT * FROM ps_crud'), equals([]));
+      await powersync.writeTransaction((tx) async {
+        await tx.execute('INSERT INTO assets(id, description) VALUES(?, ?)',
+            [testId, 'test1']);
+        await tx.execute('INSERT INTO assets(id, description) VALUES(?, ?)',
+            ['test2', 'test2']);
+      });
+
+      await powersync.writeTransaction((tx) async {
+        await tx.execute('UPDATE assets SET description = ? WHERE id = ?',
+            ['updated', testId]);
+      });
+
+      var tx1 = (await powersync.getNextCrudTransaction())!;
+      expect(tx1.transactionId, equals(1));
+      expect(
+          tx1.crud,
+          equals([
+            CrudEntry(1, UpdateType.put, 'assets', testId, 1,
+                {"description": "test1"}),
+            CrudEntry(2, UpdateType.put, 'assets', 'test2', 1,
+                {"description": "test2"})
+          ]));
+      await tx1.complete();
+
+      var tx2 = (await powersync.getNextCrudTransaction())!;
+      expect(tx2.transactionId, equals(2));
+      expect(
+          tx2.crud,
+          equals([
+            CrudEntry(3, UpdateType.patch, 'assets', testId, 2,
+                {"description": "updated"}),
+          ]));
+      await tx2.complete();
+      expect(await powersync.getNextCrudTransaction(), equals(null));
     });
   });
 }

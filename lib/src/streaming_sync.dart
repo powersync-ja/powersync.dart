@@ -3,39 +3,13 @@ import 'dart:convert' as convert;
 import 'dart:io';
 
 import 'package:http/http.dart' as http;
-import 'package:http/http.dart';
 
 import 'bucket_storage.dart';
 import 'connector.dart';
 import 'log.dart';
-
-class SyncStatus {
-  /// true if currently connected
-  final bool connected;
-
-  /// Time that a last sync has fully completed, if any
-  /// Currently this is reset to null after a restart
-  final DateTime? lastSyncedAt;
-
-  const SyncStatus({required this.connected, required this.lastSyncedAt});
-
-  @override
-  bool operator ==(Object other) {
-    return (other is SyncStatus &&
-        other.connected == connected &&
-        other.lastSyncedAt == lastSyncedAt);
-  }
-
-  @override
-  int get hashCode {
-    return Object.hash(connected, lastSyncedAt);
-  }
-
-  @override
-  String toString() {
-    return "SyncStatus<connected: $connected lastSyncedAt: $lastSyncedAt>";
-  }
-}
+import 'stream_utils.dart';
+import 'sync_status.dart';
+import 'sync_types.dart';
 
 class StreamingSyncImplementation {
   BucketStorage adapter;
@@ -55,6 +29,8 @@ class StreamingSyncImplementation {
 
   final StreamController _localPingController = StreamController.broadcast();
 
+  final Duration retryDelay;
+
   DateTime? lastSyncedAt;
 
   StreamingSyncImplementation(
@@ -62,23 +38,34 @@ class StreamingSyncImplementation {
       required this.credentialsCallback,
       this.invalidCredentialsCallback,
       required this.uploadCrud,
-      required this.updateStream}) {
+      required this.updateStream,
+      required this.retryDelay}) {
     _client = http.Client();
     statusStream = _statusStreamController.stream;
   }
 
   Future<void> streamingSync() async {
     crudLoop();
+    var invalidCredentials = false;
     while (true) {
       try {
+        if (invalidCredentials && invalidCredentialsCallback != null) {
+          // This may error. In that case it will be retried again on the next
+          // iteration.
+          await invalidCredentialsCallback!();
+          invalidCredentials = false;
+        }
         await streamingSyncIteration();
         // Continue immediately
       } catch (e, stacktrace) {
         log.warning('Sync error', e, stacktrace);
+        invalidCredentials = true;
 
         _statusStreamController
             .add(SyncStatus(connected: false, lastSyncedAt: lastSyncedAt));
-        await Future.delayed(const Duration(milliseconds: 5000));
+
+        // On error, wait a little before retrying
+        await Future.delayed(retryDelay);
       }
     }
   }
@@ -100,7 +87,7 @@ class StreamingSyncImplementation {
         }
       } catch (e, stacktrace) {
         log.warning('Data upload error', e, stacktrace);
-        await Future.delayed(const Duration(milliseconds: 5000));
+        await Future.delayed(retryDelay);
       }
     }
   }
@@ -171,6 +158,9 @@ class StreamingSyncImplementation {
 
     var merged = addBroadcast(requestStream, _localPingController.stream);
 
+    Future<void>? credentialsInvalidation;
+    bool haveInvalidated = false;
+
     await for (var line in merged) {
       _statusStreamController
           .add(SyncStatus(connected: true, lastSyncedAt: lastSyncedAt));
@@ -231,6 +221,27 @@ class StreamingSyncImplementation {
         adapter.setTargetCheckpoint(targetCheckpoint);
       } else if (line is SyncBucketData) {
         await adapter.saveSyncData(SyncDataBatch([line]));
+      } else if (line is StreamingSyncKeepalive) {
+        if (line.tokenExpiresIn == 0) {
+          // Token expired already - stop the connection immediately
+          invalidCredentialsCallback?.call().ignore();
+          break;
+        } else if (line.tokenExpiresIn <= 30) {
+          // Token expires soon - refresh it in the background
+          if (credentialsInvalidation == null &&
+              invalidCredentialsCallback != null) {
+            credentialsInvalidation = invalidCredentialsCallback!().then((_) {
+              // Token has been refreshed - we should restart the connection.
+              haveInvalidated = true;
+              // trigger next loop iteration ASAP, don't wait for another
+              // message from the server.
+              _localPingController.add(null);
+            }, onError: (_) {
+              // Token refresh failed - retry on next keepalive.
+              credentialsInvalidation = null;
+            });
+          }
+        }
       } else {
         if (targetCheckpoint == appliedCheckpoint) {
           lastSyncedAt = DateTime.now();
@@ -254,46 +265,13 @@ class StreamingSyncImplementation {
           }
         }
       }
+
+      if (haveInvalidated) {
+        // Stop this connection, so that a new one will be started
+        break;
+      }
     }
     return true;
-  }
-
-  Stream<T> addBroadcast<T>(Stream<T> a, Stream<T> broadcast) {
-    var controller = StreamController<T>();
-
-    StreamSubscription<T>? sub1;
-    StreamSubscription<T>? sub2;
-
-    void close() {
-      controller.close();
-      sub1!.cancel();
-      sub2!.cancel();
-    }
-
-    // TODO: backpressure?
-    sub1 = a.listen((event) {
-      controller.add(event);
-    }, onDone: () {
-      close();
-    }, onError: (e) {
-      controller.addError(e);
-      close();
-    });
-
-    sub2 = broadcast.listen((event) {
-      controller.add(event);
-    }, onDone: () {
-      close();
-    }, onError: (e) {
-      controller.addError(e);
-      close();
-    });
-
-    controller.onCancel = () {
-      sub1?.cancel();
-    };
-
-    return controller.stream;
   }
 
   Stream<Object?> streamingSyncRequest(StreamingSyncRequest data) async* {
@@ -320,115 +298,9 @@ class StreamingSyncImplementation {
           uri: uri);
     }
 
-    Future<void>? credentialsInvalidation;
-    bool haveInvalidated = false;
-
     // Note: The response stream is automatically closed when this loop errors
     await for (var line in ndjson(res.stream)) {
-      if (line != null) {
-        final parsed = parseStreamingSyncLine(line as Map<String, dynamic>);
-        yield parsed;
-      }
-      if (haveInvalidated) {
-        // Start new connection
-        break;
-      }
-      if (credentials.expiresSoon() &&
-          credentialsInvalidation == null &&
-          invalidCredentialsCallback != null) {
-        credentialsInvalidation = invalidCredentialsCallback!().then((_) {
-          haveInvalidated = true;
-        }, onError: (_) {
-          // Ignore
-        });
-      }
+      yield parseStreamingSyncLine(line as Map<String, dynamic>);
     }
   }
-}
-
-class StreamingSyncCheckpoint {
-  Checkpoint checkpoint;
-
-  StreamingSyncCheckpoint(this.checkpoint);
-
-  StreamingSyncCheckpoint.fromJson(Map<String, dynamic> json)
-      : checkpoint = Checkpoint.fromJson(json);
-}
-
-class StreamingSyncCheckpointDiff {
-  String lastOpId;
-  List<BucketChecksum> updatedBuckets;
-  List<String> removedBuckets;
-  String? writeCheckpoint;
-
-  StreamingSyncCheckpointDiff(
-      this.lastOpId, this.updatedBuckets, this.removedBuckets);
-
-  StreamingSyncCheckpointDiff.fromJson(Map<String, dynamic> json)
-      : lastOpId = json['last_op_id'],
-        writeCheckpoint = json['write_checkpoint'],
-        updatedBuckets = (json['updated_buckets'] as List)
-            .map((e) => BucketChecksum.fromJson(e))
-            .toList(),
-        removedBuckets = List<String>.from(json['removed_buckets']);
-}
-
-class StreamingSyncCheckpointComplete {
-  String lastOpId;
-
-  StreamingSyncCheckpointComplete(this.lastOpId);
-
-  StreamingSyncCheckpointComplete.fromJson(Map<String, dynamic> json)
-      : lastOpId = json['last_op_id'];
-}
-
-Object? parseStreamingSyncLine(Map<String, dynamic> line) {
-  if (line.containsKey('checkpoint')) {
-    return Checkpoint.fromJson(line['checkpoint']);
-  } else if (line.containsKey('checkpoint_diff')) {
-    return StreamingSyncCheckpointDiff.fromJson(line['checkpoint_diff']);
-  } else if (line.containsKey('checkpoint_complete')) {
-    return StreamingSyncCheckpointComplete.fromJson(
-        line['checkpoint_complete']);
-  } else if (line.containsKey('data')) {
-    return SyncBucketData.fromJson(line['data']);
-  } else {
-    return null;
-  }
-}
-
-Stream<Object?> ndjson(ByteStream input) {
-  final textInput = input.transform(convert.utf8.decoder);
-  final lineInput = textInput.transform(const convert.LineSplitter());
-  final jsonInput = lineInput.transform(StreamTransformer.fromHandlers(
-      handleData: (String data, EventSink<dynamic> sink) {
-    sink.add(convert.jsonDecode(data));
-  }));
-  return jsonInput;
-}
-
-class StreamingSyncRequest {
-  List<BucketRequest> buckets;
-  bool includeChecksum = true;
-
-  StreamingSyncRequest(this.buckets);
-
-  Map<String, dynamic> toJson() => {
-        'buckets': buckets,
-        'include_checksum': includeChecksum,
-        // We want the JSON row data as a string
-        'raw_data': true
-      };
-}
-
-class BucketRequest {
-  String name;
-  String after;
-
-  BucketRequest(this.name, this.after);
-
-  Map<String, dynamic> toJson() => {
-        'name': name,
-        'after': after,
-      };
 }

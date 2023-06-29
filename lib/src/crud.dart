@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:collection/collection.dart';
 import 'package:sqlite_async/sqlite3.dart' as sqlite;
 
 /// A batch of client-side changes.
@@ -11,10 +12,35 @@ class CrudBatch {
   bool haveMore;
 
   /// Call to remove the changes from the local queue, once successfully uploaded.
+  ///
+  /// [writeCheckpoint] is optional.
   Future<void> Function({String? writeCheckpoint}) complete;
 
   CrudBatch(
       {required this.crud, required this.haveMore, required this.complete});
+}
+
+class CrudTransaction {
+  /// Unique transaction id.
+  ///
+  /// If null, this contains a list of changes recorded without an explicit transaction associated.
+  final int? transactionId;
+
+  /// List of client-side changes.
+  final List<CrudEntry> crud;
+
+  /// Call to remove the changes from the local queue, once successfully uploaded.
+  final Future<void> Function({String? writeCheckpoint}) complete;
+
+  CrudTransaction(
+      {required this.crud,
+      required this.complete,
+      required this.transactionId});
+
+  @override
+  String toString() {
+    return "CrudTransaction<$transactionId, $crud>";
+  }
 }
 
 /// A single client-side change.
@@ -22,16 +48,25 @@ class CrudEntry {
   /// Auto-incrementing client-side id.
   ///
   /// Reset whenever the database is re-created.
-  int clientId;
+  final int clientId;
+
+  /// Auto-incrementing transaction id. This is the same for all operations
+  /// within the same transaction.
+  ///
+  /// Reset whenever the database is re-created.
+  ///
+  /// Currently, this is only present when [PowerSyncDatabase.writeTransaction] is used.
+  /// This may change in the future.
+  final int? transactionId;
 
   /// Type of change.
-  UpdateType op;
+  final UpdateType op;
 
   /// Table that contained the change.
-  String table;
+  final String table;
 
   /// ID of the changed row.
-  String id;
+  final String id;
 
   /// Data associated with the change.
   ///
@@ -40,14 +75,15 @@ class CrudEntry {
   /// For PATCH, this is contains the columns that changed.
   ///
   /// For DELETE, this is null.
-  Map<String, dynamic>? opData;
+  final Map<String, dynamic>? opData;
 
-  CrudEntry(this.clientId, this.op, this.table, this.id, this.opData);
+  CrudEntry(this.clientId, this.op, this.table, this.id, this.transactionId,
+      this.opData);
 
   factory CrudEntry.fromRow(sqlite.Row row) {
     final data = jsonDecode(row['data']);
     return CrudEntry(row['id'], UpdateType.fromJsonChecked(data['op'])!,
-        data['type'], data['id'], data['data']);
+        data['type'], data['id'], row['tx_id'], data['data']);
   }
 
   /// Converts the change to JSON format, as required by the dev crud API.
@@ -57,8 +93,31 @@ class CrudEntry {
       'op': op.toJson(),
       'type': table,
       'id': id,
+      'tx_id': transactionId,
       'data': opData
     };
+  }
+
+  @override
+  String toString() {
+    return "CrudEntry<$transactionId/$clientId ${op.toJson()} $table/$id $opData>";
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return (other is CrudEntry &&
+        other.transactionId == transactionId &&
+        other.clientId == clientId &&
+        other.op == op &&
+        other.table == table &&
+        other.id == id &&
+        const MapEquality().equals(other.opData, opData));
+  }
+
+  @override
+  int get hashCode {
+    return Object.hash(transactionId, clientId, op.toJson(), table, id,
+        const MapEquality().hash(opData));
   }
 }
 

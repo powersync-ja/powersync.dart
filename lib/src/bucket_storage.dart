@@ -2,13 +2,14 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:collection/collection.dart';
-import 'package:sqlite_async/sqlite3.dart' as sqlite;
 import 'package:sqlite_async/mutex.dart';
+import 'package:sqlite_async/sqlite3.dart' as sqlite;
 
 import 'crud.dart';
 import 'database_utils.dart';
 import 'log.dart';
 import 'schema_logic.dart';
+import 'sync_types.dart';
 import 'uuid.dart';
 
 const compactOperationInterval = 1000;
@@ -799,43 +800,6 @@ class SqliteOp {
   List<dynamic> args;
 
   SqliteOp(this.sql, this.args);
-}
-
-class Checkpoint {
-  final String lastOpId;
-  final String? writeCheckpoint;
-  final List<BucketChecksum> checksums;
-
-  const Checkpoint(
-      {required this.lastOpId, required this.checksums, this.writeCheckpoint});
-
-  Checkpoint.fromJson(Map<String, dynamic> json)
-      : lastOpId = json['last_op_id'],
-        writeCheckpoint = json['write_checkpoint'],
-        checksums = (json['buckets'] as List)
-            .map((b) => BucketChecksum.fromJson(b))
-            .toList();
-}
-
-class BucketChecksum {
-  final String bucket;
-  final int checksum;
-
-  /// Count is informational only
-  final int? count;
-  final String? lastOpId;
-
-  const BucketChecksum(
-      {required this.bucket,
-      required this.checksum,
-      this.count,
-      this.lastOpId});
-
-  BucketChecksum.fromJson(Map<String, dynamic> json)
-      : bucket = json['bucket'],
-        checksum = json['checksum'],
-        count = json['count'],
-        lastOpId = json['last_op_id'];
 }
 
 class SyncLocalDatabaseResult {

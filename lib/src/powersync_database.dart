@@ -5,9 +5,11 @@ import 'package:logging/logging.dart';
 import 'package:sqlite_async/sqlite3.dart' as sqlite;
 import 'package:sqlite_async/sqlite_async.dart';
 
+import 'abort_controller.dart';
 import 'bucket_storage.dart';
 import 'connector.dart';
 import 'crud.dart';
+import 'database_utils.dart';
 import 'isolate_completer.dart';
 import 'log.dart';
 import 'migrations.dart';
@@ -16,6 +18,7 @@ import 'powersync_update_notification.dart';
 import 'schema.dart';
 import 'schema_logic.dart';
 import 'streaming_sync.dart';
+import 'sync_status.dart';
 
 /// A PowerSync managed database.
 ///
@@ -56,8 +59,15 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
   @override
   late final Stream<UpdateNotification> updates;
 
-  SendPort? _streamingSyncPort;
+  /// Delay between retrying failed requests.
+  /// Defaults to 5 seconds.
+  /// Only has an effect if changed before calling [connect].
+  Duration retryDelay = const Duration(seconds: 5);
+
   late Future<void> _initialized;
+
+  /// null when disconnected, present when connecting or connected
+  AbortController? _disconnecter;
 
   /// Open a [PowerSyncDatabase].
   ///
@@ -123,37 +133,50 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
     return _initialized;
   }
 
+  @override
+  bool get closed {
+    return database.closed;
+  }
+
   /// Connect to the PowerSync service, and keep the databases in sync.
   ///
   /// The connection is automatically re-opened if it fails for any reason.
   ///
   /// Status changes are reported on [statusStream].
   connect({required PowerSyncBackendConnector connector}) async {
+    // Disconnect if connected
+    await disconnect();
+    final disconnector = AbortController();
+    _disconnecter = disconnector;
+
     await _initialized;
     final dbref = database.isolateConnectionFactory();
     ReceivePort rPort = ReceivePort();
-    disconnect();
     StreamSubscription? updateSubscription;
     rPort.listen((data) async {
       if (data is List) {
         String action = data[0];
         if (action == "getCredentials") {
           await (data[1] as PortCompleter).handle(() async {
-            final token = await connector.getCredentials();
+            final token = await connector.getCredentialsCached();
+            log.fine('Credentials: $token');
             return token;
           });
         } else if (action == "invalidateCredentials") {
+          log.fine('Refreshing credentials');
           await (data[1] as PortCompleter).handle(() async {
-            await connector.refreshCredentials();
+            await connector.prefetchCredentials();
           });
         } else if (action == 'init') {
           SendPort port = data[1];
-          _streamingSyncPort = port;
           var throttled = UpdateNotification.throttleStream(
               updates, const Duration(milliseconds: 10));
           updateSubscription = throttled.listen((event) {
             port.send(['update']);
           });
+          disconnector.onAbort.then((_) {
+            port.send(['close']);
+          }).ignore();
         } else if (action == 'uploadCrud') {
           await (data[1] as PortCompleter).handle(() async {
             await connector.uploadData(this);
@@ -174,9 +197,44 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
       }
     });
 
+    var errorPort = ReceivePort();
+    errorPort.listen((message) async {
+      // Sample error:
+      // flutter: [PowerSync] WARNING: 2023-06-28 16:34:11.566122: Sync Isolate error
+      // flutter: [Connection closed while receiving data, #0      IOClient.send.<anonymous closure> (package:http/src/io_client.dart:76:13)
+      // #1      Stream.handleError.<anonymous closure> (dart:async/stream.dart:929:16)
+      // #2      _HandleErrorStream._handleError (dart:async/stream_pipe.dart:269:17)
+      // #3      _ForwardingStreamSubscription._handleError (dart:async/stream_pipe.dart:157:13)
+      // #4      _HttpClientResponse.listen.<anonymous closure> (dart:_http/http_impl.dart:707:16)
+      // ...
+      log.severe('Sync Isolate error', message);
+
+      // Reconnect
+      connect(connector: connector);
+    });
+
+    disconnected() {
+      _disconnecter?.completeAbort();
+      _disconnecter = null;
+      rPort.close();
+    }
+
+    var exitPort = ReceivePort();
+    exitPort.listen((message) {
+      log.fine('Sync Isolate exit');
+      disconnected();
+    });
+
+    if (_disconnecter?.aborted == true) {
+      disconnected();
+      return;
+    }
+
     Isolate.spawn(_powerSyncDatabaseIsolate,
-        _PowerSyncDatabaseIsolateArgs(rPort.sendPort, dbref),
-        debugName: 'PowerSyncDatabase');
+        _PowerSyncDatabaseIsolateArgs(rPort.sendPort, dbref, retryDelay),
+        debugName: 'PowerSyncDatabase',
+        onError: errorPort.sendPort,
+        onExit: exitPort.sendPort);
   }
 
   void _setStatus(SyncStatus status) {
@@ -189,10 +247,9 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
   /// Close the sync connection.
   ///
   /// Use [connect] to connect again.
-  void disconnect() {
-    if (_streamingSyncPort != null) {
-      _streamingSyncPort!.send(['close']);
-      _streamingSyncPort = null;
+  Future<void> disconnect() async {
+    if (_disconnecter != null) {
+      await _disconnecter!.abort();
     }
   }
 
@@ -203,7 +260,7 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
   /// The database can still be queried after this is called, but the tables
   /// would be empty.
   Future<void> disconnectedAndClear() async {
-    disconnect();
+    await disconnect();
 
     await writeTransaction((tx) async {
       await tx.execute('DELETE FROM ps_oplog WHERE 1');
@@ -256,9 +313,14 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
   ///
   /// Use [limit] to specify the maximum number of updates to return in a single
   /// batch.
+  ///
+  /// This method does include transaction ids in the result, but does not group
+  /// data by transaction. One batch may contain data from multiple transactions,
+  /// and a single transaction may be split over multiple batches.
   Future<CrudBatch?> getCrudBatch({limit = 100}) async {
     final rows = await getAll(
-        'SELECT id, data FROM ps_crud ORDER BY id ASC LIMIT ?', [limit + 1]);
+        'SELECT id, tx_id, data FROM ps_crud ORDER BY id ASC LIMIT ?',
+        [limit + 1]);
     List<CrudEntry> all = [for (var row in rows) CrudEntry.fromRow(row)];
 
     var haveMore = false;
@@ -289,12 +351,71 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
         });
   }
 
+  /// Get the next recorded transaction to upload.
+  ///
+  /// Returns null if there is no data to upload.
+  ///
+  /// Use this from the [PowerSyncBackendConnector.uploadData]` callback.
+  ///
+  /// Once the data have been successfully uploaded, call [CrudTransaction.complete] before
+  /// requesting the next transaction.
+  ///
+  /// Unlike [getCrudBatch], this only returns data from a single transaction at a time.
+  /// All data for the transaction is loaded into memory.
+  Future<CrudTransaction?> getNextCrudTransaction() async {
+    return await readTransaction((tx) async {
+      final first = await tx.getOptional(
+          'SELECT id, tx_id, data FROM ps_crud ORDER BY id ASC LIMIT 1');
+      if (first == null) {
+        return null;
+      }
+      final int? txId = first['tx_id'];
+      List<CrudEntry> all;
+      if (txId == null) {
+        all = [CrudEntry.fromRow(first)];
+      } else {
+        final rows = await tx.getAll(
+            'SELECT id, tx_id, data FROM ps_crud WHERE tx_id = ? ORDER BY id ASC',
+            [txId]);
+        all = [for (var row in rows) CrudEntry.fromRow(row)];
+      }
+
+      final last = all[all.length - 1];
+
+      return CrudTransaction(
+          transactionId: txId,
+          crud: all,
+          complete: ({String? writeCheckpoint}) async {
+            await writeTransaction((db) async {
+              await db.execute(
+                  'DELETE FROM ps_crud WHERE id <= ?', [last.clientId]);
+              if (writeCheckpoint != null &&
+                  await db.getOptional('SELECT 1 FROM ps_crud LIMIT 1') ==
+                      null) {
+                await db.execute(
+                    'UPDATE ps_buckets SET target_op = $writeCheckpoint WHERE name=\'\$local\'');
+              } else {
+                await db.execute(
+                    'UPDATE ps_buckets SET target_op = $maxOpId WHERE name=\'\$local\'');
+              }
+            });
+          });
+    });
+  }
+
   /// Close the database, releasing resources.
   ///
   /// Also [disconnect]s any active connection.
+  ///
+  /// Once close is called, this connection cannot be used again - a new one
+  /// must be constructed.
   @override
   Future<void> close() async {
-    disconnect();
+    // Don't close in the middle of the initialization process.
+    await _initialized;
+    // Disconnect any active sync connection.
+    await disconnect();
+    // Now we can close the database
     await database.close();
   }
 
@@ -303,9 +424,10 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
   /// In most cases, [readTransaction] should be used instead.
   @override
   Future<T> readLock<T>(Future<T> Function(SqliteReadContext tx) callback,
-      {Duration? lockTimeout}) async {
+      {String? debugContext, Duration? lockTimeout}) async {
     await _initialized;
-    return database.readLock(callback);
+    return database.readLock(callback,
+        debugContext: debugContext, lockTimeout: lockTimeout);
   }
 
   /// Takes a global lock, without starting a transaction.
@@ -313,37 +435,45 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
   /// In most cases, [writeTransaction] should be used instead.
   @override
   Future<T> writeLock<T>(Future<T> Function(SqliteWriteContext tx) callback,
-      {Duration? lockTimeout}) async {
+      {String? debugContext, Duration? lockTimeout}) async {
     await _initialized;
-    return database.writeLock(callback);
+    return database.writeLock(callback,
+        debugContext: debugContext, lockTimeout: lockTimeout);
   }
-}
-
-/// Stats of the local upload queue.
-class UploadQueueStats {
-  /// Number of records in the upload queue.
-  int count;
-
-  /// Size of the upload queue in bytes.
-  int? size;
-
-  UploadQueueStats({required this.count, this.size});
 
   @override
-  String toString() {
-    if (size == null) {
-      return "UploadQueueStats<count: $count>";
-    } else {
-      return "UploadQueueStats<count: $count size: ${size! / 1024}kB>";
-    }
+  Future<T> writeTransaction<T>(
+      Future<T> Function(SqliteWriteContext tx) callback,
+      {Duration? lockTimeout,
+      String? debugContext}) async {
+    return writeLock((ctx) async {
+      return await internalTrackedWriteTransaction(ctx, callback);
+    },
+        lockTimeout: lockTimeout,
+        debugContext: debugContext ?? 'writeTransaction()');
+  }
+
+  @override
+  Future<sqlite.ResultSet> execute(String sql,
+      [List<Object?> parameters = const []]) async {
+    return writeLock((ctx) async {
+      try {
+        await ctx.execute(
+            'UPDATE ps_tx SET current_tx = next_tx, next_tx = next_tx + 1 WHERE id = 1');
+        return await ctx.execute(sql, parameters);
+      } finally {
+        await ctx.execute('UPDATE ps_tx SET current_tx = NULL WHERE id = 1');
+      }
+    }, debugContext: 'execute()');
   }
 }
 
 class _PowerSyncDatabaseIsolateArgs {
-  SendPort sPort;
-  IsolateConnectionFactory dbRef;
+  final SendPort sPort;
+  final IsolateConnectionFactory dbRef;
+  final Duration retryDelay;
 
-  _PowerSyncDatabaseIsolateArgs(this.sPort, this.dbRef);
+  _PowerSyncDatabaseIsolateArgs(this.sPort, this.dbRef, this.retryDelay);
 }
 
 Future<void> _powerSyncDatabaseIsolate(
@@ -397,37 +527,48 @@ Future<void> _powerSyncDatabaseIsolate(
     return r.future;
   }
 
-  db = await args.dbRef.openFactory
-      .open(SqliteOpenOptions(primaryConnection: false, readOnly: false));
-  final mutex = args.dbRef.mutex.open();
-  final storage = BucketStorage(db, mutex: mutex);
-  final sync = StreamingSyncImplementation(
-      adapter: storage,
-      credentialsCallback: loadCredentials,
-      invalidCredentialsCallback: invalidateCredentials,
-      uploadCrud: uploadCrud,
-      updateStream: updateController.stream);
-  sync.streamingSync();
-  sync.statusStream.listen((event) {
-    sPort.send(['status', event]);
-  });
+  runZonedGuarded(() async {
+    final mutex = args.dbRef.mutex.open();
+    db = await args.dbRef.openFactory
+        .open(SqliteOpenOptions(primaryConnection: false, readOnly: false));
 
-  Timer? updateDebouncer;
-  Set<String> updatedTables = {};
+    final storage = BucketStorage(db!, mutex: mutex);
+    final sync = StreamingSyncImplementation(
+        adapter: storage,
+        credentialsCallback: loadCredentials,
+        invalidCredentialsCallback: invalidateCredentials,
+        uploadCrud: uploadCrud,
+        updateStream: updateController.stream,
+        retryDelay: args.retryDelay);
+    sync.streamingSync();
+    sync.statusStream.listen((event) {
+      sPort.send(['status', event]);
+    });
 
-  void maybeFireUpdates() {
-    if (updatedTables.isNotEmpty) {
-      upstreamDbClient.fire(UpdateNotification(updatedTables));
-      updatedTables.clear();
-      updateDebouncer?.cancel();
-      updateDebouncer = null;
+    Timer? updateDebouncer;
+    Set<String> updatedTables = {};
+
+    void maybeFireUpdates() {
+      if (updatedTables.isNotEmpty) {
+        upstreamDbClient.fire(UpdateNotification(updatedTables));
+        updatedTables.clear();
+        updateDebouncer?.cancel();
+        updateDebouncer = null;
+      }
     }
-  }
 
-  db.updates.listen((event) {
-    updatedTables.add(event.tableName);
+    db!.updates.listen((event) {
+      updatedTables.add(event.tableName);
 
-    updateDebouncer ??=
-        Timer(const Duration(milliseconds: 10), maybeFireUpdates);
+      updateDebouncer ??=
+          Timer(const Duration(milliseconds: 10), maybeFireUpdates);
+    });
+  }, (error, stack) {
+    // Properly dispose the database if an uncaught error occurs.
+    // Unfortunately, this does not handle disposing while the database is opening.
+    // This should be rare - any uncaught error is a bug. And in most cases,
+    // it should occur after the database is already open.
+    db?.dispose();
+    throw error;
   });
 }
