@@ -5,7 +5,7 @@ import 'package:logging/logging.dart';
 import 'package:sqlite_async/sqlite3.dart' as sqlite;
 import 'package:sqlite_async/sqlite_async.dart';
 
-import 'aborter.dart';
+import 'abort_controller.dart';
 import 'bucket_storage.dart';
 import 'connector.dart';
 import 'crud.dart';
