@@ -11,10 +11,27 @@ class CrudBatch {
   bool haveMore;
 
   /// Call to remove the changes from the local queue, once successfully uploaded.
+  ///
+  /// [writeCheckpoint] is optional.
   Future<void> Function({String? writeCheckpoint}) complete;
 
   CrudBatch(
       {required this.crud, required this.haveMore, required this.complete});
+}
+
+class CrudTransaction {
+  /// Unique transaction id.
+  ///
+  /// If null, this contains a list of changes recorded without an explicit transaction associated.
+  int? transactionId;
+
+  /// List of client-side changes.
+  List<CrudEntry> crud;
+
+  /// Call to remove the changes from the local queue, once successfully uploaded.
+  Future<void> Function({String? writeCheckpoint}) complete;
+
+  CrudTransaction({required this.crud, required this.complete});
 }
 
 /// A single client-side change.
@@ -23,6 +40,15 @@ class CrudEntry {
   ///
   /// Reset whenever the database is re-created.
   int clientId;
+
+  /// Auto-incrementing transaction id. This is the same for all operations
+  /// within the same transaction.
+  ///
+  /// Reset whenever the database is re-created.
+  ///
+  /// Currently, this is only present when [PowerSyncDatabase.writeTransaction] is used.
+  /// This may change in the future.
+  int? transactionId;
 
   /// Type of change.
   UpdateType op;
@@ -42,12 +68,13 @@ class CrudEntry {
   /// For DELETE, this is null.
   Map<String, dynamic>? opData;
 
-  CrudEntry(this.clientId, this.op, this.table, this.id, this.opData);
+  CrudEntry(this.clientId, this.op, this.table, this.id, this.transactionId,
+      this.opData);
 
   factory CrudEntry.fromRow(sqlite.Row row) {
     final data = jsonDecode(row['data']);
     return CrudEntry(row['id'], UpdateType.fromJsonChecked(data['op'])!,
-        data['type'], data['id'], data['data']);
+        data['type'], data['id'], data['tx_id'], data['data']);
   }
 
   /// Converts the change to JSON format, as required by the dev crud API.
@@ -57,6 +84,7 @@ class CrudEntry {
       'op': op.toJson(),
       'type': table,
       'id': id,
+      'tx_id': transactionId,
       'data': opData
     };
   }

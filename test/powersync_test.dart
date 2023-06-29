@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:powersync/powersync.dart';
@@ -62,7 +63,7 @@ void main() {
 
       // Cannot write
       await expectLater(() async {
-        await db.getAll('INSERT INTO assets(id) VALUES(uuid())');
+        await db.getAll('INSERT INTO assets(id) VALUES(?)', ['test']);
       },
           throwsA((e) =>
               e is sqlite.SqliteException &&
@@ -84,7 +85,8 @@ void main() {
 
       await db.writeTransaction((tx) async {
         // Within a write transaction, this is fine
-        await tx.getAll('INSERT INTO assets(id) VALUES(uuid()) RETURNING *');
+        await tx
+            .getAll('INSERT INTO assets(id) VALUES(?) RETURNING *', ['test']);
       });
     });
 
@@ -94,8 +96,8 @@ void main() {
 
       await db.writeTransaction((tx) async {
         await expectLater(() async {
-          await db.execute('INSERT INTO assets(id) VALUES(uuid())');
-        }, throwsA((e) => e is LockError));
+          await db.execute('INSERT INTO assets(id) VALUES(?)', ['test']);
+        }, throwsA((e) => e is LockError && e.message.contains('tx.execute')));
       });
     });
 
@@ -108,7 +110,7 @@ void main() {
         // But it's likely unintentional and could cause weird bugs, so we don't
         // allow it by default.
         await expectLater(() async {
-          await db.getAll('SELECT * FROM test_data');
+          await db.getAll('SELECT * FROM assets');
         }, throwsA((e) => e is LockError && e.message.contains('tx.getAll')));
       });
 
@@ -118,7 +120,7 @@ void main() {
         // This also exposes an interesting test case where the read transaction
         // opens another connection, but doesn't use it.
         await expectLater(() async {
-          await db.getAll('SELECT * FROM test_data');
+          await db.getAll('SELECT * FROM assets');
         }, throwsA((e) => e is LockError && e.message.contains('tx.getAll')));
       });
     });
@@ -129,7 +131,7 @@ void main() {
 
       await db.writeLock((tx) async {
         await expectLater(() async {
-          await db.getOptional('SELECT * FROM test_data');
+          await db.getOptional('SELECT * FROM assets');
         },
             throwsA(
                 (e) => e is LockError && e.message.contains('tx.getOptional')));
@@ -137,11 +139,49 @@ void main() {
 
       await db.readLock((tx) async {
         await expectLater(() async {
-          await db.getOptional('SELECT * FROM test_data');
+          await db.getOptional('SELECT * FROM assets');
         },
             throwsA(
                 (e) => e is LockError && e.message.contains('tx.getOptional')));
       });
+    });
+
+    test(
+        'should allow read-only db calls within transaction callback in separate zone',
+        () async {
+      final db = await setupPowerSync(path: path);
+
+      // Get a reference to the parent zone (outside the transaction).
+      final zone = Zone.current;
+
+      // Each of these are fine, since it could use a separate connection.
+      // Note: In highly concurrent cases, it could exhaust the connection pool and cause a deadlock.
+
+      await db.writeTransaction((tx) async {
+        // Use the parent zone to avoid the "recursive lock" error.
+        await zone.fork().run(() async {
+          await db.getAll('SELECT * FROM assets');
+        });
+      });
+
+      await db.readTransaction((tx) async {
+        await zone.fork().run(() async {
+          await db.getAll('SELECT * FROM assets');
+        });
+      });
+
+      await db.readTransaction((tx) async {
+        await zone.fork().run(() async {
+          await db.execute('SELECT * FROM assets');
+        });
+      });
+
+      // Note: This would deadlock, since it shares a global write lock.
+      // await db.writeTransaction((tx) async {
+      //   await zone.fork().run(() async {
+      //     await db.execute('SELECT * FROM test_data');
+      //   });
+      // });
     });
 
     test('should allow PRAMGAs', () async {

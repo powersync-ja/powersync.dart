@@ -51,7 +51,7 @@ INSTEAD OF DELETE ON ${quoteIdentifier(type)}
 FOR EACH ROW
 BEGIN
   DELETE FROM $internalNameE WHERE id = OLD.id;
-  INSERT INTO ps_crud(data) SELECT json_object('op', 'DELETE', 'type', ${quoteString(type)}, 'id', OLD.id);
+  INSERT INTO ps_crud(tx_id, data) SELECT current_tx, json_object('op', 'DELETE', 'type', ${quoteString(type)}, 'id', OLD.id) FROM ps_tx WHERE id = 1;
 END""",
     """
 CREATE TRIGGER ${quoteIdentifier('ps_view_insert_$type')}
@@ -64,7 +64,7 @@ BEGIN
   END;
   INSERT INTO $internalNameE(id, data)
     SELECT NEW.id, json_object($jsonFragment);
-  INSERT INTO ps_crud(data) SELECT json_object('op', 'PUT', 'type', ${quoteString(type)}, 'id', NEW.id, 'data', json(powersync_diff('{}', json_object($jsonFragment))));
+  INSERT INTO ps_crud(tx_id, data) SELECT current_tx, json_object('op', 'PUT', 'type', ${quoteString(type)}, 'id', NEW.id, 'data', json(powersync_diff('{}', json_object($jsonFragment)))) FROM ps_tx WHERE id = 1;
   INSERT INTO ps_oplog(bucket, op_id, op, row_type, row_id, hash, superseded)
     SELECT '\$local',
            1,
@@ -87,7 +87,7 @@ BEGIN
   UPDATE $internalNameE
         SET data = json_object($jsonFragment)
         WHERE id = NEW.id;
-  INSERT INTO ps_crud(data) SELECT json_object('op', 'PATCH', 'type', ${quoteString(type)}, 'id', NEW.id, 'data', json(powersync_diff(json_object($jsonFragmentOld), json_object($jsonFragment))));
+  INSERT INTO ps_crud(tx_id, data) SELECT current_tx, json_object('op', 'PATCH', 'type', ${quoteString(type)}, 'id', NEW.id, 'data', json(powersync_diff(json_object($jsonFragmentOld), json_object($jsonFragment)))) FROM ps_tx WHERE id = 1;
   INSERT INTO ps_oplog(bucket, op_id, op, row_type, row_id, hash, superseded)
     SELECT '\$local',
            1,
@@ -155,7 +155,7 @@ CREATE TRIGGER ${quoteIdentifier('ps_view_insert_$type')}
 INSTEAD OF INSERT ON ${quoteIdentifier(type)}
 FOR EACH ROW
 BEGIN
-  INSERT INTO ps_crud(data) SELECT json_object('op', 'PUT', 'type', ${quoteString(type)}, 'id', NEW.id, 'data', json(powersync_diff('{}', json_object($jsonFragment))));
+  INSERT INTO ps_crud(tx_id, data) SELECT current_tx, json_object('op', 'PUT', 'type', ${quoteString(type)}, 'id', NEW.id, 'data', json(powersync_diff('{}', json_object($jsonFragment)))) FROM ps_tx WHERE id = 1;
 END"""
   ];
 }
