@@ -1,3 +1,21 @@
+## 0.4.0-preview.6
+
+New functionality:
+ - Include transaction ids on crud entries, allowing transactions to be grouped together.
+ - Simplify implementation of `PowerSyncBackendConnector` by automatically handling token caching.
+
+Fixes:
+ - Only check token expiration on the server, avoiding issues when the local time is out of sync.
+ - Fix some edge case errors that would kill the sync Isolate.
+ - Fix errors when disconnecting shortly after connecting.
+
+Breaking changes:
+ - `PowerSyncDatabase.disconnect()` now returns `Future<void>` instead of `void`.
+ - Subclasses of `PowerSyncBackendConnector` must now implement `fetchCredentials()` instead of `refreshCredentials()` + `getCredentials()`.
+
+Other changes:
+ - Update sqlite_async dependency to 0.4.0: https://pub.dev/packages/sqlite_async/changelog
+
 ## 0.3.0-preview.5
 
 - Link github repository.
