@@ -9,6 +9,7 @@ import 'abort_controller.dart';
 import 'bucket_storage.dart';
 import 'connector.dart';
 import 'crud.dart';
+import 'database_utils.dart';
 import 'isolate_completer.dart';
 import 'log.dart';
 import 'migrations.dart';
@@ -318,7 +319,8 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
   /// and a single transaction may be split over multiple batches.
   Future<CrudBatch?> getCrudBatch({limit = 100}) async {
     final rows = await getAll(
-        'SELECT id, data FROM ps_crud ORDER BY id ASC LIMIT ?', [limit + 1]);
+        'SELECT id, tx_id, data FROM ps_crud ORDER BY id ASC LIMIT ?',
+        [limit + 1]);
     List<CrudEntry> all = [for (var row in rows) CrudEntry.fromRow(row)];
 
     var haveMore = false;
@@ -373,7 +375,7 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
         all = [CrudEntry.fromRow(first)];
       } else {
         final rows = await tx.getAll(
-            'SELECT id, data FROM ps_crud WHERE tx_id = ? ORDER BY id ASC',
+            'SELECT id, tx_id, data FROM ps_crud WHERE tx_id = ? ORDER BY id ASC',
             [txId]);
         all = [for (var row in rows) CrudEntry.fromRow(row)];
       }
@@ -381,6 +383,7 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
       final last = all[all.length - 1];
 
       return CrudTransaction(
+          transactionId: txId,
           crud: all,
           complete: ({String? writeCheckpoint}) async {
             await writeTransaction((db) async {
@@ -436,6 +439,32 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
     await _initialized;
     return database.writeLock(callback,
         debugContext: debugContext, lockTimeout: lockTimeout);
+  }
+
+  @override
+  Future<T> writeTransaction<T>(
+      Future<T> Function(SqliteWriteContext tx) callback,
+      {Duration? lockTimeout,
+      String? debugContext}) async {
+    return writeLock((ctx) async {
+      return await internalTrackedWriteTransaction(ctx, callback);
+    },
+        lockTimeout: lockTimeout,
+        debugContext: debugContext ?? 'writeTransaction()');
+  }
+
+  @override
+  Future<sqlite.ResultSet> execute(String sql,
+      [List<Object?> parameters = const []]) async {
+    return writeLock((ctx) async {
+      try {
+        await ctx.execute(
+            'UPDATE ps_tx SET current_tx = next_tx, next_tx = next_tx + 1 WHERE id = 1');
+        return await ctx.execute(sql, parameters);
+      } finally {
+        await ctx.execute('UPDATE ps_tx SET current_tx = NULL WHERE id = 1');
+      }
+    }, debugContext: 'execute()');
   }
 }
 
