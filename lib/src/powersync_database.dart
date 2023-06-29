@@ -60,6 +60,8 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
   SendPort? _streamingSyncPort;
   late Future<void> _initialized;
 
+  Completer<void>? _disconnectCompleter;
+
   /// Open a [PowerSyncDatabase].
   ///
   /// Only a single [PowerSyncDatabase] per [path] should be opened at a time.
@@ -196,6 +198,9 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
     var exitPort = ReceivePort();
     exitPort.listen((message) {
       log.fine('Sync Isolate exit');
+      if (_disconnectCompleter != null) {
+        _disconnectCompleter!.complete();
+      }
     });
 
     Isolate.spawn(_powerSyncDatabaseIsolate,
@@ -215,10 +220,12 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
   /// Close the sync connection.
   ///
   /// Use [connect] to connect again.
-  void disconnect() {
+  Future<void> disconnect() async {
     if (_streamingSyncPort != null) {
+      _disconnectCompleter = Completer();
       _streamingSyncPort!.send(['close']);
       _streamingSyncPort = null;
+      await _disconnectCompleter!.future;
     }
   }
 
@@ -229,7 +236,7 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
   /// The database can still be queried after this is called, but the tables
   /// would be empty.
   Future<void> disconnectedAndClear() async {
-    disconnect();
+    await disconnect();
 
     await writeTransaction((tx) async {
       await tx.execute('DELETE FROM ps_oplog WHERE 1');
@@ -320,7 +327,7 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
   /// Also [disconnect]s any active connection.
   @override
   Future<void> close() async {
-    disconnect();
+    await disconnect();
     await database.close();
   }
 
