@@ -3,39 +3,13 @@ import 'dart:convert' as convert;
 import 'dart:io';
 
 import 'package:http/http.dart' as http;
-import 'package:http/http.dart';
 
 import 'bucket_storage.dart';
 import 'connector.dart';
 import 'log.dart';
-
-class SyncStatus {
-  /// true if currently connected
-  final bool connected;
-
-  /// Time that a last sync has fully completed, if any
-  /// Currently this is reset to null after a restart
-  final DateTime? lastSyncedAt;
-
-  const SyncStatus({required this.connected, required this.lastSyncedAt});
-
-  @override
-  bool operator ==(Object other) {
-    return (other is SyncStatus &&
-        other.connected == connected &&
-        other.lastSyncedAt == lastSyncedAt);
-  }
-
-  @override
-  int get hashCode {
-    return Object.hash(connected, lastSyncedAt);
-  }
-
-  @override
-  String toString() {
-    return "SyncStatus<connected: $connected lastSyncedAt: $lastSyncedAt>";
-  }
-}
+import 'stream_utils.dart';
+import 'sync_status.dart';
+import 'sync_types.dart';
 
 class StreamingSyncImplementation {
   BucketStorage adapter;
@@ -287,44 +261,6 @@ class StreamingSyncImplementation {
     return true;
   }
 
-  Stream<T> addBroadcast<T>(Stream<T> a, Stream<T> broadcast) {
-    var controller = StreamController<T>();
-
-    StreamSubscription<T>? sub1;
-    StreamSubscription<T>? sub2;
-
-    void close() {
-      controller.close();
-      sub1!.cancel();
-      sub2!.cancel();
-    }
-
-    // TODO: backpressure?
-    sub1 = a.listen((event) {
-      controller.add(event);
-    }, onDone: () {
-      close();
-    }, onError: (e) {
-      controller.addError(e);
-      close();
-    });
-
-    sub2 = broadcast.listen((event) {
-      controller.add(event);
-    }, onDone: () {
-      close();
-    }, onError: (e) {
-      controller.addError(e);
-      close();
-    });
-
-    controller.onCancel = () {
-      sub1?.cancel();
-    };
-
-    return controller.stream;
-  }
-
   Stream<Object?> streamingSyncRequest(StreamingSyncRequest data) async* {
     final credentials = await credentialsCallback();
     if (credentials == null) {
@@ -351,108 +287,7 @@ class StreamingSyncImplementation {
 
     // Note: The response stream is automatically closed when this loop errors
     await for (var line in ndjson(res.stream)) {
-      if (line != null) {
-        final parsed = parseStreamingSyncLine(line as Map<String, dynamic>);
-        yield parsed;
-      }
+      yield parseStreamingSyncLine(line as Map<String, dynamic>);
     }
   }
-}
-
-class StreamingSyncCheckpoint {
-  Checkpoint checkpoint;
-
-  StreamingSyncCheckpoint(this.checkpoint);
-
-  StreamingSyncCheckpoint.fromJson(Map<String, dynamic> json)
-      : checkpoint = Checkpoint.fromJson(json);
-}
-
-class StreamingSyncCheckpointDiff {
-  String lastOpId;
-  List<BucketChecksum> updatedBuckets;
-  List<String> removedBuckets;
-  String? writeCheckpoint;
-
-  StreamingSyncCheckpointDiff(
-      this.lastOpId, this.updatedBuckets, this.removedBuckets);
-
-  StreamingSyncCheckpointDiff.fromJson(Map<String, dynamic> json)
-      : lastOpId = json['last_op_id'],
-        writeCheckpoint = json['write_checkpoint'],
-        updatedBuckets = (json['updated_buckets'] as List)
-            .map((e) => BucketChecksum.fromJson(e))
-            .toList(),
-        removedBuckets = List<String>.from(json['removed_buckets']);
-}
-
-class StreamingSyncCheckpointComplete {
-  String lastOpId;
-
-  StreamingSyncCheckpointComplete(this.lastOpId);
-
-  StreamingSyncCheckpointComplete.fromJson(Map<String, dynamic> json)
-      : lastOpId = json['last_op_id'];
-}
-
-class StreamingSyncKeepalive {
-  int tokenExpiresIn;
-
-  StreamingSyncKeepalive(this.tokenExpiresIn);
-
-  StreamingSyncKeepalive.fromJson(Map<String, dynamic> json)
-      : tokenExpiresIn = json['token_expires_in'];
-}
-
-Object? parseStreamingSyncLine(Map<String, dynamic> line) {
-  if (line.containsKey('checkpoint')) {
-    return Checkpoint.fromJson(line['checkpoint']);
-  } else if (line.containsKey('checkpoint_diff')) {
-    return StreamingSyncCheckpointDiff.fromJson(line['checkpoint_diff']);
-  } else if (line.containsKey('checkpoint_complete')) {
-    return StreamingSyncCheckpointComplete.fromJson(
-        line['checkpoint_complete']);
-  } else if (line.containsKey('data')) {
-    return SyncBucketData.fromJson(line['data']);
-  } else if (line.containsKey('token_expires_in')) {
-    return StreamingSyncKeepalive.fromJson(line);
-  } else {
-    return null;
-  }
-}
-
-Stream<Object?> ndjson(ByteStream input) {
-  final textInput = input.transform(convert.utf8.decoder);
-  final lineInput = textInput.transform(const convert.LineSplitter());
-  final jsonInput = lineInput.transform(StreamTransformer.fromHandlers(
-      handleData: (String data, EventSink<dynamic> sink) {
-    sink.add(convert.jsonDecode(data));
-  }));
-  return jsonInput;
-}
-
-class StreamingSyncRequest {
-  List<BucketRequest> buckets;
-  bool includeChecksum = true;
-
-  StreamingSyncRequest(this.buckets);
-
-  Map<String, dynamic> toJson() => {
-        'buckets': buckets,
-        'include_checksum': includeChecksum,
-        // We want the JSON row data as a string
-        'raw_data': true
-      };
-}
-
-class BucketRequest {
-  String name;
-  String after;
-
-  BucketRequest(this.name, this.after);
-
-  Map<String, dynamic> toJson() => {
-        'name': name,
-        'after': after,
-      };
 }

@@ -16,6 +16,7 @@ import 'powersync_update_notification.dart';
 import 'schema.dart';
 import 'schema_logic.dart';
 import 'streaming_sync.dart';
+import 'sync_status.dart';
 
 /// A PowerSync managed database.
 ///
@@ -341,26 +342,6 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
       {Duration? lockTimeout}) async {
     await _initialized;
     return database.writeLock(callback);
-  }
-}
-
-/// Stats of the local upload queue.
-class UploadQueueStats {
-  /// Number of records in the upload queue.
-  int count;
-
-  /// Size of the upload queue in bytes.
-  int? size;
-
-  UploadQueueStats({required this.count, this.size});
-
-  @override
-  String toString() {
-    if (size == null) {
-      return "UploadQueueStats<count: $count>";
-    } else {
-      return "UploadQueueStats<count: $count size: ${size! / 1024}kB>";
-    }
   }
 }
 

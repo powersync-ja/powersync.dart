@@ -1,5 +1,6 @@
 import 'package:powersync/powersync.dart';
 import 'package:powersync/src/bucket_storage.dart';
+import 'package:powersync/src/sync_types.dart';
 import 'package:sqlite_async/sqlite3.dart' as sqlite;
 import 'package:sqlite_async/mutex.dart';
 import 'package:test/test.dart';
