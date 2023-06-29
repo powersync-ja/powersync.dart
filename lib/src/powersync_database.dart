@@ -422,37 +422,43 @@ Future<void> _powerSyncDatabaseIsolate(
     return r.future;
   }
 
-  db = await args.dbRef.openFactory
-      .open(SqliteOpenOptions(primaryConnection: false, readOnly: false));
-  final mutex = args.dbRef.mutex.open();
-  final storage = BucketStorage(db, mutex: mutex);
-  final sync = StreamingSyncImplementation(
-      adapter: storage,
-      credentialsCallback: loadCredentials,
-      invalidCredentialsCallback: invalidateCredentials,
-      uploadCrud: uploadCrud,
-      updateStream: updateController.stream);
-  sync.streamingSync();
-  sync.statusStream.listen((event) {
-    sPort.send(['status', event]);
-  });
+  runZonedGuarded(() async {
+    db = await args.dbRef.openFactory
+        .open(SqliteOpenOptions(primaryConnection: false, readOnly: false));
+    final mutex = args.dbRef.mutex.open();
+    final storage = BucketStorage(db!, mutex: mutex);
+    final sync = StreamingSyncImplementation(
+        adapter: storage,
+        credentialsCallback: loadCredentials,
+        invalidCredentialsCallback: invalidateCredentials,
+        uploadCrud: uploadCrud,
+        updateStream: updateController.stream);
+    sync.streamingSync();
+    sync.statusStream.listen((event) {
+      sPort.send(['status', event]);
+    });
 
-  Timer? updateDebouncer;
-  Set<String> updatedTables = {};
+    Timer? updateDebouncer;
+    Set<String> updatedTables = {};
 
-  void maybeFireUpdates() {
-    if (updatedTables.isNotEmpty) {
-      upstreamDbClient.fire(UpdateNotification(updatedTables));
-      updatedTables.clear();
-      updateDebouncer?.cancel();
-      updateDebouncer = null;
+    void maybeFireUpdates() {
+      if (updatedTables.isNotEmpty) {
+        upstreamDbClient.fire(UpdateNotification(updatedTables));
+        updatedTables.clear();
+        updateDebouncer?.cancel();
+        updateDebouncer = null;
+      }
     }
-  }
 
-  db.updates.listen((event) {
-    updatedTables.add(event.tableName);
+    db!.updates.listen((event) {
+      updatedTables.add(event.tableName);
 
-    updateDebouncer ??=
-        Timer(const Duration(milliseconds: 10), maybeFireUpdates);
+      updateDebouncer ??=
+          Timer(const Duration(milliseconds: 10), maybeFireUpdates);
+    });
+  }, (error, stack) {
+    // Properly dispose the database if an uncaught error occurs.
+    db?.dispose();
+    throw error;
   });
 }
