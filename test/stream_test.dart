@@ -66,6 +66,37 @@ void main() {
       expect(result.length, greaterThanOrEqualTo(5));
     });
 
+    test('addBroadcast - errors on cancel', () async {
+      Object simulatedError = AssertionError('Closed');
+      Stream<String> stream2 =
+          genStream('S2:', Duration(milliseconds: 20)).asBroadcastStream();
+
+      var controller = StreamController();
+      var stream1 = controller.stream;
+
+      var merged = addBroadcast(stream1, stream2);
+
+      controller.add('S1: 0');
+      controller.add('S1: 1');
+      controller.add('S1: 2');
+      controller.onCancel = () async {
+        throw simulatedError;
+      };
+
+      List<String> result = [];
+      Object? error;
+      try {
+        await for (var data in merged) {
+          result.add(data);
+          break;
+        }
+      } catch (e) {
+        error = e;
+      }
+      expect(error, equals(simulatedError));
+      expect(result.length, equals(1));
+    });
+
     test('addBroadcast - re-use broadcast after error', () async {
       Object simulatedError = AssertionError('Closed');
       Stream<String> stream1 =

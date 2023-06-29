@@ -3,40 +3,50 @@ import 'dart:async';
 import 'package:http/http.dart';
 import 'dart:convert' as convert;
 
-/// Inject a broadcast stream into another stream.
 Stream<T> addBroadcast<T>(Stream<T> a, Stream<T> broadcast) {
-  var controller = StreamController<T>();
+  return mergeStreams([a, broadcast]);
+}
 
-  StreamSubscription<T>? sub1;
-  StreamSubscription<T>? sub2;
+/// This is similar in functionality to rxdart's MergeStream.
+/// The resulting stream emits values from either stream, as soon as they are
+/// received.
+///
+/// One difference is that if _any_ of the streams are closed, the resulting
+/// stream is closed.
+Stream<T> mergeStreams<T>(List<Stream<T>> streams) {
+  final controller = StreamController<T>(sync: true);
 
-  void close() {
-    controller.close();
-    sub1!.cancel();
-    sub2!.cancel();
-  }
+  List<StreamSubscription<T>>? subscriptions;
 
-  // TODO: backpressure?
-  sub1 = a.listen((event) {
-    controller.add(event);
-  }, onDone: () {
-    close();
-  }, onError: (e) {
-    controller.addError(e);
-    close();
-  });
-
-  sub2 = broadcast.listen((event) {
-    controller.add(event);
-  }, onDone: () {
-    close();
-  }, onError: (e) {
-    controller.addError(e);
-    close();
-  });
+  controller.onListen = () {
+    subscriptions = streams.map((stream) {
+      return stream.listen((event) {
+        return controller.add(event);
+      }, onDone: () {
+        controller.close();
+      }, onError: controller.addError);
+    }).toList();
+  };
 
   controller.onCancel = () {
-    sub1?.cancel();
+    if (subscriptions != null) {
+      // Important: The Future must be returned here.
+      // Since calling cancel on one of the subscriptions may error,
+      // not returning the Future may result in an unhandled error.
+      return cancelAll(subscriptions!);
+    }
+  };
+
+  controller.onPause = () {
+    if (subscriptions != null) {
+      return pauseAll(subscriptions!);
+    }
+  };
+
+  controller.onResume = () {
+    if (subscriptions != null) {
+      return resumeAll(subscriptions!);
+    }
   };
 
   return controller.stream;
@@ -51,4 +61,21 @@ Stream<Object?> ndjson(ByteStream input) {
     sink.add(convert.jsonDecode(data));
   }));
   return jsonInput;
+}
+
+void pauseAll(List<StreamSubscription> subscriptions) {
+  for (var sub in subscriptions) {
+    sub.pause();
+  }
+}
+
+void resumeAll(List<StreamSubscription> subscriptions) {
+  for (var sub in subscriptions) {
+    sub.resume();
+  }
+}
+
+Future<void> cancelAll(List<StreamSubscription> subscriptions) async {
+  final futures = subscriptions.map((sub) => sub.cancel());
+  await Future.wait(futures);
 }

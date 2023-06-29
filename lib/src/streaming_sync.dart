@@ -60,6 +60,8 @@ class StreamingSyncImplementation {
 
         _statusStreamController
             .add(SyncStatus(connected: false, lastSyncedAt: lastSyncedAt));
+
+        // On error, wait a little before retrying
         await Future.delayed(const Duration(milliseconds: 5000));
       }
     }
