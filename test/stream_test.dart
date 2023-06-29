@@ -1,3 +1,8 @@
+import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:http/http.dart';
 import 'package:powersync/src/stream_utils.dart';
 import 'package:test/test.dart';
 
@@ -94,6 +99,105 @@ void main() {
       expect(countS1 + countS2, equals(20));
       expect(countS1, greaterThanOrEqualTo(10));
       expect(countS2, greaterThanOrEqualTo(0));
+    });
+
+    test('ndjson', () async {
+      var sourceData = '{"line": 1}\n{"line": 2}\n';
+      var sourceBytes = Utf8Codec().encode(sourceData);
+      var sourceStream = ByteStream.fromBytes(sourceBytes);
+      var parsedStream = ndjson(sourceStream);
+      var data = await parsedStream.toList();
+      expect(
+          data,
+          equals([
+            {"line": 1},
+            {"line": 2}
+          ]));
+    });
+
+    test('ndjson over Pipe', () async {
+      final pipe = await Pipe.create();
+      void writer() async {
+        pipe.write.write('{"line":');
+        await pipe.write.flush();
+        pipe.write.write(' 1}\n{"line": 2}\n');
+        await pipe.write.flush();
+        await pipe.write.close();
+      }
+
+      writer();
+      var parsedStream = ndjson(ByteStream(pipe.read));
+      var data = await parsedStream.toList();
+      expect(
+          data,
+          equals([
+            {"line": 1},
+            {"line": 2}
+          ]));
+    });
+
+    test('ndjson with partial data', () async {
+      final pipe = await Pipe.create();
+      void writer() async {
+        pipe.write.write('{"line": 1}\n{"line": 2');
+        await pipe.write.flush();
+        await pipe.write.close();
+      }
+
+      writer();
+      var parsedStream = ndjson(ByteStream(pipe.read));
+
+      List<Object?> result = [];
+      Object? error;
+      try {
+        await for (var data in parsedStream) {
+          result.add(data);
+        }
+      } catch (e) {
+        error = e;
+      }
+      expect(
+          result,
+          equals([
+            {"line": 1}
+          ]));
+      expect(error.toString(),
+          startsWith('FormatException: Unexpected end of input'));
+    });
+
+    test('ndjson with partial data and merged stream', () async {
+      final pipe = await Pipe.create();
+      void writer() async {
+        pipe.write.write('{"line": 1}\n{"line": 2');
+        await pipe.write.flush();
+        await pipe.write.close();
+      }
+
+      writer();
+      var parsedStream = ndjson(ByteStream(pipe.read));
+
+      Stream<String> stream2 =
+          genStream('S2:', Duration(milliseconds: 50)).asBroadcastStream();
+
+      var merged = addBroadcast(parsedStream, stream2);
+
+      List<Object?> result = [];
+      Object? error;
+      try {
+        await for (var data in merged) {
+          result.add(data);
+        }
+      } catch (e) {
+        error = e;
+      }
+      expect(
+          result,
+          equals([
+            'S2: 0',
+            {"line": 1}
+          ]));
+      expect(error.toString(),
+          startsWith('FormatException: Unexpected end of input'));
     });
   });
 }
