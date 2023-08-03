@@ -1,3 +1,9 @@
+## 0.4.0
+
+Improvements:
+ - Some parameters to `PowerSyncCredentials` are now optional.
+ - Upgrade dependencies.
+
 ## 0.4.0-preview.6
 
 New functionality:

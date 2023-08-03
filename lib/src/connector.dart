@@ -90,8 +90,8 @@ class PowerSyncCredentials {
   const PowerSyncCredentials(
       {required this.endpoint,
       required this.token,
-      required this.userId,
-      required this.expiresAt});
+      this.userId,
+      this.expiresAt});
 
   factory PowerSyncCredentials.fromJson(Map<String, dynamic> parsed) {
     String token = parsed['token'];

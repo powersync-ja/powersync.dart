@@ -30,8 +30,8 @@ class PowerSyncOpenFactory extends DefaultSqliteOpenFactory {
       {required super.path,
       super.sqliteOptions,
       @Deprecated('Override PowerSyncOpenFactory instead')
-          // ignore: deprecated_member_use_from_same_package
-          SqliteConnectionSetup? sqliteSetup})
+      // ignore: deprecated_member_use_from_same_package
+      SqliteConnectionSetup? sqliteSetup})
       // ignore: deprecated_member_use_from_same_package
       : _sqliteSetup = sqliteSetup;
 
