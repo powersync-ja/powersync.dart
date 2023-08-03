@@ -86,8 +86,8 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
       required String path,
       int maxReaders = SqliteDatabase.defaultMaxReaders,
       @Deprecated("Use [PowerSyncDatabase.withFactory] instead")
-          // ignore: deprecated_member_use_from_same_package
-          SqliteConnectionSetup? sqliteSetup}) {
+      // ignore: deprecated_member_use_from_same_package
+      SqliteConnectionSetup? sqliteSetup}) {
     // ignore: deprecated_member_use_from_same_package
     var factory = PowerSyncOpenFactory(path: path, sqliteSetup: sqliteSetup);
     return PowerSyncDatabase.withFactory(factory, schema: schema);
