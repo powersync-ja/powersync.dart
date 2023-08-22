@@ -1,12 +1,11 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:io';
 import 'dart:isolate';
+import 'dart:ffi' as ffi;
 
+import 'package:powersync/sqlite3.dart';
 import 'package:sqlite_async/sqlite3.dart' as sqlite;
 import 'package:sqlite_async/sqlite_async.dart';
-
-import 'uuid.dart';
 
 /// Advanced: Define custom setup for each SQLite connection.
 @Deprecated('Use SqliteOpenFactory instead')
@@ -39,53 +38,21 @@ class PowerSyncOpenFactory extends DefaultSqliteOpenFactory {
   sqlite.Database open(SqliteOpenOptions options) {
     // ignore: deprecated_member_use_from_same_package
     _sqliteSetup?.setup();
+
+    enableExtension();
+
     final db = super.open(options);
     setupFunctions(db);
     return db;
   }
 
+  void enableExtension() {
+    var powersync_lib = ffi.DynamicLibrary.open('libpowersync.so');
+    sqlite.sqlite3.ensureExtensionLoaded(
+        SqliteExtension.inLibrary(powersync_lib, 'sqlite3_powersync_init'));
+  }
+
   void setupFunctions(sqlite.Database db) {
-    db.createFunction(
-      functionName: 'uuid',
-      argumentCount: const sqlite.AllowedArgumentCount(0),
-      function: (args) => uuid.v4(),
-    );
-    db.createFunction(
-      // Postgres compatibility
-      functionName: 'gen_random_uuid',
-      argumentCount: const sqlite.AllowedArgumentCount(0),
-      function: (args) => uuid.v4(),
-    );
-
-    db.createFunction(
-        functionName: 'powersync_diff',
-        argumentCount: const sqlite.AllowedArgumentCount(2),
-        deterministic: true,
-        directOnly: false,
-        function: (args) {
-          final oldData = jsonDecode(args[0] as String) as Map<String, dynamic>;
-          final newData = jsonDecode(args[1] as String) as Map<String, dynamic>;
-
-          Map<String, dynamic> result = {};
-
-          for (final newEntry in newData.entries) {
-            final oldValue = oldData[newEntry.key];
-            final newValue = newEntry.value;
-
-            if (newValue != oldValue) {
-              result[newEntry.key] = newValue;
-            }
-          }
-
-          for (final key in oldData.keys) {
-            if (!newData.containsKey(key)) {
-              result[key] = null;
-            }
-          }
-
-          return jsonEncode(result);
-        });
-
     db.createFunction(
       functionName: 'powersync_sleep',
       argumentCount: const sqlite.AllowedArgumentCount(1),
