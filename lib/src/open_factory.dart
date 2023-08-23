@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:isolate';
-import 'dart:ffi' as ffi;
+import 'dart:ffi';
 
 import 'package:powersync/sqlite3.dart';
 import 'package:sqlite_async/sqlite3.dart' as sqlite;
@@ -47,7 +47,7 @@ class PowerSyncOpenFactory extends DefaultSqliteOpenFactory {
   }
 
   void enableExtension() {
-    var powersync_lib = ffi.DynamicLibrary.open('libpowersync.so');
+    var powersync_lib = DynamicLibrary.open('libpowersync.so');
     sqlite.sqlite3.ensureExtensionLoaded(
         SqliteExtension.inLibrary(powersync_lib, 'sqlite3_powersync_init'));
   }

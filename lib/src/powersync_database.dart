@@ -12,7 +12,6 @@ import 'crud.dart';
 import 'database_utils.dart';
 import 'isolate_completer.dart';
 import 'log.dart';
-import 'migrations.dart';
 import 'open_factory.dart';
 import 'powersync_update_notification.dart';
 import 'schema.dart';
@@ -122,7 +121,7 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
   Future<void> _init() async {
     statusStream = _statusStreamController.stream;
     await database.initialize();
-    await migrations.migrate(database);
+    await database.execute('SELECT powersync_init()');
     await updateSchemaInIsolate(database, schema);
   }
 
