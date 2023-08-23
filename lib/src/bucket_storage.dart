@@ -58,153 +58,19 @@ class BucketStorage {
 
     await writeTransaction((db) {
       for (var b in batch.buckets) {
-        var bucket = b.bucket;
-        var data = b.data;
-
-        count += data.length;
-        final isFinal = !b.hasMore;
-        _updateBucket(db, bucket, data, isFinal);
+        count += b.data.length;
+        _updateBucket2(
+            db,
+            jsonEncode({
+              'buckets': [b]
+            }));
       }
     });
     _compactCounter += count;
   }
 
-  void _updateBucket(sqlite.Database db, String bucket, List<OplogEntry> data,
-      bool finalBucketUpdate) {
-    if (data.isEmpty) {
-      return;
-    }
-
-    String? lastOp;
-    String? firstOp;
-    BigInt? targetOp;
-
-    List<Map<String, dynamic>> inserts = [];
-    Map<String, Map<String, dynamic>> lastInsert = {};
-    List<String> allEntries = [];
-
-    List<SqliteOp> clearOps = [];
-
-    for (final op in data) {
-      lastOp = op.opId;
-      firstOp ??= op.opId;
-
-      final Map<String, dynamic> insert = {
-        'op_id': op.opId,
-        'op': op.op!.value,
-        'bucket': bucket,
-        'key': op.key,
-        'row_type': op.rowType,
-        'row_id': op.rowId,
-        'data': op.data,
-        'checksum': op.checksum,
-        'superseded': 0
-      };
-
-      if (op.op == OpType.move) {
-        insert['superseded'] = 1;
-      }
-
-      if (op.op == OpType.put ||
-          op.op == OpType.remove ||
-          op.op == OpType.move) {
-        inserts.add(insert);
-      }
-
-      if (op.op == OpType.put || op.op == OpType.remove) {
-        final key = op.key;
-        final prev = lastInsert[key];
-        if (prev != null) {
-          prev['superseded'] = 1;
-        }
-        lastInsert[key] = insert;
-        allEntries.add(key);
-      } else if (op.op == OpType.move) {
-        final target = op.parsedData?['target'] as String?;
-        if (target != null) {
-          final l = BigInt.parse(target, radix: 10);
-          if (targetOp == null || l < targetOp) {
-            targetOp = l;
-          }
-        }
-      } else if (op.op == OpType.clear) {
-        // Any remaining PUT operations should get an implicit REMOVE.
-        clearOps.add(SqliteOp(
-            "UPDATE ps_oplog SET op=${OpType.remove.value}, data=NULL, hash=0 WHERE (op=${OpType.put.value} OR op=${OpType.remove.value}) AND bucket=? AND op_id <= ?",
-            [bucket, op.opId]));
-        // And we need to re-apply all of those.
-        // We also replace the checksum with the checksum of the CLEAR op.
-        clearOps.add(SqliteOp(
-            "UPDATE ps_buckets SET last_applied_op = 0, add_checksum = ? WHERE name = ?",
-            [op.checksum, bucket]));
-      }
-    }
-
-    // Mark old ops as superseded
-    db.execute("""
-    UPDATE ps_oplog AS oplog
-    SET superseded = 1,
-    op = ${OpType.move.value},
-    data = NULL
-    WHERE oplog.superseded = 0
-    AND unlikely(oplog.bucket = ?)
-    AND oplog.key IN (SELECT json_each.value FROM json_each(?))
-    """, [bucket, jsonEncode(allEntries)]);
-
-    var stmt = db.prepare(
-        'INSERT INTO ps_oplog(op_id, op, bucket, key, row_type, row_id, data, hash, superseded) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)');
-    try {
-      for (var insert in inserts) {
-        stmt.execute([
-          insert['op_id'],
-          insert['op'],
-          insert['bucket'],
-          insert['key'],
-          insert['row_type'],
-          insert['row_id'],
-          insert['data'],
-          insert['checksum'],
-          insert['superseded']
-        ]);
-      }
-    } finally {
-      stmt.dispose();
-    }
-
-    db.execute("INSERT OR IGNORE INTO ps_buckets(name) VALUES(?)", [bucket]);
-
-    if (lastOp != null) {
-      db.execute(
-          "UPDATE ps_buckets SET last_op = ? WHERE name = ?", [lastOp, bucket]);
-    }
-    if (targetOp != null) {
-      db.execute(
-          "UPDATE ps_buckets AS buckets SET target_op = MAX(?, buckets.target_op) WHERE name = ?",
-          [targetOp.toString(), bucket]);
-    }
-
-    for (final op in clearOps) {
-      db.execute(op.sql, op.args);
-    }
-
-    // Compact superseded ops immediately, but only _after_ clearing
-    if (firstOp != null && lastOp != null) {
-      db.execute("""UPDATE ps_buckets AS buckets
-    SET add_checksum = add_checksum + (SELECT IFNULL(SUM(hash), 0)
-    FROM ps_oplog AS oplog
-    WHERE superseded = 1
-    AND oplog.bucket = ?
-    AND oplog.op_id >= ?
-    AND oplog.op_id <= ?)
-    WHERE buckets.name = ?""", [bucket, firstOp, lastOp, bucket]);
-
-      db.execute("""DELETE
-              FROM ps_oplog
-              WHERE superseded = 1
-              AND bucket = ?
-              AND op_id >= ?
-              AND op_id <= ?""", [bucket, firstOp, lastOp]);
-    }
+  void _updateBucket2(sqlite.Database db, String json) {
+    db.execute('INSERT INTO powersync_operations(data) VALUES(?)', [json]);
   }
 
   Future<void> removeBuckets(List<String> buckets) async {
@@ -746,6 +612,16 @@ class SyncBucketData {
         nextAfter = json['next_after'],
         data =
             (json['data'] as List).map((e) => OplogEntry.fromJson(e)).toList();
+
+  Map<String, dynamic> toJson() {
+    return {
+      'bucket': bucket,
+      'has_more': hasMore,
+      'after': after,
+      'next_after': nextAfter,
+      'data': data
+    };
+  }
 }
 
 class OplogEntry {
@@ -792,6 +668,18 @@ class OplogEntry {
   /// Relevant for put and remove ops.
   String get key {
     return "$rowType/$rowId/$subkey";
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'op_id': opId,
+      'op': op?.toJson(),
+      'object_type': rowType,
+      'object_id': rowId,
+      'checksum': checksum,
+      'subkey': subkey,
+      'data': data
+    };
   }
 }
 
@@ -862,6 +750,21 @@ enum OpType {
         return remove;
       default:
         return null;
+    }
+  }
+
+  String toJson() {
+    switch (this) {
+      case clear:
+        return 'CLEAR';
+      case move:
+        return 'MOVE';
+      case put:
+        return 'PUT';
+      case remove:
+        return 'REMOVE';
+      default:
+        return '';
     }
   }
 }
