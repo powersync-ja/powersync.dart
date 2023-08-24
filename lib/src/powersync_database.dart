@@ -439,32 +439,6 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
     return database.writeLock(callback,
         debugContext: debugContext, lockTimeout: lockTimeout);
   }
-
-  @override
-  Future<T> writeTransaction<T>(
-      Future<T> Function(SqliteWriteContext tx) callback,
-      {Duration? lockTimeout,
-      String? debugContext}) async {
-    return writeLock((ctx) async {
-      return await internalTrackedWriteTransaction(ctx, callback);
-    },
-        lockTimeout: lockTimeout,
-        debugContext: debugContext ?? 'writeTransaction()');
-  }
-
-  @override
-  Future<sqlite.ResultSet> execute(String sql,
-      [List<Object?> parameters = const []]) async {
-    return writeLock((ctx) async {
-      try {
-        await ctx.execute(
-            'UPDATE ps_tx SET current_tx = next_tx, next_tx = next_tx + 1 WHERE id = 1');
-        return await ctx.execute(sql, parameters);
-      } finally {
-        await ctx.execute('UPDATE ps_tx SET current_tx = NULL WHERE id = 1');
-      }
-    }, debugContext: 'execute()');
-  }
 }
 
 class _PowerSyncDatabaseIsolateArgs {

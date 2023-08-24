@@ -97,11 +97,11 @@ void main() {
           ]));
 
       var tx = (await powersync.getNextCrudTransaction())!;
-      expect(tx.transactionId, equals(3));
+      expect(tx.transactionId, equals(2));
       expect(
           tx.crud,
           equals([
-            CrudEntry(2, UpdateType.patch, 'assets', testId, 3,
+            CrudEntry(2, UpdateType.patch, 'assets', testId, 2,
                 {"description": "test2"})
           ]));
     });
@@ -121,9 +121,9 @@ void main() {
           ]));
 
       var tx = (await powersync.getNextCrudTransaction())!;
-      expect(tx.transactionId, equals(3));
+      expect(tx.transactionId, equals(2));
       expect(tx.crud,
-          equals([CrudEntry(2, UpdateType.delete, 'assets', testId, 3, null)]));
+          equals([CrudEntry(2, UpdateType.delete, 'assets', testId, 2, null)]));
     });
 
     test('UPSERT not supported', () async {
@@ -163,11 +163,11 @@ void main() {
       expect(await powersync.getAll('SELECT * FROM logs'), equals([]));
 
       var tx = (await powersync.getNextCrudTransaction())!;
-      expect(tx.transactionId, equals(2));
+      expect(tx.transactionId, equals(1));
       expect(
           tx.crud,
           equals([
-            CrudEntry(1, UpdateType.put, 'logs', testId, 2,
+            CrudEntry(1, UpdateType.put, 'logs', testId, 1,
                 {"level": "INFO", "content": "test log"})
           ]));
     });
