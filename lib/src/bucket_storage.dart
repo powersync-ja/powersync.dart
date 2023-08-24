@@ -70,7 +70,8 @@ class BucketStorage {
   }
 
   void _updateBucket2(sqlite.Database db, String json) {
-    db.execute('INSERT INTO powersync_operations(data) VALUES(?)', [json]);
+    db.execute('INSERT INTO powersync_operations(op, data) VALUES(?, ?)',
+        ['save', json]);
   }
 
   Future<void> removeBuckets(List<String> buckets) async {
@@ -143,145 +144,19 @@ class BucketStorage {
     return SyncLocalDatabaseResult(ready: true);
   }
 
-  Future<bool> updateObjectsFromBuckets(Checkpoint checkpoint) async {
+  Future<bool> updateObjectsFromBuckets(Checkpoint _checkpoint) async {
     return writeTransaction((db) {
-      if (!_canUpdateLocal(db)) {
+      db.execute("INSERT INTO powersync_operations(op, data) VALUES(?, ?)",
+          ['sync_local', '']);
+      final rs = db.select('SELECT last_insert_rowid() as result');
+      final result = rs[0]['result'];
+      if (result == 1) {
+        return true;
+      } else {
+        // can_update_local(db) == false
         return false;
       }
-
-      // Updated objects
-      // TODO: Reduce memory usage
-      // Some options here:
-      // 1. Create a VIEW objects_updates, which contains triggers to update individual tables.
-      //    This works well for individual tables, but difficult to have a catch all for untyped data,
-      //    and performance degrades when we have hundreds of object types.
-      // 2. Similar, but use a TEMP TABLE instead. We can then query those from JS, and populate the tables from JS.
-      // 3. Skip the temp table, and query the data directly. Sorting and limiting becomes tricky.
-      // 3a. LIMIT on the first oplog step. This prevents us from using JOIN after this.
-      // 3b. LIMIT after the second oplog query
-
-      // QUERY PLAN
-      // |--SCAN buckets
-      // |--SEARCH b USING INDEX ps_oplog_by_opid (bucket=? AND op_id>?)
-      // |--SEARCH r USING INDEX ps_oplog_by_row (row_type=? AND row_id=?)
-      // `--USE TEMP B-TREE FOR GROUP BY
-      // language=DbSqlite
-      var stmt = db.prepare(
-          """-- 3. Group the objects from different buckets together into a single one (ops).
-         SELECT r.row_type as type,
-                r.row_id as id,
-                r.data as data,
-                json_group_array(r.bucket) FILTER (WHERE r.op=${OpType.put.value}) as buckets,
-                /* max() affects which row is used for 'data' */
-                max(r.op_id) FILTER (WHERE r.op=${OpType.put.value}) as op_id
-         -- 1. Filter oplog by the ops added but not applied yet (oplog b).
-         FROM ps_buckets AS buckets
-                CROSS JOIN ps_oplog AS b ON b.bucket = buckets.name
-              AND (b.op_id > buckets.last_applied_op)
-                -- 2. Find *all* current ops over different buckets for those objects (oplog r).
-                INNER JOIN ps_oplog AS r
-                           ON r.row_type = b.row_type
-                             AND r.row_id = b.row_id
-         WHERE r.superseded = 0
-           AND b.superseded = 0
-         -- Group for (3)
-         GROUP BY r.row_type, r.row_id
-        """);
-      try {
-        // TODO: Perhaps we don't need batching for this?
-        var cursor = stmt.selectCursor([]);
-        List<sqlite.Row> rows = [];
-        while (cursor.moveNext()) {
-          var row = cursor.current;
-          rows.add(row);
-
-          if (rows.length >= 10000) {
-            saveOps(db, rows);
-            rows = [];
-          }
-        }
-        if (rows.isNotEmpty) {
-          saveOps(db, rows);
-        }
-      } finally {
-        stmt.dispose();
-      }
-
-      db.execute("""UPDATE ps_buckets
-                SET last_applied_op = last_op
-                WHERE last_applied_op != last_op""");
-
-      log.fine('Updated local database');
-      return true;
     });
-  }
-
-  // { type: string; id: string; data: string; buckets: string; op_id: string }[]
-  void saveOps(sqlite.Database db, List<sqlite.Row> rows) {
-    Map<String, List<sqlite.Row>> byType = {};
-    for (final row in rows) {
-      byType.putIfAbsent(row['type'], () => []).add(row);
-    }
-
-    for (final entry in byType.entries) {
-      final type = entry.key;
-      final typeRows = entry.value;
-      final table = _getTypeTableName(type);
-
-      // Note that "PUT" and "DELETE" are split, and not applied in row order.
-      // So we only do either PUT or DELETE for each individual object, not both.
-      final Set<String> removeIds = {};
-      List<sqlite.Row> puts = [];
-      for (final row in typeRows) {
-        if (row['buckets'] == '[]') {
-          removeIds.add(row['id']);
-        } else {
-          puts.add(row);
-          removeIds.remove(row['id']);
-        }
-      }
-
-      puts = puts.where((update) => !removeIds.contains(update['id'])).toList();
-
-      if (tableNames.contains(table)) {
-        db.execute("""REPLACE INTO "$table"(id, data)
-               SELECT json_extract(json_each.value, '\$.id'),
-                      json_extract(json_each.value, '\$.data')
-               FROM json_each(?)""", [jsonEncode(puts)]);
-
-        db.execute("""DELETE
-        FROM "$table"
-        WHERE id IN (SELECT json_each.value FROM json_each(?))""", [
-          jsonEncode([...removeIds])
-        ]);
-      } else {
-        db.execute(r"""REPLACE INTO ps_untyped(type, id, data)
-        SELECT ?,
-      json_extract(json_each.value, '$.id'),
-      json_extract(json_each.value, '$.data')
-    FROM json_each(?)""", [type, jsonEncode(puts)]);
-
-        db.execute("""DELETE FROM ps_untyped
-    WHERE type = ?
-    AND id IN (SELECT json_each.value FROM json_each(?))""",
-            [type, jsonEncode(removeIds.toList())]);
-      }
-    }
-  }
-
-  bool _canUpdateLocal(sqlite.Database db) {
-    final invalidBuckets = db.select(
-        "SELECT name, target_op, last_op, last_applied_op FROM ps_buckets WHERE target_op > last_op AND (name = '\$local' OR pending_delete = 0)");
-    if (invalidBuckets.isNotEmpty) {
-      log.fine('Cannot update local database: $invalidBuckets');
-      return false;
-    }
-    // This is specifically relevant for when data is added to crud before another batch is completed.
-    final rows = db.select('SELECT 1 FROM ps_crud LIMIT 1');
-    if (rows.isNotEmpty) {
-      return false;
-    }
-    return true;
   }
 
   SyncLocalDatabaseResult validateChecksums(Checkpoint checkpoint) {
