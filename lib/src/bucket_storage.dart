@@ -21,7 +21,6 @@ class BucketStorage {
   bool _pendingBucketDeletes = false;
   Set<String> tableNames = {};
   int _compactCounter = compactOperationInterval;
-  ChecksumCache? _checksumCache;
 
   BucketStorage(sqlite.Database db, {required this.mutex}) : _internalDb = db {
     _init();
@@ -40,9 +39,7 @@ class BucketStorage {
     return _internalDb.select(query, parameters);
   }
 
-  void startSession() {
-    _checksumCache = null;
-  }
+  void startSession() {}
 
   List<BucketState> getBucketStates() {
     final rows = select(
@@ -160,107 +157,16 @@ class BucketStorage {
   }
 
   SyncLocalDatabaseResult validateChecksums(Checkpoint checkpoint) {
-    final rows = select("""WITH
-     bucket_list(bucket, lower_op_id) AS (
-         SELECT
-                json_extract(json_each.value, '\$.bucket') as bucket,
-                json_extract(json_each.value, '\$.last_op_id') as lower_op_id
-         FROM json_each(?)
-         )
-      SELECT
-         buckets.name as bucket,
-         buckets.add_checksum as add_checksum,
-         IFNULL(SUM(oplog.hash), 0) as oplog_checksum,
-         COUNT(oplog.op_id) as count,
-         CAST(MAX(oplog.op_id) as TEXT) as last_op_id,
-         CAST(buckets.last_applied_op as TEXT) as last_applied_op
-       FROM bucket_list
-         LEFT OUTER JOIN ps_buckets AS buckets ON
-             buckets.name = bucket_list.bucket
-         LEFT OUTER JOIN ps_oplog AS oplog ON
-             bucket_list.bucket = oplog.bucket AND
-             oplog.op_id <= ? AND oplog.op_id > bucket_list.lower_op_id
-       GROUP BY bucket_list.bucket""", [
-      jsonEncode(checkpoint.checksums
-          .map((checksum) => {
-                'bucket': checksum.bucket,
-                'last_op_id':
-                    _checksumCache?.checksums[checksum.bucket]?.lastOpId ?? '0'
-              })
-          .toList()),
-      checkpoint.lastOpId
-    ]);
-
-    Map<String, BucketChecksum> byBucket = {};
-    if (_checksumCache != null) {
-      final checksums = _checksumCache!.checksums;
-      for (var row in rows) {
-        final String? bucket = row['bucket'];
-        if (bucket == null) {
-          continue;
-        }
-        if (BigInt.parse(row['last_applied_op']) >
-            BigInt.parse(_checksumCache!.lastOpId)) {
-          throw AssertionError(
-              "assertion failed: ${row['last_applied_op']} > ${_checksumCache!.lastOpId}");
-        }
-        int checksum;
-        String? lastOpId = row['last_op_id'];
-        if (checksums.containsKey(bucket)) {
-          // All rows may have been filtered out, in which case we use the previous one
-          lastOpId ??= checksums[bucket]!.lastOpId;
-          checksum =
-              (checksums[bucket]!.checksum + row['oplog_checksum'] as int)
-                  .toSigned(32);
-        } else {
-          checksum = (row['add_checksum'] + row['oplog_checksum']).toSigned(32);
-        }
-        byBucket[bucket] = BucketChecksum(
-            bucket: bucket,
-            checksum: checksum,
-            count: row['count'],
-            lastOpId: lastOpId);
-      }
-    } else {
-      for (final row in rows) {
-        final String? bucket = row['bucket'];
-        if (bucket == null) {
-          continue;
-        }
-        final int c1 = row['add_checksum'];
-        final int c2 = row['oplog_checksum'];
-
-        final checksum = (c1 + c2).toSigned(32);
-
-        byBucket[bucket] = BucketChecksum(
-            bucket: bucket,
-            checksum: checksum,
-            count: row['count'],
-            lastOpId: row['last_op_id']);
-      }
-    }
-
-    List<String> failedChecksums = [];
-    for (final checksum in checkpoint.checksums) {
-      final local = byBucket[checksum.bucket] ??
-          BucketChecksum(bucket: checksum.bucket, checksum: 0, count: 0);
-      // Note: Count is informational only.
-      if (local.checksum != checksum.checksum) {
-        log.warning(
-            'Checksum mismatch for ${checksum.bucket}: local ${local.checksum} != remote ${checksum.checksum}');
-        failedChecksums.add(checksum.bucket);
-      }
-    }
-    if (failedChecksums.isEmpty) {
-      // FIXME: Checksum cache disabled since it's broken when add_checksum is modified
-      // _checksumCache = ChecksumCache(checkpoint.lastOpId, byBucket);
+    final rs = select("SELECT powersync_validate_checkpoint(?) as result",
+        [jsonEncode(checkpoint)]);
+    final result = jsonDecode(rs[0]['result']);
+    if (result['valid']) {
       return SyncLocalDatabaseResult(ready: true);
     } else {
-      _checksumCache = null;
       return SyncLocalDatabaseResult(
-          ready: false,
           checkpointValid: false,
-          checkpointFailures: failedChecksums);
+          ready: false,
+          checkpointFailures: result['failed_buckets'].cast<String>());
     }
   }
 
