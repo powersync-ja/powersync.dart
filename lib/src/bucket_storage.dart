@@ -207,10 +207,8 @@ class BucketStorage {
     if (_pendingBucketDeletes) {
       // Executed once after start-up, and again when there are pending deletes.
       await writeTransaction((db) {
-        db.execute(
-            'DELETE FROM ps_oplog WHERE bucket IN (SELECT name FROM ps_buckets WHERE pending_delete = 1 AND last_applied_op = last_op AND last_op >= target_op)');
-        db.execute(
-            'DELETE FROM ps_buckets WHERE pending_delete = 1 AND last_applied_op = last_op AND last_op >= target_op');
+        db.execute('INSERT INTO powersync_operations(op, data) VALUES (?, ?)',
+            ['delete_pending_buckets', '']);
       });
       _pendingBucketDeletes = false;
     }
