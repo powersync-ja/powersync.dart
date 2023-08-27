@@ -221,30 +221,10 @@ class BucketStorage {
       return;
     }
 
-    final rows = select(
-        'SELECT name, cast(last_applied_op as TEXT) as last_applied_op, cast(last_op as TEXT) as last_op FROM ps_buckets WHERE pending_delete = 0');
-    for (var row in rows) {
-      await writeTransaction((db) {
-        // Note: The row values here may be different from when queried. That should not be an issue.
-
-        db.execute("""UPDATE ps_buckets AS buckets
-           SET add_checksum = add_checksum + (SELECT IFNULL(SUM(hash), 0)
-                                              FROM ps_oplog AS oplog
-                                              WHERE (superseded = 1 OR op != ${OpType.put.value})
-                                                AND oplog.bucket = ?
-                                                AND oplog.op_id <= ?)
-           WHERE buckets.name = ?""",
-            [row['name'], row['last_applied_op'], row['name']]);
-        db.execute(
-            """DELETE
-           FROM ps_oplog
-           WHERE (superseded = 1 OR op != ${OpType.put.value})
-             AND bucket = ?
-             AND op_id <= ?""",
-            // Must use the same values as above
-            [row['name'], row['last_applied_op']]);
-      });
-    }
+    await writeTransaction((db) {
+      db.execute('INSERT INTO powersync_operations(op, data) VALUES (?, ?)',
+          ['clear_remove_ops', '']);
+    });
     _compactCounter = 0;
   }
 
