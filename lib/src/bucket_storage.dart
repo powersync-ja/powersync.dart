@@ -78,19 +78,9 @@ class BucketStorage {
   }
 
   Future<void> deleteBucket(String bucket) async {
-    final newName = "\$delete_${bucket}_${uuid.v4()}";
-
     await writeTransaction((db) {
-      db.execute(
-          "UPDATE ps_oplog SET op=${OpType.remove.value}, data=NULL WHERE op=${OpType.put.value} AND superseded=0 AND bucket=?",
-          [bucket]);
-      // Rename bucket
-      db.execute(
-          "UPDATE ps_oplog SET bucket=? WHERE bucket=?", [newName, bucket]);
-      db.execute("DELETE FROM ps_buckets WHERE name = ?", [bucket]);
-      db.execute(
-          "INSERT INTO ps_buckets(name, pending_delete, last_op) SELECT ?, 1, IFNULL(MAX(op_id), 0) FROM ps_oplog WHERE bucket = ?",
-          [newName, newName]);
+      db.execute('INSERT INTO powersync_operations(op, data) VALUES(?, ?)',
+          ['delete_bucket', bucket]);
     });
 
     _pendingBucketDeletes = true;
