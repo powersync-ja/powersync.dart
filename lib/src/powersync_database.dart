@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:isolate';
 
 import 'package:logging/logging.dart';
+import 'package:sqlite_async/mutex.dart';
 import 'package:sqlite_async/sqlite3.dart' as sqlite;
 import 'package:sqlite_async/sqlite_async.dart';
 
@@ -9,7 +10,6 @@ import 'abort_controller.dart';
 import 'bucket_storage.dart';
 import 'connector.dart';
 import 'crud.dart';
-import 'database_utils.dart';
 import 'isolate_completer.dart';
 import 'log.dart';
 import 'open_factory.dart';
@@ -457,13 +457,19 @@ Future<void> _powerSyncDatabaseIsolate(
   final upstreamDbClient = args.dbRef.upstreamPort.open();
 
   sqlite.Database? db;
-  rPort.listen((message) {
+  final mutex = args.dbRef.mutex.open();
+
+  rPort.listen((message) async {
     if (message is List) {
       String action = message[0];
       if (action == 'update') {
         updateController.add('update');
       } else if (action == 'close') {
+        // This prevents any further transactions being opened, which would
+        // eventually terminate the sync loop.
+        await mutex.close();
         db?.dispose();
+        db = null;
         updateController.close();
         upstreamDbClient.close();
         Isolate.current.kill();
@@ -501,11 +507,10 @@ Future<void> _powerSyncDatabaseIsolate(
   }
 
   runZonedGuarded(() async {
-    final mutex = args.dbRef.mutex.open();
     db = await args.dbRef.openFactory
         .open(SqliteOpenOptions(primaryConnection: false, readOnly: false));
 
-    final storage = BucketStorage(db!, mutex: mutex);
+    final storage = BucketStorage(db!, mutex: mutex!);
     final sync = StreamingSyncImplementation(
         adapter: storage,
         credentialsCallback: loadCredentials,
@@ -542,6 +547,8 @@ Future<void> _powerSyncDatabaseIsolate(
     // This should be rare - any uncaught error is a bug. And in most cases,
     // it should occur after the database is already open.
     db?.dispose();
+    db = null;
+    mutex.close();
     throw error;
   });
 }
