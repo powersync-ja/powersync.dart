@@ -1,6 +1,6 @@
 # PowerSync SDK for Dart/Flutter
 
-[PowerSync](https://powersync.co) is a cloud service and Flutter SDK that keeps PostgreSQL databases in sync with on-device SQLite databases.
+[PowerSync](https://powersync.co) is a cloud service and set of SDKs that keeps PostgreSQL databases in sync with on-device SQLite databases.
 
 ## SDK Features
 
