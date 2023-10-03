@@ -2,22 +2,29 @@ import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:uuid/uuid.dart';
+import 'package:uuid/data.dart';
+import 'package:uuid/rng.dart';
 
 final _secureRandom = Random.secure();
 
-// Around 2x faster than the implementation from package:uuid/uuid_util.dart
-Uint8List cryptoRNG() {
-  final b = Uint8List(16);
+/// Around 2x faster than CryptoRNG from package:uuid/rng.dart
+class FasterCryptoRNG extends RNG {
+  const FasterCryptoRNG();
 
-  for (var i = 0; i < 16; i += 4) {
-    var k = _secureRandom.nextInt(1 << 32);
-    b[i] = k;
-    b[i + 1] = k >> 8;
-    b[i + 2] = k >> 16;
-    b[i + 3] = k >> 24;
+  @override
+  Uint8List generateInternal() {
+    final b = Uint8List(16);
+
+    for (var i = 0; i < 16; i += 4) {
+      var k = _secureRandom.nextInt(1 << 32);
+      b[i] = k;
+      b[i + 1] = k >> 8;
+      b[i + 2] = k >> 16;
+      b[i + 3] = k >> 24;
+    }
+
+    return b;
   }
-
-  return b;
 }
 
-const uuid = Uuid(options: {'grng': cryptoRNG});
+const uuid = Uuid(goptions: GlobalOptions(FasterCryptoRNG()));

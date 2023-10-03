@@ -1,3 +1,8 @@
+## 0.4.1
+
+ - Use Apache 2.0 license.
+ - Update uuid dependency.
+
 ## 0.4.0
 
 Improvements:
