@@ -27,7 +27,8 @@ class StreamingSyncImplementation {
       StreamController<SyncStatus>.broadcast();
   late final Stream<SyncStatus> statusStream;
 
-  final StreamController _localPingController = StreamController.broadcast();
+  final StreamController<String?> _localPingController =
+      StreamController.broadcast();
 
   final Duration retryDelay;
 
@@ -161,9 +162,45 @@ class StreamingSyncImplementation {
     Future<void>? credentialsInvalidation;
     bool haveInvalidated = false;
 
-    await for (var line in merged) {
+    await for (var rawLine in merged) {
+      if (haveInvalidated) {
+        // Stop this connection, so that a new one will be started
+        break;
+      }
+
+      if (rawLine == null) {
+        // Local ping
+        if (targetCheckpoint == appliedCheckpoint) {
+          lastSyncedAt = DateTime.now();
+          _statusStreamController
+              .add(SyncStatus(connected: true, lastSyncedAt: lastSyncedAt));
+        } else if (validatedCheckpoint == targetCheckpoint) {
+          final result = await adapter.syncLocalDatabase(targetCheckpoint!);
+          if (!result.checkpointValid) {
+            // This means checksums failed. Start again with a new checkpoint.
+            // TODO: better back-off
+            // await new Promise((resolve) => setTimeout(resolve, 50));
+            return false;
+          } else if (!result.ready) {
+            // Checksums valid, but need more data for a consistent checkpoint.
+            // Continue waiting.
+          } else {
+            appliedCheckpoint = targetCheckpoint;
+            lastSyncedAt = DateTime.now();
+            _statusStreamController
+                .add(SyncStatus(connected: true, lastSyncedAt: lastSyncedAt));
+          }
+        }
+        continue;
+      }
+
       _statusStreamController
           .add(SyncStatus(connected: true, lastSyncedAt: lastSyncedAt));
+
+      await adapter.streamOp(rawLine);
+      final json = convert.jsonDecode(rawLine);
+      final line = parseStreamingSyncLine(json);
+
       if (line is Checkpoint) {
         targetCheckpoint = line;
         final Set<String> bucketsToDelete = {...bucketSet};
@@ -174,7 +211,6 @@ class StreamingSyncImplementation {
         }
         bucketSet = newBuckets;
         await adapter.removeBuckets([...bucketsToDelete]);
-        adapter.setTargetCheckpoint(targetCheckpoint);
       } else if (line is StreamingSyncCheckpointComplete) {
         final result = await adapter.syncLocalDatabase(targetCheckpoint!);
         if (!result.checkpointValid) {
@@ -242,39 +278,12 @@ class StreamingSyncImplementation {
             });
           }
         }
-      } else {
-        if (targetCheckpoint == appliedCheckpoint) {
-          lastSyncedAt = DateTime.now();
-          _statusStreamController
-              .add(SyncStatus(connected: true, lastSyncedAt: lastSyncedAt));
-        } else if (validatedCheckpoint == targetCheckpoint) {
-          final result = await adapter.syncLocalDatabase(targetCheckpoint!);
-          if (!result.checkpointValid) {
-            // This means checksums failed. Start again with a new checkpoint.
-            // TODO: better back-off
-            // await new Promise((resolve) => setTimeout(resolve, 50));
-            return false;
-          } else if (!result.ready) {
-            // Checksums valid, but need more data for a consistent checkpoint.
-            // Continue waiting.
-          } else {
-            appliedCheckpoint = targetCheckpoint;
-            lastSyncedAt = DateTime.now();
-            _statusStreamController
-                .add(SyncStatus(connected: true, lastSyncedAt: lastSyncedAt));
-          }
-        }
-      }
-
-      if (haveInvalidated) {
-        // Stop this connection, so that a new one will be started
-        break;
       }
     }
     return true;
   }
 
-  Stream<Object?> streamingSyncRequest(StreamingSyncRequest data) async* {
+  Stream<String> streamingSyncRequest(StreamingSyncRequest data) async* {
     final credentials = await credentialsCallback();
     if (credentials == null) {
       throw AssertionError('Not logged in');
@@ -299,8 +308,8 @@ class StreamingSyncImplementation {
     }
 
     // Note: The response stream is automatically closed when this loop errors
-    await for (var line in ndjson(res.stream)) {
-      yield parseStreamingSyncLine(line as Map<String, dynamic>);
+    await for (var line in newlines(res.stream)) {
+      yield line;
     }
   }
 }

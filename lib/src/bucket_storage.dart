@@ -7,10 +7,8 @@ import 'package:sqlite_async/sqlite3.dart' as sqlite;
 
 import 'crud.dart';
 import 'database_utils.dart';
-import 'log.dart';
 import 'schema_logic.dart';
 import 'sync_types.dart';
-import 'uuid.dart';
 
 const compactOperationInterval = 1000;
 
@@ -19,20 +17,13 @@ class BucketStorage {
   final Mutex mutex;
   bool _hasCompletedSync = false;
   bool _pendingBucketDeletes = false;
-  Set<String> tableNames = {};
   int _compactCounter = compactOperationInterval;
 
   BucketStorage(sqlite.Database db, {required this.mutex}) : _internalDb = db {
     _init();
   }
 
-  _init() {
-    final existingTableRows = select(
-        "SELECT name FROM sqlite_master WHERE type='table' AND name GLOB 'ps_data_*'");
-    for (final row in existingTableRows) {
-      tableNames.add(row['name'] as String);
-    }
-  }
+  _init() {}
 
   // Use only for read statements
   sqlite.ResultSet select(String query, [List<Object?> parameters = const []]) {
@@ -48,6 +39,13 @@ class BucketStorage {
       for (var row in rows)
         BucketState(bucket: row['bucket'], opId: row['op_id'])
     ];
+  }
+
+  Future<void> streamOp(String op) async {
+    await writeTransaction((db) {
+      db.execute('INSERT INTO powersync_operations(op, data) VALUES(?, ?)',
+          ['stream', op]);
+    });
   }
 
   Future<void> saveSyncData(SyncDataBatch batch) async {
@@ -516,17 +514,4 @@ enum OpType {
         return '';
     }
   }
-}
-
-/// Get a table name for a specific type. The table may or may not exist.
-///
-/// The table name must always be enclosed in "quotes" when using inside a SQL query.
-///
-/// @param type
-String _getTypeTableName(String type) {
-  // Test for invalid characters rather than escaping.
-  if (invalidSqliteCharacters.hasMatch(type)) {
-    throw AssertionError("Invalid characters in type name: $type");
-  }
-  return "ps_data__$type";
 }
