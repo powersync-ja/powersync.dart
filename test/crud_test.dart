@@ -139,7 +139,7 @@ void main() {
     });
 
     test('INSERT-only tables', () async {
-      await powersync.disconnectedAndClear();
+      await powersync.disconnectAndClear();
       powersync = await setupPowerSync(
           path: path,
           schema: const Schema([
