@@ -259,7 +259,7 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
   ///
   /// The database can still be queried after this is called, but the tables
   /// would be empty.
-  Future<void> disconnectedAndClear() async {
+  Future<void> disconnectAndClear() async {
     await disconnect();
 
     await writeTransaction((tx) async {
@@ -274,6 +274,11 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
         await tx.execute('DELETE FROM "${row['name']}" WHERE 1');
       }
     });
+  }
+
+  @Deprecated('Use [disconnectAndClear] instead.')
+  Future<void> disconnectedAndClear() async {
+    await disconnectAndClear();
   }
 
   /// Whether a connection to the PowerSync service is currently open.
