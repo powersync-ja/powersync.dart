@@ -32,6 +32,6 @@ connectPowerSync() async {
       user: 'demo',
       password: 'demo');
 
-  // Connect to PowerSync cloud service and start sync.
+  // Connect to PowerSync service and start sync.
   db.connect(connector: connector);
 }

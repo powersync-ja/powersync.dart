@@ -8,7 +8,7 @@ import 'powersync_database.dart';
 /// Implement this to connect an app backend.
 ///
 /// The connector is responsible for:
-/// 1. Creating credentials for connecting to the PowerSync cloud service.
+/// 1. Creating credentials for connecting to the PowerSync service.
 /// 2. Applying local changes against the backend application server.
 ///
 /// [DevConnector] is provided as a quick starting point, without user management
