@@ -274,19 +274,23 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
   ///
   /// The database can still be queried after this is called, but the tables
   /// would be empty.
-  Future<void> disconnectAndClear() async {
+  ///
+  /// To preserve data in local-only tables, set [clearLocal] to false.
+  Future<void> disconnectAndClear({bool clearLocal = true}) async {
     await disconnect();
 
     await writeTransaction((tx) async {
-      await tx.execute('DELETE FROM ps_oplog WHERE 1');
-      await tx.execute('DELETE FROM ps_crud WHERE 1');
-      await tx.execute('DELETE FROM ps_buckets WHERE 1');
+      await tx.execute('DELETE FROM ps_oplog');
+      await tx.execute('DELETE FROM ps_crud');
+      await tx.execute('DELETE FROM ps_buckets');
 
+      final tableGlob = clearLocal ? 'ps_data_*' : 'ps_data__*';
       final existingTableRows = await tx.getAll(
-          "SELECT name FROM sqlite_master WHERE type='table' AND name GLOB 'ps_data_*'");
+          "SELECT name FROM sqlite_master WHERE type='table' AND name GLOB ?",
+          [tableGlob]);
 
       for (var row in existingTableRows) {
-        await tx.execute('DELETE FROM "${row['name']}" WHERE 1');
+        await tx.execute('DELETE FROM ${quoteIdentifier(row['name'])}');
       }
     });
   }
