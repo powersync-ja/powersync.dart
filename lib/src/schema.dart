@@ -80,6 +80,51 @@ class Table {
             !invalidSqliteCharacters.hasMatch(_viewNameOverride!));
   }
 
+  /// Check that there are no issues in the table definition.
+  void validate() {
+    if (invalidSqliteCharacters.hasMatch(name)) {
+      throw AssertionError("Invalid characters in table name: $name");
+    } else if (_viewNameOverride != null &&
+        invalidSqliteCharacters.hasMatch(_viewNameOverride!)) {
+      throw AssertionError(
+          "Invalid characters in view name: $_viewNameOverride");
+    }
+
+    Set<String> columnNames = {"id"};
+    for (var column in columns) {
+      if (column.name == 'id') {
+        throw AssertionError(
+            "$name: id column is automatically added, custom id columns are not supported");
+      } else if (columnNames.contains(column.name)) {
+        throw AssertionError("Duplicate column $name.${column.name}");
+      } else if (invalidSqliteCharacters.hasMatch(column.name)) {
+        throw AssertionError(
+            "Invalid characters in column name: $name.${column.name}");
+      }
+
+      columnNames.add(column.name);
+    }
+    Set<String> indexNames = {};
+
+    for (var index in indexes) {
+      if (indexNames.contains(index.name)) {
+        throw AssertionError("Duplicate index $name.${index.name}");
+      } else if (invalidSqliteCharacters.hasMatch(index.name)) {
+        throw AssertionError(
+            "Invalid characters in index name: $name.${index.name}");
+      }
+
+      for (var column in index.columns) {
+        if (!columnNames.contains(column.column)) {
+          throw AssertionError(
+              "Column $name.${column.column} not found for index ${index.name}");
+        }
+      }
+
+      indexNames.add(index.name);
+    }
+  }
+
   /// Name for the view, used for queries.
   /// Defaults to the synced table name.
   String get viewName {

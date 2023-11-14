@@ -166,6 +166,10 @@ END"""
 ///
 /// Must be wrapped in a transaction.
 void updateSchema(sqlite.Database db, Schema schema) {
+  for (var table in schema.tables) {
+    table.validate();
+  }
+
   _createTablesAndIndexes(db, schema);
 
   final existingViewRows = db.select(
@@ -174,8 +178,6 @@ void updateSchema(sqlite.Database db, Schema schema) {
   Set<String> toRemove = {for (var row in existingViewRows) row['name']};
 
   for (var table in schema.tables) {
-    assert(table.validName, "Invalid characters in table name: ${table.name}");
-
     toRemove.remove(table.name);
 
     var createViewOp = createViewStatement(table);
