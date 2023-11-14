@@ -103,7 +103,6 @@ END"""
 }
 
 List<String> createViewTriggerStatementsLocal(Table table) {
-  final type = table.name;
   final viewName = table.viewName;
   final internalNameE = quoteIdentifier(table.internalName);
 
