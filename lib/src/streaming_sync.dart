@@ -309,7 +309,7 @@ HttpException getError(http.Response response) {
     final body = response.body;
     final decoded = convert.jsonDecode(body);
     final details = decoded['error']?['details']?[0] ?? body;
-    final message = '${response.reasonPhrase ?? "Request failed"}: ${details}';
+    final message = '${response.reasonPhrase ?? "Request failed"}: $details';
     return HttpException(message, uri: response.request?.url);
   } on Error catch (_) {
     return HttpException(response.reasonPhrase ?? "Request failed",
