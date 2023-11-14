@@ -13,7 +13,7 @@ class Schema {
 
 /// A single table in the schema.
 class Table {
-  /// The table name, as used in queries.
+  /// The synced table name, matching sync rules.
   final String name;
 
   /// List of columns.
@@ -27,6 +27,9 @@ class Table {
 
   /// Whether this is an insert-only table.
   final bool insertOnly;
+
+  /// Override the name for the view
+  final String? _viewNameOverride;
 
   /// Internal use only.
   ///
@@ -42,33 +45,45 @@ class Table {
   /// Create a synced table.
   ///
   /// Local changes are recorded, and remote changes are synced to the local table.
-  const Table(this.name, this.columns, {this.indexes = const []})
-      : localOnly = false,
-        insertOnly = false;
+  const Table(this.name, this.columns,
+      {this.indexes = const [], String? viewName, this.localOnly = false})
+      : insertOnly = false,
+        _viewNameOverride = viewName;
 
   /// Create a table that only exists locally.
   ///
   /// This table does not record changes, and is not synchronized from the service.
-  const Table.localOnly(this.name, this.columns, {this.indexes = const []})
+  const Table.localOnly(this.name, this.columns,
+      {this.indexes = const [], String? viewName})
       : localOnly = true,
-        insertOnly = false;
+        insertOnly = false,
+        _viewNameOverride = viewName;
 
   /// Create a table that only supports inserts.
   ///
   /// This table records INSERT statements, but does not persist data locally.
   ///
   /// SELECT queries on the table will always return 0 rows.
-  const Table.insertOnly(this.name, this.columns)
+  const Table.insertOnly(this.name, this.columns, {String? viewName})
       : localOnly = false,
         insertOnly = true,
-        indexes = const [];
+        indexes = const [],
+        _viewNameOverride = viewName;
 
   Column operator [](String columnName) {
     return columns.firstWhere((element) => element.name == columnName);
   }
 
   bool get validName {
-    return !invalidSqliteCharacters.hasMatch(name);
+    return !invalidSqliteCharacters.hasMatch(name) &&
+        (_viewNameOverride == null ||
+            !invalidSqliteCharacters.hasMatch(_viewNameOverride!));
+  }
+
+  /// Name for the view, used for queries.
+  /// Defaults to the synced table name.
+  String get viewName {
+    return _viewNameOverride ?? name;
   }
 }
 

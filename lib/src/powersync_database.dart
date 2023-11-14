@@ -31,7 +31,7 @@ import 'sync_status.dart';
 /// or not. Once connected, the changes are uploaded.
 class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
   /// Schema used for the local database.
-  final Schema schema;
+  Schema schema;
 
   /// The underlying database.
   ///
@@ -123,6 +123,19 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
     statusStream = _statusStreamController.stream;
     await database.initialize();
     await migrations.migrate(database);
+    await updateSchema(schema);
+  }
+
+  /// Replace the schema with a new version.
+  /// This is for advanced use cases - typically the schema should just be
+  /// specified once in the constructor.
+  ///
+  /// Cannot be used while connected - this should only be called before [connect].
+  Future<void> updateSchema(Schema schema) async {
+    if (_disconnecter != null) {
+      throw AssertionError('Cannot update schema while connected');
+    }
+    this.schema = schema;
     await updateSchemaInIsolate(database, schema);
   }
 
@@ -144,6 +157,8 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
   ///
   /// Status changes are reported on [statusStream].
   connect({required PowerSyncBackendConnector connector}) async {
+    await initialize();
+
     // Disconnect if connected
     await disconnect();
     final disconnector = AbortController();
