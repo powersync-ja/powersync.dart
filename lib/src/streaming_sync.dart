@@ -127,7 +127,7 @@ class StreamingSyncImplementation {
       }
     }
     if (response.statusCode != 200) {
-      throw HttpException(response.reasonPhrase ?? "Request failed", uri: uri);
+      throw getError(response);
     }
 
     final body = convert.jsonDecode(response.body);
@@ -294,13 +294,38 @@ class StreamingSyncImplementation {
       }
     }
     if (res.statusCode != 200) {
-      throw HttpException(res.reasonPhrase ?? 'Invalid http response',
-          uri: uri);
+      throw await getStreamedError(res);
     }
 
     // Note: The response stream is automatically closed when this loop errors
     await for (var line in ndjson(res.stream)) {
       yield parseStreamingSyncLine(line as Map<String, dynamic>);
     }
+  }
+}
+
+HttpException getError(http.Response response) {
+  try {
+    final body = response.body;
+    final decoded = convert.jsonDecode(body);
+    final details = decoded['error']?['details']?[0] ?? body;
+    final message = '${response.reasonPhrase ?? "Request failed"}: $details';
+    return HttpException(message, uri: response.request?.url);
+  } on Error catch (_) {
+    return HttpException(response.reasonPhrase ?? "Request failed",
+        uri: response.request?.url);
+  }
+}
+
+Future<HttpException> getStreamedError(http.StreamedResponse response) async {
+  try {
+    final body = await response.stream.bytesToString();
+    final decoded = convert.jsonDecode(body);
+    final details = decoded['error']?['details']?[0] ?? body;
+    final message = '${response.reasonPhrase ?? "Request failed"}: $details';
+    return HttpException(message, uri: response.request?.url);
+  } on Error catch (_) {
+    return HttpException(response.reasonPhrase ?? "Request failed",
+        uri: response.request?.url);
   }
 }
