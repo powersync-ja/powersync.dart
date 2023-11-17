@@ -13,7 +13,7 @@ class Schema {
 
 /// A single table in the schema.
 class Table {
-  /// The table name, as used in queries.
+  /// The synced table name, matching sync rules.
   final String name;
 
   /// List of columns.
@@ -27,6 +27,9 @@ class Table {
 
   /// Whether this is an insert-only table.
   final bool insertOnly;
+
+  /// Override the name for the view
+  final String? _viewNameOverride;
 
   /// Internal use only.
   ///
@@ -42,33 +45,90 @@ class Table {
   /// Create a synced table.
   ///
   /// Local changes are recorded, and remote changes are synced to the local table.
-  const Table(this.name, this.columns, {this.indexes = const []})
-      : localOnly = false,
-        insertOnly = false;
+  const Table(this.name, this.columns,
+      {this.indexes = const [], String? viewName, this.localOnly = false})
+      : insertOnly = false,
+        _viewNameOverride = viewName;
 
   /// Create a table that only exists locally.
   ///
   /// This table does not record changes, and is not synchronized from the service.
-  const Table.localOnly(this.name, this.columns, {this.indexes = const []})
+  const Table.localOnly(this.name, this.columns,
+      {this.indexes = const [], String? viewName})
       : localOnly = true,
-        insertOnly = false;
+        insertOnly = false,
+        _viewNameOverride = viewName;
 
   /// Create a table that only supports inserts.
   ///
   /// This table records INSERT statements, but does not persist data locally.
   ///
   /// SELECT queries on the table will always return 0 rows.
-  const Table.insertOnly(this.name, this.columns)
+  const Table.insertOnly(this.name, this.columns, {String? viewName})
       : localOnly = false,
         insertOnly = true,
-        indexes = const [];
+        indexes = const [],
+        _viewNameOverride = viewName;
 
   Column operator [](String columnName) {
     return columns.firstWhere((element) => element.name == columnName);
   }
 
   bool get validName {
-    return !invalidSqliteCharacters.hasMatch(name);
+    return !invalidSqliteCharacters.hasMatch(name) &&
+        (_viewNameOverride == null ||
+            !invalidSqliteCharacters.hasMatch(_viewNameOverride!));
+  }
+
+  /// Check that there are no issues in the table definition.
+  void validate() {
+    if (invalidSqliteCharacters.hasMatch(name)) {
+      throw AssertionError("Invalid characters in table name: $name");
+    } else if (_viewNameOverride != null &&
+        invalidSqliteCharacters.hasMatch(_viewNameOverride!)) {
+      throw AssertionError(
+          "Invalid characters in view name: $_viewNameOverride");
+    }
+
+    Set<String> columnNames = {"id"};
+    for (var column in columns) {
+      if (column.name == 'id') {
+        throw AssertionError(
+            "$name: id column is automatically added, custom id columns are not supported");
+      } else if (columnNames.contains(column.name)) {
+        throw AssertionError("Duplicate column $name.${column.name}");
+      } else if (invalidSqliteCharacters.hasMatch(column.name)) {
+        throw AssertionError(
+            "Invalid characters in column name: $name.${column.name}");
+      }
+
+      columnNames.add(column.name);
+    }
+    Set<String> indexNames = {};
+
+    for (var index in indexes) {
+      if (indexNames.contains(index.name)) {
+        throw AssertionError("Duplicate index $name.${index.name}");
+      } else if (invalidSqliteCharacters.hasMatch(index.name)) {
+        throw AssertionError(
+            "Invalid characters in index name: $name.${index.name}");
+      }
+
+      for (var column in index.columns) {
+        if (!columnNames.contains(column.column)) {
+          throw AssertionError(
+              "Column $name.${column.column} not found for index ${index.name}");
+        }
+      }
+
+      indexNames.add(index.name);
+    }
+  }
+
+  /// Name for the view, used for queries.
+  /// Defaults to the synced table name.
+  String get viewName {
+    return _viewNameOverride ?? name;
   }
 }
 
