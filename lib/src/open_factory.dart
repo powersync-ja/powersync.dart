@@ -40,6 +40,7 @@ class PowerSyncOpenFactory extends DefaultSqliteOpenFactory {
     // ignore: deprecated_member_use_from_same_package
     _sqliteSetup?.setup();
     final db = super.open(options);
+    db.execute('PRAGMA recursive_triggers = TRUE');
     setupFunctions(db);
     return db;
   }
