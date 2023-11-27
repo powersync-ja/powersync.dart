@@ -1,3 +1,11 @@
+## 0.4.2
+
+ - Improve HTTP error messages.
+ - Enable SQLite recursive triggers.
+ - Support overriding view names.
+ - Validate schema definitions for duplicates.
+
+
 ## 0.4.1
 
  - Use Apache 2.0 license.
