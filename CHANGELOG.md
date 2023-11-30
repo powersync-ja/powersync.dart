@@ -1,3 +1,7 @@
+## 1.0.0
+
+ - Start using stable version range.
+
 ## 0.4.2
 
  - Improve HTTP error messages.
