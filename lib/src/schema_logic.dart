@@ -1,25 +1,6 @@
-import 'dart:convert';
-
-import 'package:sqlite_async/sqlite3.dart' as sqlite;
-import 'package:sqlite_async/sqlite_async.dart';
-
-import 'schema.dart';
-
 const String maxOpId = '9223372036854775807';
 
 final invalidSqliteCharacters = RegExp(r'''["'%,\.#\s\[\]]''');
-
-/// Sync the schema to the local database.
-void updateSchema(sqlite.Database db, Schema schema) {
-  db.execute('SELECT powersync_replace_schema(?)', [jsonEncode(schema)]);
-}
-
-Future<void> updateSchemaInIsolate(
-    SqliteConnection database, Schema schema) async {
-  await database.computeWithDatabase((db) async {
-    updateSchema(db, schema);
-  });
-}
 
 String? friendlyTableName(String table) {
   final re = RegExp(r"^ps_data__(.+)$");
