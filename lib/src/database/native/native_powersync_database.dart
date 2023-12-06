@@ -4,14 +4,15 @@ import 'dart:isolate';
 import 'package:logging/logging.dart';
 import 'package:sqlite_async/sqlite3.dart' as sqlite;
 import 'package:sqlite_async/sqlite_async.dart';
-import '../database_interface.dart' as database_interface;
+import '../../open_factory/open_factory_interface.dart' as open_factory;
+import '../../open_factory/native/native_open_factory.dart';
+import '../database_interface.dart';
 
 import '../../abort_controller.dart';
 import '../../bucket_storage.dart';
 import '../../connector.dart';
 import '../../isolate_completer.dart';
 import '../../log.dart';
-import '../../open_factory.dart';
 import '../../powersync_update_notification.dart';
 import '../../schema.dart';
 import '../../schema_helpers.dart';
@@ -27,7 +28,7 @@ import '../../sync_status.dart';
 ///
 /// All changes to local tables are automatically recorded, whether connected
 /// or not. Once connected, the changes are uploaded.
-class PowerSyncDatabase extends database_interface.PowerSyncDatabase {
+class PowerSyncDatabase extends AbstractPowerSyncDatabase {
   /// Schema used for the local database.
   final Schema schema;
 
@@ -65,7 +66,7 @@ class PowerSyncDatabase extends database_interface.PowerSyncDatabase {
       int maxReaders = SqliteDatabase.defaultMaxReaders,
       @Deprecated("Use [PowerSyncDatabase.withFactory] instead")
       // ignore: deprecated_member_use_from_same_package
-      SqliteConnectionSetup? sqliteSetup}) {
+      open_factory.SqliteConnectionSetup? sqliteSetup}) {
     // ignore: deprecated_member_use_from_same_package
     var factory = PowerSyncOpenFactory(path: path, sqliteSetup: sqliteSetup);
     return PowerSyncDatabase.withFactory(factory, schema: schema);
@@ -77,7 +78,8 @@ class PowerSyncDatabase extends database_interface.PowerSyncDatabase {
   /// additional logic to run inside the database isolate before or after opening.
   ///
   /// Subclass [PowerSyncOpenFactory] to add custom logic to this process.
-  factory PowerSyncDatabase.withFactory(PowerSyncOpenFactory openFactory,
+  factory PowerSyncDatabase.withFactory(
+      open_factory.PowerSyncOpenFactory openFactory,
       {required Schema schema,
       int maxReaders = SqliteDatabase.defaultMaxReaders}) {
     final db = SqliteDatabase.withFactory(openFactory, maxReaders: maxReaders);

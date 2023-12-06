@@ -11,10 +11,7 @@ import '../schema_logic.dart';
 import '../sync_status.dart';
 
 // Any imports from sqlite-async must be careful to avoid ffi
-// TODO export these better?
-import 'package:sqlite_async/src/update_notification.dart';
-import 'package:sqlite_async/src/sqlite_connection.dart';
-import 'package:sqlite_async/src/sqlite_queries.dart';
+import 'package:sqlite_async/definitions.dart';
 
 /// A PowerSync managed database.
 ///
@@ -25,7 +22,7 @@ import 'package:sqlite_async/src/sqlite_queries.dart';
 ///
 /// All changes to local tables are automatically recorded, whether connected
 /// or not. Once connected, the changes are uploaded.
-abstract class PowerSyncDatabase
+abstract class AbstractPowerSyncDatabase
     with SqliteQueries
     implements SqliteConnection {
   /// Schema used for the local database.
