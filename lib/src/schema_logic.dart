@@ -1,4 +1,4 @@
-import 'package:sqlite_async/sqlite3.dart' as sqlite;
+import 'package:sqlite_async/sqlite3_common.dart';
 import 'package:sqlite_async/sqlite_async.dart';
 
 import 'schema.dart';
@@ -165,7 +165,7 @@ END"""
 /// Sync the schema to the local database.
 ///
 /// Must be wrapped in a transaction.
-void updateSchema(sqlite.Database db, Schema schema) {
+void updateSchema(CommonDatabase db, Schema schema) {
   for (var table in schema.tables) {
     table.validate();
   }
@@ -222,7 +222,7 @@ Future<void> updateSchemaInIsolate(
 /// Does not create triggers or temporary views.
 ///
 /// Must be wrapped in a transaction.
-void _createTablesAndIndexes(sqlite.Database db, Schema schema) {
+void _createTablesAndIndexes(CommonDatabase db, Schema schema) {
   // Make sure to refresh tables in the same transaction as updating them
   final existingTableRows = db.select(
       "SELECT name FROM sqlite_master WHERE type='table' AND name GLOB 'ps_data_*'");

@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:sqlite_async/sqlite3_common.dart' as sqlite;
-import 'package:sqlite_async/sqlite_async.dart';
+import 'package:sqlite_async/definitions.dart';
 
 /// Advanced: Define custom setup for each SQLite connection.
 @Deprecated('Use SqliteOpenFactory instead')
@@ -17,7 +17,12 @@ class SqliteConnectionSetup {
   }
 }
 
-abstract class PowerSyncOpenFactory extends SqliteOpenFactory {
+abstract class AbstractPowerSyncOpenFactory
+    extends AbstractDefaultSqliteOpenFactory {
+  const AbstractPowerSyncOpenFactory(
+      {required super.path,
+      super.sqliteOptions = const SqliteOptions.defaults()});
+
   void enableExtension();
 
   void setupFunctions(sqlite.CommonDatabase db);
