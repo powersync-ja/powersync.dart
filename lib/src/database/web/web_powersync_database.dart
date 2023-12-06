@@ -1,15 +1,13 @@
 import 'dart:async';
 
-import '../database_interface.dart' as database_interface;
+import '../database_interface.dart';
 
 import '../../abort_controller.dart';
 import '../../connector.dart';
 import '../../schema.dart';
 
 // Any imports from sqlite-async must be careful to avoid ffi
-// TODO export these better?
-import 'package:sqlite_async/src/update_notification.dart';
-import 'package:sqlite_async/src/sqlite_connection.dart';
+import 'package:sqlite_async/definitions.dart';
 
 /// A PowerSync managed database.
 ///
@@ -20,7 +18,7 @@ import 'package:sqlite_async/src/sqlite_connection.dart';
 ///
 /// All changes to local tables are automatically recorded, whether connected
 /// or not. Once connected, the changes are uploaded.
-class PowerSyncDatabase extends database_interface.PowerSyncDatabase {
+class PowerSyncDatabase extends AbstractPowerSyncDatabase {
   /// Schema used for the local database.
   final Schema schema;
   final String path;

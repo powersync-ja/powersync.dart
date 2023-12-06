@@ -4,6 +4,6 @@
 
 export './database/powersync_database_stub.dart'
     // ignore: uri_does_not_exist
-    if (dart.library.io) './database/async/async_powersync_database.dart'
+    if (dart.library.io) './database/native/native_powersync_database.dart'
     // ignore: uri_does_not_exist
     if (dart.library.html) './database/web/web_powersync_database.dart';
