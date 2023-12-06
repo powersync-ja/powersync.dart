@@ -3,7 +3,7 @@ import 'dart:io';
 
 import 'package:http/http.dart' as http;
 
-import 'powersync_database.dart';
+import './database/database_interface.dart' as db_interface;
 
 /// Implement this to connect an app backend.
 ///
@@ -70,7 +70,7 @@ abstract class PowerSyncBackendConnector {
   /// Use [PowerSyncDatabase.getCrudBatch] to get a batch of changes to upload. See [DevConnector] for an example implementation.
   ///
   /// Any thrown errors will result in a retry after the configured wait period (default: 5 seconds).
-  Future<void> uploadData(PowerSyncDatabase database);
+  Future<void> uploadData(db_interface.PowerSyncDatabase database);
 }
 
 /// Temporary credentials to connect to the PowerSync service.
@@ -278,7 +278,7 @@ class DevConnector extends PowerSyncBackendConnector {
 
   /// Upload changes using the PowerSync dev API.
   @override
-  Future<void> uploadData(PowerSyncDatabase database) async {
+  Future<void> uploadData(db_interface.PowerSyncDatabase database) async {
     final batch = await database.getCrudBatch();
     if (batch == null) {
       return;

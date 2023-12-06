@@ -4,13 +4,14 @@ homepage: https://powersync.co
 repository: https://github.com/journeyapps/powersync.dart
 description: PowerSync Flutter SDK - keep PostgreSQL databases in sync with on-device SQLite databases.
 environment:
-  sdk: '>=2.19.1 <4.0.0'
+  sdk: ">=3.0.0 <4.0.0"
 dependencies:
   # Needed because of sqlite3_flutter_libs
   flutter:
     sdk: flutter
 
-  sqlite_async: ^0.5.0
+  sqlite_async:
+    path: ../sqlite_async.dart
   sqlite3_flutter_libs: ^0.5.15
   http: ^1.1.0
   uuid: ^4.0.0
