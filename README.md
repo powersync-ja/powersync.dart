@@ -1,6 +1,6 @@
 <p align="center">
   <a href="https://www.powersync.com" target="_blank">
-    <img src="https://assets-global.website-files.com/651d89402147985dc475ff48/65202e5625635db7a0362299_powersync-logo-color.svg" alt="PowerSync" width="280" height="84">
+    <img src="https://private-user-images.githubusercontent.com/19345049/283563672-602bafa0-41ce-4cee-a432-56848c278722.png?jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTEiLCJleHAiOjE3MDMwODM0NDUsIm5iZiI6MTcwMzA4MzE0NSwicGF0aCI6Ii8xOTM0NTA0OS8yODM1NjM2NzItNjAyYmFmYTAtNDFjZS00Y2VlLWE0MzItNTY4NDhjMjc4NzIyLnBuZz9YLUFtei1BbGdvcml0aG09QVdTNC1ITUFDLVNIQTI1NiZYLUFtei1DcmVkZW50aWFsPUFLSUFJV05KWUFYNENTVkVINTNBJTJGMjAyMzEyMjAlMkZ1cy1lYXN0LTElMkZzMyUyRmF3czRfcmVxdWVzdCZYLUFtei1EYXRlPTIwMjMxMjIwVDE0MzkwNVomWC1BbXotRXhwaXJlcz0zMDAmWC1BbXotU2lnbmF0dXJlPTJhOGUwZDE0ODA4ODhhZTY2OGRiMGRiNTM4ZDJlNTBmNWY5NTA0YzNhZWE2NDA3ZjA3OTljNzRmZmU0Y2FlMzkmWC1BbXotU2lnbmVkSGVhZGVycz1ob3N0JmFjdG9yX2lkPTAma2V5X2lkPTAmcmVwb19pZD0wIn0.MvQghmss9c9w90fCWvzT63RCRRB6sJoHnua1_zve9bs" alt="PowerSync">
   </a>
 </p>
 
