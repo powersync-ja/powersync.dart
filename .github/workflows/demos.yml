@@ -1,4 +1,4 @@
-name: Packages
+name: Demos checks
 
 concurrency:
     group: demos-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
