@@ -1,0 +1,43 @@
+name: powersync_dart
+
+packages:
+  - packages/*
+  - demos/*
+  - demos/*/*
+
+ide:
+  intellij: false
+
+scripts:
+  format:
+    description: Format Dart code.
+    run: dart format .
+
+  format:check:packages:
+    description: Check formatting of Dart code in packages.
+    run: dart format --output none --set-exit-if-changed packages
+
+  format:check:demos:
+    description: Check formatting of Dart code in demos.
+    run: dart format --output none --set-exit-if-changed demos
+
+  analyze:packages:
+    description: Analyze Dart code in packages.
+    run: dart analyze packages --fatal-infos
+
+  analyze:demos:
+    description: Analyze Dart code in demos.
+    run: dart analyze demos --fatal-infos
+
+  test:
+    description: Run tests in a specific package.
+    run: dart test
+    exec:
+      concurrency: 1
+    packageFilters:
+      dirExists:
+        - test
+    # This tells Melos tests to ignore env variables passed to tests from `melos run test`
+    # as they could change the behaviour of how tests filter packages.
+    env:
+      MELOS_TEST: true

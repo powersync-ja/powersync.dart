@@ -1,0 +1,59 @@
+name: Packages
+
+concurrency:
+    group: packages-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+    cancel-in-progress: true
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - packages/**
+      - .github/workflows/**
+  pull_request:
+    paths:
+      - packages/**
+      - .github/workflows/**
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.x'
+          channel: 'stable'
+
+      - name: Install Melos
+        run: flutter pub global activate melos
+      - name: Install dependencies
+        run: melos bootstrap
+      - name: Check formatting
+        run: melos format:check:packages
+      - name: Lint
+        run: melos analyze:packages
+      - name: Publish dry-run
+        run: melos publish --dry-run --yes
+      - name: Check publish score
+        run: |
+          flutter pub global activate pana
+          ./.github/workflows/scripts/run-pana.sh
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.x'
+          channel: 'stable'
+      - name: Install melos
+        run: flutter pub global activate melos
+      - name: Install dependencies
+        run: melos bootstrap
+      - name: Run tests
+        run: melos test
