@@ -1,43 +1,47 @@
 ## 1.0.0
 
- - Start using stable version range.
+- Start using stable version range.
 
 ## 0.4.2
 
- - Improve HTTP error messages.
- - Enable SQLite recursive triggers.
- - Support overriding view names.
- - Validate schema definitions for duplicates.
-
+- Improve HTTP error messages.
+- Enable SQLite recursive triggers.
+- Support overriding view names.
+- Validate schema definitions for duplicates.
 
 ## 0.4.1
 
- - Use Apache 2.0 license.
- - Update uuid dependency.
+- Use Apache 2.0 license.
+- Update uuid dependency.
 
 ## 0.4.0
 
 Improvements:
- - Some parameters to `PowerSyncCredentials` are now optional.
- - Upgrade dependencies.
+
+- Some parameters to `PowerSyncCredentials` are now optional.
+- Upgrade dependencies.
 
 ## 0.4.0-preview.6
 
 New functionality:
- - Include transaction ids on crud entries, allowing transactions to be grouped together.
- - Simplify implementation of `PowerSyncBackendConnector` by automatically handling token caching.
+
+- Include transaction ids on crud entries, allowing transactions to be grouped together.
+- Simplify implementation of `PowerSyncBackendConnector` by automatically handling token caching.
 
 Fixes:
- - Only check token expiration on the server, avoiding issues when the local time is out of sync.
- - Fix some edge case errors that would kill the sync Isolate.
- - Fix errors when disconnecting shortly after connecting.
+
+- Only check token expiration on the server, avoiding issues when the local time is out of sync.
+- Fix some edge case errors that would kill the sync Isolate.
+- Fix errors when disconnecting shortly after connecting.
 
 Breaking changes:
- - `PowerSyncDatabase.disconnect()` now returns `Future<void>` instead of `void`.
- - Subclasses of `PowerSyncBackendConnector` must now implement `fetchCredentials()` instead of `refreshCredentials()` + `getCredentials()`.
+
+- `PowerSyncDatabase.disconnect()` now returns `Future<void>` instead of `void`.
+- Subclasses of `PowerSyncBackendConnector` must now implement `fetchCredentials()` instead of `refreshCredentials()` + `getCredentials()`.
 
 Other changes:
- - Update sqlite_async dependency to 0.4.0: https://pub.dev/packages/sqlite_async/changelog
+
+- Update sqlite_async dependency to 0.4.0: <https://pub.dev/packages/sqlite_async/changelog>
 
 ## 0.3.0-preview.5
 
@@ -53,20 +57,23 @@ The `powersync` package now just adds automatic sync and dynamic schema manageme
 using PowerSync, or just using a local database directly.
 
 Breaking changes:
- - `TableUpdate` renamed to `UpdateNotification`.
- - `PowerSyncDatabase.connectionFactory()` renamed to `PowerSyncDatabase.isolateConnectionFactory()`,
+
+- `TableUpdate` renamed to `UpdateNotification`.
+- `PowerSyncDatabase.connectionFactory()` renamed to `PowerSyncDatabase.isolateConnectionFactory()`,
    and should only be used to pass the connection to a different isolate.
- - All tables apart from `ps_crud` are dropped and re-created when upgrading to this version.
+- All tables apart from `ps_crud` are dropped and re-created when upgrading to this version.
    This will not result in any data loss, but a full re-sync is required.
 
 Fixes:
- - Fix queries not watching the correct tables in some cases.
- - Fix performance issues on bulk insert/update/delete.
+
+- Fix queries not watching the correct tables in some cases.
+- Fix performance issues on bulk insert/update/delete.
 
 Other changes:
- - Views and triggers are now persisted in the database, instead of using temporary views.
-    - This allows reading the views using other tools.
-    - It is still not possible to update the views using other tools, since triggers use the custom `powersync_diff` function to compute changes.
+
+- Views and triggers are now persisted in the database, instead of using temporary views.
+  - This allows reading the views using other tools.
+  - It is still not possible to update the views using other tools, since triggers use the custom `powersync_diff` function to compute changes.
 
 ## 0.2.0-preview.3
 
@@ -82,9 +89,11 @@ Other changes:
 ## 0.2.0-preview.1
 
 Breaking change:
+
 - Rename internal tables to all start with `ps_`. All existing local data is deleted and re-synced.
 
 Other changes:
+
 - Add support for local indexes.
 - Add support for local-only tables - no changes recorded, and not synced with the remote service.
 - Add support for insert-only tables - records changes, but does not persist data or download from the remote service.
