@@ -16,6 +16,8 @@ PowerSync SDK for Dart and Flutter
 
 #### Usage
 
+This monorepo uses [melos](https://melos.invertase.dev/) to handle command and package management.
+
 For detailed usage, check out the inner [powersync](https://github.com/powersync-ja/powersync-dart/tree/main/packages/powersync.dart), [attachments-helper](https://github.com/powersync-ja/powersync-dart/tree/main/packages/powersync_attachments_helper.dart)
 
 #### Blog posts
