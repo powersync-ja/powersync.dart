@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 
 # Get the root directory of your project
 ROOT_DIR=$(pwd)

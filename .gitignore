@@ -6,3 +6,4 @@ pubspec_overrides.yaml
 .idea
 *.iml
 .flutter-plugins-dependencies
+.flutter-plugins
