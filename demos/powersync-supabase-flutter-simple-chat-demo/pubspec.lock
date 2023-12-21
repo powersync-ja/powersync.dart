@@ -315,7 +315,7 @@ packages:
   powersync:
     dependency: "direct main"
     description:
-      path: "../../packages/powersync.dart"
+      path: "../../packages/powersync"
       relative: true
     source: path
     version: "1.0.0"
