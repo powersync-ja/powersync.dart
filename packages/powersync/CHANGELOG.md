@@ -1,3 +1,7 @@
+## 1.0.1
+
+- Update repository URL in pubspec.yml
+
 ## 1.0.0
 
 - Start using stable version range.
