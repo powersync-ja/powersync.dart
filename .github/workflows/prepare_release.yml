@@ -1,0 +1,23 @@
+name: Prepare release
+on:
+  push:
+    branches:
+      - master
+      - main
+
+jobs:
+  prepare-release:
+    name: Prepare release
+    permissions:
+      contents: write
+      pull-requests: write
+    runs-on: ubuntu-latest
+    if: contains(github.event.head_commit.message, 'chore(release)') == false
+    steps:
+      - uses: actions/checkout@v3
+      - uses: subosito/flutter-action@v2
+      - uses: bluefireteam/melos-action@v3
+        with:
+          run-versioning: true
+          publish-dry-run: true
+          create-pr: true
