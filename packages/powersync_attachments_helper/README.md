@@ -21,13 +21,13 @@ const schema = Schema([
 
 // Assume PowerSync database is initialized elsewhere
 late PowerSyncDatabase db;
-// Assume remote storages is implemented elsewhere
+// Assume remote storage is implemented elsewhere
 late AbstractRemoteStorageAdapter remoteStorage;
 late PhotoAttachmentQueue attachmentQueue;
 
 class PhotoAttachmentQueue extends AbstractAttachmentQueue {
-  PhotoAttachmentQueue(db, localStorage, remoteStorage)
-      : super(db: db, localStorage: localStorage, remoteStorage: remoteStorage);
+  PhotoAttachmentQueue(db, remoteStorage)
+      : super(db: db, remoteStorage: remoteStorage);
 
   // This will create an item on the attachment queue to UPLOAD an image
   // to remote storage
@@ -79,7 +79,7 @@ class PhotoAttachmentQueue extends AbstractAttachmentQueue {
 
 // Use this in your main.dart to setup and start the queue
 initializeAttachmentQueue(PowerSyncDatabase db) async {
-  attachmentQueue = PhotoAttachmentQueue(db, localStorage, remoteStorage);
+  attachmentQueue = PhotoAttachmentQueue(db, remoteStorage);
   await attachmentQueue.init();
 }
 ```
