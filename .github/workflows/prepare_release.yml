@@ -21,6 +21,5 @@ jobs:
           channel: 'stable'
       - uses: bluefireteam/melos-action@v3
         with:
-          run-versioning: true
           publish-dry-run: true
           create-pr: true
