@@ -83,3 +83,5 @@ initializeAttachmentQueue(PowerSyncDatabase db) async {
   await attachmentQueue.init();
 }
 ```
+
+See [Supabase Flutter todo list example](../../demos/powersync-supabase-flutter-todolist-demo/README.md) for a concrete implementation of the above.
