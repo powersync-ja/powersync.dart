@@ -5,7 +5,6 @@ import 'package:logging/logging.dart';
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:powersync/powersync.dart';
-
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import './models/schema.dart';
@@ -129,6 +128,10 @@ class SupabaseConnector extends PowerSyncBackendConnector {
 /// Global reference to the database
 late final PowerSyncDatabase db;
 
+bool isLoggedIn() {
+  return Supabase.instance.client.auth.currentSession?.accessToken != null;
+}
+
 /// id of the user currently logged in
 String? getUserId() {
   return Supabase.instance.client.auth.currentSession?.user.id;
@@ -146,5 +149,34 @@ Future<void> openDatabase() async {
 
   await loadSupabase();
 
-  db.connect(connector: SupabaseConnector(db));
+  SupabaseConnector? currentConnector;
+
+  if (isLoggedIn()) {
+    // If the user is already logged in, connect immediately.
+    // Otherwise, connect once logged in.
+    currentConnector = SupabaseConnector(db);
+    db.connect(connector: currentConnector);
+  }
+
+  Supabase.instance.client.auth.onAuthStateChange.listen((data) async {
+    final AuthChangeEvent event = data.event;
+    if (event == AuthChangeEvent.signedIn) {
+      // Connect to PowerSync when the user is signed in
+      currentConnector = SupabaseConnector(db);
+      db.connect(connector: currentConnector!);
+    } else if (event == AuthChangeEvent.signedOut) {
+      // Implicit sign out - disconnect, but don't delete data
+      currentConnector = null;
+      await db.disconnect();
+    } else if (event == AuthChangeEvent.tokenRefreshed) {
+      // Supabase token refreshed - trigger token refresh for PowerSync.
+      currentConnector?.prefetchCredentials();
+    }
+  });
+}
+
+/// Explicit sign out - clear database and log out.
+Future<void> logout() async {
+  await Supabase.instance.client.auth.signOut();
+  await db.disconnectAndClear();
 }
