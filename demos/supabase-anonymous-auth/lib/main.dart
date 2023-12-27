@@ -30,8 +30,7 @@ void main() async {
   runApp(const MyApp());
 }
 
-const listsPage = ListsPage();
-const homePage = listsPage;
+const homePage = HomePage();
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
