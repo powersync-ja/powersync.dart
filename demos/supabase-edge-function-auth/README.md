@@ -18,4 +18,4 @@ flutter run
 
 # Configure the app
 
-Copy the contents of  [lib/app_config_template.dart](./lib/app_config_template.dart) into `lib/app_config.dart`, and alter the values to use the credentials of your new Supabase project.
+Insert the credentials of your new Supabase and PowerSync projects into `lib/app_config.dart`
