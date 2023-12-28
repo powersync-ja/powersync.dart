@@ -43,4 +43,4 @@ bucket_definitions:
 
 # Configure the app
 
-Create `lib/app_config.dart` from [lib/app_config_template.dart](./lib/app_config_template.dart), and use the credentials of your new Supabase and PowerSync projects.
+Insert the credentials of your new Supabase and PowerSync projects into `lib/app_config.dart`
