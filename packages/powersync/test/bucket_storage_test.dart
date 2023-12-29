@@ -674,5 +674,118 @@ void main() {
             {'description': 'server updated'}
           ]));
     });
+
+    test('should revert a failing update', () async {
+      await bucketStorage.saveSyncData(SyncDataBatch([
+        SyncBucketData(
+          bucket: 'bucket1',
+          data: [putAsset1_1, putAsset2_2, putAsset1_3],
+        ),
+      ]));
+
+      await syncLocalChecked(Checkpoint(
+          lastOpId: '3',
+          writeCheckpoint: '3',
+          checksums: [BucketChecksum(bucket: 'bucket1', checksum: 6)]));
+
+      // Local save
+      db.execute('INSERT INTO assets(id, description) VALUES(?, ?)',
+          ['O3', 'inserted']);
+      final batch = bucketStorage.getCrudBatch();
+      await batch!.complete();
+      await bucketStorage.updateLocalTarget(() async {
+        return '4';
+      });
+
+      expect(
+          db.select('SELECT description FROM assets WHERE id = \'O3\''),
+          equals([
+            {'description': 'inserted'}
+          ]));
+
+      await syncLocalChecked(Checkpoint(
+          lastOpId: '3',
+          writeCheckpoint: '4',
+          checksums: [BucketChecksum(bucket: 'bucket1', checksum: 6)]));
+
+      expect(db.select('SELECT description FROM assets WHERE id = \'O3\''),
+          equals([]));
+    });
+
+    test('should revert a failing delete', () async {
+      await bucketStorage.saveSyncData(SyncDataBatch([
+        SyncBucketData(
+          bucket: 'bucket1',
+          data: [putAsset1_1, putAsset2_2, putAsset1_3],
+        ),
+      ]));
+
+      await syncLocalChecked(Checkpoint(
+          lastOpId: '3',
+          writeCheckpoint: '3',
+          checksums: [BucketChecksum(bucket: 'bucket1', checksum: 6)]));
+
+      // Local save
+      db.execute('DELETE FROM assets WHERE id = ?', ['O2']);
+
+      expect(db.select('SELECT description FROM assets WHERE id = \'O2\''),
+          equals([]));
+      // Simulate a permissions error when uploading - data should be preserved.
+      final batch = bucketStorage.getCrudBatch();
+      await batch!.complete();
+
+      await bucketStorage.updateLocalTarget(() async {
+        return '4';
+      });
+
+      await syncLocalChecked(Checkpoint(
+          lastOpId: '3',
+          writeCheckpoint: '4',
+          checksums: [BucketChecksum(bucket: 'bucket1', checksum: 6)]));
+
+      expect(
+          db.select('SELECT description FROM assets WHERE id = \'O2\''),
+          equals([
+            {'description': 'bar'}
+          ]));
+    });
+
+    test('should revert a failing insert', () async {
+      await bucketStorage.saveSyncData(SyncDataBatch([
+        SyncBucketData(
+          bucket: 'bucket1',
+          data: [putAsset1_1, putAsset2_2, putAsset1_3],
+        ),
+      ]));
+
+      await syncLocalChecked(Checkpoint(
+          lastOpId: '3',
+          writeCheckpoint: '3',
+          checksums: [BucketChecksum(bucket: 'bucket1', checksum: 6)]));
+
+      // Local save
+      db.execute('DELETE FROM assets WHERE id = ?', ['O2']);
+
+      expect(db.select('SELECT description FROM assets WHERE id = \'O2\''),
+          equals([]));
+      // Simulate a permissions error when uploading - data should be preserved.
+      final batch = bucketStorage.getCrudBatch();
+      await batch!.complete();
+
+      await bucketStorage.updateLocalTarget(() async {
+        return '4';
+      });
+
+      await syncLocalChecked(Checkpoint(
+          lastOpId: '3',
+          writeCheckpoint: '4',
+          checksums: [BucketChecksum(bucket: 'bucket1', checksum: 6)]));
+
+      expect(
+          db.select('SELECT description FROM assets WHERE id = \'O2\''),
+          equals([
+            {'description': 'bar'}
+          ]));
+    });
   });
 }
