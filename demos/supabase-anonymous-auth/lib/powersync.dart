@@ -29,6 +29,7 @@ final List<RegExp> fatalResponseCodes = [
 class SupabaseConnector extends PowerSyncBackendConnector {
   PowerSyncDatabase db;
 
+  // ignore: unused_field
   Future<void>? _refreshFuture;
 
   SupabaseConnector(this.db);

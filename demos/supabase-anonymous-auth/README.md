@@ -1,6 +1,6 @@
 # PowerSync + Supabase Anonymous Auth
 
-Demo app demonstrating use of anonymous authentication using Supabase wth the PowerSync SDK for Flutter.
+Demo app demonstrating use of anonymous authentication using Supabase with the PowerSync SDK for Flutter.
 
 # Setup
 
