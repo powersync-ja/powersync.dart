@@ -1,0 +1,31 @@
+name: supabase_anonymous_auth
+description: PowerSync Supabase Anonymous Auth Demo
+publish_to: "none"
+
+version: 1.0.1
+
+environment:
+  sdk: ">=2.19.1 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  powersync_attachments_helper: 0.1.0
+
+  powersync: ^1.0.0
+  path_provider: ^2.1.1
+  supabase_flutter: ^2.0.2
+  path: ^1.8.3
+  logging: ^1.2.0
+  sqlite_async: ^0.5.2
+  camera: ^0.10.5+7
+  image: ^4.1.3
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  flutter_lints: ^3.0.1
+
+flutter:
+  uses-material-design: true
