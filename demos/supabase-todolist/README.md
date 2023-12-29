@@ -43,5 +43,4 @@ bucket_definitions:
 
 # Configure the app
 
-Edit [lib/app_config.dart](./lib/app_config.dart), using the credentials of your new
-Supabase and PowerSync projects.
+Insert the credentials of your new Supabase and PowerSync projects into `lib/app_config.dart`
