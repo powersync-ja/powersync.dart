@@ -1,6 +1,6 @@
 # PowerSync Attachments Helper for Dart/Flutter
 
-[PowerSync Attachments Helper](https://powersync.co) is a package that assist in keeping files in sync with local and remote storage.
+[PowerSync Attachments Helper](https://pub.dev/packages/powersync_attachments_helper) is a package that assist in keeping files in sync with local and remote storage.
 
 ## Features
 
