@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:powersync_flutter_demo/app_config.dart';
-import 'package:powersync_flutter_demo/attachments/camera_helpers.dart';
 import 'package:powersync_flutter_demo/attachments/photo_widget.dart';
 import 'package:powersync_flutter_demo/attachments/queue.dart';
 
@@ -54,7 +53,7 @@ class TodoItemWidget extends StatelessWidget {
               onPressed: () async => await deleteTodo(todo),
               tooltip: 'Delete Item',
             ),
-            AppConfig.supabaseStorageBucket.isEmpty || camera == null
+            AppConfig.supabaseStorageBucket.isEmpty
                 ? Container()
                 : PhotoWidget(todo: todo),
           ],

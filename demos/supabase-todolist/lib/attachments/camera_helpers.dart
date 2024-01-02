@@ -2,8 +2,6 @@ import 'package:camera/camera.dart';
 import 'package:flutter/widgets.dart';
 import 'package:powersync_flutter_demo/powersync.dart';
 
-late final CameraDescription? camera;
-
 Future<CameraDescription?> setupCamera() async {
   // Ensure that plugin services are initialized so that `availableCameras()`
   // can be called before `runApp()`
