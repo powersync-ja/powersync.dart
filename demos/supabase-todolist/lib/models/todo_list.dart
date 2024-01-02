@@ -37,7 +37,9 @@ class TodoList {
   /// Watch all lists.
   static Stream<List<TodoList>> watchLists() {
     // This query is automatically re-run when data in "lists" or "todos" is modified.
-    return db.watch('SELECT * FROM lists ORDER BY created_at').map((results) {
+    return db
+        .watch('SELECT * FROM lists ORDER BY created_at, id')
+        .map((results) {
       return results.map(TodoList.fromRow).toList(growable: false);
     });
   }
@@ -71,7 +73,7 @@ class TodoList {
   /// Watch items within this list.
   Stream<List<TodoItem>> watchItems() {
     return db.watch(
-        'SELECT * FROM todos WHERE list_id = ? ORDER BY created_at DESC',
+        'SELECT * FROM todos WHERE list_id = ? ORDER BY created_at DESC, id',
         parameters: [id]).map((event) {
       return event.map(TodoItem.fromRow).toList(growable: false);
     });
