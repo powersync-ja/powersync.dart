@@ -24,29 +24,22 @@ class PhotoWidget extends StatefulWidget {
 class _ResolvedPhotoState {
   String? photoPath;
   bool fileExists;
-  CameraDescription? camera;
 
-  _ResolvedPhotoState(
-      {required this.photoPath,
-      required this.fileExists,
-      required this.camera});
+  _ResolvedPhotoState({required this.photoPath, required this.fileExists});
 }
 
 class _PhotoWidgetState extends State<PhotoWidget> {
   late String photoPath;
 
   Future<_ResolvedPhotoState> _getPhotoState(photoId) async {
-    final camera = await setupCamera();
     if (photoId == null) {
-      return _ResolvedPhotoState(
-          photoPath: null, fileExists: false, camera: camera);
+      return _ResolvedPhotoState(photoPath: null, fileExists: false);
     }
     photoPath = await attachmentQueue.getLocalUri('$photoId.jpg');
 
     bool fileExists = await File(photoPath).exists();
 
-    return _ResolvedPhotoState(
-        photoPath: null, fileExists: fileExists, camera: camera);
+    return _ResolvedPhotoState(photoPath: null, fileExists: fileExists);
   }
 
   @override
@@ -60,8 +53,11 @@ class _PhotoWidgetState extends State<PhotoWidget> {
           }
           final data = snapshot.data!;
           Widget takePhotoButton = ElevatedButton(
-            onPressed: () {
-              if (data.camera == null) {
+            onPressed: () async {
+              final camera = await setupCamera();
+              if (!mounted) return;
+
+              if (camera == null) {
                 const snackBar = SnackBar(
                   content: Text('No camera available'),
                   backgroundColor:
@@ -71,11 +67,12 @@ class _PhotoWidgetState extends State<PhotoWidget> {
                 ScaffoldMessenger.of(context).showSnackBar(snackBar);
                 return;
               }
+
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => TakePhotoWidget(
-                      todoId: widget.todo.id, camera: data.camera!),
+                  builder: (context) =>
+                      TakePhotoWidget(todoId: widget.todo.id, camera: camera),
                 ),
               );
             },
