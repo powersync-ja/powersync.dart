@@ -42,8 +42,11 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
   final SqliteDatabase database;
 
   /// Current connection status.
-  SyncStatus currentStatus =
-      const SyncStatus(connected: false, lastSyncedAt: null);
+  SyncStatus currentStatus = const SyncStatus(
+      connected: false,
+      uploading: false,
+      downloading: false,
+      lastSyncedAt: null);
 
   /// Use this stream to subscribe to connection status updates.
   late final Stream<SyncStatus> statusStream;
@@ -201,7 +204,10 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
           _setStatus(status);
         } else if (action == 'close') {
           _setStatus(SyncStatus(
-              connected: false, lastSyncedAt: currentStatus.lastSyncedAt));
+              connected: false,
+              downloading: false,
+              uploading: false,
+              lastSyncedAt: currentStatus.lastSyncedAt));
           rPort.close();
           updateSubscription?.cancel();
         } else if (action == 'log') {
@@ -232,6 +238,11 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
       _disconnecter?.completeAbort();
       _disconnecter = null;
       rPort.close();
+      _setStatus(SyncStatus(
+          connected: false,
+          lastSyncedAt: currentStatus.lastSyncedAt,
+          downloading: false,
+          uploading: false));
     }
 
     var exitPort = ReceivePort();

@@ -11,6 +11,10 @@ import 'stream_utils.dart';
 import 'sync_status.dart';
 import 'sync_types.dart';
 
+/// Since we use null to indicate "no change" in status updates, we need
+/// a different value to indicate "no error".
+const _noError = Object();
+
 class StreamingSyncImplementation {
   BucketStorage adapter;
 
@@ -31,7 +35,11 @@ class StreamingSyncImplementation {
 
   final Duration retryDelay;
 
-  DateTime? lastSyncedAt;
+  SyncStatus lastStatus = SyncStatus(
+      connected: false,
+      lastSyncedAt: null,
+      downloading: false,
+      uploading: false);
 
   StreamingSyncImplementation(
       {required this.adapter,
@@ -48,6 +56,7 @@ class StreamingSyncImplementation {
     crudLoop();
     var invalidCredentials = false;
     while (true) {
+      _updateStatus(connecting: true);
       try {
         if (invalidCredentials && invalidCredentialsCallback != null) {
           // This may error. In that case it will be retried again on the next
@@ -61,8 +70,11 @@ class StreamingSyncImplementation {
         log.warning('Sync error', e, stacktrace);
         invalidCredentials = true;
 
-        _statusStreamController
-            .add(SyncStatus(connected: false, lastSyncedAt: lastSyncedAt));
+        _updateStatus(
+            connected: false,
+            connecting: true,
+            downloading: false,
+            downloadError: e);
 
         // On error, wait a little before retrying
         await Future.delayed(retryDelay);
@@ -82,18 +94,22 @@ class StreamingSyncImplementation {
     while (true) {
       try {
         bool done = await uploadCrudBatch();
+        _updateStatus(uploadError: _noError);
         if (done) {
           break;
         }
       } catch (e, stacktrace) {
         log.warning('Data upload error', e, stacktrace);
+        _updateStatus(uploading: false, uploadError: e);
         await Future.delayed(retryDelay);
       }
     }
+    _updateStatus(uploading: false);
   }
 
   Future<bool> uploadCrudBatch() async {
     if (adapter.hasCrud()) {
+      _updateStatus(uploading: true);
       await uploadCrud();
       return false;
     } else {
@@ -134,6 +150,31 @@ class StreamingSyncImplementation {
     return body['data']['write_checkpoint'] as String;
   }
 
+  void _updateStatus(
+      {DateTime? lastSyncedAt,
+      bool? connected,
+      bool? connecting,
+      bool? downloading,
+      bool? uploading,
+      Object? uploadError,
+      Object? downloadError}) {
+    final c = connected ?? lastStatus.connected;
+    var newStatus = SyncStatus(
+        connected: c,
+        connecting: !c && (connecting ?? lastStatus.connecting),
+        lastSyncedAt: lastSyncedAt ?? lastStatus.lastSyncedAt,
+        downloading: downloading ?? lastStatus.downloading,
+        uploading: uploading ?? lastStatus.uploading,
+        uploadError: uploadError == _noError
+            ? null
+            : (uploadError ?? lastStatus.uploadError),
+        downloadError: downloadError == _noError
+            ? null
+            : (downloadError ?? lastStatus.downloadError));
+    lastStatus = newStatus;
+    _statusStreamController.add(newStatus);
+  }
+
   Future<bool> streamingSyncIteration() async {
     adapter.startSession();
     final bucketEntries = adapter.getBucketStates();
@@ -162,8 +203,7 @@ class StreamingSyncImplementation {
     bool haveInvalidated = false;
 
     await for (var line in merged) {
-      _statusStreamController
-          .add(SyncStatus(connected: true, lastSyncedAt: lastSyncedAt));
+      _updateStatus(connected: true, connecting: false);
       if (line is Checkpoint) {
         targetCheckpoint = line;
         final Set<String> bucketsToDelete = {...bucketSet};
@@ -175,6 +215,7 @@ class StreamingSyncImplementation {
         bucketSet = newBuckets;
         await adapter.removeBuckets([...bucketsToDelete]);
         adapter.setTargetCheckpoint(targetCheckpoint);
+        _updateStatus(downloading: true);
       } else if (line is StreamingSyncCheckpointComplete) {
         final result = await adapter.syncLocalDatabase(targetCheckpoint!);
         if (!result.checkpointValid) {
@@ -187,9 +228,11 @@ class StreamingSyncImplementation {
           // Continue waiting.
         } else {
           appliedCheckpoint = targetCheckpoint;
-          lastSyncedAt = DateTime.now();
-          _statusStreamController
-              .add(SyncStatus(connected: true, lastSyncedAt: lastSyncedAt));
+
+          _updateStatus(
+              downloading: false,
+              downloadError: _noError,
+              lastSyncedAt: DateTime.now());
         }
 
         validatedCheckpoint = targetCheckpoint;
@@ -219,8 +262,10 @@ class StreamingSyncImplementation {
         bucketSet = Set.from(newBuckets.keys);
         await adapter.removeBuckets(diff.removedBuckets);
         adapter.setTargetCheckpoint(targetCheckpoint);
+        _updateStatus(downloading: true);
       } else if (line is SyncBucketData) {
         await adapter.saveSyncData(SyncDataBatch([line]));
+        _updateStatus(downloading: true);
       } else if (line is StreamingSyncKeepalive) {
         if (line.tokenExpiresIn == 0) {
           // Token expired already - stop the connection immediately
@@ -244,9 +289,10 @@ class StreamingSyncImplementation {
         }
       } else {
         if (targetCheckpoint == appliedCheckpoint) {
-          lastSyncedAt = DateTime.now();
-          _statusStreamController
-              .add(SyncStatus(connected: true, lastSyncedAt: lastSyncedAt));
+          _updateStatus(
+              downloading: false,
+              downloadError: _noError,
+              lastSyncedAt: DateTime.now());
         } else if (validatedCheckpoint == targetCheckpoint) {
           final result = await adapter.syncLocalDatabase(targetCheckpoint!);
           if (!result.checkpointValid) {
@@ -259,9 +305,10 @@ class StreamingSyncImplementation {
             // Continue waiting.
           } else {
             appliedCheckpoint = targetCheckpoint;
-            lastSyncedAt = DateTime.now();
-            _statusStreamController
-                .add(SyncStatus(connected: true, lastSyncedAt: lastSyncedAt));
+            _updateStatus(
+                downloading: false,
+                downloadError: _noError,
+                lastSyncedAt: DateTime.now());
           }
         }
       }
