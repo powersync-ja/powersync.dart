@@ -53,6 +53,15 @@ FOR EACH ROW
 BEGIN
   DELETE FROM $internalNameE WHERE id = OLD.id;
   INSERT INTO ps_crud(tx_id, data) SELECT current_tx, json_object('op', 'DELETE', 'type', ${quoteString(type)}, 'id', OLD.id) FROM ps_tx WHERE id = 1;
+  INSERT INTO ps_oplog(bucket, op_id, op, row_type, row_id, hash, superseded)
+    SELECT '\$local',
+           1,
+           'REMOVE',
+           ${quoteString(type)},
+           OLD.id,
+           0,
+           0;
+  INSERT OR REPLACE INTO ps_buckets(name, pending_delete, last_op, target_op) VALUES('\$local', 1, 0, $maxOpId);
 END""",
     """
 CREATE TRIGGER ${quoteIdentifier('ps_view_insert_$viewName')}
