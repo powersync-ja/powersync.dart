@@ -38,7 +38,7 @@ class _PhotoWidgetState extends State<PhotoWidget> {
 
     bool fileExists = await File(photoPath).exists();
 
-    return _ResolvedPhotoState(photoPath: null, fileExists: fileExists);
+    return _ResolvedPhotoState(photoPath: photoPath, fileExists: fileExists);
   }
 
   @override
@@ -83,7 +83,7 @@ class _PhotoWidgetState extends State<PhotoWidget> {
           }
 
           String? filePath = data.photoPath;
-          bool fileIsDownloading = data.fileExists;
+          bool fileIsDownloading = !data.fileExists;
 
           if (fileIsDownloading) {
             return const Text("Downloading...");
