@@ -380,7 +380,7 @@ String? stringOrFirst(Object? details) {
     return null;
   } else if (details is String) {
     return details;
-  } else if (details is List<String>) {
+  } else if (details is List && details[0] is String) {
     return details[0];
   } else {
     return null;
