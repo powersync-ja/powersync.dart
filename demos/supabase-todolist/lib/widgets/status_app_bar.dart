@@ -68,13 +68,13 @@ Widget _makeIcon(String text, IconData icon) {
 }
 
 Widget _getStatusIcon(SyncStatus status) {
-  if (status.exception != null) {
-    // The exception message is verbose, could be replaced with something
+  if (status.anyError != null) {
+    // The error message is verbose, could be replaced with something
     // more user-friendly
     if (!status.connected) {
-      return _makeIcon(status.exception!.toString(), Icons.cloud_off);
+      return _makeIcon(status.anyError!.toString(), Icons.cloud_off);
     } else {
-      return _makeIcon(status.exception!.toString(), Icons.sync_problem);
+      return _makeIcon(status.anyError!.toString(), Icons.sync_problem);
     }
   } else if (status.connecting) {
     return _makeIcon('Connecting', Icons.cloud_sync_outlined);

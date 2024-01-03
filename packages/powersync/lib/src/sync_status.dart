@@ -55,19 +55,9 @@ class SyncStatus {
         other.lastSyncedAt == lastSyncedAt);
   }
 
-  // Get the current [downloadError] or [uploadError] as an Exception;
-  Exception? get exception {
-    if (downloadError is Exception) {
-      return downloadError as Exception;
-    } else if (downloadError != null) {
-      return Exception('Download error: $downloadError');
-    } else if (uploadError is Exception) {
-      return uploadError as Exception;
-    } else if (uploadError != null) {
-      return Exception('Upload error: $uploadError');
-    } else {
-      return null;
-    }
+  /// Get the current [downloadError] or [uploadError].
+  Object? get anyError {
+    return downloadError ?? uploadError;
   }
 
   @override
@@ -78,7 +68,7 @@ class SyncStatus {
 
   @override
   String toString() {
-    return "SyncStatus<connected: $connected downloading: $downloading uploading: $uploading lastSyncedAt: $lastSyncedAt error: $exception>";
+    return "SyncStatus<connected: $connected downloading: $downloading uploading: $uploading lastSyncedAt: $lastSyncedAt error: $anyError>";
   }
 }
 
