@@ -68,7 +68,7 @@ class SyncStatus {
 
   @override
   String toString() {
-    return "SyncStatus<connected: $connected downloading: $downloading uploading: $uploading lastSyncedAt: $lastSyncedAt error: $anyError>";
+    return "SyncStatus<connected: $connected connecting: $connecting downloading: $downloading uploading: $uploading lastSyncedAt: $lastSyncedAt error: $anyError>";
   }
 }
 
