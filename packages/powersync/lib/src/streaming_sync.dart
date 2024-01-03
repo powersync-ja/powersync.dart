@@ -353,7 +353,7 @@ HttpException getError(http.Response response) {
   try {
     final body = response.body;
     final decoded = convert.jsonDecode(body);
-    final details = decoded['error']?['details']?[0] ?? body;
+    final details = stringOrFirst(decoded['error']?['details']) ?? body;
     final message = '${response.reasonPhrase ?? "Request failed"}: $details';
     return HttpException(message, uri: response.request?.url);
   } on Error catch (_) {
@@ -366,11 +366,23 @@ Future<HttpException> getStreamedError(http.StreamedResponse response) async {
   try {
     final body = await response.stream.bytesToString();
     final decoded = convert.jsonDecode(body);
-    final details = decoded['error']?['details']?[0] ?? body;
+    final details = stringOrFirst(decoded['error']?['details']) ?? body;
     final message = '${response.reasonPhrase ?? "Request failed"}: $details';
     return HttpException(message, uri: response.request?.url);
   } on Error catch (_) {
     return HttpException(response.reasonPhrase ?? "Request failed",
         uri: response.request?.url);
+  }
+}
+
+String? stringOrFirst(Object? details) {
+  if (details == null) {
+    return null;
+  } else if (details is String) {
+    return details;
+  } else if (details is List<String>) {
+    return details[0];
+  } else {
+    return null;
   }
 }
