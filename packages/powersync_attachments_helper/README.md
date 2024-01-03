@@ -1,6 +1,6 @@
 # PowerSync Attachments Helper for Dart/Flutter
 
-[PowerSync Attachments Helper](https://powersync.co) is a package that assist in keeping files in sync with local and remote storage.
+[PowerSync Attachments Helper](https://pub.dev/packages/powersync_attachments_helper) is a package that assist in keeping files in sync with local and remote storage.
 
 ## Features
 
@@ -84,4 +84,4 @@ initializeAttachmentQueue(PowerSyncDatabase db) async {
 }
 ```
 
-See [Supabase Flutter todo list example](../../demos/powersync-supabase-flutter-todolist-demo/README.md) for a concrete implementation of the above.
+See our [Supabase Flutter To-Do List example app](../../demos/supabase-todolist/README.md) for a concrete implementation of the above.
