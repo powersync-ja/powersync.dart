@@ -35,11 +35,7 @@ class StreamingSyncImplementation {
 
   final Duration retryDelay;
 
-  SyncStatus lastStatus = SyncStatus(
-      connected: false,
-      lastSyncedAt: null,
-      downloading: false,
-      uploading: false);
+  SyncStatus lastStatus = const SyncStatus();
 
   StreamingSyncImplementation(
       {required this.adapter,
@@ -150,6 +146,8 @@ class StreamingSyncImplementation {
     return body['data']['write_checkpoint'] as String;
   }
 
+  /// Update sync status based on any non-null parameters.
+  /// To clear errors, use [_noError] instead of null.
   void _updateStatus(
       {DateTime? lastSyncedAt,
       bool? connected,
