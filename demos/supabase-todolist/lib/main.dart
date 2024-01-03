@@ -2,7 +2,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
 import 'package:powersync_flutter_demo/app_config.dart';
-import 'package:powersync_flutter_demo/attachments/camera_helpers.dart';
 import 'package:powersync_flutter_demo/attachments/queue.dart';
 import 'package:powersync_flutter_demo/models/schema.dart';
 
@@ -37,8 +36,6 @@ void main() async {
   if (AppConfig.supabaseStorageBucket.isNotEmpty) {
     initializeAttachmentQueue(db);
   }
-
-  camera = await setupCamera();
 
   final loggedIn = isLoggedIn();
   runApp(MyApp(loggedIn: loggedIn));

@@ -3,15 +3,16 @@ import 'dart:async';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:powersync/powersync.dart' as powersync;
-import 'package:powersync_flutter_demo/attachments/camera_helpers.dart';
 import 'package:powersync_flutter_demo/attachments/queue.dart';
 import 'package:powersync_flutter_demo/models/todo_item.dart';
 import 'package:powersync_flutter_demo/powersync.dart';
 
 class TakePhotoWidget extends StatefulWidget {
   final String todoId;
+  final CameraDescription camera;
 
-  const TakePhotoWidget({super.key, required this.todoId});
+  const TakePhotoWidget(
+      {super.key, required this.todoId, required this.camera});
 
   @override
   State<StatefulWidget> createState() {
@@ -28,7 +29,7 @@ class _TakePhotoWidgetState extends State<TakePhotoWidget> {
     super.initState();
 
     _cameraController = CameraController(
-      camera!,
+      widget.camera,
       ResolutionPreset.medium,
     );
 
