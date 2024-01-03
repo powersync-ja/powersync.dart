@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:powersync_flutter_demo/attachments/camera_helpers.dart';
 import 'package:powersync_flutter_demo/attachments/photo_capture_widget.dart';
 import 'package:powersync_flutter_demo/attachments/queue.dart';
 
@@ -19,31 +20,58 @@ class PhotoWidget extends StatefulWidget {
   }
 }
 
+class _ResolvedPhotoState {
+  String? photoPath;
+  bool fileExists;
+
+  _ResolvedPhotoState({required this.photoPath, required this.fileExists});
+}
+
 class _PhotoWidgetState extends State<PhotoWidget> {
   late String photoPath;
 
-  Future<Map<String, dynamic>> _getPhoto(photoId) async {
+  Future<_ResolvedPhotoState> _getPhotoState(photoId) async {
     if (photoId == null) {
-      return {"photoPath": null, "fileExists": false};
+      return _ResolvedPhotoState(photoPath: null, fileExists: false);
     }
     photoPath = await attachmentQueue.getLocalUri('$photoId.jpg');
 
     bool fileExists = await File(photoPath).exists();
 
-    return {"photoPath": photoPath, "fileExists": fileExists};
+    return _ResolvedPhotoState(photoPath: photoPath, fileExists: fileExists);
   }
 
   @override
   Widget build(BuildContext context) {
     return FutureBuilder(
-        future: _getPhoto(widget.todo.photoId),
-        builder: (BuildContext context, AsyncSnapshot snapshot) {
+        future: _getPhotoState(widget.todo.photoId),
+        builder: (BuildContext context,
+            AsyncSnapshot<_ResolvedPhotoState> snapshot) {
+          if (snapshot.data == null) {
+            return Container();
+          }
+          final data = snapshot.data!;
           Widget takePhotoButton = ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
+              final camera = await setupCamera();
+              if (!mounted) return;
+
+              if (camera == null) {
+                const snackBar = SnackBar(
+                  content: Text('No camera available'),
+                  backgroundColor:
+                      Colors.red, // Optional: to highlight it's an error
+                );
+
+                ScaffoldMessenger.of(context).showSnackBar(snackBar);
+                return;
+              }
+
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => TakePhotoWidget(todoId: widget.todo.id),
+                  builder: (context) =>
+                      TakePhotoWidget(todoId: widget.todo.id, camera: camera),
                 ),
               );
             },
@@ -54,29 +82,25 @@ class _PhotoWidgetState extends State<PhotoWidget> {
             return takePhotoButton;
           }
 
-          if (snapshot.hasData) {
-            String filePath = snapshot.data['photoPath'];
-            bool fileIsDownloading = !snapshot.data['fileExists'];
+          String? filePath = data.photoPath;
+          bool fileIsDownloading = !data.fileExists;
 
-            if (fileIsDownloading) {
-              return const Text("Downloading...");
-            }
-
-            File imageFile = File(filePath);
-            int lastModified = imageFile.existsSync()
-                ? imageFile.lastModifiedSync().millisecondsSinceEpoch
-                : 0;
-            Key key = ObjectKey('$filePath:$lastModified');
-
-            return Image.file(
-              key: key,
-              imageFile,
-              width: 50,
-              height: 50,
-            );
+          if (fileIsDownloading) {
+            return const Text("Downloading...");
           }
 
-          return takePhotoButton;
+          File imageFile = File(filePath!);
+          int lastModified = imageFile.existsSync()
+              ? imageFile.lastModifiedSync().millisecondsSinceEpoch
+              : 0;
+          Key key = ObjectKey('$filePath:$lastModified');
+
+          return Image.file(
+            key: key,
+            imageFile,
+            width: 50,
+            height: 50,
+          );
         });
   }
 }
