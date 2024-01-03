@@ -1,25 +1,36 @@
 class SyncStatus {
-  /// true if currently connected
+  /// true if currently connected.
+  ///
+  /// This means the PowerSync connection is ready to download, and
+  /// [PowerSyncBackendConnector.uploadData] may be called for any local changes.
   final bool connected;
 
-  /// true if currently connected
+  /// true if the PowerSync connection is busy connecting.
+  ///
+  /// During this stage, [PowerSyncBackendConnector.uploadData] may already be called,
+  /// called, and [uploading] may be true.
   final bool connecting;
 
-  /// true if downloading changes
+  /// true if actively downloading changes.
+  ///
+  /// This is only true when [connected] is also true.
   final bool downloading;
 
   /// true if uploading changes
   final bool uploading;
 
-  /// Time that a last sync has fully completed, if any
-  /// Currently this is reset to null after a restart
+  /// Time that a last sync has fully completed, if any.
+  ///
+  /// Currently this is reset to null after a restart.
   final DateTime? lastSyncedAt;
 
   /// Error during uploading.
+  ///
   /// Cleared on the next successful upload.
   final Object? uploadError;
 
   /// Error during downloading (including connecting).
+  ///
   /// Cleared on the next successful data download.
   final Object? downloadError;
 
