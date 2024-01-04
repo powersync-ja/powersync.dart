@@ -491,6 +491,11 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
       }
     }, debugContext: 'execute()');
   }
+
+  @override
+  Future<bool> getAutoCommit() {
+    return database.getAutoCommit();
+  }
 }
 
 class _PowerSyncDatabaseIsolateArgs {

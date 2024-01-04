@@ -3,7 +3,7 @@ import 'package:sqlite_async/sqlite_async.dart';
 import 'schema_logic.dart';
 
 class PowerSyncUpdateNotification extends UpdateNotification {
-  PowerSyncUpdateNotification(Set<String> tables) : super(tables);
+  PowerSyncUpdateNotification(super.tables);
 
   factory PowerSyncUpdateNotification.fromRawTables(
       Iterable<String> originalTables) {

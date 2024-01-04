@@ -87,7 +87,7 @@ class PortResult<T> {
       return _result as T;
     } else {
       if (_error != null && stackTrace != null) {
-        Error.throwWithStackTrace(_error!, stackTrace!);
+        Error.throwWithStackTrace(_error, stackTrace!);
       } else {
         throw _error!;
       }
