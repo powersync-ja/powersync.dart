@@ -675,7 +675,7 @@ void main() {
           ]));
     });
 
-    test('should revert a failing update', () async {
+    test('should revert a failing insert', () async {
       await bucketStorage.saveSyncData(SyncDataBatch([
         SyncBucketData(
           bucket: 'bucket1',
@@ -688,7 +688,7 @@ void main() {
           writeCheckpoint: '3',
           checksums: [BucketChecksum(bucket: 'bucket1', checksum: 6)]));
 
-      // Local save
+      // Local insert, later rejected by server
       db.execute('INSERT INTO assets(id, description) VALUES(?, ?)',
           ['O3', 'inserted']);
       final batch = bucketStorage.getCrudBatch();
@@ -725,7 +725,7 @@ void main() {
           writeCheckpoint: '3',
           checksums: [BucketChecksum(bucket: 'bucket1', checksum: 6)]));
 
-      // Local save
+      // Local delete, later rejected by server
       db.execute('DELETE FROM assets WHERE id = ?', ['O2']);
 
       expect(db.select('SELECT description FROM assets WHERE id = \'O2\''),
@@ -750,7 +750,7 @@ void main() {
           ]));
     });
 
-    test('should revert a failing insert', () async {
+    test('should revert a failing update', () async {
       await bucketStorage.saveSyncData(SyncDataBatch([
         SyncBucketData(
           bucket: 'bucket1',
@@ -763,11 +763,15 @@ void main() {
           writeCheckpoint: '3',
           checksums: [BucketChecksum(bucket: 'bucket1', checksum: 6)]));
 
-      // Local save
-      db.execute('DELETE FROM assets WHERE id = ?', ['O2']);
+      // Local update, later rejected by server
+      db.execute(
+          'UPDATE assets SET description = ? WHERE id = ?', ['updated', 'O2']);
 
-      expect(db.select('SELECT description FROM assets WHERE id = \'O2\''),
-          equals([]));
+      expect(
+          db.select('SELECT description FROM assets WHERE id = \'O2\''),
+          equals([
+            {'description': 'updated'}
+          ]));
       // Simulate a permissions error when uploading - data should be preserved.
       final batch = bucketStorage.getCrudBatch();
       await batch!.complete();
