@@ -17,7 +17,7 @@ dependencies:
   supabase_flutter: ^2.0.2
   path: ^1.8.3
   logging: ^1.2.0
-  sqlite_async: ^0.5.2
+  sqlite_async: ^0.6.0
   camera: ^0.10.5+7
   image: ^4.1.3
 
