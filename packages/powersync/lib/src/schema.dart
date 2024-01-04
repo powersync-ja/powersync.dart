@@ -135,6 +135,7 @@ class Table {
 
   Map<String, dynamic> toJson() => {
         'name': name,
+        'view_name': _viewNameOverride,
         'local_only': localOnly,
         'insert_only': insertOnly,
         'columns': columns,
