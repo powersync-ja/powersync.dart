@@ -1,3 +1,16 @@
+## 1.1.0
+
+- Fix delete operations rejected by the server not being reverted locally.
+- Expand `SyncStatus` to include `connected`, `downloading`, `uploading` status, as well as the last errors.
+- Fix `SyncStatus.connected` to be updated when calling `PowerSyncDatabase.disconnect()`.
+- Fix network error messages only containing a single character in some cases.
+- Update `sqlite_async` dependency:
+   - Supports catching errors in transactions and continuing the transaction.
+   - Add `tx.closed` and `db/tx.getAutoCommit()`
+- Update `uuid` dependency:
+   - Now uses `CryptoRNG` from `uuid` package now that the performance improvements are upstream.
+- Requires Dart ^3.2.0 / Flutter ^3.16.0.
+
 ## 1.0.0
 
 - Start using stable version range.
@@ -7,7 +20,8 @@
 - Improve HTTP error messages.
 - Enable SQLite recursive triggers.
 - Support overriding view names.
-- Validate schema definitions for duplicates.
+- *Breaking change:* Validate schema definitions for duplicates.
+  Remove `id` column and indexes from any tables in the schema if present.
 
 ## 0.4.1
 

@@ -12,7 +12,7 @@ Future<HttpServer> createServer() async {
 
   app.post('/sync/stream', handleSyncStream);
   // Open on an arbitrary open port
-  var server = await shelf_io.serve(app, 'localhost', 0);
+  var server = await shelf_io.serve(app.call, 'localhost', 0);
   return server;
 }
 

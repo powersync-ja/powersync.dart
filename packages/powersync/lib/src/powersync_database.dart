@@ -464,6 +464,11 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
     return database.writeLock(callback,
         debugContext: debugContext, lockTimeout: lockTimeout);
   }
+
+  @override
+  Future<bool> getAutoCommit() {
+    return database.getAutoCommit();
+  }
 }
 
 class _PowerSyncDatabaseIsolateArgs {
