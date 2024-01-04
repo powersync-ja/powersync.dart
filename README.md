@@ -1,55 +1,30 @@
-# PowerSync SDK for Dart/Flutter
+<p align="center">
+  <a href="https://www.powersync.com" target="_blank"><img src="https://github.com/powersync-ja/.github/assets/19345049/602bafa0-41ce-4cee-a432-56848c278722"/></a>
+</p>
 
-[PowerSync](https://powersync.co) is a cloud service and Flutter SDK that keeps PostgreSQL databases in sync with on-device SQLite databases.
+*Bad connectivity is everywhere, and we're tired of it. PowerSync is on a mission to help developers write offline-first real-time reactive apps.*
 
-## SDK Features
+PowerSync SDK for Dart and Flutter
+===========
 
- * Real-time streaming of changes.
- * Direct access to the SQLite database - use SQL on the client and server.
- * Operations are asynchronous by default - does not block the UI.
- * Supports one write and many reads concurrently.
- * No need for client-side database migrations - these are handled automatically.
- * Subscribe to queries for live updates.
+| package        | build                                                                                                                                                                                 | pub                                                                                                        | likes                                                                                                                | popularity | pub points |
+|----------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------| ------- | ------- |
+| powersync         | [![build](https://github.com/powersync-ja/powersync.dart/actions/workflows/packages.yml/badge.svg?branch=master)](https://github.com/powersync-ja/powersync.dart/actions?query=workflow%3Apackages)       | [![pub package](https://img.shields.io/pub/v/powersync.svg)](https://pub.dev/packages/powersync)                 | [![likes](https://img.shields.io/pub/likes/powersync?logo=dart)](https://pub.dev/packages/powersync/score)                 | [![popularity](https://img.shields.io/pub/popularity/powersync?logo=dart)](https://pub.dev/packages/powersync/score) | [![pub points](https://img.shields.io/pub/points/powersync?logo=dart)](https://pub.dev/packages/powersync/score)
+| powersync_attachments_helper | [![build](https://github.com/powersync-ja/powersync.dart/actions/workflows/packages.yml/badge.svg?branch=master)](https://github.com/powersync-ja/powersync.dart/actions?query=workflow%3Apackages) | [![pub package](https://img.shields.io/pub/v/powersync_attachments_helper.svg)](https://pub.dev/packages/powersync_attachments_helper) | [![likes](https://img.shields.io/pub/likes/powersync_attachments_helper?logo=dart)](https://pub.dev/packages/powersync_attachments_helper/score) | [![popularity](https://img.shields.io/pub/popularity/powersync_attachments_helper?logo=dart)](https://pub.dev/packages/powersync_attachments_helper/score) | [![pub points](https://img.shields.io/pub/points/powersync_attachments_helper?logo=dart)](https://pub.dev/packages/powersync_attachments_helper/score)
 
-## Getting started
+#### Usage
 
+This monorepo uses [melos](https://melos.invertase.dev/) to handle command and package management.
 
-```dart
-import 'package:powersync/powersync.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:path/path.dart';
+For detailed usage, check out the inner [powersync](https://github.com/powersync-ja/powersync.dart/tree/master/packages/powersync) and [attachments helper](https://github.com/powersync-ja/powersync.dart/tree/master/packages/powersync_attachments_helper) packages.
 
-const schema = Schema([
-  Table('customers', [Column.text('name'), Column.text('email')])
-]);
+#### Blog posts
 
-late PowerSyncDatabase db;
+- [Flutter Tutorial: building an offline-first chat app with Supabase and PowerSync](https://www.powersync.com/blog/flutter-tutorial-building-an-offline-first-chat-app-with-supabase-and-powersync)
 
-openDatabase() async {
-  final dir = await getApplicationSupportDirectory();
-  final path = join(dir.path, 'powersync-dart.db');
-  // Setup the database.
-  db = PowerSyncDatabase(schema: schema, path: path);
-  await db.initialize();
+#### Resources
 
-  // Run local statements.
-  await db.execute(
-      'INSERT INTO customers(id, name, email) VALUES(uuid(), ?, ?)',
-      ['Fred', 'fred@example.org']);
-}
-
-connectPowerSync() async {
-  // DevConnector stores credentials in-memory by default.
-  // Extend the class to persist credentials.
-  final connector = DevConnector();
-
-  // Login in dev mode.
-  await connector.devLogin(
-      endpoint: 'https://myinstance.powersync.co',
-      user: 'demo',
-      password: 'demo');
-
-  // Connect to PowerSync cloud service and start sync.
-  db.connect(connector: connector);
-}
-```
+- [![PowerSync docs](https://img.shields.io/badge/documentation-powersync.com-green.svg?label=flutter%20docs)](https://docs.powersync.com/client-sdk-references/flutter)
+- [![Discord Chat](https://img.shields.io/discord/1138230179878154300?style=social&logo=discord&logoColor=%235865f2&label=Join%20Discord%20server)](https://discord.gg/powersync)
+- [![Twitter Follow](https://img.shields.io/twitter/follow/powersync?label=PowerSync&style=social)](https://twitter.com/intent/follow?screen_name=powersync_)
+- [![YouTube](https://img.shields.io/youtube/channel/subscribers/UCSDdZvrZuizmc2EMBuTs2Qg?style=social&label=YouTube%20%40powersync_)](https://twitter.com/intent/follow?screen_name=powersync_)
