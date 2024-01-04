@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:powersync/powersync.dart';
 import 'package:test/test.dart';
 
@@ -113,16 +115,27 @@ void main() {
         await tx.execute('DELETE FROM local_assets');
       });
 
+      final crud = (await db.getAll('SELECT data FROM ps_crud ORDER BY id'))
+          .map((d) => jsonDecode(d['data']))
+          .toList();
       expect(
-          await db.getAll('SELECT data FROM ps_crud ORDER BY id'),
+          crud,
           equals([
             {
-              'data':
-                  '{"op":"PUT","type":"customers","id":"$customerId","data":{"name":"test customer","email":"test@example.org"}}'
+              "op": "PUT",
+              "type": "customers",
+              "id": customerId,
+              "data": {"email": "test@example.org", "name": "test customer"}
             },
             {
-              'data':
-                  '{"op":"PUT","type":"assets","id":"$assetId","data":{"user_id":"$userId","customer_id":"$customerId","description":"test."}}'
+              "op": "PUT",
+              "type": "assets",
+              "id": assetId,
+              "data": {
+                "user_id": userId,
+                "customer_id": customerId,
+                "description": "test."
+              }
             }
           ]));
     });
