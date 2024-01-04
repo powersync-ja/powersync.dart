@@ -77,7 +77,7 @@ class Table {
   bool get validName {
     return !invalidSqliteCharacters.hasMatch(name) &&
         (_viewNameOverride == null ||
-            !invalidSqliteCharacters.hasMatch(_viewNameOverride!));
+            !invalidSqliteCharacters.hasMatch(_viewNameOverride));
   }
 
   /// Check that there are no issues in the table definition.
@@ -85,7 +85,7 @@ class Table {
     if (invalidSqliteCharacters.hasMatch(name)) {
       throw AssertionError("Invalid characters in table name: $name");
     } else if (_viewNameOverride != null &&
-        invalidSqliteCharacters.hasMatch(_viewNameOverride!)) {
+        invalidSqliteCharacters.hasMatch(_viewNameOverride)) {
       throw AssertionError(
           "Invalid characters in view name: $_viewNameOverride");
     }
