@@ -129,7 +129,7 @@ class BucketStorage {
     return SyncLocalDatabaseResult(ready: true);
   }
 
-  Future<bool> updateObjectsFromBuckets(Checkpoint _checkpoint) async {
+  Future<bool> updateObjectsFromBuckets(Checkpoint checkpoint) async {
     return writeTransaction((db) {
       db.execute("INSERT INTO powersync_operations(op, data) VALUES(?, ?)",
           ['sync_local', '']);

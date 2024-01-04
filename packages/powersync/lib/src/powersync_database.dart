@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:isolate';
 
 import 'package:logging/logging.dart';
-import 'package:sqlite_async/mutex.dart';
 import 'package:sqlite_async/sqlite3.dart' as sqlite;
 import 'package:sqlite_async/sqlite_async.dart';
 
@@ -540,7 +539,7 @@ Future<void> _powerSyncDatabaseIsolate(
     db = await args.dbRef.openFactory
         .open(SqliteOpenOptions(primaryConnection: false, readOnly: false));
 
-    final storage = BucketStorage(db!, mutex: mutex!);
+    final storage = BucketStorage(db!, mutex: mutex);
     final sync = StreamingSyncImplementation(
         adapter: storage,
         credentialsCallback: loadCredentials,
