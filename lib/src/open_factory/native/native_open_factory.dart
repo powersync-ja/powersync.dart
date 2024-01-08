@@ -6,7 +6,6 @@ import 'package:sqlite_async/sqlite_async.dart';
 import 'package:sqlite_async/sqlite3_common.dart';
 import '../../uuid.dart';
 import '../open_factory_interface.dart' as open_factory;
-import '../open_factory_interface.dart';
 
 class PowerSyncOpenFactory extends DefaultSqliteOpenFactory {
   @Deprecated('Override PowerSyncOpenFactory instead')
@@ -93,10 +92,6 @@ class PowerSyncOpenFactory extends DefaultSqliteOpenFactory {
     print(path);
     print(mode);
     var db = super.open(options);
-
-    for (var statement in pragmaStatements(options)) {
-      db.execute(statement);
-    }
 
     db.execute('PRAGMA recursive_triggers = TRUE');
     setupFunctions(db);

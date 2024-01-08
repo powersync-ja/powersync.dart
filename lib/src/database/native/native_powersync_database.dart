@@ -103,7 +103,8 @@ class PowerSyncDatabase extends AbstractPowerSyncDatabase {
   Future<void> _init() async {
     statusStream = statusStreamController.stream;
     await database.initialize();
-    await database.execute('SELECT powersync_init()');
+    // TODO use Rust SQLite extension
+    // await database.execute('SELECT powersync_init()');
     await updateSchemaInIsolate(database, schema);
   }
 
