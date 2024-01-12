@@ -1,13 +1,14 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:sqlite_async/sqlite_async.dart';
 
 import '../abort_controller.dart';
 import '../connector.dart';
 import '../crud.dart';
 
 import '../schema.dart';
-import '../schema_logic.dart';
+import '../schema_helpers.dart';
 import '../sync_status.dart';
 
 // Any imports from sqlite-async must be careful to avoid ffi
@@ -27,6 +28,14 @@ abstract class AbstractPowerSyncDatabase
     implements SqliteConnection {
   /// Schema used for the local database.
   Schema get schema;
+
+  /// The underlying database.
+  ///
+  /// For the most part, behavior is the same whether querying on the underlying
+  /// database, or on [PowerSyncDatabase]. The main difference is in update notifications:
+  /// the underlying database reports updates to the underlying tables, while
+  /// [PowerSyncDatabase] reports updates to the higher-level views.
+  late final SqliteDatabase database;
 
   /// Current connection status.
   SyncStatus currentStatus =
@@ -52,19 +61,17 @@ abstract class AbstractPowerSyncDatabase
   Duration retryDelay = const Duration(seconds: 5);
 
   @protected
-  late Future<void> initialized;
+  late Future<void> isInitialized;
 
   /// null when disconnected, present when connecting or connected
   @protected
   AbortController? disconnecter;
 
-  Future<void> _init() async {}
-
   /// Wait for initialization to complete.
   ///
   /// While initializing is automatic, this helps to catch and report initialization errors.
   Future<void> initialize() {
-    return initialized;
+    return isInitialized;
   }
 
   @override

@@ -24,7 +24,7 @@ dev_dependencies:
   test: ^1.21.0
   test_api: ^0.6.1
   path_provider: ^2.0.13
-  sqlite3: ^2.1.0
+  sqlite3: 2.3.0
   shelf: ^1.4.1
   shelf_router: ^1.1.4
   path: ^1.8.3

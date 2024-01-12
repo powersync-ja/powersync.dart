@@ -4,6 +4,7 @@ import 'dart:isolate';
 import 'package:logging/logging.dart';
 import 'package:sqlite_async/sqlite3.dart' as sqlite;
 import 'package:sqlite_async/sqlite_async.dart';
+import '../../migrations.dart';
 import '../../open_factory/open_factory_interface.dart';
 import '../../open_factory/native/native_open_factory.dart';
 import '../database_interface.dart';
@@ -15,7 +16,7 @@ import '../../isolate_completer.dart';
 import '../../log.dart';
 import '../../powersync_update_notification.dart';
 import '../../schema.dart';
-import '../../schema_helpers.dart';
+import '../../schema_logic.dart';
 import '../../streaming_sync.dart';
 import '../../sync_status.dart';
 
@@ -31,22 +32,6 @@ import '../../sync_status.dart';
 class PowerSyncDatabase extends AbstractPowerSyncDatabase {
   /// Schema used for the local database.
   final Schema schema;
-
-  /// The underlying database.
-  ///
-  /// For the most part, behavior is the same whether querying on the underlying
-  /// database, or on [PowerSyncDatabase]. The main difference is in update notifications:
-  /// the underlying database reports updates to the underlying tables, while
-  /// [PowerSyncDatabase] reports updates to the higher-level views.
-  final SqliteDatabase database;
-
-  /// Broadcast stream that is notified of any table updates.
-  ///
-  /// Unlike in [SqliteDatabase.updates], the tables reported here are the
-  /// higher-level views as defined in the [Schema], and exclude the low-level
-  /// PowerSync tables.
-  @override
-  late final Stream<UpdateNotification> updates;
 
   /// Open a [PowerSyncDatabase].
   ///
@@ -91,28 +76,26 @@ class PowerSyncDatabase extends AbstractPowerSyncDatabase {
   ///
   /// Migrations are run on the database when this constructor is called.
   PowerSyncDatabase.withDatabase(
-      {required this.schema, required this.database}) {
+      {required this.schema, required SqliteDatabase database}) {
+    super.database = database;
+    // Cant extend _members in Dart :(
+    isInitialized = _init();
+  }
+
+  Future<void> _init() async {
+    // TODO a nice way to extend this common logic in Dart
+    statusStream = statusStreamController.stream;
     updates = database.updates
         .map((update) =>
             PowerSyncUpdateNotification.fromUpdateNotification(update))
         .where((update) => update.isNotEmpty)
         .cast<UpdateNotification>();
-    initialized = _init();
-  }
 
-  Future<void> _init() async {
-    statusStream = statusStreamController.stream;
     await database.initialize();
+    await migrations.migrate(database);
     // TODO use Rust SQLite extension
     // await database.execute('SELECT powersync_init()');
     await updateSchemaInIsolate(database, schema);
-  }
-
-  /// Wait for initialization to complete.
-  ///
-  /// While initializing is automatic, this helps to catch and report initialization errors.
-  Future<void> initialize() {
-    return initialized;
   }
 
   @override
@@ -131,7 +114,7 @@ class PowerSyncDatabase extends AbstractPowerSyncDatabase {
     final disconnector = AbortController();
     disconnecter = disconnector;
 
-    await initialized;
+    await isInitialized;
     final dbref = database.isolateConnectionFactory();
     ReceivePort rPort = ReceivePort();
     StreamSubscription? updateSubscription;
@@ -229,7 +212,7 @@ class PowerSyncDatabase extends AbstractPowerSyncDatabase {
   /// A connection factory that can be passed to different isolates.
   ///
   /// Use this to access the database in background isolates.
-  IsolateConnectionFactory isolateConnectionFactory() {
+  isolateConnectionFactory() {
     return database.isolateConnectionFactory();
   }
 
@@ -242,7 +225,7 @@ class PowerSyncDatabase extends AbstractPowerSyncDatabase {
   @override
   Future<void> close() async {
     // Don't close in the middle of the initialization process.
-    await initialized;
+    await isInitialized;
     // Disconnect any active sync connection.
     await disconnect();
     // Now we can close the database
@@ -255,7 +238,7 @@ class PowerSyncDatabase extends AbstractPowerSyncDatabase {
   @override
   Future<T> readLock<T>(Future<T> Function(SqliteReadContext tx) callback,
       {String? debugContext, Duration? lockTimeout}) async {
-    await initialized;
+    await isInitialized;
     return database.readLock(callback,
         debugContext: debugContext, lockTimeout: lockTimeout);
   }
@@ -266,7 +249,7 @@ class PowerSyncDatabase extends AbstractPowerSyncDatabase {
   @override
   Future<T> writeLock<T>(Future<T> Function(SqliteWriteContext tx) callback,
       {String? debugContext, Duration? lockTimeout}) async {
-    await initialized;
+    await isInitialized;
     return database.writeLock(callback,
         debugContext: debugContext, lockTimeout: lockTimeout);
   }

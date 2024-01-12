@@ -1,13 +1,15 @@
-import 'dart:convert';
+import 'dart:async';
 import 'dart:io';
 import 'dart:isolate';
 import 'package:sqlite_async/sqlite3.dart' as sqlite;
-import 'package:sqlite_async/sqlite_async.dart';
 import 'package:sqlite_async/sqlite3_common.dart';
-import '../../uuid.dart';
+import 'package:sqlite_async/sqlite_async.dart';
 import '../open_factory_interface.dart' as open_factory;
+import '../open_factory_interface.dart';
+import '../../uuid.dart';
 
-class PowerSyncOpenFactory extends DefaultSqliteOpenFactory {
+class PowerSyncOpenFactory
+    extends AbstractPowerSyncOpenFactory<sqlite.Database> {
   @Deprecated('Override PowerSyncOpenFactory instead')
   final open_factory.SqliteConnectionSetup? _sqliteSetup;
 
@@ -21,11 +23,19 @@ class PowerSyncOpenFactory extends DefaultSqliteOpenFactory {
 
   void enableExtension() {}
 
-  void setupFunctions(CommonDatabase db) {
+  @override
+  setupFunctions(CommonDatabase db) {
+    super.setupFunctions(db);
+
+    // Native supports the faster uuid implementation which is provided by this package
     db.createFunction(
       functionName: 'uuid',
       argumentCount: const sqlite.AllowedArgumentCount(0),
-      function: (args) => uuid.v4(),
+      function: (args) {
+        final id = uuid.v4();
+        print('Creating a uuid' + id);
+        return id;
+      },
     );
     db.createFunction(
       // Postgres compatibility
@@ -33,35 +43,6 @@ class PowerSyncOpenFactory extends DefaultSqliteOpenFactory {
       argumentCount: const sqlite.AllowedArgumentCount(0),
       function: (args) => uuid.v4(),
     );
-
-    db.createFunction(
-        functionName: 'powersync_diff',
-        argumentCount: const sqlite.AllowedArgumentCount(2),
-        deterministic: true,
-        directOnly: false,
-        function: (args) {
-          final oldData = jsonDecode(args[0] as String) as Map<String, dynamic>;
-          final newData = jsonDecode(args[1] as String) as Map<String, dynamic>;
-
-          Map<String, dynamic> result = {};
-
-          for (final newEntry in newData.entries) {
-            final oldValue = oldData[newEntry.key];
-            final newValue = newEntry.value;
-
-            if (newValue != oldValue) {
-              result[newEntry.key] = newValue;
-            }
-          }
-
-          for (final key in oldData.keys) {
-            if (!newData.containsKey(key)) {
-              result[key] = null;
-            }
-          }
-
-          return jsonEncode(result);
-        });
 
     db.createFunction(
       functionName: 'powersync_sleep',
@@ -83,15 +64,11 @@ class PowerSyncOpenFactory extends DefaultSqliteOpenFactory {
   }
 
   @override
-  sqlite.Database open(SqliteOpenOptions options) {
+  FutureOr<sqlite.Database> open(SqliteOpenOptions options) async {
     // ignore: deprecated_member_use_from_same_package
     _sqliteSetup?.setup();
 
-    final mode = options.openMode;
-    print('opening db');
-    print(path);
-    print(mode);
-    var db = super.open(options);
+    var db = await super.open(options);
 
     db.execute('PRAGMA recursive_triggers = TRUE');
     setupFunctions(db);

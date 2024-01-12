@@ -8,7 +8,7 @@ import 'package:sqlite_async/sqlite3.dart' as sqlite;
 import 'crud.dart';
 import 'database_utils.dart';
 import 'log.dart';
-import 'schema_logic.dart';
+import 'schema_helpers.dart';
 import 'sync_types.dart';
 import 'uuid.dart';
 
