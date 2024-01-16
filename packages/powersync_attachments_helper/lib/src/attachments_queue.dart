@@ -34,8 +34,9 @@ abstract class AbstractAttachmentQueue {
         db, remoteStorage, localStorage, attachmentsService, getLocalUri);
   }
 
-  /// Create watcher to get list of ID's from a table to be used for syncing in the attachment queue
-  StreamSubscription<void> watchIds();
+  /// Create watcher to get list of ID's from a table to be used for syncing in the attachment queue.
+  /// Set the file extension if you are using a different file type
+  StreamSubscription<void> watchIds({String fileExtension = 'jpg'});
 
   /// Create a function to save photos using the attachment queue
   Future<Attachment> savePhoto(String photoId, int size);

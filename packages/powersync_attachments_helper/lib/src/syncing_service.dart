@@ -196,22 +196,22 @@ class SyncingService {
   /// in local and remote storage.
   /// If the ID is in the queue, but the file does not exist locally then it is
   /// marked for download.
-  reconcileId(String id, List<String> idsInQueue) async {
+  reconcileId(String id, List<String> idsInQueue, String fileExtension) async {
     bool idIsInQueue = idsInQueue.contains(id);
 
-    String imagePath = await getLocalUri('$id.jpg');
-    File file = File(imagePath);
+    String path = await getLocalUri('$id.$fileExtension');
+    File file = File(path);
     bool fileExists = await file.exists();
 
     if (!idIsInQueue) {
       if (fileExists) {
-        log.info('ignore file $id.jpg as it already exists');
+        log.info('ignore file $id.$fileExtension as it already exists');
         return;
       }
       log.info('Adding $id to queue');
       return await attachmentsService.saveAttachment(Attachment(
         id: id,
-        filename: '$id.jpg',
+        filename: '$id.$fileExtension',
         state: AttachmentState.queuedDownload.index,
       ));
     }
