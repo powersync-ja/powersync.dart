@@ -53,7 +53,7 @@ class PhotoAttachmentQueue extends AbstractAttachmentQueue {
   }
 
   @override
-  StreamSubscription<void> watchIds() {
+  StreamSubscription<void> watchIds({String fileExtension = 'jpg'}) {
     log.info('Watching photos in $todosTable...');
     return db.watch('''
       SELECT photo_id FROM $todosTable
@@ -63,7 +63,7 @@ class PhotoAttachmentQueue extends AbstractAttachmentQueue {
     }).listen((ids) async {
       List<String> idsInQueue = await attachmentsService.getAttachmentIds();
       for (String id in ids) {
-        await syncingService.reconcileId(id, idsInQueue);
+        await syncingService.reconcileId(id, idsInQueue, fileExtension);
       }
     });
   }
