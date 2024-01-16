@@ -1,20 +1,17 @@
 import 'dart:async';
+import 'dart:html';
 
 import 'package:sqlite_async/sqlite_async.dart';
 import 'package:sqlite_async/sqlite3_common.dart';
-import 'package:uuid/uuid.dart';
 import '../open_factory_interface.dart' as open_factory;
+import '../../uuid.dart';
 
 class PowerSyncOpenFactory
     extends open_factory.AbstractPowerSyncOpenFactory<CommonDatabase> {
-  late Uuid uuid;
-
   PowerSyncOpenFactory({
     required super.path,
     super.sqliteOptions,
-  }) {
-    uuid = Uuid();
-  }
+  });
 
   void enableExtension() {
     // No op for web
@@ -43,6 +40,9 @@ class PowerSyncOpenFactory
 
   @override
   FutureOr<CommonDatabase> open(SqliteOpenOptions options) async {
+    final worker = SharedWorker('worker.js');
+    worker.port!.postMessage('ddd');
+
     final db = await super.open(options);
     setupFunctions(db);
     return db;

@@ -27,7 +27,7 @@ abstract class AbstractPowerSyncDatabase
     with SqliteQueries
     implements SqliteConnection {
   /// Schema used for the local database.
-  Schema get schema;
+  late final Schema schema;
 
   /// The underlying database.
   ///

@@ -3,9 +3,11 @@ import 'dart:async';
 import 'package:powersync/src/open_factory/open_factory_interface.dart';
 import 'package:powersync/src/open_factory/web/web_open_factory.dart';
 import 'package:powersync/src/powersync_update_notification.dart';
+import 'package:powersync/src/streaming_sync.dart';
 import 'package:sqlite_async/sqlite3_common.dart';
 import 'package:sqlite_async/sqlite_async.dart';
 
+import '../../bucket_storage.dart';
 import '../../migrations.dart';
 import '../../schema_helpers.dart';
 import '../database_interface.dart';
@@ -26,9 +28,6 @@ import '../../schema.dart';
 /// All changes to local tables are automatically recorded, whether connected
 /// or not. Once connected, the changes are uploaded.
 class PowerSyncDatabase extends AbstractPowerSyncDatabase {
-  /// Schema used for the local database.
-  final Schema schema;
-
   /// Broadcast stream that is notified of any table updates.
   ///
   /// Unlike in [SqliteDatabase.updates], the tables reported here are the
@@ -78,8 +77,9 @@ class PowerSyncDatabase extends AbstractPowerSyncDatabase {
   ///
   /// Migrations are run on the database when this constructor is called.
   PowerSyncDatabase.withDatabase(
-      {required this.schema, required SqliteDatabase database}) {
+      {required Schema schema, required SqliteDatabase database}) {
     super.database = database;
+    super.schema = schema;
     isInitialized = _init();
   }
 
@@ -116,7 +116,17 @@ class PowerSyncDatabase extends AbstractPowerSyncDatabase {
 
     await isInitialized;
 
-    // TODO connect
+    final db = await database.openFactory
+        .open(SqliteOpenOptions(primaryConnection: false, readOnly: false));
+    final storage = BucketStorage(db);
+    final sync = StreamingSyncImplementation(
+        adapter: storage,
+        credentialsCallback: connector.getCredentialsCached,
+        invalidCredentialsCallback: connector.fetchCredentials,
+        uploadCrud: () => connector.uploadData(this),
+        updateStream: updates,
+        retryDelay: Duration(seconds: 3));
+    sync.streamingSync();
   }
 
   /// Close the database, releasing resources.

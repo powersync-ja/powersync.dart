@@ -2,8 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:collection/collection.dart';
-import 'package:sqlite_async/mutex.dart';
-import 'package:sqlite_async/sqlite3.dart' as sqlite;
+// import 'package:sqlite_async/mutex.dart';
+import 'package:sqlite_async/sqlite3_common.dart' as sqlite;
 
 import 'crud.dart';
 import 'database_utils.dart';
@@ -15,15 +15,18 @@ import 'uuid.dart';
 const compactOperationInterval = 1000;
 
 class BucketStorage {
-  final sqlite.Database _internalDb;
-  final Mutex mutex;
+  final sqlite.CommonDatabase _internalDb;
+  // TODO
+  // final Mutex mutex;
   bool _hasCompletedSync = false;
   bool _pendingBucketDeletes = false;
   Set<String> tableNames = {};
   int _compactCounter = compactOperationInterval;
   ChecksumCache? _checksumCache;
 
-  BucketStorage(sqlite.Database db, {required this.mutex}) : _internalDb = db {
+  BucketStorage(sqlite.CommonDatabase db)
+      // BucketStorage(sqlite.CommonDatabase db, {required this.mutex})
+      : _internalDb = db {
     _init();
   }
 
@@ -69,8 +72,8 @@ class BucketStorage {
     _compactCounter += count;
   }
 
-  void _updateBucket(sqlite.Database db, String bucket, List<OplogEntry> data,
-      bool finalBucketUpdate) {
+  void _updateBucket(sqlite.CommonDatabase db, String bucket,
+      List<OplogEntry> data, bool finalBucketUpdate) {
     if (data.isEmpty) {
       return;
     }
@@ -351,7 +354,7 @@ class BucketStorage {
   }
 
   // { type: string; id: string; data: string; buckets: string; op_id: string }[]
-  void saveOps(sqlite.Database db, List<sqlite.Row> rows) {
+  void saveOps(sqlite.CommonDatabase db, List<sqlite.Row> rows) {
     Map<String, List<sqlite.Row>> byType = {};
     for (final row in rows) {
       byType.putIfAbsent(row['type'], () => []).add(row);
@@ -403,7 +406,7 @@ class BucketStorage {
     }
   }
 
-  bool _canUpdateLocal(sqlite.Database db) {
+  bool _canUpdateLocal(sqlite.CommonDatabase db) {
     final invalidBuckets = db.select(
         "SELECT name, target_op, last_op, last_applied_op FROM ps_buckets WHERE target_op > last_op AND (name = '\$local' OR pending_delete = 0)");
     if (invalidBuckets.isNotEmpty) {
@@ -688,12 +691,14 @@ class BucketStorage {
   /// is assumed that multiple functions on this instance won't be called
   /// concurrently.
   Future<T> writeTransaction<T>(
-      FutureOr<T> Function(sqlite.Database tx) callback,
+      FutureOr<T> Function(sqlite.CommonDatabase tx) callback,
       {Duration? lockTimeout}) async {
-    return mutex.lock(() async {
-      final r = await asyncDirectTransaction(_internalDb, callback);
-      return r;
-    });
+    // return mutex.lock(() async {
+    //   final r = await asyncDirectTransaction(_internalDb, callback);
+    //   return r;
+    // });
+    //  return mutex.lock(() async {
+    return asyncDirectTransaction(_internalDb, callback);
   }
 }
 

@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 import 'package:uuid/data.dart';
 import 'package:uuid/rng.dart';
@@ -27,4 +28,4 @@ class FasterCryptoRNG extends RNG {
   }
 }
 
-const uuid = Uuid(goptions: GlobalOptions(FasterCryptoRNG()));
+const uuid = kIsWeb ? Uuid() : Uuid(goptions: GlobalOptions(FasterCryptoRNG()));

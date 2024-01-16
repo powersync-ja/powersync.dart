@@ -30,9 +30,6 @@ import '../../sync_status.dart';
 /// All changes to local tables are automatically recorded, whether connected
 /// or not. Once connected, the changes are uploaded.
 class PowerSyncDatabase extends AbstractPowerSyncDatabase {
-  /// Schema used for the local database.
-  final Schema schema;
-
   /// Open a [PowerSyncDatabase].
   ///
   /// Only a single [PowerSyncDatabase] per [path] should be opened at a time.
@@ -76,7 +73,8 @@ class PowerSyncDatabase extends AbstractPowerSyncDatabase {
   ///
   /// Migrations are run on the database when this constructor is called.
   PowerSyncDatabase.withDatabase(
-      {required this.schema, required SqliteDatabase database}) {
+      {required Schema schema, required SqliteDatabase database}) {
+    super.schema = schema;
     super.database = database;
     // Cant extend _members in Dart :(
     isInitialized = _init();
@@ -324,7 +322,8 @@ Future<void> _powerSyncDatabaseIsolate(
     db = await args.dbRef.openFactory
         .open(SqliteOpenOptions(primaryConnection: false, readOnly: false));
 
-    final storage = BucketStorage(db!, mutex: mutex!);
+    final storage = BucketStorage(db!);
+    // final storage = BucketStorage(db!, mutex: mutex!);
     final sync = StreamingSyncImplementation(
         adapter: storage,
         credentialsCallback: loadCredentials,

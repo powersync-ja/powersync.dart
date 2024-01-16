@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'dart:convert' as convert;
-import 'dart:io';
-
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:fetch_client/fetch_client.dart';
 
 import 'bucket_storage.dart';
 import 'connector.dart';
@@ -118,7 +118,6 @@ class StreamingSyncImplementation {
 
     final response = await _client.get(uri, headers: {
       'Content-Type': 'application/json',
-      'User-Id': credentials.userId ?? '',
       'Authorization': "Token ${credentials.token}"
     });
     if (response.statusCode == 401) {
@@ -283,11 +282,14 @@ class StreamingSyncImplementation {
 
     final request = http.Request('POST', uri);
     request.headers['Content-Type'] = 'application/json';
-    request.headers['User-Id'] = credentials.userId ?? '';
     request.headers['Authorization'] = "Token ${credentials.token}";
     request.body = convert.jsonEncode(data);
 
-    final res = await _client.send(request);
+    // HTTP streaming is not supported on web with the standard http package
+    // https://github.com/dart-lang/http/issues/595
+    final res = await (kIsWeb ? FetchClient(mode: RequestMode.cors) : _client)
+        .send(request);
+
     if (res.statusCode == 401) {
       if (invalidCredentialsCallback != null) {
         await invalidCredentialsCallback!();
@@ -304,28 +306,29 @@ class StreamingSyncImplementation {
   }
 }
 
-HttpException getError(http.Response response) {
+http.ClientException getError(http.Response response) {
   try {
     final body = response.body;
     final decoded = convert.jsonDecode(body);
     final details = decoded['error']?['details']?[0] ?? body;
     final message = '${response.reasonPhrase ?? "Request failed"}: $details';
-    return HttpException(message, uri: response.request?.url);
+    return http.ClientException(message, response.request?.url);
   } on Error catch (_) {
-    return HttpException(response.reasonPhrase ?? "Request failed",
-        uri: response.request?.url);
+    return http.ClientException(
+        response.reasonPhrase ?? "Request failed", response.request?.url);
   }
 }
 
-Future<HttpException> getStreamedError(http.StreamedResponse response) async {
+Future<http.ClientException> getStreamedError(
+    http.StreamedResponse response) async {
   try {
     final body = await response.stream.bytesToString();
     final decoded = convert.jsonDecode(body);
     final details = decoded['error']?['details']?[0] ?? body;
     final message = '${response.reasonPhrase ?? "Request failed"}: $details';
-    return HttpException(message, uri: response.request?.url);
+    return http.ClientException(message, response.request?.url);
   } on Error catch (_) {
-    return HttpException(response.reasonPhrase ?? "Request failed",
-        uri: response.request?.url);
+    return http.ClientException(
+        response.reasonPhrase ?? "Request failed", response.request?.url);
   }
 }
