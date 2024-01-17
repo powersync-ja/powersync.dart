@@ -1,3 +1,7 @@
+## 0.1.5
+
+- Allow different file extensions besides jpg
+
 ## 0.1.4
 
 - Update dependencies.
