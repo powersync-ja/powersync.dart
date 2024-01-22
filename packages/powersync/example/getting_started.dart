@@ -14,6 +14,7 @@ class BackendConnector extends PowerSyncBackendConnector {
 
   BackendConnector(this.db);
   @override
+  // ignore: body_might_complete_normally_nullable
   Future<PowerSyncCredentials?> fetchCredentials() async {
     // implement fetchCredentials
   }
