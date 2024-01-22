@@ -8,6 +8,21 @@ const schema = Schema([
 
 late PowerSyncDatabase db;
 
+// Setup connector to backend if you would like to sync data.
+class BackendConnector extends PowerSyncBackendConnector {
+  PowerSyncDatabase db;
+
+  BackendConnector(this.db);
+  @override
+  Future<PowerSyncCredentials?> fetchCredentials() async {
+    // implement fetchCredentials
+  }
+  @override
+  Future<void> uploadData(PowerSyncDatabase database) async {
+    // implement uploadData
+  }
+}
+
 openDatabase() async {
   final dir = await getApplicationSupportDirectory();
   final path = join(dir.path, 'powersync-dart.db');
@@ -19,19 +34,7 @@ openDatabase() async {
   await db.execute(
       'INSERT INTO customers(id, name, email) VALUES(uuid(), ?, ?)',
       ['Fred', 'fred@example.org']);
-}
 
-connectPowerSync() async {
-  // DevConnector stores credentials in-memory by default.
-  // Extend the class to persist credentials.
-  final connector = DevConnector();
-
-  // Login in dev mode.
-  await connector.devLogin(
-      endpoint: 'https://myinstance.powersync.co',
-      user: 'demo',
-      password: 'demo');
-
-  // Connect to PowerSync service and start sync.
-  db.connect(connector: connector);
+  // Connect to backend
+  db.connect(connector: BackendConnector(db));
 }
