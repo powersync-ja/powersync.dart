@@ -24,7 +24,7 @@ const schema = Schema([
 
 late PowerSyncDatabase db;
 
-// Setup connector to backend if you want to sync data.
+// Setup connector to backend if you would like to sync data.
 class BackendConnector extends PowerSyncBackendConnector {
   PowerSyncDatabase db;
 
