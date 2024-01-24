@@ -87,11 +87,13 @@ class PowerSyncCredentials {
   /// When the token expires. Only use for debugging purposes.
   final DateTime? expiresAt;
 
-  const PowerSyncCredentials(
+  PowerSyncCredentials(
       {required this.endpoint,
       required this.token,
       this.userId,
-      this.expiresAt});
+      this.expiresAt}) {
+    _validateEndpoint();
+  }
 
   factory PowerSyncCredentials.fromJson(Map<String, dynamic> parsed) {
     String token = parsed['token'];
@@ -132,6 +134,15 @@ class PowerSyncCredentials {
   /// Resolve an endpoint path against the endpoint URI.
   Uri endpointUri(String path) {
     return Uri.parse(endpoint).resolve(path);
+  }
+
+  _validateEndpoint() {
+    final parsed = Uri.parse(endpoint);
+    if ((!parsed.isScheme('http') && !parsed.isScheme('https')) ||
+        parsed.host.isEmpty) {
+      throw ArgumentError.value(
+          endpoint, 'PowerSync endpoint must be a valid URL');
+    }
   }
 }
 
