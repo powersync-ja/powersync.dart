@@ -345,7 +345,7 @@ class BucketStorage {
                 SET last_applied_op = last_op
                 WHERE last_applied_op != last_op""");
 
-      isolateLogger.fine('Updated local database');
+      isolateLogger.fine('Applied checkpoint ${checkpoint.lastOpId}');
       return true;
     });
   }
@@ -407,7 +407,11 @@ class BucketStorage {
     final invalidBuckets = db.select(
         "SELECT name, target_op, last_op, last_applied_op FROM ps_buckets WHERE target_op > last_op AND (name = '\$local' OR pending_delete = 0)");
     if (invalidBuckets.isNotEmpty) {
-      isolateLogger.fine('Cannot update local database: $invalidBuckets');
+      if (invalidBuckets.first['name'] == '\$local') {
+        isolateLogger.fine('Waiting for local changes to be acknowledged');
+      } else {
+        isolateLogger.fine('Waiting for more data: $invalidBuckets');
+      }
       return false;
     }
     // This is specifically relevant for when data is added to crud before another batch is completed.
@@ -506,7 +510,7 @@ class BucketStorage {
       // Note: Count is informational only.
       if (local.checksum != checksum.checksum) {
         isolateLogger.warning(
-            'Checksum mismatch for ${checksum.bucket}: local ${local.checksum} != remote ${checksum.checksum}');
+            'Checksum mismatch for ${checksum.bucket}: local ${local.checksum} != remote ${checksum.checksum}. Likely due to sync rule changes.');
         failedChecksums.add(checksum.bucket);
       }
     }
