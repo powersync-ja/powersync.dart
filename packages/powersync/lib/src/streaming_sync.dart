@@ -64,7 +64,7 @@ class StreamingSyncImplementation {
         // Continue immediately
       } catch (e, stacktrace) {
         final message = _syncErrorMessage(e);
-        log.warning('Sync error: $message', e, stacktrace);
+        isolateLogger.warning('Sync error: $message', e, stacktrace);
         invalidCredentials = true;
 
         _updateStatus(
@@ -96,7 +96,7 @@ class StreamingSyncImplementation {
           break;
         }
       } catch (e, stacktrace) {
-        log.warning('Data upload error', e, stacktrace);
+        isolateLogger.warning('Data upload error', e, stacktrace);
         _updateStatus(uploading: false, uploadError: e);
         await Future.delayed(retryDelay);
       }

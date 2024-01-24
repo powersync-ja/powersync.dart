@@ -42,7 +42,7 @@ class TestOpenFactory extends PowerSyncOpenFactory {
 Future<PowerSyncDatabase> setupPowerSync(
     {required String path, Schema? schema}) async {
   final db = PowerSyncDatabase.withFactory(TestOpenFactory(path: path),
-      schema: schema ?? defaultSchema);
+      schema: schema ?? defaultSchema, log: LogType.logger);
   return db;
 }
 

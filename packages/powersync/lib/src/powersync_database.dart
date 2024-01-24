@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:isolate';
 
+import 'package:flutter/foundation.dart';
 import 'package:logging/logging.dart';
 import 'package:sqlite_async/sqlite3.dart' as sqlite;
 import 'package:sqlite_async/sqlite_async.dart';
@@ -68,6 +69,9 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
   /// null when disconnected, present when connecting or connected
   AbortController? _disconnecter;
 
+  /// The Logger internally used by this PowerSyncDatabase
+  late final Logger logger;
+
   /// Open a [PowerSyncDatabase].
   ///
   /// Only a single [PowerSyncDatabase] per [path] should be opened at a time.
@@ -84,12 +88,13 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
       {required Schema schema,
       required String path,
       int maxReaders = SqliteDatabase.defaultMaxReaders,
+      LogType log = LogType.auto,
       @Deprecated("Use [PowerSyncDatabase.withFactory] instead")
       // ignore: deprecated_member_use_from_same_package
       SqliteConnectionSetup? sqliteSetup}) {
     // ignore: deprecated_member_use_from_same_package
     var factory = PowerSyncOpenFactory(path: path, sqliteSetup: sqliteSetup);
-    return PowerSyncDatabase.withFactory(factory, schema: schema);
+    return PowerSyncDatabase.withFactory(factory, schema: schema, log: log);
   }
 
   /// Open a [PowerSyncDatabase] with a [PowerSyncOpenFactory].
@@ -98,18 +103,54 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
   /// additional logic to run inside the database isolate before or after opening.
   ///
   /// Subclass [PowerSyncOpenFactory] to add custom logic to this process.
-  factory PowerSyncDatabase.withFactory(PowerSyncOpenFactory openFactory,
-      {required Schema schema,
-      int maxReaders = SqliteDatabase.defaultMaxReaders}) {
+  factory PowerSyncDatabase.withFactory(
+    PowerSyncOpenFactory openFactory, {
+    required Schema schema,
+    int maxReaders = SqliteDatabase.defaultMaxReaders,
+    LogType log = LogType.auto,
+  }) {
     final db = SqliteDatabase.withFactory(openFactory, maxReaders: maxReaders);
-    return PowerSyncDatabase.withDatabase(schema: schema, database: db);
+    return PowerSyncDatabase.withDatabase(
+        schema: schema, database: db, log: log);
   }
 
   /// Open a PowerSyncDatabase on an existing [SqliteDatabase].
   ///
   /// Migrations are run on the database when this constructor is called.
-  PowerSyncDatabase.withDatabase(
-      {required this.schema, required this.database}) {
+  PowerSyncDatabase.withDatabase({
+    required this.schema,
+    required this.database,
+    LogType log = LogType.auto,
+  }) {
+    if (log == LogType.debug || log == LogType.auto) {
+      // Use a detached logger to log directly to the console
+      logger = Logger.detached('PowerSync');
+      final debug = log == LogType.debug || kDebugMode;
+      if (debug) {
+        logger.level = Level.FINE;
+        logger.onRecord.listen((record) {
+          print(
+              '[${record.loggerName}] ${record.level.name}: ${record.time}: ${record.message}');
+
+          if (record.error != null) {
+            print(record.error);
+          }
+          if (record.stackTrace != null) {
+            print(record.stackTrace);
+          }
+        });
+      } else {
+        logger.level = Level.OFF;
+      }
+    } else if (log == LogType.logger) {
+      // Standard logger. The app is responsible for adding an onRecord listener
+      // on the root logger.
+      logger = Logger('PowerSync');
+    } else {
+      // Should not happen
+      logger = Logger.detached('PowerSync');
+    }
+
     updates = database.updates
         .map((update) =>
             PowerSyncUpdateNotification.fromUpdateNotification(update))
@@ -173,11 +214,11 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
         if (action == "getCredentials") {
           await (data[1] as PortCompleter).handle(() async {
             final token = await connector.getCredentialsCached();
-            log.fine('Credentials: $token');
+            logger.fine('Credentials: $token');
             return token;
           });
         } else if (action == "invalidateCredentials") {
-          log.fine('Refreshing credentials');
+          logger.fine('Refreshing credentials');
           await (data[1] as PortCompleter).handle(() async {
             await connector.prefetchCredentials();
           });
@@ -205,7 +246,7 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
           updateSubscription?.cancel();
         } else if (action == 'log') {
           LogRecord record = data[1];
-          log.log(
+          logger.log(
               record.level, record.message, record.error, record.stackTrace);
         }
       }
@@ -221,7 +262,7 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
       // #3      _ForwardingStreamSubscription._handleError (dart:async/stream_pipe.dart:157:13)
       // #4      _HttpClientResponse.listen.<anonymous closure> (dart:_http/http_impl.dart:707:16)
       // ...
-      log.severe('Sync Isolate error', message);
+      logger.severe('Sync Isolate error', message);
 
       // Reconnect
       connect(connector: connector);
@@ -237,7 +278,7 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
 
     var exitPort = ReceivePort();
     exitPort.listen((message) {
-      log.fine('Sync Isolate exit');
+      logger.fine('Sync Isolate exit');
       disconnected();
     });
 
@@ -532,8 +573,8 @@ Future<void> _powerSyncDatabaseIsolate(
 
   // Is there a way to avoid the overhead if logging is not enabled?
   // This only takes effect in this isolate.
-  Logger.root.level = Level.ALL;
-  log.onRecord.listen((record) {
+  isolateLogger.level = Level.ALL;
+  isolateLogger.onRecord.listen((record) {
     var copy = LogRecord(record.level, record.message, record.loggerName,
         record.error, record.stackTrace);
     sPort.send(["log", copy]);
@@ -601,4 +642,16 @@ Future<void> _powerSyncDatabaseIsolate(
     db?.dispose();
     throw error;
   });
+}
+
+enum LogType {
+  /// Log to the console, with FINE level in debug mode, no logs in release mode
+  auto,
+
+  /// Always log to the console with FINE level
+  debug,
+
+  /// Uses a Logger instance.
+  /// Use Logger.root.onRecord to handle log messages
+  logger,
 }
