@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:isolate';
 
-import 'package:flutter/foundation.dart';
 import 'package:logging/logging.dart';
 import 'package:sqlite_async/sqlite3.dart' as sqlite;
 import 'package:sqlite_async/sqlite_async.dart';
@@ -125,6 +124,7 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
     if (log == LogType.debug || log == LogType.auto) {
       // Use a detached logger to log directly to the console
       logger = Logger.detached('PowerSync');
+
       final debug = log == LogType.debug || kDebugMode;
       if (debug) {
         logger.level = Level.FINE;
