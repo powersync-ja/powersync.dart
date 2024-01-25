@@ -2,12 +2,12 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:collection/collection.dart';
+import 'package:powersync/src/log_internal.dart';
 import 'package:sqlite_async/mutex.dart';
 import 'package:sqlite_async/sqlite3.dart' as sqlite;
 
 import 'crud.dart';
 import 'database_utils.dart';
-import 'log.dart';
 import 'schema_logic.dart';
 import 'sync_types.dart';
 import 'uuid.dart';

@@ -3,10 +3,11 @@ import 'dart:convert' as convert;
 import 'dart:io';
 
 import 'package:http/http.dart' as http;
+import 'package:powersync/src/exceptions.dart';
+import 'package:powersync/src/log_internal.dart';
 
 import 'bucket_storage.dart';
 import 'connector.dart';
-import 'log.dart';
 import 'stream_utils.dart';
 import 'sync_status.dart';
 import 'sync_types.dart';
@@ -140,7 +141,7 @@ class StreamingSyncImplementation {
       }
     }
     if (response.statusCode != 200) {
-      throw _getError(response);
+      throw SyncResponseException.fromResponse(response);
     }
 
     final body = convert.jsonDecode(response.body);
@@ -341,56 +342,13 @@ class StreamingSyncImplementation {
       }
     }
     if (res.statusCode != 200) {
-      throw await _getStreamedError(res);
+      throw await SyncResponseException.fromStreamedResponse(res);
     }
 
     // Note: The response stream is automatically closed when this loop errors
     await for (var line in ndjson(res.stream)) {
       yield parseStreamingSyncLine(line as Map<String, dynamic>);
     }
-  }
-}
-
-SyncResponseException _getError(http.Response response) {
-  try {
-    final body = response.body;
-    final decoded = convert.jsonDecode(body);
-    final details = _stringOrFirst(decoded['error']?['details']) ?? body;
-    final message = '${response.reasonPhrase ?? "Request failed"}: $details';
-    return SyncResponseException(response.statusCode, message);
-  } on Error catch (_) {
-    return SyncResponseException(
-      response.statusCode,
-      response.reasonPhrase ?? "Request failed",
-    );
-  }
-}
-
-Future<SyncResponseException> _getStreamedError(
-    http.StreamedResponse response) async {
-  try {
-    final body = await response.stream.bytesToString();
-    final decoded = convert.jsonDecode(body);
-    final details = _stringOrFirst(decoded['error']?['details']) ?? body;
-    final message = '${response.reasonPhrase ?? "Request failed"}: $details';
-    return SyncResponseException(response.statusCode, message);
-  } on Error catch (_) {
-    return SyncResponseException(
-      response.statusCode,
-      response.reasonPhrase ?? "Request failed",
-    );
-  }
-}
-
-String? _stringOrFirst(Object? details) {
-  if (details == null) {
-    return null;
-  } else if (details is String) {
-    return details;
-  } else if (details is List && details[0] is String) {
-    return details[0];
-  } else {
-    return null;
   }
 }
 
@@ -417,39 +375,5 @@ String _syncErrorMessage(Object? error) {
     return 'Protocol error';
   } else {
     return '${error.runtimeType}';
-  }
-}
-
-class CredentialsException implements Exception {
-  String message;
-
-  CredentialsException(this.message);
-
-  @override
-  toString() {
-    return 'CredentialsException: $message';
-  }
-}
-
-class PowerSyncProtocolException implements Exception {
-  String message;
-
-  PowerSyncProtocolException(this.message);
-
-  @override
-  toString() {
-    return 'SyncProtocolException: $message';
-  }
-}
-
-class SyncResponseException implements Exception {
-  int statusCode;
-  String description;
-
-  SyncResponseException(this.statusCode, this.description);
-
-  @override
-  toString() {
-    return 'SyncResponseException: $statusCode $description';
   }
 }
