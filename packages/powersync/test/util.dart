@@ -4,9 +4,9 @@ import 'dart:io';
 
 import 'package:logging/logging.dart';
 import 'package:powersync/powersync.dart';
+import 'package:powersync/sqlite3.dart' as sqlite;
 import 'package:powersync/sqlite_async.dart';
 import 'package:sqlite3/open.dart' as sqlite_open;
-import 'package:powersync/sqlite3.dart' as sqlite;
 import 'package:test_api/src/backend/invoker.dart';
 
 const schema = Schema([
@@ -42,7 +42,7 @@ class TestOpenFactory extends PowerSyncOpenFactory {
 Future<PowerSyncDatabase> setupPowerSync(
     {required String path, Schema? schema}) async {
   final db = PowerSyncDatabase.withFactory(TestOpenFactory(path: path),
-      schema: schema ?? defaultSchema, log: LogType.logger);
+      schema: schema ?? defaultSchema, logger: testLogger);
   return db;
 }
 
@@ -82,9 +82,12 @@ String dbPath() {
   return dbName;
 }
 
-setupLogger() {
-  Logger.root.level = Level.ALL;
-  Logger.root.onRecord.listen((record) {
+final testLogger = _makeTestLogger();
+
+Logger _makeTestLogger() {
+  final logger = Logger.detached('PowerSync Tests');
+  logger.level = Level.ALL;
+  logger.onRecord.listen((record) {
     print(
         '[${record.loggerName}] ${record.level.name}: ${record.time}: ${record.message}');
     if (record.error != null) {
@@ -104,4 +107,5 @@ setupLogger() {
       uncaughtError();
     }
   });
+  return logger;
 }

@@ -10,3 +10,4 @@ export 'src/crud.dart';
 export 'src/sync_status.dart';
 export 'src/uuid.dart';
 export 'src/open_factory.dart';
+export 'src/log.dart' show attachedLogger, autoLogger, debugLogger;

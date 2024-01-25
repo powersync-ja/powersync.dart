@@ -68,7 +68,11 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
   /// null when disconnected, present when connecting or connected
   AbortController? _disconnecter;
 
-  /// The Logger internally used by this PowerSyncDatabase
+  /// The Logger used by this [PowerSyncDatabase].
+  ///
+  /// The default is [autoLogger], which logs to the console in debug builds.
+  /// Use [debugLogger] to always log to the console.
+  /// Use [attachedLogger] to propagate logs to [Logger.root] for custom logging.
   late final Logger logger;
 
   /// Open a [PowerSyncDatabase].
@@ -83,17 +87,20 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
   /// from the last committed write transaction.
   ///
   /// A maximum of [maxReaders] concurrent read transactions are allowed.
+  ///
+  /// [logger] defaults to [autoLogger], which logs to the console in debug builds.
   factory PowerSyncDatabase(
       {required Schema schema,
       required String path,
       int maxReaders = SqliteDatabase.defaultMaxReaders,
-      LogType log = LogType.auto,
+      Logger? logger,
       @Deprecated("Use [PowerSyncDatabase.withFactory] instead")
       // ignore: deprecated_member_use_from_same_package
       SqliteConnectionSetup? sqliteSetup}) {
     // ignore: deprecated_member_use_from_same_package
     var factory = PowerSyncOpenFactory(path: path, sqliteSetup: sqliteSetup);
-    return PowerSyncDatabase.withFactory(factory, schema: schema, log: log);
+    return PowerSyncDatabase.withFactory(factory,
+        schema: schema, logger: logger);
   }
 
   /// Open a [PowerSyncDatabase] with a [PowerSyncOpenFactory].
@@ -102,53 +109,33 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
   /// additional logic to run inside the database isolate before or after opening.
   ///
   /// Subclass [PowerSyncOpenFactory] to add custom logic to this process.
+  ///
+  /// [logger] defaults to [autoLogger], which logs to the console in debug builds.
   factory PowerSyncDatabase.withFactory(
     PowerSyncOpenFactory openFactory, {
     required Schema schema,
     int maxReaders = SqliteDatabase.defaultMaxReaders,
-    LogType log = LogType.auto,
+    Logger? logger,
   }) {
     final db = SqliteDatabase.withFactory(openFactory, maxReaders: maxReaders);
     return PowerSyncDatabase.withDatabase(
-        schema: schema, database: db, log: log);
+        schema: schema, database: db, logger: logger);
   }
 
   /// Open a PowerSyncDatabase on an existing [SqliteDatabase].
   ///
   /// Migrations are run on the database when this constructor is called.
+  ///
+  /// [logger] defaults to [autoLogger], which logs to the console in debug builds.
   PowerSyncDatabase.withDatabase({
     required this.schema,
     required this.database,
-    LogType log = LogType.auto,
+    Logger? logger,
   }) {
-    if (log == LogType.debug || log == LogType.auto) {
-      // Use a detached logger to log directly to the console
-      logger = Logger.detached('PowerSync');
-
-      final debug = log == LogType.debug || kDebugMode;
-      if (debug) {
-        logger.level = Level.FINE;
-        logger.onRecord.listen((record) {
-          print(
-              '[${record.loggerName}] ${record.level.name}: ${record.time}: ${record.message}');
-
-          if (record.error != null) {
-            print(record.error);
-          }
-          if (record.stackTrace != null) {
-            print(record.stackTrace);
-          }
-        });
-      } else {
-        logger.level = Level.OFF;
-      }
-    } else if (log == LogType.logger) {
-      // Standard logger. The app is responsible for adding an onRecord listener
-      // on the root logger.
-      logger = Logger('PowerSync');
+    if (logger != null) {
+      this.logger = logger;
     } else {
-      // Should not happen
-      logger = Logger.detached('PowerSync');
+      this.logger = autoLogger;
     }
 
     updates = database.updates
@@ -642,16 +629,4 @@ Future<void> _powerSyncDatabaseIsolate(
     db?.dispose();
     throw error;
   });
-}
-
-enum LogType {
-  /// Log to the console, with FINE level in debug mode, no logs in release mode
-  auto,
-
-  /// Always log to the console with FINE level
-  debug,
-
-  /// Uses a Logger instance.
-  /// Use Logger.root.onRecord to handle log messages
-  logger,
 }

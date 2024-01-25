@@ -68,8 +68,6 @@ Schema makeSchema(bool online) {
 }
 
 void main() {
-  setupLogger();
-
   group('Offline-online Tests', () {
     late String path;
 
