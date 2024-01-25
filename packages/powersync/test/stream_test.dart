@@ -6,11 +6,7 @@ import 'package:http/http.dart';
 import 'package:powersync/src/stream_utils.dart';
 import 'package:test/test.dart';
 
-import 'util.dart';
-
 void main() {
-  setupLogger();
-
   group('Stream Tests', () {
     setUp(() async {});
 

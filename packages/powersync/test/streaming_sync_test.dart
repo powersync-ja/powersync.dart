@@ -23,8 +23,6 @@ class TestConnector extends PowerSyncBackendConnector {
 }
 
 void main() {
-  setupLogger();
-
   group('Streaming Sync Test', () {
     late String path;
 

@@ -18,8 +18,6 @@ const pschema = Schema([
 ]);
 
 void main() {
-  setupLogger();
-
   group('Performance Tests', () {
     late String path;
 
