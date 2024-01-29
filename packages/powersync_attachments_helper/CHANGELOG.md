@@ -1,6 +1,11 @@
+## 0.2.0
+
+- Potentially BREAKING CHANGE for users who rely on multiple attachment queues.
+  Moved away from randomly generating queue table name in favour of  a user creating a queue and table using a name of their choosing.
+
 ## 0.1.5
 
-- Allow different file extensions besides jpg
+- Allow different file extensions besides jpg.
 
 ## 0.1.4
 
