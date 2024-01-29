@@ -1,13 +1,8 @@
-import 'dart:async';
-import 'dart:html';
-
-import 'package:sqlite_async/sqlite_async.dart';
 import 'package:sqlite_async/sqlite3_common.dart';
-import '../open_factory_interface.dart' as open_factory;
+import '../abstract_powersync_open_factory.dart' as open_factory;
 import '../../uuid.dart';
 
-class PowerSyncOpenFactory
-    extends open_factory.AbstractPowerSyncOpenFactory<CommonDatabase> {
+class PowerSyncOpenFactory extends open_factory.AbstractPowerSyncOpenFactory {
   PowerSyncOpenFactory({
     required super.path,
     super.sqliteOptions,
@@ -18,6 +13,9 @@ class PowerSyncOpenFactory
   }
 
   @override
+
+  /// This is only called when synchronous connections are created in the same
+  /// Dart/JS context. Worker runners need to setupFunctions manually
   setupFunctions(CommonDatabase db) {
     super.setupFunctions(db);
 
@@ -36,15 +34,5 @@ class PowerSyncOpenFactory
       argumentCount: const AllowedArgumentCount(0),
       function: (args) => uuid.v4(),
     );
-  }
-
-  @override
-  FutureOr<CommonDatabase> open(SqliteOpenOptions options) async {
-    final worker = SharedWorker('worker.js');
-    worker.port!.postMessage('ddd');
-
-    final db = await super.open(options);
-    setupFunctions(db);
-    return db;
   }
 }

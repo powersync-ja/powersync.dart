@@ -19,7 +19,7 @@ class TestConnector extends PowerSyncBackendConnector {
   }
 
   @override
-  Future<void> uploadData(PowerSyncDatabase database) async {}
+  Future<void> uploadData(AbstractPowerSyncDatabase database) async {}
 }
 
 void main() {

@@ -1,5 +1,5 @@
 import 'package:sqlite_async/sqlite3_common.dart';
-import './open_factory_interface.dart' as open_factory;
+import 'abstract_powersync_open_factory.dart' as open_factory;
 
 class PowerSyncOpenFactory extends open_factory.AbstractPowerSyncOpenFactory {
   PowerSyncOpenFactory(

@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:powersync/src/migrations.dart';
+import 'package:powersync/src/powersync_update_notification.dart';
 import 'package:sqlite_async/sqlite_async.dart';
 
 import '../abort_controller.dart';
@@ -10,9 +12,6 @@ import '../crud.dart';
 import '../schema.dart';
 import '../schema_helpers.dart';
 import '../sync_status.dart';
-
-// Any imports from sqlite-async must be careful to avoid ffi
-import 'package:sqlite_async/definitions.dart';
 
 /// A PowerSync managed database.
 ///
@@ -27,7 +26,7 @@ abstract class AbstractPowerSyncDatabase
     with SqliteQueries
     implements SqliteConnection {
   /// Schema used for the local database.
-  late final Schema schema;
+  Schema get schema;
 
   /// The underlying database.
   ///
@@ -35,7 +34,7 @@ abstract class AbstractPowerSyncDatabase
   /// database, or on [PowerSyncDatabase]. The main difference is in update notifications:
   /// the underlying database reports updates to the underlying tables, while
   /// [PowerSyncDatabase] reports updates to the higher-level views.
-  late final SqliteDatabase database;
+  SqliteDatabase get database;
 
   /// Current connection status.
   SyncStatus currentStatus =
@@ -61,11 +60,24 @@ abstract class AbstractPowerSyncDatabase
   Duration retryDelay = const Duration(seconds: 5);
 
   @protected
-  late Future<void> isInitialized;
+  Future<void> get isInitialized;
 
   /// null when disconnected, present when connecting or connected
   @protected
   AbortController? disconnecter;
+
+  @protected
+  Future<void> baseInit() async {
+    statusStream = statusStreamController.stream;
+    updates = database.updates
+        .map((update) =>
+            PowerSyncUpdateNotification.fromUpdateNotification(update))
+        .where((update) => update.isNotEmpty)
+        .cast<UpdateNotification>();
+
+    await database.initialize();
+    await migrations.migrate(database);
+  }
 
   /// Wait for initialization to complete.
   ///
@@ -74,14 +86,32 @@ abstract class AbstractPowerSyncDatabase
     return isInitialized;
   }
 
-  @override
-  bool get closed;
-
   void _setStatus(SyncStatus status) {
     if (status != currentStatus) {
       currentStatus = status;
       statusStreamController.add(status);
     }
+  }
+
+  @override
+  bool get closed {
+    return database.closed;
+  }
+
+  /// Close the database, releasing resources.
+  ///
+  /// Also [disconnect]s any active connection.
+  ///
+  /// Once close is called, this connection cannot be used again - a new one
+  /// must be constructed.
+  @override
+  Future<void> close() async {
+    // Don't close in the middle of the initialization process.
+    await isInitialized;
+    // Disconnect any active sync connection.
+    await disconnect();
+    // Now we can close the database
+    await database.close();
   }
 
   /// Connect to the PowerSync service, and keep the databases in sync.
@@ -98,6 +128,33 @@ abstract class AbstractPowerSyncDatabase
     if (disconnecter != null) {
       await disconnecter!.abort();
     }
+  }
+
+  /// Disconnect and clear the database.
+  ///
+  /// Use this when logging out.
+  ///
+  /// The database can still be queried after this is called, but the tables
+  /// would be empty.
+  ///
+  /// To preserve data in local-only tables, set [clearLocal] to false.
+  Future<void> disconnectAndClear({bool clearLocal = true}) async {
+    await disconnect();
+
+    await writeTransaction((tx) async {
+      await tx.execute('DELETE FROM ps_oplog');
+      await tx.execute('DELETE FROM ps_crud');
+      await tx.execute('DELETE FROM ps_buckets');
+
+      final tableGlob = clearLocal ? 'ps_data_*' : 'ps_data__*';
+      final existingTableRows = await tx.getAll(
+          "SELECT name FROM sqlite_master WHERE type='table' AND name GLOB ?",
+          [tableGlob]);
+
+      for (var row in existingTableRows) {
+        await tx.execute('DELETE FROM ${quoteIdentifier(row['name'])}');
+      }
+    });
   }
 
   /// Disconnect and clear the database.
@@ -126,6 +183,20 @@ abstract class AbstractPowerSyncDatabase
   /// Whether a connection to the PowerSync service is currently open.
   bool get connected {
     return currentStatus.connected;
+  }
+
+  /// Replace the schema with a new version.
+  /// This is for advanced use cases - typically the schema should just be
+  /// specified once in the constructor.
+  ///
+  /// Cannot be used while connected - this should only be called before [connect].
+  Future<void> updateSchema(Schema schema);
+
+  /// A connection factory that can be passed to different isolates.
+  ///
+  /// Use this to access the database in background isolates.
+  isolateConnectionFactory() {
+    return database.isolateConnectionFactory();
   }
 
   /// Get upload queue size estimate and count.
@@ -243,15 +314,6 @@ abstract class AbstractPowerSyncDatabase
     });
   }
 
-  /// Close the database, releasing resources.
-  ///
-  /// Also [disconnect]s any active connection.
-  ///
-  /// Once close is called, this connection cannot be used again - a new one
-  /// must be constructed.
-  @override
-  Future<void> close();
-
   /// Takes a read lock, without starting a transaction.
   ///
   /// In most cases, [readTransaction] should be used instead.
@@ -265,4 +327,9 @@ abstract class AbstractPowerSyncDatabase
   @override
   Future<T> writeLock<T>(Future<T> Function(SqliteWriteContext tx) callback,
       {String? debugContext, Duration? lockTimeout});
+
+  @override
+  Future<bool> getAutoCommit() {
+    return database.getAutoCommit();
+  }
 }

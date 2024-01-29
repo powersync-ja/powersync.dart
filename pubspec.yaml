@@ -13,6 +13,7 @@ dependencies:
   sqlite_async:
     path: ../sqlite_async.dart
   sqlite3_flutter_libs: ^0.5.15
+  meta: ^1.0.0
   http: ^1.1.0
   uuid: ^4.0.0
   async: ^2.10.0
@@ -26,6 +27,8 @@ dev_dependencies:
   test_api: ^0.6.1
   path_provider: ^2.0.13
   sqlite3: 2.3.0
+  drift:
+    path: '/Users/stevenontong/Documents/platform_code/powersync/drift/drift'
   shelf: ^1.4.1
   shelf_router: ^1.1.4
   path: ^1.8.3

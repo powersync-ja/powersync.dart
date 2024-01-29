@@ -93,7 +93,7 @@ class StreamingSyncImplementation {
   }
 
   Future<bool> uploadCrudBatch() async {
-    if (adapter.hasCrud()) {
+    if (await (adapter.hasCrud())) {
       await uploadCrud();
       return false;
     } else {
@@ -135,7 +135,7 @@ class StreamingSyncImplementation {
 
   Future<bool> streamingSyncIteration() async {
     adapter.startSession();
-    final bucketEntries = adapter.getBucketStates();
+    final bucketEntries = await adapter.getBucketStates();
 
     Map<String, String> initialBucketStates = {};
 
@@ -161,6 +161,7 @@ class StreamingSyncImplementation {
     bool haveInvalidated = false;
 
     await for (var line in merged) {
+      print(line);
       _statusStreamController
           .add(SyncStatus(connected: true, lastSyncedAt: lastSyncedAt));
       if (line is Checkpoint) {

@@ -2,11 +2,10 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:collection/collection.dart';
-// import 'package:sqlite_async/mutex.dart';
+import 'package:powersync/sqlite_async.dart';
 import 'package:sqlite_async/sqlite3_common.dart' as sqlite;
 
 import 'crud.dart';
-import 'database_utils.dart';
 import 'log.dart';
 import 'schema_helpers.dart';
 import 'sync_types.dart';
@@ -15,23 +14,19 @@ import 'uuid.dart';
 const compactOperationInterval = 1000;
 
 class BucketStorage {
-  final sqlite.CommonDatabase _internalDb;
-  // TODO
-  // final Mutex mutex;
+  final SqliteConnection _internalDb;
   bool _hasCompletedSync = false;
   bool _pendingBucketDeletes = false;
   Set<String> tableNames = {};
   int _compactCounter = compactOperationInterval;
   ChecksumCache? _checksumCache;
 
-  BucketStorage(sqlite.CommonDatabase db)
-      // BucketStorage(sqlite.CommonDatabase db, {required this.mutex})
-      : _internalDb = db {
+  BucketStorage(SqliteConnection db) : _internalDb = db {
     _init();
   }
 
-  _init() {
-    final existingTableRows = select(
+  _init() async {
+    final existingTableRows = await select(
         "SELECT name FROM sqlite_master WHERE type='table' AND name GLOB 'ps_data_*'");
     for (final row in existingTableRows) {
       tableNames.add(row['name'] as String);
@@ -39,16 +34,17 @@ class BucketStorage {
   }
 
   // Use only for read statements
-  sqlite.ResultSet select(String query, [List<Object?> parameters = const []]) {
-    return _internalDb.select(query, parameters);
+  Future<sqlite.ResultSet> select(String query,
+      [List<Object?> parameters = const []]) async {
+    return _internalDb.execute(query, parameters);
   }
 
   void startSession() {
     _checksumCache = null;
   }
 
-  List<BucketState> getBucketStates() {
-    final rows = select(
+  Future<List<BucketState>> getBucketStates() async {
+    final rows = await select(
         'SELECT name as bucket, cast(last_op as TEXT) as op_id FROM ps_buckets WHERE pending_delete = 0');
     return [
       for (var row in rows)
@@ -59,21 +55,21 @@ class BucketStorage {
   Future<void> saveSyncData(SyncDataBatch batch) async {
     var count = 0;
 
-    await writeTransaction((db) {
+    await writeTransaction((tx) async {
       for (var b in batch.buckets) {
         var bucket = b.bucket;
         var data = b.data;
 
         count += data.length;
         final isFinal = !b.hasMore;
-        _updateBucket(db, bucket, data, isFinal);
+        await _updateBucket(tx, bucket, data, isFinal);
       }
     });
     _compactCounter += count;
   }
 
-  void _updateBucket(sqlite.CommonDatabase db, String bucket,
-      List<OplogEntry> data, bool finalBucketUpdate) {
+  Future<void> _updateBucket(SqliteWriteContext tx, String bucket,
+      List<OplogEntry> data, bool finalBucketUpdate) async {
     if (data.isEmpty) {
       return;
     }
@@ -144,7 +140,7 @@ class BucketStorage {
     }
 
     // Mark old ops as superseded
-    db.execute("""
+    await tx.execute("""
     UPDATE ps_oplog AS oplog
     SET superseded = 1,
     op = ${OpType.move.value},
@@ -154,45 +150,42 @@ class BucketStorage {
     AND oplog.key IN (SELECT json_each.value FROM json_each(?))
     """, [bucket, jsonEncode(allEntries)]);
 
-    var stmt = db.prepare(
-        'INSERT INTO ps_oplog(op_id, op, bucket, key, row_type, row_id, data, hash, superseded) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)');
-    try {
-      for (var insert in inserts) {
-        stmt.execute([
-          insert['op_id'],
-          insert['op'],
-          insert['bucket'],
-          insert['key'],
-          insert['row_type'],
-          insert['row_id'],
-          insert['data'],
-          insert['checksum'],
-          insert['superseded']
-        ]);
-      }
-    } finally {
-      stmt.dispose();
-    }
+    await tx.executeBatch(
+        'INSERT INTO ps_oplog(op_id, op, bucket, key, row_type, row_id, data, hash, superseded) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        inserts
+            .map((insert) => [
+                  insert['op_id'],
+                  insert['op'],
+                  insert['bucket'],
+                  insert['key'],
+                  insert['row_type'],
+                  insert['row_id'],
+                  insert['data'],
+                  insert['checksum'],
+                  insert['superseded']
+                ])
+            .toList());
 
-    db.execute("INSERT OR IGNORE INTO ps_buckets(name) VALUES(?)", [bucket]);
+    await tx
+        .execute("INSERT OR IGNORE INTO ps_buckets(name) VALUES(?)", [bucket]);
 
     if (lastOp != null) {
-      db.execute(
+      await tx.execute(
           "UPDATE ps_buckets SET last_op = ? WHERE name = ?", [lastOp, bucket]);
     }
     if (targetOp != null) {
-      db.execute(
+      await tx.execute(
           "UPDATE ps_buckets AS buckets SET target_op = MAX(?, buckets.target_op) WHERE name = ?",
           [targetOp.toString(), bucket]);
     }
 
     for (final op in clearOps) {
-      db.execute(op.sql, op.args);
+      await tx.execute(op.sql, op.args);
     }
 
     // Compact superseded ops immediately, but only _after_ clearing
     if (firstOp != null && lastOp != null) {
-      db.execute("""UPDATE ps_buckets AS buckets
+      await tx.execute("""UPDATE ps_buckets AS buckets
     SET add_checksum = add_checksum + (SELECT IFNULL(SUM(hash), 0)
     FROM ps_oplog AS oplog
     WHERE superseded = 1
@@ -201,7 +194,7 @@ class BucketStorage {
     AND oplog.op_id <= ?)
     WHERE buckets.name = ?""", [bucket, firstOp, lastOp, bucket]);
 
-      db.execute("""DELETE
+      await tx.execute("""DELETE
               FROM ps_oplog
               WHERE superseded = 1
               AND bucket = ?
@@ -219,15 +212,15 @@ class BucketStorage {
   Future<void> deleteBucket(String bucket) async {
     final newName = "\$delete_${bucket}_${uuid.v4()}";
 
-    await writeTransaction((db) {
-      db.execute(
+    await writeTransaction((tx) async {
+      await tx.execute(
           "UPDATE ps_oplog SET op=${OpType.remove.value}, data=NULL WHERE op=${OpType.put.value} AND superseded=0 AND bucket=?",
           [bucket]);
       // Rename bucket
-      db.execute(
+      await tx.execute(
           "UPDATE ps_oplog SET bucket=? WHERE bucket=?", [newName, bucket]);
-      db.execute("DELETE FROM ps_buckets WHERE name = ?", [bucket]);
-      db.execute(
+      await tx.execute("DELETE FROM ps_buckets WHERE name = ?", [bucket]);
+      await tx.execute(
           "INSERT INTO ps_buckets(name, pending_delete, last_op) SELECT ?, 1, IFNULL(MAX(op_id), 0) FROM ps_oplog WHERE bucket = ?",
           [newName, newName]);
     });
@@ -235,11 +228,11 @@ class BucketStorage {
     _pendingBucketDeletes = true;
   }
 
-  bool hasCompletedSync() {
+  Future<bool> hasCompletedSync() async {
     if (_hasCompletedSync) {
       return true;
     }
-    final rs = select(
+    final rs = await select(
         "SELECT name, last_applied_op FROM ps_buckets WHERE last_applied_op > 0 LIMIT 1");
     if (rs.isNotEmpty) {
       _hasCompletedSync = true;
@@ -250,7 +243,7 @@ class BucketStorage {
 
   Future<SyncLocalDatabaseResult> syncLocalDatabase(
       Checkpoint checkpoint) async {
-    final r = validateChecksums(checkpoint);
+    final r = await validateChecksums(checkpoint);
 
     if (!r.checkpointValid) {
       for (String b in r.checkpointFailures ?? []) {
@@ -260,12 +253,13 @@ class BucketStorage {
     }
     final bucketNames = [for (final c in checkpoint.checksums) c.bucket];
 
-    await writeTransaction((db) {
-      db.execute(
+    await writeTransaction((tx) async {
+      await tx.execute(
           "UPDATE ps_buckets SET last_op = ? WHERE name IN (SELECT json_each.value FROM json_each(?))",
           [checkpoint.lastOpId, jsonEncode(bucketNames)]);
       if (checkpoint.writeCheckpoint != null) {
-        db.execute("UPDATE ps_buckets SET last_op = ? WHERE name = '\$local'",
+        await tx.execute(
+            "UPDATE ps_buckets SET last_op = ? WHERE name = '\$local'",
             [checkpoint.writeCheckpoint]);
       }
     });
@@ -281,8 +275,8 @@ class BucketStorage {
   }
 
   Future<bool> updateObjectsFromBuckets(Checkpoint checkpoint) async {
-    return writeTransaction((db) {
-      if (!_canUpdateLocal(db)) {
+    return writeTransaction((tx) async {
+      if (!(await _canUpdateLocal(tx))) {
         return false;
       }
 
@@ -303,7 +297,7 @@ class BucketStorage {
       // |--SEARCH r USING INDEX ps_oplog_by_row (row_type=? AND row_id=?)
       // `--USE TEMP B-TREE FOR GROUP BY
       // language=DbSqlite
-      var stmt = db.prepare(
+      var opRows = await tx.execute(
           """-- 3. Group the objects from different buckets together into a single one (ops).
          SELECT r.row_type as type,
                 r.row_id as id,
@@ -324,27 +318,10 @@ class BucketStorage {
          -- Group for (3)
          GROUP BY r.row_type, r.row_id
         """);
-      try {
-        // TODO: Perhaps we don't need batching for this?
-        var cursor = stmt.selectCursor([]);
-        List<sqlite.Row> rows = [];
-        while (cursor.moveNext()) {
-          var row = cursor.current;
-          rows.add(row);
 
-          if (rows.length >= 10000) {
-            saveOps(db, rows);
-            rows = [];
-          }
-        }
-        if (rows.isNotEmpty) {
-          saveOps(db, rows);
-        }
-      } finally {
-        stmt.dispose();
-      }
+      await saveOps(tx, opRows);
 
-      db.execute("""UPDATE ps_buckets
+      await tx.execute("""UPDATE ps_buckets
                 SET last_applied_op = last_op
                 WHERE last_applied_op != last_op""");
 
@@ -354,7 +331,7 @@ class BucketStorage {
   }
 
   // { type: string; id: string; data: string; buckets: string; op_id: string }[]
-  void saveOps(sqlite.CommonDatabase db, List<sqlite.Row> rows) {
+  Future<void> saveOps(SqliteWriteContext tx, List<sqlite.Row> rows) async {
     Map<String, List<sqlite.Row>> byType = {};
     for (final row in rows) {
       byType.putIfAbsent(row['type'], () => []).add(row);
@@ -381,24 +358,24 @@ class BucketStorage {
       puts = puts.where((update) => !removeIds.contains(update['id'])).toList();
 
       if (tableNames.contains(table)) {
-        db.execute("""REPLACE INTO "$table"(id, data)
+        await tx.execute("""REPLACE INTO "$table"(id, data)
                SELECT json_extract(json_each.value, '\$.id'),
                       json_extract(json_each.value, '\$.data')
                FROM json_each(?)""", [jsonEncode(puts)]);
 
-        db.execute("""DELETE
+        await tx.execute("""DELETE
         FROM "$table"
         WHERE id IN (SELECT json_each.value FROM json_each(?))""", [
           jsonEncode([...removeIds])
         ]);
       } else {
-        db.execute(r"""REPLACE INTO ps_untyped(type, id, data)
+        await tx.execute(r"""REPLACE INTO ps_untyped(type, id, data)
         SELECT ?,
       json_extract(json_each.value, '$.id'),
       json_extract(json_each.value, '$.data')
     FROM json_each(?)""", [type, jsonEncode(puts)]);
 
-        db.execute("""DELETE FROM ps_untyped
+        await tx.execute("""DELETE FROM ps_untyped
     WHERE type = ?
     AND id IN (SELECT json_each.value FROM json_each(?))""",
             [type, jsonEncode(removeIds.toList())]);
@@ -406,23 +383,24 @@ class BucketStorage {
     }
   }
 
-  bool _canUpdateLocal(sqlite.CommonDatabase db) {
-    final invalidBuckets = db.select(
-        "SELECT name, target_op, last_op, last_applied_op FROM ps_buckets WHERE target_op > last_op AND (name = '\$local' OR pending_delete = 0)");
+  Future<bool> _canUpdateLocal(SqliteWriteContext tx) async {
+    final invalidBuckets = await tx.execute(
+        "SELECT name, CAST(target_op AS TEXT), last_op, last_applied_op FROM ps_buckets WHERE target_op > last_op AND (name = '\$local' OR pending_delete = 0)");
     if (invalidBuckets.isNotEmpty) {
       log.fine('Cannot update local database: $invalidBuckets');
       return false;
     }
     // This is specifically relevant for when data is added to crud before another batch is completed.
-    final rows = db.select('SELECT 1 FROM ps_crud LIMIT 1');
+    final rows = await tx.execute('SELECT 1 FROM ps_crud LIMIT 1');
     if (rows.isNotEmpty) {
       return false;
     }
     return true;
   }
 
-  SyncLocalDatabaseResult validateChecksums(Checkpoint checkpoint) {
-    final rows = select("""WITH
+  Future<SyncLocalDatabaseResult> validateChecksums(
+      Checkpoint checkpoint) async {
+    final rows = await select("""WITH
      bucket_list(bucket, lower_op_id) AS (
          SELECT
                 json_extract(json_each.value, '\$.bucket') as bucket,
@@ -546,8 +524,8 @@ class BucketStorage {
   // ignore: unused_element
   Future<void> _compactWal() async {
     try {
-      await writeTransaction((db) {
-        db.select('PRAGMA wal_checkpoint(TRUNCATE)');
+      await writeTransaction((tx) async {
+        tx.execute('PRAGMA wal_checkpoint(TRUNCATE)');
       });
     } on sqlite.SqliteException catch (e) {
       // Ignore SQLITE_BUSY
@@ -562,10 +540,10 @@ class BucketStorage {
   Future<void> _deletePendingBuckets() async {
     if (_pendingBucketDeletes) {
       // Executed once after start-up, and again when there are pending deletes.
-      await writeTransaction((db) {
-        db.execute(
+      await writeTransaction((tx) async {
+        tx.execute(
             'DELETE FROM ps_oplog WHERE bucket IN (SELECT name FROM ps_buckets WHERE pending_delete = 1 AND last_applied_op = last_op AND last_op >= target_op)');
-        db.execute(
+        tx.execute(
             'DELETE FROM ps_buckets WHERE pending_delete = 1 AND last_applied_op = last_op AND last_op >= target_op');
       });
       _pendingBucketDeletes = false;
@@ -577,13 +555,13 @@ class BucketStorage {
       return;
     }
 
-    final rows = select(
+    final rows = await select(
         'SELECT name, cast(last_applied_op as TEXT) as last_applied_op, cast(last_op as TEXT) as last_op FROM ps_buckets WHERE pending_delete = 0');
     for (var row in rows) {
-      await writeTransaction((db) {
+      await writeTransaction((tx) async {
         // Note: The row values here may be different from when queried. That should not be an issue.
 
-        db.execute("""UPDATE ps_buckets AS buckets
+        await tx.execute("""UPDATE ps_buckets AS buckets
            SET add_checksum = add_checksum + (SELECT IFNULL(SUM(hash), 0)
                                               FROM ps_oplog AS oplog
                                               WHERE (superseded = 1 OR op != ${OpType.put.value})
@@ -591,7 +569,7 @@ class BucketStorage {
                                                 AND oplog.op_id <= ?)
            WHERE buckets.name = ?""",
             [row['name'], row['last_applied_op'], row['name']]);
-        db.execute(
+        await tx.execute(
             """DELETE
            FROM ps_oplog
            WHERE (superseded = 1 OR op != ${OpType.put.value})
@@ -610,14 +588,14 @@ class BucketStorage {
 
   Future<bool> updateLocalTarget(
       Future<String> Function() checkpointCallback) async {
-    final rs1 = select(
-        'SELECT target_op FROM ps_buckets WHERE name = \'\$local\' AND target_op = $maxOpId');
+    final rs1 = await select(
+        'SELECT CAST(target_op AS TEXT) FROM ps_buckets WHERE name = \'\$local\' AND target_op = $maxOpId');
     if (rs1.isEmpty) {
       // Nothing to update
       return false;
     }
-    final rs =
-        select('SELECT seq FROM sqlite_sequence WHERE name = \'ps_crud\'');
+    final rs = await select(
+        'SELECT seq FROM sqlite_sequence WHERE name = \'ps_crud\'');
     if (rs.isEmpty) {
       // Nothing to update
       return false;
@@ -625,13 +603,13 @@ class BucketStorage {
     int seqBefore = rs.first['seq'];
     var opId = await checkpointCallback();
 
-    return await writeTransaction((tx) {
-      final anyData = tx.select('SELECT 1 FROM ps_crud LIMIT 1');
+    return await writeTransaction((tx) async {
+      final anyData = await tx.execute('SELECT 1 FROM ps_crud LIMIT 1');
       if (anyData.isNotEmpty) {
         return false;
       }
-      final rs =
-          tx.select('SELECT seq FROM sqlite_sequence WHERE name = \'ps_crud\'');
+      final rs = await tx
+          .execute('SELECT seq FROM sqlite_sequence WHERE name = \'ps_crud\'');
       assert(rs.isNotEmpty);
 
       int seqAfter = rs.first['seq'];
@@ -640,26 +618,26 @@ class BucketStorage {
         return false;
       }
 
-      tx.select(
+      await tx.execute(
           "UPDATE ps_buckets SET target_op = ? WHERE name='\$local'", [opId]);
 
       return true;
     });
   }
 
-  bool hasCrud() {
-    final anyData = select('SELECT 1 FROM ps_crud LIMIT 1');
+  Future<bool> hasCrud() async {
+    final anyData = await select('SELECT 1 FROM ps_crud LIMIT 1');
     return anyData.isNotEmpty;
   }
 
   /// For tests only. Others should use the version on PowerSyncDatabase.
-  CrudBatch? getCrudBatch({int limit = 100}) {
-    if (!hasCrud()) {
+  Future<CrudBatch?> getCrudBatch({int limit = 100}) async {
+    if (!(await hasCrud())) {
       return null;
     }
 
     final rows =
-        select('SELECT * FROM ps_crud ORDER BY id ASC LIMIT ?', [limit]);
+        await select('SELECT * FROM ps_crud ORDER BY id ASC LIMIT ?', [limit]);
     List<CrudEntry> all = [];
     for (var row in rows) {
       all.add(CrudEntry.fromRow(row));
@@ -672,14 +650,14 @@ class BucketStorage {
         crud: all,
         haveMore: true,
         complete: ({String? writeCheckpoint}) async {
-          await writeTransaction((db) {
+          await writeTransaction((db) async {
             db.execute('DELETE FROM ps_crud WHERE id <= ?', [last.clientId]);
             if (writeCheckpoint != null &&
-                db.select('SELECT 1 FROM ps_crud LIMIT 1').isEmpty) {
-              db.execute(
+                (await db.execute('SELECT 1 FROM ps_crud LIMIT 1')).isEmpty) {
+              await db.execute(
                   'UPDATE ps_buckets SET target_op = $writeCheckpoint WHERE name=\'\$local\'');
             } else {
-              db.execute(
+              await db.execute(
                   'UPDATE ps_buckets SET target_op = $maxOpId WHERE name=\'\$local\'');
             }
           });
@@ -691,14 +669,9 @@ class BucketStorage {
   /// is assumed that multiple functions on this instance won't be called
   /// concurrently.
   Future<T> writeTransaction<T>(
-      FutureOr<T> Function(sqlite.CommonDatabase tx) callback,
+      Future<T> Function(SqliteWriteContext tx) callback,
       {Duration? lockTimeout}) async {
-    // return mutex.lock(() async {
-    //   final r = await asyncDirectTransaction(_internalDb, callback);
-    //   return r;
-    // });
-    //  return mutex.lock(() async {
-    return asyncDirectTransaction(_internalDb, callback);
+    return _internalDb.writeTransaction(callback);
   }
 }
 

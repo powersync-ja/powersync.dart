@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import './database/database_interface.dart';
+import 'database/abstract_powersync_database.dart';
 
 /// Implement this to connect an app backend.
 ///

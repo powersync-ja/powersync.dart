@@ -1,4 +1,5 @@
 import 'package:powersync/powersync.dart';
+import 'package:powersync/sqlite_async.dart';
 import 'package:powersync/src/bucket_storage.dart';
 import 'package:powersync/src/sync_types.dart';
 import 'package:sqlite_async/sqlite3.dart' as sqlite;
@@ -52,7 +53,7 @@ void main() {
 
       powersync = await setupPowerSync(path: path);
       db = await setupSqlite(powersync: powersync);
-      bucketStorage = BucketStorage(db, mutex: Mutex());
+      bucketStorage = BucketStorage(powersync);
     });
 
     Future<void> syncLocalChecked(Checkpoint checkpoint) async {
@@ -389,7 +390,8 @@ void main() {
           schema: const Schema([]));
       await powersync.initialize();
       db = await setupSqlite(powersync: powersync);
-      bucketStorage = BucketStorage(db, mutex: Mutex());
+      bucketStorage = BucketStorage(SyncSqliteConnection(
+          db, powersync.database.isolateConnectionFactory().mutex));
 
       await bucketStorage.saveSyncData(SyncDataBatch([
         SyncBucketData(
@@ -509,7 +511,7 @@ void main() {
           checksums: [BucketChecksum(bucket: 'bucket1', checksum: 6)]));
       expect(result, equals(SyncLocalDatabaseResult(ready: false)));
 
-      final batch = bucketStorage.getCrudBatch();
+      final batch = await bucketStorage.getCrudBatch();
       await batch!.complete();
       await bucketStorage.updateLocalTarget(() async {
         return '4';
@@ -561,7 +563,7 @@ void main() {
       // Local save
       db.execute('INSERT INTO assets(id) VALUES(?)', ['O3']);
 
-      final batch = bucketStorage.getCrudBatch();
+      final batch = await bucketStorage.getCrudBatch();
       await batch!.complete();
       await bucketStorage.updateLocalTarget(() async {
         return '4';
@@ -603,7 +605,7 @@ void main() {
 
       // Local save
       db.execute('INSERT INTO assets(id) VALUES(?)', ['O3']);
-      final batch = bucketStorage.getCrudBatch();
+      final batch = await bucketStorage.getCrudBatch();
       // Add more data before the complete() call
 
       db.execute('INSERT INTO assets(id) VALUES(?)', ['O4']);
@@ -642,7 +644,7 @@ void main() {
 
       // Local save
       db.execute('INSERT INTO assets(id) VALUES(?)', ['O3']);
-      final batch = bucketStorage.getCrudBatch();
+      final batch = await bucketStorage.getCrudBatch();
       await batch!.complete();
       await bucketStorage.updateLocalTarget(() async {
         return '4';

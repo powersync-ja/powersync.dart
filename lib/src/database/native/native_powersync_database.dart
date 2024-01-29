@@ -1,20 +1,19 @@
 import 'dart:async';
 import 'dart:isolate';
+import 'package:meta/meta.dart';
 
 import 'package:logging/logging.dart';
 import 'package:sqlite_async/sqlite3.dart' as sqlite;
 import 'package:sqlite_async/sqlite_async.dart';
-import '../../migrations.dart';
-import '../../open_factory/open_factory_interface.dart';
+import '../../open_factory/abstract_powersync_open_factory.dart';
 import '../../open_factory/native/native_open_factory.dart';
-import '../database_interface.dart';
+import '../abstract_powersync_database.dart';
 
 import '../../abort_controller.dart';
 import '../../bucket_storage.dart';
 import '../../connector.dart';
 import '../../isolate_completer.dart';
 import '../../log.dart';
-import '../../powersync_update_notification.dart';
 import '../../schema.dart';
 import '../../schema_logic.dart';
 import '../../streaming_sync.dart';
@@ -30,6 +29,16 @@ import '../../sync_status.dart';
 /// All changes to local tables are automatically recorded, whether connected
 /// or not. Once connected, the changes are uploaded.
 class PowerSyncDatabase extends AbstractPowerSyncDatabase {
+  @override
+  Schema schema;
+
+  @override
+  SqliteDatabase database;
+
+  @override
+  @protected
+  late Future<void> isInitialized;
+
   /// Open a [PowerSyncDatabase].
   ///
   /// Only a single [PowerSyncDatabase] per [path] should be opened at a time.
@@ -45,12 +54,12 @@ class PowerSyncDatabase extends AbstractPowerSyncDatabase {
   factory PowerSyncDatabase(
       {required Schema schema,
       required String path,
-      int maxReaders = SqliteDatabase.defaultMaxReaders,
+      int maxReaders = AbstractSqliteDatabase.defaultMaxReaders,
       @Deprecated("Use [PowerSyncDatabase.withFactory] instead")
       // ignore: deprecated_member_use_from_same_package
       SqliteConnectionSetup? sqliteSetup}) {
     // ignore: deprecated_member_use_from_same_package
-    AbstractDefaultSqliteOpenFactory<sqlite.Database> factory =
+    DefaultSqliteOpenFactory factory =
         PowerSyncOpenFactory(path: path, sqliteSetup: sqliteSetup);
     return PowerSyncDatabase.withFactory(factory, schema: schema);
   }
@@ -61,10 +70,9 @@ class PowerSyncDatabase extends AbstractPowerSyncDatabase {
   /// additional logic to run inside the database isolate before or after opening.
   ///
   /// Subclass [PowerSyncOpenFactory] to add custom logic to this process.
-  factory PowerSyncDatabase.withFactory(
-      AbstractDefaultSqliteOpenFactory<sqlite.Database> openFactory,
+  factory PowerSyncDatabase.withFactory(DefaultSqliteOpenFactory openFactory,
       {required Schema schema,
-      int maxReaders = SqliteDatabase.defaultMaxReaders}) {
+      int maxReaders = AbstractSqliteDatabase.defaultMaxReaders}) {
     final db = SqliteDatabase.withFactory(openFactory, maxReaders: maxReaders);
     return PowerSyncDatabase.withDatabase(schema: schema, database: db);
   }
@@ -73,32 +81,14 @@ class PowerSyncDatabase extends AbstractPowerSyncDatabase {
   ///
   /// Migrations are run on the database when this constructor is called.
   PowerSyncDatabase.withDatabase(
-      {required Schema schema, required SqliteDatabase database}) {
-    super.schema = schema;
-    super.database = database;
-    // Cant extend _members in Dart :(
+      {required this.schema, required this.database}) {
     isInitialized = _init();
   }
 
   Future<void> _init() async {
-    // TODO a nice way to extend this common logic in Dart
-    statusStream = statusStreamController.stream;
-    updates = database.updates
-        .map((update) =>
-            PowerSyncUpdateNotification.fromUpdateNotification(update))
-        .where((update) => update.isNotEmpty)
-        .cast<UpdateNotification>();
+    await super.baseInit();
 
-    await database.initialize();
-    await migrations.migrate(database);
-    // TODO use Rust SQLite extension
-    // await database.execute('SELECT powersync_init()');
-    await updateSchemaInIsolate(database, schema);
-  }
-
-  @override
-  bool get closed {
-    return database.closed;
+    await updateSchema(schema);
   }
 
   /// Connect to the PowerSync service, and keep the databases in sync.
@@ -207,29 +197,6 @@ class PowerSyncDatabase extends AbstractPowerSyncDatabase {
     }
   }
 
-  /// A connection factory that can be passed to different isolates.
-  ///
-  /// Use this to access the database in background isolates.
-  isolateConnectionFactory() {
-    return database.isolateConnectionFactory();
-  }
-
-  /// Close the database, releasing resources.
-  ///
-  /// Also [disconnect]s any active connection.
-  ///
-  /// Once close is called, this connection cannot be used again - a new one
-  /// must be constructed.
-  @override
-  Future<void> close() async {
-    // Don't close in the middle of the initialization process.
-    await isInitialized;
-    // Disconnect any active sync connection.
-    await disconnect();
-    // Now we can close the database
-    await database.close();
-  }
-
   /// Takes a read lock, without starting a transaction.
   ///
   /// In most cases, [readTransaction] should be used instead.
@@ -251,11 +218,17 @@ class PowerSyncDatabase extends AbstractPowerSyncDatabase {
     return database.writeLock(callback,
         debugContext: debugContext, lockTimeout: lockTimeout);
   }
+
+  @override
+  Future<void> updateSchema(Schema schema) {
+    this.schema = schema;
+    return updateSchemaInIsolate(database, schema);
+  }
 }
 
 class _PowerSyncDatabaseIsolateArgs {
   final SendPort sPort;
-  final IsolateConnectionFactory dbRef;
+  final AbstractIsolateConnectionFactory dbRef;
   final Duration retryDelay;
 
   _PowerSyncDatabaseIsolateArgs(this.sPort, this.dbRef, this.retryDelay);
@@ -279,11 +252,11 @@ Future<void> _powerSyncDatabaseIsolate(
       } else if (action == 'close') {
         // This prevents any further transactions being opened, which would
         // eventually terminate the sync loop.
-        await mutex.close();
+        // await mutex.close();
         db?.dispose();
         db = null;
         updateController.close();
-        upstreamDbClient.close();
+        // upstreamDbClient.close();
         Isolate.current.kill();
       }
     }
@@ -319,11 +292,11 @@ Future<void> _powerSyncDatabaseIsolate(
   }
 
   runZonedGuarded(() async {
-    db = await args.dbRef.openFactory
+    final database = await args.dbRef.openFactory
         .open(SqliteOpenOptions(primaryConnection: false, readOnly: false));
+    final connection = SyncSqliteConnection(database, mutex);
 
-    final storage = BucketStorage(db!);
-    // final storage = BucketStorage(db!, mutex: mutex!);
+    final storage = BucketStorage(connection);
     final sync = StreamingSyncImplementation(
         adapter: storage,
         credentialsCallback: loadCredentials,

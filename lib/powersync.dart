@@ -3,7 +3,7 @@
 /// Use [PowerSyncDatabase] to open a database.
 library;
 
-export 'src/database/database_interface.dart';
+export 'src/database/abstract_powersync_database.dart';
 export 'src/powersync_database.dart';
 export 'src/schema.dart';
 export 'src/connector.dart';

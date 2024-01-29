@@ -1,22 +1,18 @@
 import 'dart:async';
 
-import 'package:powersync/src/open_factory/open_factory_interface.dart';
+import 'package:flutter/foundation.dart';
+import 'package:powersync/src/open_factory/abstract_powersync_open_factory.dart';
 import 'package:powersync/src/open_factory/web/web_open_factory.dart';
-import 'package:powersync/src/powersync_update_notification.dart';
 import 'package:powersync/src/streaming_sync.dart';
-import 'package:sqlite_async/sqlite3_common.dart';
 import 'package:sqlite_async/sqlite_async.dart';
 
 import '../../bucket_storage.dart';
-import '../../migrations.dart';
-import '../../schema_helpers.dart';
-import '../database_interface.dart';
+import '../../schema_helpers.dart' as schema_helpers;
+import '../abstract_powersync_database.dart';
 
 import '../../abort_controller.dart';
 import '../../connector.dart';
 import '../../schema.dart';
-
-/// TODO add worker implementation
 
 /// A PowerSync managed database.
 ///
@@ -28,13 +24,17 @@ import '../../schema.dart';
 /// All changes to local tables are automatically recorded, whether connected
 /// or not. Once connected, the changes are uploaded.
 class PowerSyncDatabase extends AbstractPowerSyncDatabase {
-  /// Broadcast stream that is notified of any table updates.
-  ///
-  /// Unlike in [SqliteDatabase.updates], the tables reported here are the
-  /// higher-level views as defined in the [Schema], and exclude the low-level
-  /// PowerSync tables.
   @override
-  late final Stream<UpdateNotification> updates;
+  Schema schema;
+
+  @override
+  SqliteDatabase database;
+
+  late final DefaultSqliteOpenFactory openFactory;
+
+  @override
+  @protected
+  late Future<void> isInitialized;
 
   /// Open a [PowerSyncDatabase].
   ///
@@ -55,8 +55,7 @@ class PowerSyncDatabase extends AbstractPowerSyncDatabase {
       // ignore: deprecated_member_use_from_same_package
       SqliteConnectionSetup? sqliteSetup}) {
     // ignore: deprecated_member_use_from_same_package
-    AbstractDefaultSqliteOpenFactory<CommonDatabase> factory =
-        PowerSyncOpenFactory(path: path);
+    DefaultSqliteOpenFactory factory = PowerSyncOpenFactory(path: path);
     return PowerSyncDatabase.withFactory(factory, schema: schema);
   }
 
@@ -66,9 +65,9 @@ class PowerSyncDatabase extends AbstractPowerSyncDatabase {
   /// additional logic to run inside the database isolate before or after opening.
   ///
   /// Subclass [PowerSyncOpenFactory] to add custom logic to this process.
-  factory PowerSyncDatabase.withFactory(
-      AbstractDefaultSqliteOpenFactory<CommonDatabase> openFactory,
-      {required Schema schema}) {
+  factory PowerSyncDatabase.withFactory(DefaultSqliteOpenFactory openFactory,
+      {required Schema schema,
+      int maxReaders = AbstractSqliteDatabase.defaultMaxReaders}) {
     final db = SqliteDatabase.withFactory(openFactory, maxReaders: 1);
     return PowerSyncDatabase.withDatabase(schema: schema, database: db);
   }
@@ -77,31 +76,17 @@ class PowerSyncDatabase extends AbstractPowerSyncDatabase {
   ///
   /// Migrations are run on the database when this constructor is called.
   PowerSyncDatabase.withDatabase(
-      {required Schema schema, required SqliteDatabase database}) {
-    super.database = database;
-    super.schema = schema;
+      {required this.schema, required this.database}) {
     isInitialized = _init();
   }
 
   Future<void> _init() async {
-    // TODO a nice way to extend this common logic in Dart
-    statusStream = statusStreamController.stream;
-    updates = database.updates
-        .map((update) =>
-            PowerSyncUpdateNotification.fromUpdateNotification(update))
-        .where((update) => update.isNotEmpty)
-        .cast<UpdateNotification>();
-    await database.initialize();
-    await migrations.migrate(database);
+    await super.baseInit();
     // Update schema
-    database.computeWithDatabase((db) async => updateSchema(db, schema));
+    await updateSchema(schema);
   }
 
   @override
-  bool get closed {
-    // TODO
-    return false;
-  }
 
   /// Connect to the PowerSync service, and keep the databases in sync.
   ///
@@ -116,9 +101,8 @@ class PowerSyncDatabase extends AbstractPowerSyncDatabase {
 
     await isInitialized;
 
-    final db = await database.openFactory
-        .open(SqliteOpenOptions(primaryConnection: false, readOnly: false));
-    final storage = BucketStorage(db);
+    // TODO multitab support
+    final storage = BucketStorage(database);
     final sync = StreamingSyncImplementation(
         adapter: storage,
         credentialsCallback: connector.getCredentialsCached,
@@ -127,22 +111,6 @@ class PowerSyncDatabase extends AbstractPowerSyncDatabase {
         updateStream: updates,
         retryDelay: Duration(seconds: 3));
     sync.streamingSync();
-  }
-
-  /// Close the database, releasing resources.
-  ///
-  /// Also [disconnect]s any active connection.
-  ///
-  /// Once close is called, this connection cannot be used again - a new one
-  /// must be constructed.
-  @override
-  Future<void> close() async {
-    // Don't close in the middle of the initialization process.
-    await isInitialized;
-    // Disconnect any active sync connection.
-    await disconnect();
-
-    // TODO close DB
   }
 
   /// Takes a read lock, without starting a transaction.
@@ -165,5 +133,12 @@ class PowerSyncDatabase extends AbstractPowerSyncDatabase {
     await isInitialized;
     return database.writeLock(callback,
         debugContext: debugContext, lockTimeout: lockTimeout);
+  }
+
+  @override
+  Future<void> updateSchema(Schema schema) {
+    this.schema = schema;
+    return database
+        .writeLock((tx) async => schema_helpers.updateSchema(tx, schema));
   }
 }
