@@ -9,12 +9,14 @@ class AttachmentsService {
   final PowerSyncDatabase db;
   final LocalStorageAdapter localStorage;
   final String attachmentDirectoryName;
+  final String attachmentsQueueTableName;
 
-  AttachmentsService(this.db, this.localStorage, this.attachmentDirectoryName);
+  AttachmentsService(this.db, this.localStorage, this.attachmentDirectoryName,
+      this.attachmentsQueueTableName);
 
   /// Table used for storing attachments in the attachment queue.
   get table {
-    return attachmentsQueueTable;
+    return attachmentsQueueTableName;
   }
 
   /// Delete the attachment from the attachment queue.
