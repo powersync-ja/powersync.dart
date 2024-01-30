@@ -354,19 +354,6 @@ class StreamingSyncImplementation {
   }
 }
 
-http.ClientException getError(http.Response response) {
-  try {
-    final body = response.body;
-    final decoded = convert.jsonDecode(body);
-    final details = decoded['error']?['details']?[0] ?? body;
-    final message = '${response.reasonPhrase ?? "Request failed"}: $details';
-    return http.ClientException(message, response.request?.url);
-  } on Error catch (_) {
-    return http.ClientException(
-        response.reasonPhrase ?? "Request failed", response.request?.url);
-  }
-}
-
 /// Attempt to give a basic summary of the error for cases where the full error
 /// is not logged.
 String _syncErrorMessage(Object? error) {
