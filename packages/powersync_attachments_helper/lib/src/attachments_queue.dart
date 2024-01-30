@@ -22,14 +22,16 @@ abstract class AbstractAttachmentQueue {
   late AttachmentsService attachmentsService;
   late SyncingService syncingService;
   final LocalStorageAdapter localStorage = LocalStorageAdapter();
+  String attachmentsQueueTableName;
 
   AbstractAttachmentQueue(
       {required this.db,
       required this.remoteStorage,
       this.attachmentDirectoryName = 'attachments',
+      this.attachmentsQueueTableName = defaultAttachmentsQueueTableName,
       performInitialSync = true}) {
-    attachmentsService =
-        AttachmentsService(db, localStorage, attachmentDirectoryName);
+    attachmentsService = AttachmentsService(
+        db, localStorage, attachmentDirectoryName, attachmentsQueueTableName);
     syncingService = SyncingService(
         db, remoteStorage, localStorage, attachmentsService, getLocalUri);
   }

@@ -22,5 +22,6 @@ Schema schema = Schema(([
     Column.text('name'),
     Column.text('owner_id')
   ]),
-  AttachmentsQueueTable()
+  AttachmentsQueueTable(
+      attachmentsQueueTableName: defaultAttachmentsQueueTableName)
 ]));
