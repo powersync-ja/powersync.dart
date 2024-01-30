@@ -99,8 +99,7 @@ class PowerSyncDatabase extends AbstractPowerSyncDatabase {
   connect({required PowerSyncBackendConnector connector}) async {
     // Disconnect if connected
     await disconnect();
-    final disconnector = AbortController();
-    disconnecter = disconnector;
+    disconnecter = AbortController();
 
     await isInitialized;
     final dbref = database.isolateConnectionFactory();
@@ -127,7 +126,7 @@ class PowerSyncDatabase extends AbstractPowerSyncDatabase {
           updateSubscription = throttled.listen((event) {
             port.send(['update']);
           });
-          disconnector.onAbort.then((_) {
+          disconnecter?.onAbort.then((_) {
             port.send(['close']);
           }).ignore();
         } else if (action == 'uploadCrud') {
@@ -221,6 +220,9 @@ class PowerSyncDatabase extends AbstractPowerSyncDatabase {
 
   @override
   Future<void> updateSchema(Schema schema) {
+    if (disconnecter != null) {
+      throw AssertionError('Cannot update schema while connected');
+    }
     this.schema = schema;
     return updateSchemaInIsolate(database, schema);
   }

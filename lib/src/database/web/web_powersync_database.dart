@@ -137,6 +137,9 @@ class PowerSyncDatabase extends AbstractPowerSyncDatabase {
 
   @override
   Future<void> updateSchema(Schema schema) {
+    if (disconnecter != null) {
+      throw AssertionError('Cannot update schema while connected');
+    }
     this.schema = schema;
     return database
         .writeLock((tx) async => schema_helpers.updateSchema(tx, schema));
