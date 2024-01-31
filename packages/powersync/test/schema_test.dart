@@ -20,11 +20,10 @@ final schema = Schema([
   Table('customers', [Column.text('name'), Column.text('email')]),
   Table.insertOnly('logs', [Column.text('level'), Column.text('content')]),
   Table.localOnly('credentials', [Column.text('key'), Column.text('value')]),
+  Table('aliased', [Column.text('name')], viewName: 'test1')
 ]);
 
 void main() {
-  setupLogger();
-
   group('Schema Tests', () {
     late String path;
 
@@ -40,7 +39,7 @@ void main() {
       final powersync = await setupPowerSync(path: path, schema: schema);
 
       final versionBefore = await powersync.get('PRAGMA schema_version');
-      await powersync.execute('SELECT powersync_replace_schema(?)', [schema]);
+      await powersync.updateSchema(schema);
       final versionAfter = await powersync.get('PRAGMA schema_version');
 
       // No change
@@ -65,8 +64,10 @@ void main() {
             'logs', [Column.text('level'), Column.text('content')]),
         Table.localOnly(
             'credentials', [Column.text('key'), Column.text('value')]),
+        Table('aliased', [Column.text('name')], viewName: 'test1')
       ]);
-      await powersync.execute('SELECT powersync_replace_schema(?)', [schema2]);
+
+      await powersync.updateSchema(schema2);
 
       final versionAfter2 = await powersync.get('PRAGMA schema_version');
 
@@ -93,8 +94,10 @@ void main() {
             'logs', [Column.text('level'), Column.text('content')]),
         Table.localOnly(
             'credentials', [Column.text('key'), Column.text('value')]),
+        Table('aliased', [Column.text('name')], viewName: 'test1')
       ]);
-      await powersync.execute('SELECT powersync_replace_schema(?)', [schema3]);
+
+      await powersync.updateSchema(schema3);
 
       final versionAfter3 = await powersync.get('PRAGMA schema_version');
 
@@ -125,7 +128,7 @@ void main() {
           Column.text('description'),
         ], indexes: []),
       ]);
-      await powersync.execute('SELECT powersync_replace_schema(?)', [schema2]);
+      await powersync.updateSchema(schema2);
 
       // Execute instead of getAll so that we don't get a cached query plan
       // from a different connection
