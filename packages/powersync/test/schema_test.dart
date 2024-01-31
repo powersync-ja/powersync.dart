@@ -20,6 +20,7 @@ final schema = Schema([
   Table('customers', [Column.text('name'), Column.text('email')]),
   Table.insertOnly('logs', [Column.text('level'), Column.text('content')]),
   Table.localOnly('credentials', [Column.text('key'), Column.text('value')]),
+  Table('aliased', [Column.text('name')], viewName: 'test1')
 ]);
 
 void main() {
@@ -63,6 +64,7 @@ void main() {
             'logs', [Column.text('level'), Column.text('content')]),
         Table.localOnly(
             'credentials', [Column.text('key'), Column.text('value')]),
+        Table('aliased', [Column.text('name')], viewName: 'test1')
       ]);
 
       await powersync.updateSchema(schema2);
@@ -92,6 +94,7 @@ void main() {
             'logs', [Column.text('level'), Column.text('content')]),
         Table.localOnly(
             'credentials', [Column.text('key'), Column.text('value')]),
+        Table('aliased', [Column.text('name')], viewName: 'test1')
       ]);
 
       await powersync.updateSchema(schema3);

@@ -187,13 +187,13 @@ void updateSchema(sqlite.Database db, Schema schema) {
   Set<String> toRemove = {for (var row in existingViewRows) row['name']};
 
   for (var table in schema.tables) {
-    toRemove.remove(table.name);
+    toRemove.remove(table.viewName);
 
     var createViewOp = createViewStatement(table);
     var triggers = createViewTriggerStatements(table);
     var existingRows = db.select(
         "SELECT sql FROM sqlite_master WHERE (type = 'view' AND name = ?) OR (type = 'trigger' AND tbl_name = ?) ORDER BY type DESC, name ASC",
-        [table.name, table.name]);
+        [table.viewName, table.viewName]);
     if (existingRows.isNotEmpty) {
       final dbSql = existingRows.map((row) => row['sql']).join('\n\n');
       final generatedSql =
@@ -203,7 +203,7 @@ void updateSchema(sqlite.Database db, Schema schema) {
         continue;
       } else {
         // View and/or triggers changed - delete and re-create.
-        db.execute('DROP VIEW ${quoteIdentifier(table.name)}');
+        db.execute('DROP VIEW ${quoteIdentifier(table.viewName)}');
       }
     } else {
       // New - create
