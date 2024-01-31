@@ -3,7 +3,6 @@ import 'package:powersync/sqlite_async.dart';
 import 'package:powersync/src/bucket_storage.dart';
 import 'package:powersync/src/sync_types.dart';
 import 'package:sqlite_async/sqlite3.dart' as sqlite;
-import 'package:sqlite_async/mutex.dart';
 import 'package:test/test.dart';
 
 import 'util.dart';
@@ -78,7 +77,7 @@ void main() {
     }
 
     test('Basic Setup', () async {
-      expect(bucketStorage.getBucketStates(), equals([]));
+      expect(await bucketStorage.getBucketStates(), equals([]));
 
       await bucketStorage.saveSyncData(SyncDataBatch([
         SyncBucketData(
@@ -87,7 +86,8 @@ void main() {
         )
       ]));
 
-      expect(bucketStorage.getBucketStates(),
+      final bucketStates = await bucketStorage.getBucketStates();
+      expect(bucketStates,
           equals([const BucketState(bucket: 'bucket1', opId: '3')]));
 
       await syncLocalChecked(Checkpoint(

@@ -173,7 +173,7 @@ END"""
 
 /// Sync the schema to the local database.
 /// Must be wrapped in a transaction.
-void updateSchema(SqliteWriteContext tx, Schema schema) async {
+Future<void> updateSchema(SqliteWriteContext tx, Schema schema) async {
   for (var table in schema.tables) {
     table.validate();
   }

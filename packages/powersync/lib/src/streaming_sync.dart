@@ -1,8 +1,6 @@
 import 'dart:async';
 import 'dart:convert' as convert;
-import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
-import 'package:fetch_client/fetch_client.dart';
 import 'package:powersync/src/exceptions.dart';
 import 'package:powersync/src/log_internal.dart';
 
@@ -24,13 +22,13 @@ class StreamingSyncImplementation {
 
   final Future<void> Function() uploadCrud;
 
-  late http.Client _client;
-
   final Stream updateStream;
 
   final StreamController<SyncStatus> _statusStreamController =
       StreamController<SyncStatus>.broadcast();
   late final Stream<SyncStatus> statusStream;
+
+  late final http.Client _client;
 
   final StreamController _localPingController = StreamController.broadcast();
 
@@ -44,8 +42,9 @@ class StreamingSyncImplementation {
       this.invalidCredentialsCallback,
       required this.uploadCrud,
       required this.updateStream,
-      required this.retryDelay}) {
-    _client = http.Client();
+      required this.retryDelay,
+      required http.Client client}) {
+    _client = client;
     statusStream = _statusStreamController.stream;
   }
 
@@ -333,10 +332,7 @@ class StreamingSyncImplementation {
     request.headers['Authorization'] = "Token ${credentials.token}";
     request.body = convert.jsonEncode(data);
 
-    // HTTP streaming is not supported on web with the standard http package
-    // https://github.com/dart-lang/http/issues/595
-    final res = await (kIsWeb ? FetchClient(mode: RequestMode.cors) : _client)
-        .send(request);
+    final res = await _client.send(request);
 
     if (res.statusCode == 401) {
       if (invalidCredentialsCallback != null) {

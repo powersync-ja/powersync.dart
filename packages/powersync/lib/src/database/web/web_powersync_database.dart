@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:fetch_client/fetch_client.dart';
 import 'package:flutter/foundation.dart';
 import 'package:logging/logging.dart';
 import 'package:powersync/src/log.dart';
@@ -119,6 +120,8 @@ class PowerSyncDatabase extends AbstractPowerSyncDatabase {
   ///
   /// Status changes are reported on [statusStream].
   connect({required PowerSyncBackendConnector connector}) async {
+    await initialize();
+
     // Disconnect if connected
     await disconnect();
     final disconnector = AbortController();
@@ -128,13 +131,17 @@ class PowerSyncDatabase extends AbstractPowerSyncDatabase {
 
     // TODO multitab support
     final storage = BucketStorage(database);
+
     final sync = StreamingSyncImplementation(
         adapter: storage,
         credentialsCallback: connector.getCredentialsCached,
         invalidCredentialsCallback: connector.fetchCredentials,
         uploadCrud: () => connector.uploadData(this),
         updateStream: updates,
-        retryDelay: Duration(seconds: 3));
+        retryDelay: Duration(seconds: 3),
+        // HTTP streaming is not supported on web with the standard http package
+        // https://github.com/dart-lang/http/issues/595
+        client: FetchClient(mode: RequestMode.cors));
     sync.streamingSync();
   }
 

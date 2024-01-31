@@ -1,10 +1,12 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:isolate';
 import 'package:meta/meta.dart';
 
+import 'package:http/http.dart' as http;
 import 'package:logging/logging.dart';
 import 'package:powersync/src/log_internal.dart';
-import 'package:sqlite_async/sqlite3.dart' as sqlite;
+import 'package:sqlite_async/sqlite3_common.dart';
 import 'package:sqlite_async/sqlite_async.dart';
 import '../../open_factory/abstract_powersync_open_factory.dart';
 import '../../open_factory/native/native_open_factory.dart';
@@ -40,6 +42,8 @@ class PowerSyncDatabase extends AbstractPowerSyncDatabase {
   @protected
   late Future<void> isInitialized;
 
+  @override
+
   /// The Logger used by this [PowerSyncDatabase].
   ///
   /// The default is [autoLogger], which logs to the console in debug builds.
@@ -72,7 +76,8 @@ class PowerSyncDatabase extends AbstractPowerSyncDatabase {
     // ignore: deprecated_member_use_from_same_package
     DefaultSqliteOpenFactory factory =
         PowerSyncOpenFactory(path: path, sqliteSetup: sqliteSetup);
-    return PowerSyncDatabase.withFactory(factory, schema: schema);
+    return PowerSyncDatabase.withFactory(factory,
+        schema: schema, logger: logger);
   }
 
   /// Open a [PowerSyncDatabase] with a [PowerSyncOpenFactory].
@@ -99,6 +104,11 @@ class PowerSyncDatabase extends AbstractPowerSyncDatabase {
   /// [logger] defaults to [autoLogger], which logs to the console in debug builds.s
   PowerSyncDatabase.withDatabase(
       {required this.schema, required this.database, Logger? logger}) {
+    if (logger != null) {
+      this.logger = logger;
+    } else {
+      this.logger = autoLogger;
+    }
     isInitialized = _init();
   }
 
@@ -114,6 +124,8 @@ class PowerSyncDatabase extends AbstractPowerSyncDatabase {
   ///
   /// Status changes are reported on [statusStream].
   connect({required PowerSyncBackendConnector connector}) async {
+    await initialize();
+
     // Disconnect if connected
     await disconnect();
     disconnecter = AbortController();
@@ -260,7 +272,7 @@ Future<void> _powerSyncDatabaseIsolate(
   StreamController updateController = StreamController.broadcast();
   final upstreamDbClient = args.dbRef.upstreamPort.open();
 
-  sqlite.Database? db;
+  CommonDatabase? db;
   final mutex = args.dbRef.mutex.open();
 
   rPort.listen((message) async {
@@ -311,9 +323,9 @@ Future<void> _powerSyncDatabaseIsolate(
   }
 
   runZonedGuarded(() async {
-    final database = await args.dbRef.openFactory
+    db = await args.dbRef.openFactory
         .open(SqliteOpenOptions(primaryConnection: false, readOnly: false));
-    final connection = SyncSqliteConnection(database, mutex);
+    final connection = SyncSqliteConnection(db!, mutex);
 
     final storage = BucketStorage(connection);
     final sync = StreamingSyncImplementation(
@@ -322,7 +334,8 @@ Future<void> _powerSyncDatabaseIsolate(
         invalidCredentialsCallback: invalidateCredentials,
         uploadCrud: uploadCrud,
         updateStream: updateController.stream,
-        retryDelay: args.retryDelay);
+        retryDelay: args.retryDelay,
+        client: http.Client());
     sync.streamingSync();
     sync.statusStream.listen((event) {
       sPort.send(['status', event]);

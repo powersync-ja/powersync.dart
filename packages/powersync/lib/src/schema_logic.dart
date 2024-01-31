@@ -6,6 +6,6 @@ import 'schema_helpers.dart';
 Future<void> updateSchemaInIsolate(
     SqliteConnection database, Schema schema) async {
   await database.writeLock((tx) async {
-    updateSchema(tx, schema);
+    await updateSchema(tx, schema);
   });
 }
