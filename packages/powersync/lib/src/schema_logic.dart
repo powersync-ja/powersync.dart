@@ -239,12 +239,33 @@ void _createTablesAndIndexes(sqlite.Database db, Schema schema) {
       "SELECT name, sql FROM sqlite_master WHERE type='index' AND name GLOB 'ps_data_*'");
 
   final Set<String> remainingTables = {};
-  final Map<String, String> remainingIndexes = {};
+  final Map<String, String> indexesToDrop = {};
+  final List<String> createIndexes = [];
   for (final row in existingTableRows) {
     remainingTables.add(row['name'] as String);
   }
   for (final row in existingIndexRows) {
-    remainingIndexes[row['name'] as String] = row['sql'] as String;
+    indexesToDrop[row['name'] as String] = row['sql'] as String;
+  }
+
+  for (final table in schema.tables) {
+    for (final index in table.indexes) {
+      final fullName = index.fullName(table);
+      final sql = index.toSqlDefinition(table);
+      if (indexesToDrop.containsKey(fullName)) {
+        final existingSql = indexesToDrop[fullName];
+        if (existingSql == sql) {
+          // No change (don't drop)
+          indexesToDrop.remove(fullName);
+        } else {
+          // Drop and create
+          createIndexes.add(sql);
+        }
+      } else {
+        // New index - create
+        createIndexes.add(sql);
+      }
+    }
   }
 
   for (final table in schema.tables) {
@@ -274,24 +295,14 @@ void _createTablesAndIndexes(sqlite.Database db, Schema schema) {
     FROM ps_untyped
     WHERE type = ?""", [table.name]);
     }
-
-    for (final index in table.indexes) {
-      final fullName = index.fullName(table);
-      final sql = index.toSqlDefinition(table);
-      if (remainingIndexes.containsKey(fullName)) {
-        final existingSql = remainingIndexes[fullName];
-        if (existingSql == sql) {
-          continue;
-        } else {
-          db.execute('DROP INDEX ${quoteIdentifier(fullName)}');
-        }
-      }
-      db.execute(sql);
-    }
   }
 
-  for (final indexName in remainingIndexes.keys) {
+  for (final indexName in indexesToDrop.keys) {
     db.execute('DROP INDEX ${quoteIdentifier(indexName)}');
+  }
+
+  for (final sql in createIndexes) {
+    db.execute(sql);
   }
 
   for (final tableName in remainingTables) {
