@@ -103,13 +103,7 @@ class PowerSyncDatabase extends AbstractPowerSyncDatabase {
     } else {
       this.logger = autoLogger;
     }
-    isInitialized = _init();
-  }
-
-  Future<void> _init() async {
-    await super.baseInit();
-    // Update schema
-    await updateSchema(schema);
+    isInitialized = baseInit();
   }
 
   @override

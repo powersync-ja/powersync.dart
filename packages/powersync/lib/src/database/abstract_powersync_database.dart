@@ -2,8 +2,10 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:logging/logging.dart';
+import 'package:powersync/src/database_utils.dart';
 import 'package:powersync/src/migrations.dart';
 import 'package:powersync/src/powersync_update_notification.dart';
+import 'package:sqlite_async/sqlite3_common.dart';
 import 'package:sqlite_async/sqlite_async.dart';
 
 import '../abort_controller.dart';
@@ -85,6 +87,7 @@ abstract class AbstractPowerSyncDatabase
 
     await database.initialize();
     await migrations.migrate(database);
+    await updateSchema(schema);
   }
 
   /// Wait for initialization to complete.
@@ -165,27 +168,9 @@ abstract class AbstractPowerSyncDatabase
     });
   }
 
-  /// Disconnect and clear the database.
-  ///
-  /// Use this when logging out.
-  ///
-  /// The database can still be queried after this is called, but the tables
-  /// would be empty.
+  @Deprecated('Use [disconnectAndClear] instead.')
   Future<void> disconnectedAndClear() async {
-    await disconnect();
-
-    await writeTransaction((tx) async {
-      await tx.execute('DELETE FROM ps_oplog WHERE 1');
-      await tx.execute('DELETE FROM ps_crud WHERE 1');
-      await tx.execute('DELETE FROM ps_buckets WHERE 1');
-
-      final existingTableRows = await tx.getAll(
-          "SELECT name FROM sqlite_master WHERE type='table' AND name GLOB 'ps_data_*'");
-
-      for (var row in existingTableRows) {
-        await tx.execute('DELETE FROM "${row['name']}" WHERE 1');
-      }
-    });
+    await disconnectAndClear();
   }
 
   /// Whether a connection to the PowerSync service is currently open.
@@ -335,6 +320,32 @@ abstract class AbstractPowerSyncDatabase
   @override
   Future<T> writeLock<T>(Future<T> Function(SqliteWriteContext tx) callback,
       {String? debugContext, Duration? lockTimeout});
+
+  @override
+  Future<T> writeTransaction<T>(
+      Future<T> Function(SqliteWriteContext tx) callback,
+      {Duration? lockTimeout,
+      String? debugContext}) async {
+    return writeLock((ctx) async {
+      return await internalTrackedWriteTransaction(ctx, callback);
+    },
+        lockTimeout: lockTimeout,
+        debugContext: debugContext ?? 'writeTransaction()');
+  }
+
+  @override
+  Future<ResultSet> execute(String sql,
+      [List<Object?> parameters = const []]) async {
+    return writeLock((ctx) async {
+      try {
+        await ctx.execute(
+            'UPDATE ps_tx SET current_tx = next_tx, next_tx = next_tx + 1 WHERE id = 1');
+        return await ctx.execute(sql, parameters);
+      } finally {
+        await ctx.execute('UPDATE ps_tx SET current_tx = NULL WHERE id = 1');
+      }
+    }, debugContext: 'execute()');
+  }
 
   @override
   Future<bool> getAutoCommit() {

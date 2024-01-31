@@ -1,3 +1,8 @@
+## 1.2.1
+
+- Fix indexes incorrectly dropped after the first run.
+- Fix `viewName` override causing `view "..." already exists` errors after the first run.
+
 ## 1.2.0
 
 This release improves the default log output and errors to better assist in debugging.

@@ -1,10 +1,10 @@
 import 'dart:async';
-import 'dart:io';
 import 'dart:isolate';
 import 'package:meta/meta.dart';
 
 import 'package:http/http.dart' as http;
 import 'package:logging/logging.dart';
+import 'package:powersync/src/database_utils.dart';
 import 'package:powersync/src/log_internal.dart';
 import 'package:sqlite_async/sqlite3_common.dart';
 import 'package:sqlite_async/sqlite_async.dart';
@@ -109,13 +109,7 @@ class PowerSyncDatabase extends AbstractPowerSyncDatabase {
     } else {
       this.logger = autoLogger;
     }
-    isInitialized = _init();
-  }
-
-  Future<void> _init() async {
-    await super.baseInit();
-
-    await updateSchema(schema);
+    isInitialized = baseInit();
   }
 
   /// Connect to the PowerSync service, and keep the databases in sync.
@@ -198,6 +192,8 @@ class PowerSyncDatabase extends AbstractPowerSyncDatabase {
       disconnecter?.completeAbort();
       disconnecter = null;
       rPort.close();
+      // Clear status apart from lastSyncedAt
+      _setStatus(SyncStatus(lastSyncedAt: currentStatus.lastSyncedAt));
     }
 
     var exitPort = ReceivePort();
@@ -365,8 +361,6 @@ Future<void> _powerSyncDatabaseIsolate(
     // This should be rare - any uncaught error is a bug. And in most cases,
     // it should occur after the database is already open.
     db?.dispose();
-    db = null;
-    mutex.close();
     throw error;
   });
 }

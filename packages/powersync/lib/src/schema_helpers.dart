@@ -186,13 +186,13 @@ Future<void> updateSchema(SqliteWriteContext tx, Schema schema) async {
   Set<String> toRemove = {for (var row in existingViewRows) row['name']};
 
   for (var table in schema.tables) {
-    toRemove.remove(table.name);
+    toRemove.remove(table.viewName);
 
     var createViewOp = createViewStatement(table);
     var triggers = createViewTriggerStatements(table);
     var existingRows = await tx.execute(
         "SELECT sql FROM sqlite_master WHERE (type = 'view' AND name = ?) OR (type = 'trigger' AND tbl_name = ?) ORDER BY type DESC, name ASC",
-        [table.name, table.name]);
+        [table.viewName, table.viewName]);
     if (existingRows.isNotEmpty) {
       final dbSql = existingRows.map((row) => row['sql']).join('\n\n');
       final generatedSql =
@@ -202,7 +202,7 @@ Future<void> updateSchema(SqliteWriteContext tx, Schema schema) async {
         continue;
       } else {
         // View and/or triggers changed - delete and re-create.
-        await tx.execute('DROP VIEW ${quoteIdentifier(table.name)}');
+        await tx.execute('DROP VIEW ${quoteIdentifier(table.viewName)}');
       }
     } else {
       // New - create
@@ -232,12 +232,33 @@ Future<void> _createTablesAndIndexes(
       "SELECT name, sql FROM sqlite_master WHERE type='index' AND name GLOB 'ps_data_*'");
 
   final Set<String> remainingTables = {};
-  final Map<String, String> remainingIndexes = {};
+  final Map<String, String> indexesToDrop = {};
+  final List<String> createIndexes = [];
   for (final row in existingTableRows) {
     remainingTables.add(row['name'] as String);
   }
   for (final row in existingIndexRows) {
-    remainingIndexes[row['name'] as String] = row['sql'] as String;
+    indexesToDrop[row['name'] as String] = row['sql'] as String;
+  }
+
+  for (final table in schema.tables) {
+    for (final index in table.indexes) {
+      final fullName = index.fullName(table);
+      final sql = index.toSqlDefinition(table);
+      if (indexesToDrop.containsKey(fullName)) {
+        final existingSql = indexesToDrop[fullName];
+        if (existingSql == sql) {
+          // No change (don't drop)
+          indexesToDrop.remove(fullName);
+        } else {
+          // Drop and create
+          createIndexes.add(sql);
+        }
+      } else {
+        // New index - create
+        createIndexes.add(sql);
+      }
+    }
   }
 
   for (final table in schema.tables) {
@@ -267,24 +288,14 @@ Future<void> _createTablesAndIndexes(
     FROM ps_untyped
     WHERE type = ?""", [table.name]);
     }
-
-    for (final index in table.indexes) {
-      final fullName = index.fullName(table);
-      final sql = index.toSqlDefinition(table);
-      if (remainingIndexes.containsKey(fullName)) {
-        final existingSql = remainingIndexes[fullName];
-        if (existingSql == sql) {
-          continue;
-        } else {
-          await tx.execute('DROP INDEX ${quoteIdentifier(fullName)}');
-        }
-      }
-      await tx.execute(sql);
-    }
   }
 
-  for (final indexName in remainingIndexes.keys) {
+  for (final indexName in indexesToDrop.keys) {
     await tx.execute('DROP INDEX ${quoteIdentifier(indexName)}');
+  }
+
+  for (final sql in createIndexes) {
+    await tx.execute(sql);
   }
 
   for (final tableName in remainingTables) {
