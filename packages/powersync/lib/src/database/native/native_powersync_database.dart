@@ -4,7 +4,6 @@ import 'package:meta/meta.dart';
 
 import 'package:http/http.dart' as http;
 import 'package:logging/logging.dart';
-import 'package:powersync/src/database_utils.dart';
 import 'package:powersync/src/log_internal.dart';
 import 'package:sqlite_async/sqlite3_common.dart';
 import 'package:sqlite_async/sqlite_async.dart';
@@ -112,6 +111,8 @@ class PowerSyncDatabase extends AbstractPowerSyncDatabase {
     isInitialized = baseInit();
   }
 
+  @override
+
   /// Connect to the PowerSync service, and keep the databases in sync.
   ///
   /// The connection is automatically re-opened if it fails for any reason.
@@ -158,9 +159,9 @@ class PowerSyncDatabase extends AbstractPowerSyncDatabase {
           });
         } else if (action == 'status') {
           final SyncStatus status = data[1];
-          _setStatus(status);
+          setStatus(status);
         } else if (action == 'close') {
-          _setStatus(SyncStatus(
+          setStatus(SyncStatus(
               connected: false, lastSyncedAt: currentStatus.lastSyncedAt));
           rPort.close();
           updateSubscription?.cancel();
@@ -193,7 +194,7 @@ class PowerSyncDatabase extends AbstractPowerSyncDatabase {
       disconnecter = null;
       rPort.close();
       // Clear status apart from lastSyncedAt
-      _setStatus(SyncStatus(lastSyncedAt: currentStatus.lastSyncedAt));
+      setStatus(SyncStatus(lastSyncedAt: currentStatus.lastSyncedAt));
     }
 
     var exitPort = ReceivePort();
@@ -212,13 +213,6 @@ class PowerSyncDatabase extends AbstractPowerSyncDatabase {
         debugName: 'PowerSyncDatabase',
         onError: errorPort.sendPort,
         onExit: exitPort.sendPort);
-  }
-
-  void _setStatus(SyncStatus status) {
-    if (status != currentStatus) {
-      currentStatus = status;
-      statusStreamController.add(status);
-    }
   }
 
   /// Takes a read lock, without starting a transaction.

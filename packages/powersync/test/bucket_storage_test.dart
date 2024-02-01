@@ -51,6 +51,7 @@ void main() {
       powersync = await setupPowerSync(path: path);
       db = await setupSqlite(powersync: powersync);
       bucketStorage = BucketStorage(powersync);
+      await bucketStorage.initialized();
     });
 
     Future<void> syncLocalChecked(Checkpoint checkpoint) async {

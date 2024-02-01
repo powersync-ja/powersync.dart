@@ -1,7 +1,6 @@
 import 'dart:async';
-
+import 'package:meta/meta.dart';
 import 'package:fetch_client/fetch_client.dart';
-import 'package:flutter/foundation.dart';
 import 'package:logging/logging.dart';
 import 'package:powersync/src/log.dart';
 import 'package:powersync/src/open_factory/abstract_powersync_open_factory.dart';
@@ -38,6 +37,8 @@ class PowerSyncDatabase extends AbstractPowerSyncDatabase {
   @override
   @protected
   late Future<void> isInitialized;
+
+  @override
 
   /// The Logger used by this [PowerSyncDatabase].
   ///

@@ -117,10 +117,10 @@ packages:
     dependency: transitive
     description:
       name: file
-      sha256: "5fc22d7c25582e38ad9a8515372cd9a93834027aacf1801cf01164dac0ffa08c"
+      sha256: "1b92bec4fc2a72f59a8e15af5f52cd441e4a7860b49499d69dfa817af20e925d"
       url: "https://pub.dev"
     source: hosted
-    version: "7.0.0"
+    version: "6.1.4"
   frontend_server_client:
     dependency: transitive
     description:
@@ -221,10 +221,10 @@ packages:
     dependency: "direct dev"
     description:
       name: melos
-      sha256: ddd8e0871f02ba1eaa3fdc007e306d05801a5ef595d1637083d6654b272ade68
+      sha256: "96e64bbade5712c3f010137e195bca9f1b351fac34ab1f322af492ae34032067"
       url: "https://pub.dev"
     source: hosted
-    version: "4.0.0"
+    version: "3.4.0"
   meta:
     dependency: transitive
     description:
@@ -266,7 +266,7 @@ packages:
     source: hosted
     version: "2.1.0"
   path:
-    dependency: "direct main"
+    dependency: transitive
     description:
       name: path
       sha256: "087ce49c3f0dc39180befefc60fdb4acd8f8620e5682fe2476afd0b3688bb4af"
@@ -293,10 +293,10 @@ packages:
     dependency: transitive
     description:
       name: process
-      sha256: "21e54fd2faf1b5bdd5102afd25012184a6793927648ea81eea80552ac9405b32"
+      sha256: "53fd8db9cec1d37b0574e12f07520d582019cb6c44abf5479a01505099a34a09"
       url: "https://pub.dev"
     source: hosted
-    version: "5.0.2"
+    version: "4.2.4"
   prompts:
     dependency: transitive
     description:
@@ -317,10 +317,10 @@ packages:
     dependency: transitive
     description:
       name: pub_updater
-      sha256: "54e8dc865349059ebe7f163d6acce7c89eb958b8047e6d6e80ce93b13d7c9e60"
+      sha256: b06600619c8c219065a548f8f7c192b3e080beff95488ed692780f48f69c0625
       url: "https://pub.dev"
     source: hosted
-    version: "0.4.0"
+    version: "0.3.1"
   pubspec:
     dependency: transitive
     description:

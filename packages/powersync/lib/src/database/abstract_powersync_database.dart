@@ -1,6 +1,5 @@
 import 'dart:async';
-
-import 'package:flutter/foundation.dart';
+import 'package:meta/meta.dart';
 import 'package:logging/logging.dart';
 import 'package:powersync/src/database_utils.dart';
 import 'package:powersync/src/migrations.dart';
@@ -57,6 +56,8 @@ abstract class AbstractPowerSyncDatabase
   StreamController<SyncStatus> statusStreamController =
       StreamController<SyncStatus>.broadcast();
 
+  @override
+
   /// Broadcast stream that is notified of any table updates.
   ///
   /// Unlike in [SqliteDatabase.updates], the tables reported here are the
@@ -97,7 +98,8 @@ abstract class AbstractPowerSyncDatabase
     return isInitialized;
   }
 
-  void _setStatus(SyncStatus status) {
+  @protected
+  void setStatus(SyncStatus status) {
     if (status != currentStatus) {
       currentStatus = status;
       statusStreamController.add(status);

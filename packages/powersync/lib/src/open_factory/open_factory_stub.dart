@@ -9,10 +9,12 @@ class PowerSyncOpenFactory extends open_factory.AbstractPowerSyncOpenFactory {
       // ignore: deprecated_member_use_from_same_package
       open_factory.SqliteConnectionSetup? sqliteSetup});
 
+  @override
   void enableExtension() {
     throw UnimplementedError();
   }
 
+  @override
   void setupFunctions(CommonDatabase db) {
     throw UnimplementedError();
   }

@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:logging/src/logger.dart';
+import 'package:logging/logging.dart';
 import 'package:powersync/sqlite_async.dart';
 import 'package:powersync/src/open_factory/abstract_powersync_open_factory.dart';
 import 'abstract_powersync_database.dart';

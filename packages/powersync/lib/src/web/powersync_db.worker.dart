@@ -1,5 +1,7 @@
+library;
+
 /// This file needs to be compiled to JavaScript with the command
-/// dart compile js -O4 lib/src/web/powersync_db.worker.dart -o build/powersync_db.worker.js
+/// dart compile js -O4 packages/powersync/lib/src/web/powersync_db.worker.dart -o build/drift_worker.js
 /// The output should then be included in each project's `web` directory
 
 import 'package:powersync/src/open_factory/common_db_functions.dart';
@@ -9,6 +11,7 @@ import 'package:uuid/uuid.dart';
 
 void setupDatabase(CommonDatabase database) {
   setupCommonDBFunctions(database);
+  setupCommonWorkerDB(database);
   final uuid = Uuid();
 
   database.createFunction(
@@ -28,9 +31,8 @@ void setupDatabase(CommonDatabase database) {
     functionName: 'powersync_sleep',
     argumentCount: const AllowedArgumentCount(1),
     function: (args) {
+      // Can't perform synchronous sleep on web
       final millis = args[0] as int;
-      // TODO
-      // sleep(Duration(milliseconds: millis));
       return millis;
     },
   );

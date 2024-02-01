@@ -20,6 +20,7 @@ class PowerSyncOpenFactory extends AbstractPowerSyncOpenFactory {
       open_factory.SqliteConnectionSetup? sqliteSetup})
       : _sqliteSetup = sqliteSetup;
 
+  @override
   void enableExtension() {}
 
   @override
@@ -29,9 +30,7 @@ class PowerSyncOpenFactory extends AbstractPowerSyncOpenFactory {
       functionName: 'uuid',
       argumentCount: const AllowedArgumentCount(0),
       function: (args) {
-        final id = uuid.v4();
-        print('Creating a uuid' + id);
-        return id;
+        return uuid.v4();
       },
     );
     db.createFunction(

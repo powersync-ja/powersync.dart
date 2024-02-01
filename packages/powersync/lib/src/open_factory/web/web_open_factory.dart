@@ -8,6 +8,7 @@ class PowerSyncOpenFactory extends open_factory.AbstractPowerSyncOpenFactory {
     super.sqliteOptions,
   });
 
+  @override
   void enableExtension() {
     // No op for web
   }
@@ -23,9 +24,7 @@ class PowerSyncOpenFactory extends open_factory.AbstractPowerSyncOpenFactory {
       functionName: 'uuid',
       argumentCount: const AllowedArgumentCount(0),
       function: (args) {
-        final id = uuid.v4();
-        print('Creating a uuid' + id);
-        return id;
+        return uuid.v4();
       },
     );
     db.createFunction(

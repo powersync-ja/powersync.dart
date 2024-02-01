@@ -21,9 +21,10 @@ class BucketStorage {
   Set<String> tableNames = {};
   int _compactCounter = compactOperationInterval;
   ChecksumCache? _checksumCache;
+  late Future<void> _isInitialized;
 
   BucketStorage(SqliteConnection db) : _internalDb = db {
-    _init();
+    _isInitialized = _init();
   }
 
   _init() async {
@@ -32,6 +33,10 @@ class BucketStorage {
     for (final row in existingTableRows) {
       tableNames.add(row['name'] as String);
     }
+  }
+
+  initialized() {
+    return _isInitialized;
   }
 
   // Use only for read statements

@@ -1,5 +1,4 @@
 import 'package:powersync/sqlite_async.dart';
-import 'package:sqlite_async/utils.dart';
 
 import 'schema.dart';
 
