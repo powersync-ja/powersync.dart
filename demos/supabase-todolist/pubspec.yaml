@@ -19,7 +19,7 @@ dependencies:
   logging: ^1.2.0
   sqlite_async:
     git:
-      url: git@github.com:powersync-ja/sqlite_async.dart.git
+      url: https://github.com/powersync-ja/sqlite_async.dart.git
       ref: web # branch name
   camera: ^0.10.5+7
   image: ^4.1.3

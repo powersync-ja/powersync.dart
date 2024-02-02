@@ -12,7 +12,7 @@ dependencies:
 
   sqlite_async:
     git:
-      url: git@github.com:powersync-ja/sqlite_async.dart.git
+      url: https://github.com/powersync-ja/sqlite_async.dart.git
       ref: web # branch name
   sqlite3_flutter_libs: ^0.5.15
   meta: ^1.0.0
