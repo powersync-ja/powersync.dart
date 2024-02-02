@@ -1,6 +1,6 @@
 name: supabase_jwt_auth
 description: PowerSync Supabase JWT Auth Demo
-publish_to: "none"
+publish_to: 'none'
 
 version: 1.0.1
 
@@ -17,7 +17,9 @@ dependencies:
   path: ^1.8.3
   logging: ^1.2.0
   sqlite_async:
-    path: ../../../sqlite_async.dart
+    git:
+      url: git@github.com:powersync-ja/sqlite_async.dart.git
+      ref: web # branch name
 
 dev_dependencies:
   flutter_test:

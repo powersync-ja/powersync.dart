@@ -1,6 +1,6 @@
 name: powersync_flutter_demo
 description: PowerSync Flutter Demo
-publish_to: "none"
+publish_to: 'none'
 
 version: 1.0.1
 
@@ -18,7 +18,9 @@ dependencies:
   path: ^1.8.3
   logging: ^1.2.0
   sqlite_async:
-    path: ../../../sqlite_async.dart
+    git:
+      url: git@github.com:powersync-ja/sqlite_async.dart.git
+      ref: web # branch name
   camera: ^0.10.5+7
   image: ^4.1.3
 

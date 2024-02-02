@@ -11,7 +11,9 @@ dependencies:
     sdk: flutter
 
   sqlite_async:
-    path: ../../../sqlite_async.dart
+    git:
+      url: git@github.com:powersync-ja/sqlite_async.dart.git
+      ref: web # branch name
   sqlite3_flutter_libs: ^0.5.15
   meta: ^1.0.0
   http: ^1.1.0
