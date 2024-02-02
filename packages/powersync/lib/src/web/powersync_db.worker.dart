@@ -1,7 +1,7 @@
 library;
 
 /// This file needs to be compiled to JavaScript with the command
-/// dart compile js -O4 packages/powersync/lib/src/web/powersync_db.worker.dart -o build/drift_worker.js
+/// dart compile js -O4 packages/powersync/lib/src/web/powersync_db.worker.dart -o assets/drift_worker.js
 /// The output should then be included in each project's `web` directory
 
 import 'package:powersync/src/open_factory/common_db_functions.dart';

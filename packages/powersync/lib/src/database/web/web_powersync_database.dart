@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:meta/meta.dart';
 import 'package:fetch_client/fetch_client.dart';
 import 'package:logging/logging.dart';
+import 'package:powersync/src/database_utils.dart';
 import 'package:powersync/src/log.dart';
 import 'package:powersync/src/open_factory/abstract_powersync_open_factory.dart';
 import 'package:powersync/src/open_factory/web/web_open_factory.dart';
@@ -151,6 +152,14 @@ class PowerSyncDatabase extends AbstractPowerSyncDatabase {
         debugContext: debugContext, lockTimeout: lockTimeout);
   }
 
+  @override
+  Future<T> readTransaction<T>(
+      Future<T> Function(SqliteReadContext tx) callback,
+      {Duration? lockTimeout,
+      String? debugContext}) {
+    return database.readTransaction(callback, lockTimeout: lockTimeout);
+  }
+
   /// Takes a global lock, without starting a transaction.
   ///
   /// In most cases, [writeTransaction] should be used instead.
@@ -163,12 +172,26 @@ class PowerSyncDatabase extends AbstractPowerSyncDatabase {
   }
 
   @override
+
+  /// Uses the database writeTransaction instead of the locally
+  /// scoped writeLock. This is to allow the Database transaction
+  /// tracking to be correctly configured.
+  Future<T> writeTransaction<T>(
+      Future<T> Function(SqliteWriteContext tx) callback,
+      {Duration? lockTimeout,
+      String? debugContext}) {
+    return database.writeTransaction(
+        (context) => internalTrackedWrite(context, callback),
+        lockTimeout: lockTimeout);
+  }
+
+  @override
   Future<void> updateSchema(Schema schema) {
     if (disconnecter != null) {
       throw AssertionError('Cannot update schema while connected');
     }
     this.schema = schema;
     return database
-        .writeLock((tx) async => schema_helpers.updateSchema(tx, schema));
+        .writeTransaction((tx) => schema_helpers.updateSchema(tx, schema));
   }
 }

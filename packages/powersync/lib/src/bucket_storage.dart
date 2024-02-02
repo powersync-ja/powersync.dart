@@ -253,7 +253,7 @@ class BucketStorage {
 
     if (!r.checkpointValid) {
       for (String b in r.checkpointFailures ?? []) {
-        deleteBucket(b);
+        await deleteBucket(b);
       }
       return r;
     }

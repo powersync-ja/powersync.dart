@@ -26,7 +26,9 @@ abstract class AbstractPowerSyncOpenFactory extends DefaultSqliteOpenFactory {
   @override
   FutureOr<CommonDatabase> open(SqliteOpenOptions options) async {
     var db = await _retriedOpen(options);
-    db.execute('PRAGMA recursive_triggers = TRUE');
+    for (final statement in pragmaStatements(options)) {
+      db.select(statement);
+    }
     setupFunctions(db);
     return db;
   }

@@ -1,12 +1,16 @@
+@TestOn('!browser')
+// TODO setup hybrid server
 import 'dart:async';
-import 'dart:io';
 import 'dart:math';
+import 'dart:io';
 
 import 'package:powersync/powersync.dart';
 import 'package:test/test.dart';
 
 import 'test_server.dart';
-import 'util.dart';
+import 'utils/test_utils_impl.dart';
+
+final testUtils = TestUtils();
 
 class TestConnector extends PowerSyncBackendConnector {
   final Function _fetchCredentials;
@@ -27,12 +31,12 @@ void main() {
     late String path;
 
     setUp(() async {
-      path = dbPath();
-      await cleanDb(path: path);
+      path = testUtils.dbPath();
+      await testUtils.cleanDb(path: path);
     });
 
     tearDown(() async {
-      await cleanDb(path: path);
+      await testUtils.cleanDb(path: path);
     });
 
     test('full powersync reconnect', () async {
@@ -52,7 +56,7 @@ void main() {
               expiresAt: DateTime.now());
         }
 
-        final pdb = await setupPowerSync(path: path);
+        final pdb = await testUtils.setupPowerSync(path: path);
         pdb.retryDelay = Duration(milliseconds: 5000);
         var connector = TestConnector(credentialsCallback);
         pdb.connect(connector: connector);
@@ -95,7 +99,7 @@ void main() {
             expiresAt: DateTime.now());
       }
 
-      final pdb = await setupPowerSync(path: path);
+      final pdb = await testUtils.setupPowerSync(path: path);
       pdb.retryDelay = const Duration(milliseconds: 5);
       var connector = TestConnector(credentialsCallback);
       pdb.connect(connector: connector);

@@ -1,7 +1,9 @@
 import 'package:powersync/powersync.dart';
 import 'package:test/test.dart';
 
-import 'util.dart';
+import 'utils/test_utils_impl.dart';
+
+final testUtils = TestUtils();
 
 const testId = "2290de4f-0488-4e50-abed-f8e8eb1d0b42";
 final schema = Schema([
@@ -28,15 +30,16 @@ void main() {
     late String path;
 
     setUp(() async {
-      path = dbPath();
-      await cleanDb(path: path);
+      path = testUtils.dbPath();
+      await testUtils.cleanDb(path: path);
     });
 
     test('Schema versioning', () async {
       // Test that powersync_replace_schema() is a no-op when the schema is not
       // modified.
 
-      final powersync = await setupPowerSync(path: path, schema: schema);
+      final powersync =
+          await testUtils.setupPowerSync(path: path, schema: schema);
 
       final versionBefore = await powersync.get('PRAGMA schema_version');
       await powersync.updateSchema(schema);
@@ -107,7 +110,8 @@ void main() {
     });
 
     test('Indexing', () async {
-      final powersync = await setupPowerSync(path: path, schema: schema);
+      final powersync =
+          await testUtils.setupPowerSync(path: path, schema: schema);
 
       final results = await powersync.execute(
           'EXPLAIN QUERY PLAN SELECT * FROM assets WHERE make = ?', ['test']);

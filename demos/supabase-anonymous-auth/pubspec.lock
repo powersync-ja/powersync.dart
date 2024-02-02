@@ -68,10 +68,9 @@ packages:
   drift:
     dependency: transitive
     description:
-      name: drift
-      sha256: b50a8342c6ddf05be53bda1d246404cbad101b64dc73e8d6d1ac1090d119b4e2
-      url: "https://pub.dev"
-    source: hosted
+      path: "/Users/stevenontong/Documents/platform_code/powersync/drift/drift"
+      relative: false
+    source: path
     version: "2.15.0"
   fake_async:
     dependency: transitive

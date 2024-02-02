@@ -275,6 +275,7 @@ abstract class AbstractPowerSyncDatabase
       if (first == null) {
         return null;
       }
+
       final int? txId = first['tx_id'];
       List<CrudEntry> all;
       if (txId == null) {
