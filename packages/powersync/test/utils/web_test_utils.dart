@@ -13,7 +13,8 @@ external String _createObjectURL(Blob blob);
 
 class TestUtils extends AbstractTestUtils {
   late Future<void> _isInitialized;
-  late final SqliteOptions webOptions;
+  late final String sqlite3WASMUri;
+  late final String driftUri;
 
   TestUtils() {
     _isInitialized = _init();
@@ -22,17 +23,9 @@ class TestUtils extends AbstractTestUtils {
   Future<void> _init() async {
     final channel = spawnHybridUri('/test/server/worker_server.dart');
     final port = await channel.stream.first as int;
-    final sqliteWasmUri = 'http://localhost:$port/sqlite3.wasm';
+    sqlite3WASMUri = 'http://localhost:$port/sqlite3.wasm';
     // Cross origin workers are not supported, but we can supply a Blob
-    var sqliteDriftUri = 'http://localhost:$port/drift_worker.js';
-
-    final blob = Blob(<String>['importScripts("$sqliteDriftUri");'],
-        'application/javascript');
-    sqliteDriftUri = _createObjectURL(blob);
-
-    webOptions = SqliteOptions(
-        webSqliteOptions: WebSqliteOptions(
-            wasmUri: sqliteWasmUri, workerUri: sqliteDriftUri));
+    driftUri = 'http://localhost:$port/drift_worker.js';
   }
 
   @override
@@ -44,6 +37,13 @@ class TestUtils extends AbstractTestUtils {
       String? sqlitePath,
       SqliteOptions options = const SqliteOptions.defaults()}) async {
     await _isInitialized;
+    final blob =
+        Blob(<String>['importScripts("$driftUri");'], 'application/javascript');
+    final sqliteDriftUri = _createObjectURL(blob);
+
+    final webOptions = SqliteOptions(
+        webSqliteOptions: WebSqliteOptions(
+            wasmUri: sqlite3WASMUri, workerUri: sqliteDriftUri));
     return super.testFactory(path: path, options: webOptions);
   }
 
