@@ -22,7 +22,9 @@ Future<void> hybridMain(StreamChannel<Object?> channel) async {
   }
 
   final driftWorkerPath = p.join(directory.path, 'drift_worker.js');
+
   if (!(await File(driftWorkerPath).exists())) {
+    print('Compiling Drift worker');
     // And compile worker code
     final process = await Process.run(Platform.executable, [
       'compile',

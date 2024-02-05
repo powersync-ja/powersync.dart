@@ -32,7 +32,7 @@ class TestUtils extends AbstractTestUtils {
 
     webOptions = SqliteOptions(
         webSqliteOptions: WebSqliteOptions(
-            wasmUri: sqliteWasmUri.toString(), workerUri: sqliteDriftUri));
+            wasmUri: sqliteWasmUri, workerUri: sqliteDriftUri));
   }
 
   @override
