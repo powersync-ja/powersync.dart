@@ -74,6 +74,7 @@ class PowerSyncDatabase extends AbstractPowerSyncDatabase {
       SqliteConnectionSetup? sqliteSetup}) {
     // ignore: deprecated_member_use_from_same_package
     DefaultSqliteOpenFactory factory =
+        // ignore: deprecated_member_use_from_same_package
         PowerSyncOpenFactory(path: path, sqliteSetup: sqliteSetup);
     return PowerSyncDatabase.withFactory(factory,
         schema: schema, logger: logger);

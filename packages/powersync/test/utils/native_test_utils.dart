@@ -1,10 +1,6 @@
 import 'dart:async';
 import 'dart:ffi';
 import 'dart:io';
-import 'dart:isolate';
-
-import 'package:glob/glob.dart';
-import 'package:glob/list_local_fs.dart';
 import 'package:powersync/powersync.dart';
 import 'package:sqlite_async/sqlite3_common.dart';
 import 'package:sqlite_async/sqlite_async.dart';

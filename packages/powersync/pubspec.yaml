@@ -22,6 +22,7 @@ dependencies:
   logging: ^1.1.1
   collection: ^1.17.0
   fetch_client: ^1.0.2
+  js: ^0.6.7
 
 dev_dependencies:
   lints: ^3.0.0
@@ -31,10 +32,10 @@ dev_dependencies:
   sqlite3: ^2.3.0
   shelf: ^1.4.1
   shelf_router: ^1.1.4
+  shelf_static: ^1.1.2
+  stream_channel: ^2.1.2
   path: ^1.8.3
   drift: ^2.15.0
-  # drift:
-  #   path: '/Users/stevenontong/Documents/platform_code/powersync/drift/drift'
 
 platforms:
   android:

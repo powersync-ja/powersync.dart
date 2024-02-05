@@ -5,9 +5,4 @@ class TestUtils extends AbstractTestUtils {
   Future<void> cleanDb({required String path}) {
     throw UnimplementedError();
   }
-
-  @override
-  List<String> findSqliteLibraries() {
-    throw UnimplementedError();
-  }
 }

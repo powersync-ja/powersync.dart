@@ -2,6 +2,8 @@
 
 /// TODO, this requires a custom Drift worker script on web.
 /// Verified manually for now
+library;
+
 import 'dart:async';
 import 'dart:math';
 
