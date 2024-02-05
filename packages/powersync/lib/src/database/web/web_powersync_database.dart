@@ -156,7 +156,8 @@ class PowerSyncDatabase extends AbstractPowerSyncDatabase {
   Future<T> readTransaction<T>(
       Future<T> Function(SqliteReadContext tx) callback,
       {Duration? lockTimeout,
-      String? debugContext}) {
+      String? debugContext}) async {
+    await isInitialized;
     return database.readTransaction(callback, lockTimeout: lockTimeout);
   }
 
@@ -179,7 +180,8 @@ class PowerSyncDatabase extends AbstractPowerSyncDatabase {
   Future<T> writeTransaction<T>(
       Future<T> Function(SqliteWriteContext tx) callback,
       {Duration? lockTimeout,
-      String? debugContext}) {
+      String? debugContext}) async {
+    await isInitialized;
     return database.writeTransaction(
         (context) => internalTrackedWrite(context, callback),
         lockTimeout: lockTimeout);
@@ -191,7 +193,6 @@ class PowerSyncDatabase extends AbstractPowerSyncDatabase {
       throw AssertionError('Cannot update schema while connected');
     }
     this.schema = schema;
-    return database
-        .writeTransaction((tx) => schema_helpers.updateSchema(tx, schema));
+    return database.writeLock((tx) => schema_helpers.updateSchema(tx, schema));
   }
 }

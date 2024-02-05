@@ -444,7 +444,7 @@ void main() {
           await testUtils.testFactory(path: path),
           schema: const Schema([]));
 
-      expectLater(
+      await expectLater(
           () async => await powersync.execute('SELECT * FROM assets'),
           throwsA((e) =>
               e is SqliteException && e.message.contains('no such table')));
