@@ -76,9 +76,10 @@ packages:
   drift:
     dependency: transitive
     description:
-      path: "/Users/stevenontong/Documents/platform_code/powersync/drift/drift"
-      relative: false
-    source: path
+      name: drift
+      sha256: b50a8342c6ddf05be53bda1d246404cbad101b64dc73e8d6d1ac1090d119b4e2
+      url: "https://pub.dev"
+    source: hosted
     version: "2.15.0"
   fake_async:
     dependency: transitive
@@ -510,9 +511,11 @@ packages:
   sqlite_async:
     dependency: transitive
     description:
-      path: "../../../sqlite_async.dart"
-      relative: true
-    source: path
+      path: "."
+      ref: web
+      resolved-ref: "3e4bdd4b43afb6b5875464d35f61b2ed8bd9c3f6"
+      url: "https://github.com/powersync-ja/sqlite_async.dart.git"
+    source: git
     version: "0.6.0"
   stack_trace:
     dependency: transitive
