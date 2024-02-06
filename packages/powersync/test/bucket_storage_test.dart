@@ -54,6 +54,10 @@ void main() {
       await bucketStorage.initialized();
     });
 
+    tearDown(() async {
+      await powersync.close();
+    });
+
     Future<void> syncLocalChecked(Checkpoint checkpoint) async {
       var result = await bucketStorage.syncLocalDatabase(checkpoint);
       expect(result, equals(SyncLocalDatabaseResult(ready: true)));

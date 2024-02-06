@@ -535,7 +535,7 @@ class BucketStorage {
   Future<void> _compactWal() async {
     try {
       await writeTransaction((tx) async {
-        tx.execute('PRAGMA wal_checkpoint(TRUNCATE)');
+        await tx.execute('PRAGMA wal_checkpoint(TRUNCATE)');
       });
     } on sqlite.SqliteException catch (e) {
       // Ignore SQLITE_BUSY
@@ -551,9 +551,9 @@ class BucketStorage {
     if (_pendingBucketDeletes) {
       // Executed once after start-up, and again when there are pending deletes.
       await writeTransaction((tx) async {
-        tx.execute(
+        await tx.execute(
             'DELETE FROM ps_oplog WHERE bucket IN (SELECT name FROM ps_buckets WHERE pending_delete = 1 AND last_applied_op = last_op AND last_op >= target_op)');
-        tx.execute(
+        await tx.execute(
             'DELETE FROM ps_buckets WHERE pending_delete = 1 AND last_applied_op = last_op AND last_op >= target_op');
       });
       _pendingBucketDeletes = false;
@@ -660,14 +660,15 @@ class BucketStorage {
         crud: all,
         haveMore: true,
         complete: ({String? writeCheckpoint}) async {
-          await writeTransaction((db) async {
-            db.execute('DELETE FROM ps_crud WHERE id <= ?', [last.clientId]);
+          await writeTransaction((tx) async {
+            await tx
+                .execute('DELETE FROM ps_crud WHERE id <= ?', [last.clientId]);
             if (writeCheckpoint != null &&
-                (await db.execute('SELECT 1 FROM ps_crud LIMIT 1')).isEmpty) {
-              await db.execute(
+                (await tx.execute('SELECT 1 FROM ps_crud LIMIT 1')).isEmpty) {
+              await tx.execute(
                   'UPDATE ps_buckets SET target_op = $writeCheckpoint WHERE name=\'\$local\'');
             } else {
-              await db.execute(
+              await tx.execute(
                   'UPDATE ps_buckets SET target_op = $maxOpId WHERE name=\'\$local\'');
             }
           });
@@ -681,7 +682,7 @@ class BucketStorage {
   Future<T> writeTransaction<T>(
       Future<T> Function(SqliteWriteContext tx) callback,
       {Duration? lockTimeout}) async {
-    return _internalDb.writeTransaction(callback);
+    return _internalDb.writeTransaction(callback, lockTimeout: lockTimeout);
   }
 }
 
