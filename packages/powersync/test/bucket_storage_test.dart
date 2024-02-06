@@ -99,7 +99,7 @@ void main() {
           lastOpId: '3',
           checksums: [BucketChecksum(bucket: 'bucket1', checksum: 6)]));
 
-      expectAsset1_3();
+      await expectAsset1_3();
     });
 
     test('should get an object from multiple buckets', () async {
@@ -116,7 +116,7 @@ void main() {
         BucketChecksum(bucket: 'bucket2', checksum: 3)
       ]));
 
-      expectAsset1_3();
+      await expectAsset1_3();
     });
 
     test('should prioritize later updates', () async {
@@ -134,7 +134,7 @@ void main() {
         BucketChecksum(bucket: 'bucket2', checksum: 1)
       ]));
 
-      expectAsset1_3();
+      await expectAsset1_3();
     });
 
     test('should ignore a remove from one bucket', () async {
@@ -149,7 +149,7 @@ void main() {
         BucketChecksum(bucket: 'bucket2', checksum: 7)
       ]));
 
-      expectAsset1_3();
+      await expectAsset1_3();
     });
 
     test('should remove when removed from all buckets', () async {
@@ -164,7 +164,7 @@ void main() {
         BucketChecksum(bucket: 'bucket2', checksum: 7)
       ]));
 
-      expectNoAssets();
+      await expectNoAssets();
     });
 
     test('should use subkeys', () async {
@@ -211,7 +211,7 @@ void main() {
         BucketChecksum(bucket: 'bucket1', checksum: 13),
       ]));
 
-      expectAsset1_3();
+      await expectAsset1_3();
     });
 
     test('should fail checksum validation', () async {
@@ -233,7 +233,7 @@ void main() {
               checkpointValid: false,
               checkpointFailures: ['bucket1', 'bucket2'])));
 
-      expectNoAssets();
+      await expectNoAssets();
     });
 
     test('should delete buckets', () async {
@@ -256,12 +256,12 @@ void main() {
       ]));
 
       // Bucket is deleted, but object is still present in other buckets.
-      expectAsset1_3();
+      await expectAsset1_3();
 
       await bucketStorage.removeBuckets(['bucket1']);
       await syncLocalChecked(Checkpoint(lastOpId: '3', checksums: []));
       // Both buckets deleted - object removed.
-      expectNoAssets();
+      await expectNoAssets();
     });
 
     test('should delete and re-create buckets', () async {
@@ -298,12 +298,12 @@ void main() {
       await syncLocalChecked(Checkpoint(lastOpId: '3', checksums: [
         BucketChecksum(bucket: 'bucket1', checksum: 4),
       ]));
-      expectAsset1_3();
+      await expectAsset1_3();
 
       // Now final delete
       await bucketStorage.removeBuckets(['bucket1']);
       await syncLocalChecked(Checkpoint(lastOpId: '3', checksums: []));
-      expectNoAssets();
+      await expectNoAssets();
     });
 
     test('should handle MOVE', () async {
@@ -338,7 +338,7 @@ void main() {
           lastOpId: '3',
           checksums: [BucketChecksum(bucket: 'bucket1', checksum: 4)]));
 
-      expectAsset1_3();
+      await expectAsset1_3();
     });
 
     test('should handle CLEAR', () async {
@@ -376,7 +376,7 @@ void main() {
           // 2 + 3. 1 is replaced with 2.
           checksums: [BucketChecksum(bucket: 'bucket1', checksum: 5)]));
 
-      expectNoAsset1();
+      await expectNoAsset1();
       expect(
           await powersync
               .execute("SELECT id, description FROM assets WHERE id = 'O2'"),
