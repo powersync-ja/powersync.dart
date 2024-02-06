@@ -9,7 +9,7 @@ import 'package:sqlite_async/sqlite3_common.dart';
 import 'package:sqlite_async/sqlite_async.dart';
 import '../../open_factory/abstract_powersync_open_factory.dart';
 import '../../open_factory/native/native_open_factory.dart';
-import '../abstract_powersync_database.dart';
+import '../powersync_database.dart';
 
 import '../../abort_controller.dart';
 import '../../bucket_storage.dart';
@@ -30,7 +30,9 @@ import '../../sync_status.dart';
 ///
 /// All changes to local tables are automatically recorded, whether connected
 /// or not. Once connected, the changes are uploaded.
-class PowerSyncDatabase extends AbstractPowerSyncDatabase {
+class PowerSyncDatabaseImpl
+    with SqliteQueries, PowerSyncDatabaseMixin
+    implements PowerSyncDatabase {
   @override
   Schema schema;
 
@@ -64,7 +66,7 @@ class PowerSyncDatabase extends AbstractPowerSyncDatabase {
   /// A maximum of [maxReaders] concurrent read transactions are allowed.
   ///
   /// [logger] defaults to [autoLogger], which logs to the console in debug builds.
-  factory PowerSyncDatabase(
+  factory PowerSyncDatabaseImpl(
       {required Schema schema,
       required String path,
       int maxReaders = AbstractSqliteDatabase.defaultMaxReaders,
@@ -76,7 +78,7 @@ class PowerSyncDatabase extends AbstractPowerSyncDatabase {
     DefaultSqliteOpenFactory factory =
         // ignore: deprecated_member_use_from_same_package
         PowerSyncOpenFactory(path: path, sqliteSetup: sqliteSetup);
-    return PowerSyncDatabase.withFactory(factory,
+    return PowerSyncDatabaseImpl.withFactory(factory,
         schema: schema, logger: logger);
   }
 
@@ -88,12 +90,13 @@ class PowerSyncDatabase extends AbstractPowerSyncDatabase {
   /// Subclass [PowerSyncOpenFactory] to add custom logic to this process.
   ///
   /// [logger] defaults to [autoLogger], which logs to the console in debug builds.
-  factory PowerSyncDatabase.withFactory(DefaultSqliteOpenFactory openFactory,
+  factory PowerSyncDatabaseImpl.withFactory(
+      DefaultSqliteOpenFactory openFactory,
       {required Schema schema,
       int maxReaders = AbstractSqliteDatabase.defaultMaxReaders,
       Logger? logger}) {
     final db = SqliteDatabase.withFactory(openFactory, maxReaders: maxReaders);
-    return PowerSyncDatabase.withDatabase(
+    return PowerSyncDatabaseImpl.withDatabase(
         schema: schema, database: db, logger: logger);
   }
 
@@ -102,7 +105,7 @@ class PowerSyncDatabase extends AbstractPowerSyncDatabase {
   /// Migrations are run on the database when this constructor is called.
   ///
   /// [logger] defaults to [autoLogger], which logs to the console in debug builds.s
-  PowerSyncDatabase.withDatabase(
+  PowerSyncDatabaseImpl.withDatabase(
       {required this.schema, required this.database, Logger? logger}) {
     if (logger != null) {
       this.logger = logger;

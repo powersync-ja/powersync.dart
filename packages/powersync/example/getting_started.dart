@@ -19,7 +19,7 @@ class BackendConnector extends PowerSyncBackendConnector {
     // implement fetchCredentials
   }
   @override
-  Future<void> uploadData(AbstractPowerSyncDatabase database) async {
+  Future<void> uploadData(PowerSyncDatabase database) async {
     // implement uploadData
   }
 }

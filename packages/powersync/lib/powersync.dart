@@ -5,7 +5,7 @@ library;
 
 export 'src/connector.dart';
 export 'src/crud.dart';
-export 'src/database/abstract_powersync_database.dart';
+export 'src/database/powersync_database.dart';
 export 'src/exceptions.dart';
 export 'src/log.dart';
 export 'src/open_factory.dart';

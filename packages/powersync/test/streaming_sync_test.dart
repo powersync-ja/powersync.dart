@@ -1,7 +1,6 @@
 @TestOn('!browser')
 // TODO setup hybrid server
 import 'dart:async';
-import 'dart:math';
 import 'dart:io';
 
 import 'package:powersync/powersync.dart';
@@ -23,7 +22,7 @@ class TestConnector extends PowerSyncBackendConnector {
   }
 
   @override
-  Future<void> uploadData(AbstractPowerSyncDatabase database) async {}
+  Future<void> uploadData(PowerSyncDatabase database) async {}
 }
 
 void main() {

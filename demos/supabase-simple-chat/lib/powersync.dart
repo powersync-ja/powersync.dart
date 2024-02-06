@@ -64,7 +64,7 @@ class SupabaseConnector extends PowerSyncBackendConnector {
   SupabaseConnector(this.db);
 
   @override
-  Future<void> uploadData(AbstractPowerSyncDatabase database) async {
+  Future<void> uploadData(PowerSyncDatabase database) async {
     log.info('uploading data...');
     final transaction = await database.getNextCrudTransaction();
     if (transaction == null) {

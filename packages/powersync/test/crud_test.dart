@@ -161,11 +161,6 @@ void main() {
 
       expect(await powersync.getAll('SELECT * FROM logs'), equals([]));
 
-      final test = await powersync
-          .getAll('SELECT id, tx_id, data FROM ps_crud ORDER BY id ASC');
-      print('crud operations');
-      print(test);
-
       var tx = (await powersync.getNextCrudTransaction())!;
 
       expect(tx.transactionId, equals(2));

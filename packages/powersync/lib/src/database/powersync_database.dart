@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:meta/meta.dart';
 import 'package:logging/logging.dart';
+import 'package:powersync/src/database/powersync_database_impl.dart';
 import 'package:powersync/src/database_utils.dart';
 import 'package:powersync/src/migrations.dart';
 import 'package:powersync/src/powersync_update_notification.dart';
@@ -15,18 +16,7 @@ import '../schema.dart';
 import '../schema_helpers.dart';
 import '../sync_status.dart';
 
-/// A PowerSync managed database.
-///
-/// Use one instance per database file.
-///
-/// Use [PowerSyncDatabase.connect] to connect to the PowerSync service,
-/// to keep the local database in sync with the remote database.
-///
-/// All changes to local tables are automatically recorded, whether connected
-/// or not. Once connected, the changes are uploaded.
-abstract class AbstractPowerSyncDatabase
-    with SqliteQueries
-    implements SqliteConnection {
+mixin PowerSyncDatabaseMixin implements SqliteConnection {
   /// Schema used for the local database.
   Schema get schema;
 
@@ -55,8 +45,6 @@ abstract class AbstractPowerSyncDatabase
   @protected
   StreamController<SyncStatus> statusStreamController =
       StreamController<SyncStatus>.broadcast();
-
-  @override
 
   /// Broadcast stream that is notified of any table updates.
   ///
@@ -353,5 +341,31 @@ abstract class AbstractPowerSyncDatabase
   @override
   Future<bool> getAutoCommit() {
     return database.getAutoCommit();
+  }
+}
+
+/// A PowerSync managed database.
+///
+/// Use one instance per database file.
+///
+/// Use [PowerSyncDatabase.connect] to connect to the PowerSync service,
+/// to keep the local database in sync with the remote database.
+///
+/// All changes to local tables are automatically recorded, whether connected
+/// or not. Once connected, the changes are uploaded.
+abstract class PowerSyncDatabase
+    with SqliteQueries, PowerSyncDatabaseMixin
+    implements SqliteQueries {
+  factory PowerSyncDatabase(
+      {required Schema schema, required String path, Logger? logger}) {
+    return PowerSyncDatabaseImpl(schema: schema, path: path, logger: logger);
+  }
+
+  factory PowerSyncDatabase.withFactory(DefaultSqliteOpenFactory openFactory,
+      {required Schema schema,
+      int maxReaders = AbstractSqliteDatabase.defaultMaxReaders,
+      Logger? logger}) {
+    return PowerSyncDatabaseImpl.withFactory(openFactory,
+        schema: schema, logger: logger);
   }
 }

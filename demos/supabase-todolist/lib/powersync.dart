@@ -81,7 +81,7 @@ class SupabaseConnector extends PowerSyncBackendConnector {
 
   // Upload pending changes to Supabase.
   @override
-  Future<void> uploadData(AbstractPowerSyncDatabase database) async {
+  Future<void> uploadData(PowerSyncDatabase database) async {
     // This function is called whenever there is data to upload, whether the
     // device is online or offline.
     // If this call throws an error, it is retried periodically.
