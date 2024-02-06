@@ -10,10 +10,11 @@ import 'package:test/test.dart';
 import 'asset_server.dart';
 
 Future<void> hybridMain(StreamChannel<Object?> channel) async {
-  final directory = Directory('./assets');
+  final directory = Directory('assets');
 
   // Copy sqlite3.wasm file expected by the worker
-  final sqliteOutputPath = p.join(directory.path, 'sqlite3.wasm');
+  final sqliteOutputPath =
+      File(p.join(directory.path, 'sqlite3.wasm')).absolute.path;
   print(sqliteOutputPath);
 
   if (!(await File(sqliteOutputPath).exists())) {
@@ -21,7 +22,9 @@ Future<void> hybridMain(StreamChannel<Object?> channel) async {
         'sqlite3.wasm file should be present in the ./assets folder');
   }
 
-  final driftWorkerPath = p.join(directory.path, 'drift_worker.js');
+  final driftWorkerPath =
+      File(p.join(directory.path, 'drift_worker.js')).absolute.path;
+  print(driftWorkerPath);
 
   if (!(await File(driftWorkerPath).exists())) {
     print('Compiling Drift worker');
