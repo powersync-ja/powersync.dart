@@ -1,3 +1,6 @@
+import 'dart:io';
+
+import 'package:flutter/foundation.dart';
 import 'package:powersync/powersync.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:path/path.dart';
@@ -24,7 +27,7 @@ final List<RegExp> fatalResponseCodes = [
 late final PowerSyncDatabase db;
 
 Future<String> getDatabasePath() async {
-  final dir = await getApplicationSupportDirectory();
+  final dir = kIsWeb ? Directory('/') : await getApplicationSupportDirectory();
   return join(dir.path, 'powersync-demo.db');
 }
 

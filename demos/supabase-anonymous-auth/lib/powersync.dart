@@ -1,6 +1,7 @@
 // This file performs setup of the PowerSync database
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:logging/logging.dart';
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
@@ -136,7 +137,7 @@ String? getUserId() {
 }
 
 Future<String> getDatabasePath() async {
-  final dir = await getApplicationSupportDirectory();
+  final dir = kIsWeb ? Directory('/') : await getApplicationSupportDirectory();
   return join(dir.path, 'powersync-demo.db');
 }
 

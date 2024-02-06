@@ -355,7 +355,7 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
 /// or not. Once connected, the changes are uploaded.
 abstract class PowerSyncDatabase
     with SqliteQueries, PowerSyncDatabaseMixin
-    implements SqliteQueries {
+    implements SqliteConnection {
   factory PowerSyncDatabase(
       {required Schema schema, required String path, Logger? logger}) {
     return PowerSyncDatabaseImpl(schema: schema, path: path, logger: logger);
@@ -367,5 +367,13 @@ abstract class PowerSyncDatabase
       Logger? logger}) {
     return PowerSyncDatabaseImpl.withFactory(openFactory,
         schema: schema, logger: logger);
+  }
+
+  factory PowerSyncDatabase.withDatabase(
+      {required Schema schema,
+      required SqliteDatabase database,
+      Logger? loggers}) {
+    return PowerSyncDatabaseImpl.withDatabase(
+        schema: schema, database: database);
   }
 }

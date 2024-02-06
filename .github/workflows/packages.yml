@@ -53,7 +53,7 @@ jobs:
           mkdir -p packages/powersync/assets/ && curl -LJ https://github.com/simolus3/sqlite3.dart/releases/download/sqlite3-2.3.0/sqlite3.wasm -o packages/powersync/assets/sqlite3.wasm
 
       - name: Compile WebWorker
-        run:  dart compile js -o packages/powersync/assets/drift_worker.js -O0 packages/powersync/lib/src/web/powersync_db.worker.dart
+        run:  dart compile js -o packages/powersync/assets/db_worker.js -O0 packages/powersync/lib/src/web/powersync_db.worker.dart
 
       - name: Run tests
         run: melos test
