@@ -25,6 +25,7 @@ dependencies:
   js: ^0.6.7
 
 dev_dependencies:
+  dcli: ^3.3.5
   lints: ^3.0.0
   test: ^1.25.0
   test_api: ^0.7.0
@@ -35,7 +36,7 @@ dev_dependencies:
   shelf_static: ^1.1.2
   stream_channel: ^2.1.2
   path: ^1.8.3
-  drift: 
+  drift:
     git:
       url: https://github.com/powersync-ja/drift.git
       ref: test # branch name

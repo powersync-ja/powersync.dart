@@ -5,10 +5,14 @@ import 'package:powersync/src/open_factory/common_db_functions.dart';
 import 'package:sqlite_async/definitions.dart';
 import 'package:sqlite_async/sqlite3_common.dart';
 
+const powerSyncDefaultSqliteOptions = SqliteOptions(
+    webSqliteOptions: WebSqliteOptions(
+        wasmUri: 'sqlite3.wasm', workerUri: 'powersync_db.worker.js'));
+
 abstract class AbstractPowerSyncOpenFactory extends DefaultSqliteOpenFactory {
   AbstractPowerSyncOpenFactory(
       {required super.path,
-      super.sqliteOptions = const SqliteOptions.defaults()});
+      super.sqliteOptions = powerSyncDefaultSqliteOptions});
 
   void enableExtension();
 
