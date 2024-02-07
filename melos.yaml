@@ -42,7 +42,7 @@ scripts:
 
   test:
     description: Run tests in a specific package.
-    run: dart test -p vm,chrome --concurrency=1
+    run: dart test -p vm,chrome
     exec:
       concurrency: 1
     packageFilters:
