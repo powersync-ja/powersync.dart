@@ -46,14 +46,8 @@ jobs:
           channel: 'stable'
       - name: Install melos
         run: flutter pub global activate melos
-      - name: Install dependencies
-        run: melos bootstrap
-      - name: Install WASM SQLite
-        run: |
-          mkdir -p assets && curl -LJ https://github.com/simolus3/sqlite3.dart/releases/download/sqlite3-2.3.0/sqlite3.wasm -o assets/sqlite3.wasm
-
-      - name: Compile WebWorker
-        run: dart compile js -o assets/powersync_db.worker.js -O0 packages/powersync/lib/src/web/powersync_db.worker.dart
+      - name: Install dependencies and prepapre project
+        run: melos prepare
 
       - name: Run tests
         run: melos test

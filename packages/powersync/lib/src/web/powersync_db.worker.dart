@@ -9,7 +9,7 @@ import 'package:sqlite_async/drift.dart';
 import 'package:sqlite_async/sqlite3_common.dart';
 import 'package:uuid/uuid.dart';
 
-void setupDatabase(CommonDatabase database) {
+void setupPowerSyncDatabase(CommonDatabase database) {
   setupCommonDBFunctions(database);
   setupCommonWorkerDB(database);
   final uuid = Uuid();
@@ -43,11 +43,5 @@ void setupDatabase(CommonDatabase database) {
     function: (args) {
       return 'N/A';
     },
-  );
-}
-
-void main() {
-  WasmDatabase.workerMainForOpen(
-    setupAllDatabases: setupDatabase,
   );
 }

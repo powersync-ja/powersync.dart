@@ -9,6 +9,8 @@ ide:
   intellij: false
 
 scripts:
+  prepare: melos bootstrap && melos compile:webworker && melos update:wasm
+
   format:
     description: Format Dart code.
     run: dart format .
@@ -28,6 +30,15 @@ scripts:
   analyze:demos:
     description: Analyze Dart code in demos.
     run: dart analyze demos --fatal-infos
+
+  compile:webworker:
+    description: Compile Javascript web worker distributable
+    exec: dart run powersync_web_worker:compile_webworker
+    packageFilters:
+      scope:
+        - powersync_web_worker
+
+  update:wasm: sh scripts/init_sqlite_wasm.sh
 
   test:
     description: Run tests in a specific package.
