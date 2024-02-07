@@ -41,7 +41,7 @@ const schema = Schema([
 
 late PowerSyncDatabase db;
 
-// You must implement a backend connector to define how Powersync communicates with your backend.
+// You must implement a backend connector to define how PowerSync communicates with your backend.
 class MyBackendConnector extends PowerSyncBackendConnector {
   PowerSyncDatabase db;
 
