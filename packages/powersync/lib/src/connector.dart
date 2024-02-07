@@ -113,7 +113,12 @@ class PowerSyncCredentials {
     try {
       List<String> parts = token.split('.');
       if (parts.length == 3) {
-        final rawData = base64Decode(parts[1]);
+        String part = parts[1];
+        // dart:convert doesn't like missing padding
+        if (part.length % 4 > 0) {
+          part += '=' * (4 - part.length % 4);
+        }
+        final rawData = base64Decode(part);
         final text = Utf8Decoder().convert(rawData);
         Map<String, dynamic> payload = jsonDecode(text);
         if (payload.containsKey('exp') && payload['exp'] is int) {
