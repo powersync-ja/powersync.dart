@@ -2,20 +2,19 @@ import 'dart:async';
 import 'package:meta/meta.dart';
 import 'package:fetch_client/fetch_client.dart';
 import 'package:logging/logging.dart';
+import 'package:powersync/src/abort_controller.dart';
+import 'package:powersync/src/bucket_storage.dart';
+import 'package:powersync/src/connector.dart';
+import 'package:powersync/src/database/powersync_database.dart';
+import 'package:powersync/src/database/powersync_db_mixin.dart';
 import 'package:powersync/src/database_utils.dart';
 import 'package:powersync/src/log.dart';
 import 'package:powersync/src/open_factory/abstract_powersync_open_factory.dart';
 import 'package:powersync/src/open_factory/web/web_open_factory.dart';
+import 'package:powersync/src/schema.dart';
 import 'package:powersync/src/streaming_sync.dart';
 import 'package:sqlite_async/sqlite_async.dart';
-
-import '../../bucket_storage.dart';
-import '../../schema_helpers.dart' as schema_helpers;
-import '../powersync_database.dart';
-
-import '../../abort_controller.dart';
-import '../../connector.dart';
-import '../../schema.dart';
+import 'package:powersync/src/schema_helpers.dart' as schema_helpers;
 
 /// A PowerSync managed database.
 ///
@@ -141,6 +140,9 @@ class PowerSyncDatabaseImpl
         // HTTP streaming is not supported on web with the standard http package
         // https://github.com/dart-lang/http/issues/595
         client: FetchClient(mode: RequestMode.cors));
+    sync.statusStream.listen((event) {
+      setStatus(event);
+    });
     sync.streamingSync();
   }
 

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:logging/logging.dart';
 import 'package:powersync/sqlite_async.dart';
+import 'package:powersync/src/database/powersync_db_mixin.dart';
 import 'package:powersync/src/open_factory/abstract_powersync_open_factory.dart';
 import 'powersync_database.dart';
 

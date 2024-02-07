@@ -4,22 +4,22 @@ import 'package:meta/meta.dart';
 
 import 'package:http/http.dart' as http;
 import 'package:logging/logging.dart';
+import 'package:powersync/src/abort_controller.dart';
+import 'package:powersync/src/bucket_storage.dart';
+import 'package:powersync/src/connector.dart';
+import 'package:powersync/src/database/powersync_database.dart';
+import 'package:powersync/src/database/powersync_db_mixin.dart';
+import 'package:powersync/src/isolate_completer.dart';
+import 'package:powersync/src/log.dart';
 import 'package:powersync/src/log_internal.dart';
+import 'package:powersync/src/open_factory/abstract_powersync_open_factory.dart';
+import 'package:powersync/src/open_factory/native/native_open_factory.dart';
+import 'package:powersync/src/schema.dart';
+import 'package:powersync/src/schema_logic.dart';
+import 'package:powersync/src/streaming_sync.dart';
+import 'package:powersync/src/sync_status.dart';
 import 'package:sqlite_async/sqlite3_common.dart';
 import 'package:sqlite_async/sqlite_async.dart';
-import '../../open_factory/abstract_powersync_open_factory.dart';
-import '../../open_factory/native/native_open_factory.dart';
-import '../powersync_database.dart';
-
-import '../../abort_controller.dart';
-import '../../bucket_storage.dart';
-import '../../connector.dart';
-import '../../isolate_completer.dart';
-import '../../log.dart';
-import '../../schema.dart';
-import '../../schema_logic.dart';
-import '../../streaming_sync.dart';
-import '../../sync_status.dart';
 
 /// A PowerSync managed database.
 ///

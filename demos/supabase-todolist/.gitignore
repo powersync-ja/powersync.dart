@@ -49,5 +49,3 @@ app.*.map.json
 # secrets
 app_config.dart
 
-# Web assets
-web

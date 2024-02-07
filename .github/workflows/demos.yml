@@ -17,13 +17,13 @@ jobs:
       - name: Install Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.x'
-          channel: 'stable'
+          flutter-version: "3.x"
+          channel: "stable"
 
       - name: Install Melos
         run: flutter pub global activate melos
       - name: Install dependencies
-        run: melos bootstrap
+        run: melos prepare
       - name: Check formatting
         run: melos format:check:demos
       - name: Lint
