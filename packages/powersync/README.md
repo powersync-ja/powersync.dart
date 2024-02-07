@@ -25,7 +25,7 @@ You'll need to create a PowerSync account and set up a PowerSync instance. You c
 
 `flutter pub add powersync`
 
-### Implement a backend connector and initialize the Powersync database
+### Implement a backend connector and initialize the PowerSync database
 
 ```dart
 import 'package:powersync/powersync.dart';
@@ -34,7 +34,7 @@ import 'package:path/path.dart';
 
 // Define the schema for the local SQLite database.
 // You can automatically generate this schema based on your sync rules:
-// In the Powersync dashboard, right-click on your PowerSync instance and then click "Generate client-side schema"
+// In the PowerSync dashboard, right-click on your PowerSync instance and then click "Generate client-side schema"
 const schema = Schema([
   Table('customers', [Column.text('name'), Column.text('email')])
 ]);
