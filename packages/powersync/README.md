@@ -114,6 +114,7 @@ Future<void> uploadData(PowerSyncDatabase database) async {
     switch (op.op) {
       case UpdateType.put:
         // Send the data to your backend service
+        // replace `_myApi` with your own API client or service
         await _myApi.put(op.table, op.opData!);
         break;
       default:
