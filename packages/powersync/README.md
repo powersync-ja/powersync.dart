@@ -13,7 +13,9 @@
 
 ## Examples
 
-For a number of complete app examples, see our [example app gallery](https://docs.powersync.com/resources/demo-apps-example-projects#flutter)
+For complete app examples, see our [example app gallery](https://docs.powersync.com/resources/demo-apps-example-projects#flutter)
+
+For examples of some common patterns, see our [example snippets](./example/README.md)
 
 ## Getting started
 
