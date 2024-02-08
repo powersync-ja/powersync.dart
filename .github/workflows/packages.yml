@@ -23,7 +23,7 @@ jobs:
       - name: Install Melos
         run: flutter pub global activate melos
       - name: Install dependencies
-        run: melos bootstrap
+        run: melos prepare
       - name: Check formatting
         run: melos format:check:packages
       - name: Lint
