@@ -6,6 +6,8 @@ description: PowerSync Dart Web Worker Builder
 environment:
   sdk: ^3.2.3
 
+publish_to: none
+
 executables:
   compile_worker: bin/compile_worker.dart
 
