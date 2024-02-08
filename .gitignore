@@ -4,6 +4,7 @@
 .DS_Store
 pubspec_overrides.yaml
 .idea
+.vscode
 *.iml
 .flutter-plugins-dependencies
 .flutter-plugins
