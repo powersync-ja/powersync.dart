@@ -7,7 +7,7 @@ sqlite_filename="sqlite3.wasm"
 sqlite_path="assets/$sqlite_filename"
 
 curl -LJ https://github.com/simolus3/sqlite3.dart/releases/download/sqlite3-2.3.0/sqlite3.wasm \
--o $sqlite_file
+-o $sqlite_path
 
 # Copy to each demo's web dir
 

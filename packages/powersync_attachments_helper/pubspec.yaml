@@ -13,11 +13,14 @@ dependencies:
   powersync: ^1.1.0
   logging: ^1.2.0
   sqlite3: ^2.3.0
+  sqlite_async: ^0.6.0
+  path_provider: ^2.1.1
+
+dependency_overrides:
   sqlite_async:
     git:
       url: https://github.com/powersync-ja/sqlite_async.dart.git
       ref: web # branch name
-  path_provider: ^2.1.1
 
 dev_dependencies:
   lints: ^3.0.0

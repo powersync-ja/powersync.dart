@@ -16,6 +16,9 @@ dependencies:
   supabase_flutter: ^2.0.2
   path: ^1.8.3
   logging: ^1.2.0
+  sqlite_async: ^0.6.0
+
+dependency_overrides:
   sqlite_async:
     git:
       url: https://github.com/powersync-ja/sqlite_async.dart.git
