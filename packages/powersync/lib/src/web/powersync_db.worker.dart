@@ -45,3 +45,9 @@ void setupPowerSyncDatabase(CommonDatabase database) {
     },
   );
 }
+
+void main() {
+  WasmDatabase.workerMainForOpen(
+    setupAllDatabases: setupPowerSyncDatabase,
+  );
+}
