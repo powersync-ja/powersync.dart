@@ -23,7 +23,6 @@ class TestUtils extends AbstractTestUtils {
   Future<void> _init() async {
     final channel = spawnHybridUri('/test/server/worker_server.dart');
     final port = await channel.stream.first as int;
-    print('got port $port');
     sqlite3WASMUri = 'http://localhost:$port/sqlite3.wasm';
     // Cross origin workers are not supported, but we can supply a Blob
     final driftUriSource = 'http://localhost:$port/powersync_db.worker.js';

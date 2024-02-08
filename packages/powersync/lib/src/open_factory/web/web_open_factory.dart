@@ -1,8 +1,8 @@
+import 'package:powersync/src/open_factory/abstract_powersync_open_factory.dart';
+import 'package:powersync/src/uuid.dart';
 import 'package:sqlite_async/sqlite3_common.dart';
-import '../abstract_powersync_open_factory.dart' as open_factory;
-import '../../uuid.dart';
 
-class PowerSyncOpenFactory extends open_factory.AbstractPowerSyncOpenFactory {
+class PowerSyncOpenFactory extends AbstractPowerSyncOpenFactory {
   PowerSyncOpenFactory({
     required super.path,
     super.sqliteOptions,

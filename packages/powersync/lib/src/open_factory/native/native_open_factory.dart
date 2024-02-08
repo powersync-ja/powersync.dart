@@ -1,22 +1,21 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:isolate';
+import 'package:powersync/src/open_factory/abstract_powersync_open_factory.dart';
 import 'package:sqlite_async/sqlite3.dart' as sqlite;
 import 'package:sqlite_async/sqlite3_common.dart';
 import 'package:sqlite_async/sqlite_async.dart';
-import '../abstract_powersync_open_factory.dart' as open_factory;
-import '../abstract_powersync_open_factory.dart';
 import '../../uuid.dart';
 
 class PowerSyncOpenFactory extends AbstractPowerSyncOpenFactory {
   @Deprecated('Override PowerSyncOpenFactory instead')
-  final open_factory.SqliteConnectionSetup? _sqliteSetup;
+  final SqliteConnectionSetup? _sqliteSetup;
 
   PowerSyncOpenFactory(
       {required super.path,
       super.sqliteOptions,
       @Deprecated('Override PowerSyncOpenFactory instead')
-      open_factory.SqliteConnectionSetup? sqliteSetup})
+      SqliteConnectionSetup? sqliteSetup})
       // ignore: deprecated_member_use_from_same_package
       : _sqliteSetup = sqliteSetup;
 
