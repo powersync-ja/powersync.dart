@@ -277,7 +277,7 @@ Future<void> _powerSyncDatabaseIsolate(
       } else if (action == 'close') {
         // This prevents any further transactions being opened, which would
         // eventually terminate the sync loop.
-        // await mutex.close();
+        await mutex.close();
         db?.dispose();
         db = null;
         updateController.close();

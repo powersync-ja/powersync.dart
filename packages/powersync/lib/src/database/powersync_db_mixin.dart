@@ -118,7 +118,7 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
   /// The connection is automatically re-opened if it fails for any reason.
   ///
   /// Status changes are reported on [statusStream].
-  connect({required PowerSyncBackendConnector connector});
+  Future<void> connect({required PowerSyncBackendConnector connector});
 
   /// Close the sync connection.
   ///
