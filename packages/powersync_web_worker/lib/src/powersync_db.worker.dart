@@ -34,6 +34,8 @@ import 'dart:convert';
 import 'package:drift/wasm.dart';
 import 'package:sqlite3/common.dart';
 import 'package:uuid/uuid.dart';
+import 'package:uuid/data.dart';
+import 'package:uuid/rng.dart';
 
 /// Custom function which exposes CommonDatabase.autocommit
 const sqliteAsyncAutoCommitCommand = 'sqlite_async_autocommit';
@@ -77,7 +79,7 @@ void setupDB(CommonDatabase database) {
         return jsonEncode(result);
       });
 
-  final uuid = Uuid();
+  final uuid = Uuid(goptions: GlobalOptions(CryptoRNG()));
 
   database.createFunction(
     functionName: 'uuid',

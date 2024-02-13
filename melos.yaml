@@ -42,7 +42,6 @@ scripts:
 
   test:
     description: Run tests in a specific package.
-    # Tests on Web are disabled for now. They pass locally but there is a network issue on CI
     run: dart test -p vm,chrome
     exec:
       concurrency: 1

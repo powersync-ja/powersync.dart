@@ -46,7 +46,7 @@ jobs:
           channel: 'stable'
       - name: Install melos
         run: flutter pub global activate melos
-      - name: Install dependencies and prepapre project
+      - name: Install dependencies and prepare project
         run: melos prepare
 
       - name: Run tests
