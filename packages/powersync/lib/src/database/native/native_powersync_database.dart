@@ -23,6 +23,8 @@ import 'package:sqlite_async/sqlite_async.dart';
 
 /// A PowerSync managed database.
 ///
+///Native implementation for [PowerSyncDatabase]
+///
 /// Use one instance per database file.
 ///
 /// Use [PowerSyncDatabase.connect] to connect to the PowerSync service,

@@ -17,11 +17,33 @@ import '../schema.dart';
 abstract class PowerSyncDatabase
     with SqliteQueries, PowerSyncDatabaseMixin
     implements SqliteConnection {
+  /// Open a [PowerSyncDatabase].
+  ///
+  /// Only a single [PowerSyncDatabase] per [path] should be opened at a time.
+  ///
+  /// The specified [schema] is used for the database.
+  ///
+  /// A connection pool is used by default, allowing multiple concurrent read
+  /// transactions, and a single concurrent write transaction. Write transactions
+  /// do not block read transactions, and read transactions will see the state
+  /// from the last committed write transaction.
+  ///
+  /// A maximum of [maxReaders] concurrent read transactions are allowed.
+  ///
+  /// [logger] defaults to [autoLogger], which logs to the console in debug builds.
   factory PowerSyncDatabase(
       {required Schema schema, required String path, Logger? logger}) {
     return PowerSyncDatabaseImpl(schema: schema, path: path, logger: logger);
   }
 
+  /// Open a [PowerSyncDatabase] with a [PowerSyncOpenFactory].
+  ///
+  /// The factory determines which database file is opened, as well as any
+  /// additional logic to run inside the database isolate before or after opening.
+  ///
+  /// Subclass [PowerSyncOpenFactory] to add custom logic to this process.
+  ///
+  /// [logger] defaults to [autoLogger], which logs to the console in debug builds.
   factory PowerSyncDatabase.withFactory(DefaultSqliteOpenFactory openFactory,
       {required Schema schema,
       int maxReaders = SqliteDatabase.defaultMaxReaders,
@@ -30,6 +52,11 @@ abstract class PowerSyncDatabase
         schema: schema, logger: logger);
   }
 
+  /// Open a PowerSyncDatabase on an existing [SqliteDatabase].
+  ///
+  /// Migrations are run on the database when this constructor is called.
+  ///
+  /// [logger] defaults to [autoLogger], which logs to the console in debug builds.
   factory PowerSyncDatabase.withDatabase(
       {required Schema schema,
       required SqliteDatabase database,

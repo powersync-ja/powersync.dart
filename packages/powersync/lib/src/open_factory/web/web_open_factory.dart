@@ -2,6 +2,7 @@ import 'package:powersync/src/open_factory/abstract_powersync_open_factory.dart'
 import 'package:powersync/src/uuid.dart';
 import 'package:sqlite_async/sqlite3_common.dart';
 
+/// Web implementation for [AbstractPowerSyncOpenFactory]
 class PowerSyncOpenFactory extends AbstractPowerSyncOpenFactory {
   PowerSyncOpenFactory({
     required super.path,

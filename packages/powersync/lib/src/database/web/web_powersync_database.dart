@@ -18,6 +18,8 @@ import 'package:powersync/src/schema_helpers.dart' as schema_helpers;
 
 /// A PowerSync managed database.
 ///
+/// Web implementation for [PowerSyncDatabase]
+///
 /// Use one instance per database file.
 ///
 /// Use [PowerSyncDatabase.connect] to connect to the PowerSync service,

@@ -7,6 +7,7 @@ import 'package:sqlite_async/sqlite3_common.dart';
 import 'package:sqlite_async/sqlite_async.dart';
 import '../../uuid.dart';
 
+/// Native implementation for [AbstractPowerSyncOpenFactory]
 class PowerSyncOpenFactory extends AbstractPowerSyncOpenFactory {
   @Deprecated('Override PowerSyncOpenFactory instead')
   final SqliteConnectionSetup? _sqliteSetup;
