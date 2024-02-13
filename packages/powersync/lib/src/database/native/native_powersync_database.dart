@@ -69,7 +69,7 @@ class PowerSyncDatabaseImpl
   factory PowerSyncDatabaseImpl(
       {required Schema schema,
       required String path,
-      int maxReaders = AbstractSqliteDatabase.defaultMaxReaders,
+      int maxReaders = SqliteDatabase.defaultMaxReaders,
       Logger? logger,
       @Deprecated("Use [PowerSyncDatabase.withFactory] instead")
       // ignore: deprecated_member_use_from_same_package
@@ -93,7 +93,7 @@ class PowerSyncDatabaseImpl
   factory PowerSyncDatabaseImpl.withFactory(
       DefaultSqliteOpenFactory openFactory,
       {required Schema schema,
-      int maxReaders = AbstractSqliteDatabase.defaultMaxReaders,
+      int maxReaders = SqliteDatabase.defaultMaxReaders,
       Logger? logger}) {
     final db = SqliteDatabase.withFactory(openFactory, maxReaders: maxReaders);
     return PowerSyncDatabaseImpl.withDatabase(
@@ -253,7 +253,7 @@ class PowerSyncDatabaseImpl
 
 class _PowerSyncDatabaseIsolateArgs {
   final SendPort sPort;
-  final AbstractIsolateConnectionFactory dbRef;
+  final IsolateConnectionFactory dbRef;
   final Duration retryDelay;
 
   _PowerSyncDatabaseIsolateArgs(this.sPort, this.dbRef, this.retryDelay);

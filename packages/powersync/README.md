@@ -4,12 +4,12 @@
 
 ## SDK Features
 
-* Real-time streaming of changes.
-* Direct access to the SQLite database - use SQL on the client and server.
-* Operations are asynchronous by default - does not block the UI.
-* Supports one write and many reads concurrently.
-* No need for client-side database migrations - these are handled automatically.
-* Subscribe to queries for live updates.
+- Real-time streaming of changes.
+- Direct access to the SQLite database - use SQL on the client and server.
+- Operations are asynchronous by default - does not block the UI.
+- Supports one write and many reads concurrently.
+- No need for client-side database migrations - these are handled automatically.
+- Subscribe to queries for live updates.
 
 ## Getting started
 
@@ -62,13 +62,14 @@ openDatabase() async {
 Web support is currently in an alpha release.
 
 ### Setup
-Web support requires `sqlite3.wasm` and `powersync_db.worker.js` assets to be served from the web application.
+
+Web support requires `sqlite3.wasm` and `powersync_db.worker.js` assets to be served from the web application. This is typically achieved by placing the files in the project `web` directory.
 
 These assets are automatically configured in this monorepo when running `melos prepare`.
 
 - `sqlite3.wasm` can be found [here](https://github.com/simolus3/sqlite3.dart/releases)
 - `powersync_db.worker.js` will eventually be released in the repo's releases.
-    * In the interim the asset can be retrieved from the `./assets` folder after executing `melos prepare`
+  - In the interim the asset can be retrieved from the `./assets` folder after executing `melos prepare`
 
 Currently the Drift SQLite library is used under the hood for DB connections. See [here](https://drift.simonbinder.eu/web/#getting-started) for detailed compatibility
 and setup notes.
@@ -81,11 +82,11 @@ The API for web is essentially the same as for native platforms. Some features w
 
 #### Imports
 
-Flutter Web does not support importing directly from `sqlite3.dart` as it uses `dart:ffi`. 
+Flutter Web does not support importing directly from `sqlite3.dart` as it uses `dart:ffi`.
 
-Change imports from 
+Change imports from
 
-```Dart 
+```Dart
 import 'package/powersync/sqlite3.dart`
 ```
 
@@ -105,3 +106,7 @@ implement checks for preventing writable queries in read connections and vice-ve
 Direct access to the synchronous `CommonDatabase` (`sqlite.Database` equivalent for web) connection is not available. `computeWithDatabase` is not available on web.
 
 Multiple tab support is not yet available. Using multiple tabs will break.
+
+#### Known Issues
+
+The `powersync.updateSchema` method currently does not allow for the schema to be updated after client initialization.

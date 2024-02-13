@@ -465,7 +465,7 @@ packages:
     description:
       path: "."
       ref: web
-      resolved-ref: f946e1ad70d61ae0eee930c59e567e8a01f1ca77
+      resolved-ref: ab00e64cf10b90ad79356316e6241ce03a7e1880
       url: "https://github.com/powersync-ja/sqlite_async.dart.git"
     source: git
     version: "0.6.0"

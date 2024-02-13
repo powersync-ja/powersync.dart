@@ -1,4 +1,4 @@
-import 'package:sqlite_async/definitions.dart';
+import 'package:sqlite_async/sqlite_async.dart';
 import 'schema_helpers.dart';
 
 class PowerSyncUpdateNotification extends UpdateNotification {

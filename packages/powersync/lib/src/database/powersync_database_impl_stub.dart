@@ -46,7 +46,7 @@ class PowerSyncDatabaseImpl
   factory PowerSyncDatabaseImpl(
       {required Schema schema,
       required String path,
-      int maxReaders = AbstractSqliteDatabase.defaultMaxReaders,
+      int maxReaders = SqliteDatabase.defaultMaxReaders,
       Logger? logger,
       @Deprecated("Use [PowerSyncDatabase.withFactory] instead")
       // ignore: deprecated_member_use_from_same_package
@@ -65,7 +65,7 @@ class PowerSyncDatabaseImpl
   factory PowerSyncDatabaseImpl.withFactory(
     DefaultSqliteOpenFactory openFactory, {
     required Schema schema,
-    int maxReaders = AbstractSqliteDatabase.defaultMaxReaders,
+    int maxReaders = SqliteDatabase.defaultMaxReaders,
     Logger? logger,
   }) {
     throw UnimplementedError();

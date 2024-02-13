@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'dart:math';
 
+import 'package:powersync/sqlite_async.dart';
 import 'package:powersync/src/open_factory/common_db_functions.dart';
-import 'package:sqlite_async/definitions.dart';
 import 'package:sqlite_async/sqlite3_common.dart';
 
 const powerSyncDefaultSqliteOptions = SqliteOptions(

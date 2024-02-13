@@ -24,7 +24,7 @@ abstract class PowerSyncDatabase
 
   factory PowerSyncDatabase.withFactory(DefaultSqliteOpenFactory openFactory,
       {required Schema schema,
-      int maxReaders = AbstractSqliteDatabase.defaultMaxReaders,
+      int maxReaders = SqliteDatabase.defaultMaxReaders,
       Logger? logger}) {
     return PowerSyncDatabaseImpl.withFactory(openFactory,
         schema: schema, logger: logger);
