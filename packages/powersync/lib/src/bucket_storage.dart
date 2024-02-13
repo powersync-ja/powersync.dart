@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:collection/collection.dart';
+import 'package:meta/meta.dart';
 import 'package:powersync/sqlite_async.dart';
 import 'package:sqlite_async/sqlite3_common.dart' as sqlite;
 import 'package:sqlite_async/sqlite_async.dart';
@@ -282,7 +283,7 @@ class BucketStorage {
 
   Future<bool> updateObjectsFromBuckets(Checkpoint checkpoint) async {
     return writeTransaction((tx) async {
-      if (!(await _canUpdateLocal(tx))) {
+      if (!(await canUpdateLocal(tx))) {
         return false;
       }
 
@@ -346,7 +347,7 @@ class BucketStorage {
     for (final entry in byType.entries) {
       final type = entry.key;
       final typeRows = entry.value;
-      final table = _getTypeTableName(type);
+      final table = getTypeTableName(type);
 
       // Note that "PUT" and "DELETE" are split, and not applied in row order.
       // So we only do either PUT or DELETE for each individual object, not both.
@@ -389,7 +390,8 @@ class BucketStorage {
     }
   }
 
-  Future<bool> _canUpdateLocal(SqliteWriteContext tx) async {
+  @protected
+  Future<bool> canUpdateLocal(SqliteWriteContext tx) async {
     final invalidBuckets = await tx.execute(
         "SELECT name, CAST(target_op AS TEXT), last_op, last_applied_op FROM ps_buckets WHERE target_op > last_op AND (name = '\$local' OR pending_delete = 0)");
     if (invalidBuckets.isNotEmpty) {
@@ -860,7 +862,8 @@ enum OpType {
 /// The table name must always be enclosed in "quotes" when using inside a SQL query.
 ///
 /// @param type
-String _getTypeTableName(String type) {
+@protected
+String getTypeTableName(String type) {
   // Test for invalid characters rather than escaping.
   if (invalidSqliteCharacters.hasMatch(type)) {
     throw AssertionError("Invalid characters in type name: $type");

@@ -5,8 +5,8 @@ import 'package:meta/meta.dart';
 import 'package:http/http.dart' as http;
 import 'package:logging/logging.dart';
 import 'package:powersync/src/abort_controller.dart';
-import 'package:powersync/src/bucket_storage.dart';
 import 'package:powersync/src/connector.dart';
+import 'package:powersync/src/database/native/native_bucket_storage.dart';
 import 'package:powersync/src/database/powersync_database.dart';
 import 'package:powersync/src/database/powersync_db_mixin.dart';
 import 'package:powersync/src/isolate_completer.dart';
@@ -321,7 +321,7 @@ Future<void> _powerSyncDatabaseIsolate(
         .open(SqliteOpenOptions(primaryConnection: false, readOnly: false));
     final connection = SyncSqliteConnection(db!, mutex);
 
-    final storage = BucketStorage(connection);
+    final storage = NativeBucketStorage(connection);
     final sync = StreamingSyncImplementation(
         adapter: storage,
         credentialsCallback: loadCredentials,
