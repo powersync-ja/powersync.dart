@@ -1,6 +1,7 @@
 import 'package:logging/logging.dart';
 import 'package:powersync/src/database/powersync_database_impl.dart';
 import 'package:powersync/src/database/powersync_db_mixin.dart';
+import 'package:powersync/src/open_factory/abstract_powersync_open_factory.dart';
 import 'package:sqlite_async/sqlite_async.dart';
 
 import '../schema.dart';
@@ -32,8 +33,14 @@ abstract class PowerSyncDatabase
   ///
   /// [logger] defaults to [autoLogger], which logs to the console in debug builds.
   factory PowerSyncDatabase(
-      {required Schema schema, required String path, Logger? logger}) {
-    return PowerSyncDatabaseImpl(schema: schema, path: path, logger: logger);
+      {required Schema schema,
+      required String path,
+      Logger? logger,
+      @Deprecated("Use [PowerSyncDatabase.withFactory] instead.")
+      // ignore: deprecated_member_use_from_same_package
+      SqliteConnectionSetup? sqliteSetup}) {
+    return PowerSyncDatabaseImpl(
+        schema: schema, path: path, logger: logger, sqliteSetup: sqliteSetup);
   }
 
   /// Open a [PowerSyncDatabase] with a [PowerSyncOpenFactory].

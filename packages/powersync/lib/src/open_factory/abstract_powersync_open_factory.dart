@@ -68,7 +68,7 @@ abstract class AbstractPowerSyncOpenFactory extends DefaultSqliteOpenFactory {
 }
 
 /// Advanced: Define custom setup for each SQLite connection.
-@Deprecated('Use SqliteOpenFactory instead')
+@Deprecated('Use SqliteOpenFactory instead.')
 class SqliteConnectionSetup {
   final FutureOr<void> Function() _setup;
 

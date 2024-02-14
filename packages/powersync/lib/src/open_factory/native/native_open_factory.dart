@@ -9,13 +9,13 @@ import '../../uuid.dart';
 
 /// Native implementation for [AbstractPowerSyncOpenFactory]
 class PowerSyncOpenFactory extends AbstractPowerSyncOpenFactory {
-  @Deprecated('Override PowerSyncOpenFactory instead')
+  @Deprecated('Override PowerSyncOpenFactory instead.')
   final SqliteConnectionSetup? _sqliteSetup;
 
   PowerSyncOpenFactory(
       {required super.path,
       super.sqliteOptions,
-      @Deprecated('Override PowerSyncOpenFactory instead')
+      @Deprecated('Override PowerSyncOpenFactory instead.')
       SqliteConnectionSetup? sqliteSetup})
       // ignore: deprecated_member_use_from_same_package
       : _sqliteSetup = sqliteSetup;

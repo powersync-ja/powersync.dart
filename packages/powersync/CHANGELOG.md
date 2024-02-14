@@ -1,6 +1,9 @@
 ## 1.3.0-alpha.1
 
 - Added initial support for Web platform.
+## 1.2.2
+
+- Deprecate DevConnector and related
 
 ## 1.2.1
 
