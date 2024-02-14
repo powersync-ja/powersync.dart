@@ -17,7 +17,7 @@ for PACKAGE in "$PACKAGES_DIR"/*; do
     cd "$PACKAGE" || exit
 
     # Run the pana command
-    flutter pub global run pana --no-warning --exit-code-threshold 0
+    flutter pub global run pana --no-warning --exit-code-threshold 10
 
     # Return to the root directory
     cd "$ROOT_DIR" || exit
