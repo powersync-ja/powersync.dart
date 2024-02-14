@@ -63,7 +63,7 @@ class SyncingService {
       await attachmentsService.deleteAttachment(attachment.id);
       return;
     } catch (e) {
-      log.severe('Download attachment error for attachment $attachment}', e);
+      log.severe('Download attachment error for attachment $attachment', e);
       return;
     }
   }
