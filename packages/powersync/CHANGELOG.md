@@ -1,3 +1,7 @@
+## 1.2.2
+
+- Deprecate DevConnector and related
+
 ## 1.2.1
 
 - Fix indexes incorrectly dropped after the first run.
