@@ -141,7 +141,7 @@ class PowerSyncDatabaseImpl
         retryDelay: Duration(seconds: 3),
         // HTTP streaming is not supported on web with the standard http package
         // https://github.com/dart-lang/http/issues/595
-        client: FetchClient(mode: RequestMode.cors));
+        client: FetchClient(mode: RequestMode.cors, streamRequests: true));
     sync.statusStream.listen((event) {
       setStatus(event);
     });
