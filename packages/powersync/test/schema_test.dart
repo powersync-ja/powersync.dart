@@ -109,39 +109,38 @@ void main() {
           greaterThan(versionAfter2['schema_version']));
     });
 
-    /// TODO this test breaks on web at the moment.
     /// The assets table is locked after performing the EXPLAIN QUERY
-    // test('Indexing', () async {
-    //   final powersync =
-    //       await testUtils.setupPowerSync(path: path, schema: schema);
+    test('Indexing', () async {
+      final powersync =
+          await testUtils.setupPowerSync(path: path, schema: schema);
 
-    //   final results = await powersync.execute(
-    //       'EXPLAIN QUERY PLAN SELECT * FROM assets WHERE make = ?', ['test']);
+      final results = await powersync.execute(
+          'EXPLAIN QUERY PLAN SELECT * FROM assets WHERE make = ?', ['test']);
 
-    //   expect(results[0]['detail'],
-    //       contains('USING INDEX ps_data__assets__makemodel'));
+      expect(results[0]['detail'],
+          contains('USING INDEX ps_data__assets__makemodel'));
 
-    //   // Now drop the index
-    //   final schema2 = Schema([
-    //     Table('assets', [
-    //       Column.text('created_at'),
-    //       Column.text('make'),
-    //       Column.text('model'),
-    //       Column.text('serial_number'),
-    //       Column.integer('quantity'),
-    //       Column.text('user_id'),
-    //       Column.real('weight'),
-    //       Column.text('description'),
-    //     ], indexes: []),
-    //   ]);
-    //   await powersync.updateSchema(schema2);
+      // Now drop the index
+      final schema2 = Schema([
+        Table('assets', [
+          Column.text('created_at'),
+          Column.text('make'),
+          Column.text('model'),
+          Column.text('serial_number'),
+          Column.integer('quantity'),
+          Column.text('user_id'),
+          Column.real('weight'),
+          Column.text('description'),
+        ], indexes: []),
+      ]);
+      await powersync.updateSchema(schema2);
 
-    //   // Execute instead of getAll so that we don't get a cached query plan
-    //   // from a different connection
-    //   final results2 = await powersync.execute(
-    //       'EXPLAIN QUERY PLAN SELECT * FROM assets WHERE make = ?', ['test']);
+      // Execute instead of getAll so that we don't get a cached query plan
+      // from a different connection
+      final results2 = await powersync.execute(
+          'EXPLAIN QUERY PLAN SELECT * FROM assets WHERE make = ?', ['test']);
 
-    //   expect(results2[0]['detail'], contains('SCAN'));
-    // });
+      expect(results2[0]['detail'], contains('SCAN'));
+    });
   });
 }

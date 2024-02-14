@@ -106,7 +106,3 @@ implement checks for preventing writable queries in read connections and vice-ve
 Direct access to the synchronous `CommonDatabase` (`sqlite.Database` equivalent for web) connection is not available. `computeWithDatabase` is not available on web.
 
 Multiple tab support is not yet available. Using multiple tabs will break.
-
-#### Known Issues
-
-The `powersync.updateSchema` method currently does not allow for the schema to be updated after client initialization.

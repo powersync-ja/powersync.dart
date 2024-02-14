@@ -448,10 +448,10 @@ packages:
     dependency: transitive
     description:
       name: sqlite3
-      sha256: c4a4c5a4b2a32e2d0f6837b33d7c91a67903891a5b7dbe706cf4b1f6b0c798c5
+      sha256: "072128763f1547e3e9b4735ce846bfd226d68019ccda54db4cd427b12dfdedc9"
       url: "https://pub.dev"
     source: hosted
-    version: "2.3.0"
+    version: "2.4.0"
   sqlite3_flutter_libs:
     dependency: transitive
     description:
@@ -465,7 +465,7 @@ packages:
     description:
       path: "."
       ref: web
-      resolved-ref: ab00e64cf10b90ad79356316e6241ce03a7e1880
+      resolved-ref: "3960604ebbebd156e04965d765bb76018b973913"
       url: "https://github.com/powersync-ja/sqlite_async.dart.git"
     source: git
     version: "0.6.0"
@@ -553,10 +553,10 @@ packages:
     dependency: transitive
     description:
       name: url_launcher_android
-      sha256: "507dc655b1d9cb5ebc756032eb785f114e415f91557b73bf60b7e201dfedeb2f"
+      sha256: d4ed0711849dd8e33eb2dd69c25db0d0d3fdc37e0a62e629fe32f57a22db2745
       url: "https://pub.dev"
     source: hosted
-    version: "6.2.2"
+    version: "6.3.0"
   url_launcher_ios:
     dependency: transitive
     description:
