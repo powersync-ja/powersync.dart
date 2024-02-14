@@ -4,8 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:powersync_flutter_demo/attachments/camera_helpers.dart';
 import 'package:powersync_flutter_demo/attachments/photo_capture_widget.dart';
 import 'package:powersync_flutter_demo/attachments/queue.dart';
-
-import '../models/todo_item.dart';
+import 'package:powersync_flutter_demo/database.dart';
 
 class PhotoWidget extends StatefulWidget {
   final TodoItem todo;

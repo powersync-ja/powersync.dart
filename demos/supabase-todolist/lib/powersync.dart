@@ -3,6 +3,7 @@ import 'package:logging/logging.dart';
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:powersync/powersync.dart';
+import 'package:powersync_flutter_demo/database.dart';
 import 'package:powersync_flutter_demo/migrations/fts_setup.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -134,6 +135,7 @@ class SupabaseConnector extends PowerSyncBackendConnector {
 
 /// Global reference to the database
 late final PowerSyncDatabase db;
+late final AppDatabase appDb;
 
 bool isLoggedIn() {
   return Supabase.instance.client.auth.currentSession?.accessToken != null;
@@ -154,6 +156,7 @@ Future<void> openDatabase() async {
   db = PowerSyncDatabase(
       schema: schema, path: await getDatabasePath(), logger: attachedLogger);
   await db.initialize();
+  appDb = AppDatabase(db);
 
   await loadSupabase();
 

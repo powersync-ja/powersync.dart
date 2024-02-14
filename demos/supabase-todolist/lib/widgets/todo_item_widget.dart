@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:powersync_flutter_demo/app_config.dart';
 import 'package:powersync_flutter_demo/attachments/photo_widget.dart';
 import 'package:powersync_flutter_demo/attachments/queue.dart';
-
-import '../models/todo_item.dart';
+import 'package:powersync_flutter_demo/database.dart';
+import 'package:powersync_flutter_demo/powersync.dart';
 
 class TodoItemWidget extends StatelessWidget {
   TodoItemWidget({
@@ -25,24 +25,24 @@ class TodoItemWidget extends StatelessWidget {
     if (todo.photoId != null) {
       attachmentQueue.deletePhoto(todo.photoId!);
     }
-    await todo.delete();
+    await appDb.deleteTodo(todo);
   }
 
   @override
   Widget build(BuildContext context) {
     return ListTile(
-        onTap: todo.toggle,
+        onTap: () => appDb.toggleTodo(todo),
         leading: Checkbox(
           value: todo.completed,
           onChanged: (_) {
-            todo.toggle();
+            appDb.toggleTodo(todo);
           },
         ),
         title: Row(
           children: <Widget>[
             Expanded(
                 child: Text(todo.description,
-                    style: _getTextStyle(todo.completed))),
+                    style: _getTextStyle(todo.completed == true))),
             IconButton(
               iconSize: 30,
               icon: const Icon(

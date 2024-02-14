@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-
-import '../models/todo_list.dart';
+import 'package:powersync_flutter_demo/powersync.dart';
 
 class ListItemDialog extends StatefulWidget {
   const ListItemDialog({super.key});
@@ -23,7 +22,7 @@ class _ListItemDialogState extends State<ListItemDialog> {
   }
 
   Future<void> add() async {
-    await TodoList.create(_textFieldController.text);
+    await appDb.createList(_textFieldController.text);
   }
 
   @override

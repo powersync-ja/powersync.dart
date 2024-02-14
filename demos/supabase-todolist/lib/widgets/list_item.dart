@@ -1,18 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:powersync_flutter_demo/database.dart';
+import 'package:powersync_flutter_demo/powersync.dart';
 
 import './todo_list_page.dart';
-import '../models/todo_list.dart';
 
 class ListItemWidget extends StatelessWidget {
   ListItemWidget({
     required this.list,
   }) : super(key: ObjectKey(list));
 
-  final TodoList list;
+  final ListItemWithStats list;
 
   Future<void> delete() async {
     // Server will take care of deleting related todos
-    await list.delete();
+    await appDb.deleteList(list.self);
   }
 
   @override
@@ -20,8 +21,8 @@ class ListItemWidget extends StatelessWidget {
     viewList() {
       var navigator = Navigator.of(context);
 
-      navigator.push(
-          MaterialPageRoute(builder: (context) => TodoListPage(list: list)));
+      navigator.push(MaterialPageRoute(
+          builder: (context) => TodoListPage(list: list.self)));
     }
 
     final subtext =
@@ -34,7 +35,7 @@ class ListItemWidget extends StatelessWidget {
           ListTile(
               onTap: viewList,
               leading: const Icon(Icons.list),
-              title: Text(list.name),
+              title: Text(list.self.name),
               subtitle: Text(subtext)),
           Row(
             mainAxisAlignment: MainAxisAlignment.end,
