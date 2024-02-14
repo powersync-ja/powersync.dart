@@ -3,7 +3,9 @@ import 'dart:convert';
 import 'package:powersync/powersync.dart';
 import 'package:test/test.dart';
 
-import 'util.dart';
+import 'utils/test_utils_impl.dart';
+
+final testUtils = TestUtils();
 
 const assetId = "2290de4f-0488-4e50-abed-f8e8eb1d0b42";
 const userId = "3390de4f-0488-4e50-abed-f8e8eb1d0b42";
@@ -72,14 +74,15 @@ void main() {
     late String path;
 
     setUp(() async {
-      path = dbPath();
-      await cleanDb(path: path);
+      path = testUtils.dbPath();
+      await testUtils.cleanDb(path: path);
     });
 
     test('Switch from offline-only to online', () async {
       // Start with "offline-only" schema.
       // This does not record any operations to the crud queue.
-      final db = await setupPowerSync(path: path, schema: makeSchema(false));
+      final db =
+          await testUtils.setupPowerSync(path: path, schema: makeSchema(false));
 
       await db.execute('INSERT INTO customers(id, name, email) VALUES(?, ?, ?)',
           [customerId, 'test customer', 'test@example.org']);

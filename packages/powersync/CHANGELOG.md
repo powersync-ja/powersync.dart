@@ -1,3 +1,7 @@
+## 1.3.0-alpha.1
+
+- Added initial support for Web platform.
+
 ## 1.2.1
 
 - Fix indexes incorrectly dropped after the first run.

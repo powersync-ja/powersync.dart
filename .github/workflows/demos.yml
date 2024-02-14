@@ -1,13 +1,13 @@
 name: Demos checks
 
 concurrency:
-    group: demos-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-    cancel-in-progress: true
+  group: demos-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 on:
   push:
     branches:
-      - "**"
+      - '**'
 
 jobs:
   build:
@@ -23,7 +23,7 @@ jobs:
       - name: Install Melos
         run: flutter pub global activate melos
       - name: Install dependencies
-        run: melos bootstrap
+        run: melos prepare
       - name: Check formatting
         run: melos format:check:demos
       - name: Lint
@@ -43,6 +43,6 @@ jobs:
       - name: Install melos
         run: flutter pub global activate melos
       - name: Install dependencies
-        run: melos bootstrap
+        run: melos prepare
       - name: Run tests
         run: melos test

@@ -1,3 +1,7 @@
+## 0.3.0-alpha.1
+
+- Added initial support for Web platform.
+
 ## 0.2.0
 
 - Potentially BREAKING CHANGE for users who rely on multiple attachment queues.

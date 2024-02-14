@@ -2,7 +2,7 @@ import './attachments_queue.dart';
 import './attachments_queue_table.dart';
 import './local_storage_adapter.dart';
 import 'package:powersync/powersync.dart';
-import 'package:sqlite_async/sqlite3.dart';
+import 'package:sqlite_async/sqlite3_common.dart';
 
 /// Service for interacting with the attachment queue.
 class AttachmentsService {

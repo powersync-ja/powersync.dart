@@ -1,4 +1,4 @@
-import 'schema_logic.dart';
+import './schema_helpers.dart';
 
 /// The schema used by the database.
 ///

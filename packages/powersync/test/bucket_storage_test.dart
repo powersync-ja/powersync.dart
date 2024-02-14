@@ -1,11 +1,13 @@
 import 'package:powersync/powersync.dart';
 import 'package:powersync/src/bucket_storage.dart';
 import 'package:powersync/src/sync_types.dart';
-import 'package:sqlite_async/sqlite3.dart' as sqlite;
-import 'package:sqlite_async/mutex.dart';
+import 'package:sqlite3/common.dart';
 import 'package:test/test.dart';
 
-import 'util.dart';
+import 'utils/abstract_test_utils.dart';
+import 'utils/test_utils_impl.dart';
+
+final testUtils = TestUtils();
 
 const putAsset1_1 = OplogEntry(
     opId: '1',
@@ -40,17 +42,20 @@ const removeAsset1_5 = OplogEntry(
 void main() {
   group('Bucket Storage Tests', () {
     late PowerSyncDatabase powersync;
-    late sqlite.Database db;
     late BucketStorage bucketStorage;
     late String path;
 
     setUp(() async {
-      path = dbPath();
-      await cleanDb(path: path);
+      path = testUtils.dbPath();
+      await testUtils.cleanDb(path: path);
 
-      powersync = await setupPowerSync(path: path);
-      db = await setupSqlite(powersync: powersync);
-      bucketStorage = BucketStorage(db, mutex: Mutex());
+      powersync = await testUtils.setupPowerSync(path: path);
+      bucketStorage = BucketStorage(powersync);
+      await bucketStorage.initialized();
+    });
+
+    tearDown(() async {
+      await powersync.close();
     });
 
     Future<void> syncLocalChecked(Checkpoint checkpoint) async {
@@ -58,26 +63,30 @@ void main() {
       expect(result, equals(SyncLocalDatabaseResult(ready: true)));
     }
 
-    void expectAsset1_3() {
+    Future<void> expectAsset1_3() async {
       expect(
-          db.select("SELECT id, description, make FROM assets WHERE id = 'O1'"),
+          await powersync.execute(
+              "SELECT id, description, make FROM assets WHERE id = 'O1'"),
           equals([
             {'id': 'O1', 'description': 'bard', 'make': null}
           ]));
     }
 
-    void expectNoAsset1() {
+    Future<void> expectNoAsset1() async {
       expect(
-          db.select("SELECT id, description, make FROM assets WHERE id = 'O1'"),
+          await powersync.execute(
+              "SELECT id, description, make FROM assets WHERE id = 'O1'"),
           equals([]));
     }
 
-    void expectNoAssets() {
-      expect(db.select("SELECT id, description, make FROM assets"), equals([]));
+    Future<void> expectNoAssets() async {
+      expect(
+          await powersync.execute("SELECT id, description, make FROM assets"),
+          equals([]));
     }
 
     test('Basic Setup', () async {
-      expect(bucketStorage.getBucketStates(), equals([]));
+      expect(await bucketStorage.getBucketStates(), equals([]));
 
       await bucketStorage.saveSyncData(SyncDataBatch([
         SyncBucketData(
@@ -86,14 +95,15 @@ void main() {
         )
       ]));
 
-      expect(bucketStorage.getBucketStates(),
+      final bucketStates = await bucketStorage.getBucketStates();
+      expect(bucketStates,
           equals([const BucketState(bucket: 'bucket1', opId: '3')]));
 
       await syncLocalChecked(Checkpoint(
           lastOpId: '3',
           checksums: [BucketChecksum(bucket: 'bucket1', checksum: 6)]));
 
-      expectAsset1_3();
+      await expectAsset1_3();
     });
 
     test('should get an object from multiple buckets', () async {
@@ -110,7 +120,7 @@ void main() {
         BucketChecksum(bucket: 'bucket2', checksum: 3)
       ]));
 
-      expectAsset1_3();
+      await expectAsset1_3();
     });
 
     test('should prioritize later updates', () async {
@@ -128,7 +138,7 @@ void main() {
         BucketChecksum(bucket: 'bucket2', checksum: 1)
       ]));
 
-      expectAsset1_3();
+      await expectAsset1_3();
     });
 
     test('should ignore a remove from one bucket', () async {
@@ -143,7 +153,7 @@ void main() {
         BucketChecksum(bucket: 'bucket2', checksum: 7)
       ]));
 
-      expectAsset1_3();
+      await expectAsset1_3();
     });
 
     test('should remove when removed from all buckets', () async {
@@ -158,7 +168,7 @@ void main() {
         BucketChecksum(bucket: 'bucket2', checksum: 7)
       ]));
 
-      expectNoAssets();
+      await expectNoAssets();
     });
 
     test('should use subkeys', () async {
@@ -191,7 +201,8 @@ void main() {
       ]));
 
       expect(
-          db.select("SELECT id, description, make FROM assets WHERE id = 'O1'"),
+          await powersync.execute(
+              "SELECT id, description, make FROM assets WHERE id = 'O1'"),
           equals([
             {'id': 'O1', 'description': 'B', 'make': null}
           ]));
@@ -204,7 +215,7 @@ void main() {
         BucketChecksum(bucket: 'bucket1', checksum: 13),
       ]));
 
-      expectAsset1_3();
+      await expectAsset1_3();
     });
 
     test('should fail checksum validation', () async {
@@ -226,7 +237,7 @@ void main() {
               checkpointValid: false,
               checkpointFailures: ['bucket1', 'bucket2'])));
 
-      expectNoAssets();
+      await expectNoAssets();
     });
 
     test('should delete buckets', () async {
@@ -249,12 +260,12 @@ void main() {
       ]));
 
       // Bucket is deleted, but object is still present in other buckets.
-      expectAsset1_3();
+      await expectAsset1_3();
 
       await bucketStorage.removeBuckets(['bucket1']);
       await syncLocalChecked(Checkpoint(lastOpId: '3', checksums: []));
       // Both buckets deleted - object removed.
-      expectNoAssets();
+      await expectNoAssets();
     });
 
     test('should delete and re-create buckets', () async {
@@ -291,12 +302,12 @@ void main() {
       await syncLocalChecked(Checkpoint(lastOpId: '3', checksums: [
         BucketChecksum(bucket: 'bucket1', checksum: 4),
       ]));
-      expectAsset1_3();
+      await expectAsset1_3();
 
       // Now final delete
       await bucketStorage.removeBuckets(['bucket1']);
       await syncLocalChecked(Checkpoint(lastOpId: '3', checksums: []));
-      expectNoAssets();
+      await expectNoAssets();
     });
 
     test('should handle MOVE', () async {
@@ -331,7 +342,7 @@ void main() {
           lastOpId: '3',
           checksums: [BucketChecksum(bucket: 'bucket1', checksum: 4)]));
 
-      expectAsset1_3();
+      await expectAsset1_3();
     });
 
     test('should handle CLEAR', () async {
@@ -369,9 +380,10 @@ void main() {
           // 2 + 3. 1 is replaced with 2.
           checksums: [BucketChecksum(bucket: 'bucket1', checksum: 5)]));
 
-      expectNoAsset1();
+      await expectNoAsset1();
       expect(
-          db.select("SELECT id, description FROM assets WHERE id = 'O2'"),
+          await powersync
+              .execute("SELECT id, description FROM assets WHERE id = 'O2'"),
           equals([
             {'id': 'O2', 'description': 'bar'}
           ]));
@@ -381,13 +393,13 @@ void main() {
       // Test case where a type is added to the schema after we already have the data.
 
       // Re-initialize with empty database
-      await cleanDb(path: path);
+      await testUtils.cleanDb(path: path);
 
-      powersync = PowerSyncDatabase.withFactory(TestOpenFactory(path: path),
+      powersync = PowerSyncDatabase.withFactory(
+          await testUtils.testFactory(path: path),
           schema: const Schema([]));
       await powersync.initialize();
-      db = await setupSqlite(powersync: powersync);
-      bucketStorage = BucketStorage(db, mutex: Mutex());
+      bucketStorage = BucketStorage(powersync);
 
       await bucketStorage.saveSyncData(SyncDataBatch([
         SyncBucketData(
@@ -399,20 +411,20 @@ void main() {
       await syncLocalChecked(Checkpoint(
           lastOpId: '4',
           checksums: [BucketChecksum(bucket: 'bucket1', checksum: 6)]));
-      expect(
-          () => db.select('SELECT * FROM assets'),
+
+      await expectLater(() async {
+        await powersync.execute('SELECT * FROM assets');
+      },
           throwsA((e) =>
-              e is sqlite.SqliteException &&
-              e.message.contains('no such table')));
+              e is SqliteException && e.message.contains('no such table')));
 
       await powersync.close();
 
       // Now open another instance with new schema
-      powersync = PowerSyncDatabase.withFactory(TestOpenFactory(path: path),
-          schema: schema);
-      db = await setupSqlite(powersync: powersync);
-
-      expectAsset1_3();
+      powersync = PowerSyncDatabase.withFactory(
+          await testUtils.testFactory(path: path),
+          schema: defaultSchema);
+      await expectAsset1_3();
     });
 
     test('should remove types', () async {
@@ -427,26 +439,25 @@ void main() {
           lastOpId: '3',
           checksums: [BucketChecksum(bucket: 'bucket1', checksum: 6)]));
 
-      expectAsset1_3();
+      await expectAsset1_3();
 
       await powersync.close();
 
       // Now open another instance with new schema
-      powersync = PowerSyncDatabase.withFactory(TestOpenFactory(path: path),
+      powersync = PowerSyncDatabase.withFactory(
+          await testUtils.testFactory(path: path),
           schema: const Schema([]));
-      db = await setupSqlite(powersync: powersync);
-      expect(
-          () => db.select('SELECT * FROM assets'),
+
+      await expectLater(
+          () async => await powersync.execute('SELECT * FROM assets'),
           throwsA((e) =>
-              e is sqlite.SqliteException &&
-              e.message.contains('no such table')));
+              e is SqliteException && e.message.contains('no such table')));
 
       // Add schema again
-      powersync = PowerSyncDatabase.withFactory(TestOpenFactory(path: path),
+      powersync = PowerSyncDatabase.withFactory(
+          await testUtils.testFactory(path: path),
           schema: schema);
-      db = await setupSqlite(powersync: powersync);
-
-      expectAsset1_3();
+      await expectAsset1_3();
     });
 
     test('should compact', () async {
@@ -470,7 +481,7 @@ void main() {
           writeCheckpoint: '4',
           checksums: [BucketChecksum(bucket: 'bucket1', checksum: 7)]));
 
-      final stats = db.select(
+      final stats = await powersync.execute(
           'SELECT row_type as type, row_id as id, count(*) as count FROM ps_oplog GROUP BY row_type, row_id ORDER BY row_type, row_id');
       expect(
           stats,
@@ -493,9 +504,9 @@ void main() {
           checksums: [BucketChecksum(bucket: 'bucket1', checksum: 6)]));
 
       // Local save
-      db.execute('INSERT INTO assets(id) VALUES(?)', ['O3']);
+      powersync.execute('INSERT INTO assets(id) VALUES(?)', ['O3']);
       expect(
-          db.select('SELECT id FROM assets WHERE id = \'O3\''),
+          await powersync.execute('SELECT id FROM assets WHERE id = \'O3\''),
           equals([
             {'id': 'O3'}
           ]));
@@ -507,7 +518,7 @@ void main() {
           checksums: [BucketChecksum(bucket: 'bucket1', checksum: 6)]));
       expect(result, equals(SyncLocalDatabaseResult(ready: false)));
 
-      final batch = bucketStorage.getCrudBatch();
+      final batch = await bucketStorage.getCrudBatch();
       await batch!.complete();
       await bucketStorage.updateLocalTarget(() async {
         return '4';
@@ -522,7 +533,7 @@ void main() {
 
       // The data must still be present locally.
       expect(
-          db.select('SELECT id FROM assets WHERE id = \'O3\''),
+          await powersync.execute('SELECT id FROM assets WHERE id = \'O3\''),
           equals([
             {'id': 'O3'}
           ]));
@@ -538,7 +549,8 @@ void main() {
           checksums: [BucketChecksum(bucket: 'bucket1', checksum: 6)]));
 
       // Since the object was not in the sync response, it is deleted.
-      expect(db.select('SELECT id FROM assets WHERE id = \'O3\''), equals([]));
+      expect(await powersync.execute('SELECT id FROM assets WHERE id = \'O3\''),
+          equals([]));
     });
 
     test(
@@ -557,9 +569,9 @@ void main() {
           checksums: [BucketChecksum(bucket: 'bucket1', checksum: 6)]));
 
       // Local save
-      db.execute('INSERT INTO assets(id) VALUES(?)', ['O3']);
+      powersync.execute('INSERT INTO assets(id) VALUES(?)', ['O3']);
 
-      final batch = bucketStorage.getCrudBatch();
+      final batch = await bucketStorage.getCrudBatch();
       await batch!.complete();
       await bucketStorage.updateLocalTarget(() async {
         return '4';
@@ -575,7 +587,7 @@ void main() {
           SyncDataBatch([SyncBucketData(bucket: 'bucket1', data: [])]));
 
       // Add more data before syncLocalDatabase.
-      db.execute('INSERT INTO assets(id) VALUES(?)', ['O4']);
+      powersync.execute('INSERT INTO assets(id) VALUES(?)', ['O4']);
 
       final result4 = await bucketStorage.syncLocalDatabase(Checkpoint(
           lastOpId: '5',
@@ -600,11 +612,11 @@ void main() {
           checksums: [BucketChecksum(bucket: 'bucket1', checksum: 6)]));
 
       // Local save
-      db.execute('INSERT INTO assets(id) VALUES(?)', ['O3']);
-      final batch = bucketStorage.getCrudBatch();
+      await powersync.execute('INSERT INTO assets(id) VALUES(?)', ['O3']);
+      final batch = await bucketStorage.getCrudBatch();
       // Add more data before the complete() call
 
-      db.execute('INSERT INTO assets(id) VALUES(?)', ['O4']);
+      await powersync.execute('INSERT INTO assets(id) VALUES(?)', ['O4']);
       await batch!.complete();
       await bucketStorage.updateLocalTarget(() async {
         return '4';
@@ -639,8 +651,8 @@ void main() {
           checksums: [BucketChecksum(bucket: 'bucket1', checksum: 6)]));
 
       // Local save
-      db.execute('INSERT INTO assets(id) VALUES(?)', ['O3']);
-      final batch = bucketStorage.getCrudBatch();
+      powersync.execute('INSERT INTO assets(id) VALUES(?)', ['O3']);
+      final batch = await bucketStorage.getCrudBatch();
       await batch!.complete();
       await bucketStorage.updateLocalTarget(() async {
         return '4';
@@ -667,7 +679,8 @@ void main() {
           checksums: [BucketChecksum(bucket: 'bucket1', checksum: 11)]));
 
       expect(
-          db.select('SELECT description FROM assets WHERE id = \'O3\''),
+          await powersync
+              .execute('SELECT description FROM assets WHERE id = \'O3\''),
           equals([
             {'description': 'server updated'}
           ]));
@@ -687,16 +700,18 @@ void main() {
           checksums: [BucketChecksum(bucket: 'bucket1', checksum: 6)]));
 
       // Local insert, later rejected by server
-      db.execute('INSERT INTO assets(id, description) VALUES(?, ?)',
+      await powersync.execute(
+          'INSERT INTO assets(id, description) VALUES(?, ?)',
           ['O3', 'inserted']);
-      final batch = bucketStorage.getCrudBatch();
+      final batch = await bucketStorage.getCrudBatch();
       await batch!.complete();
       await bucketStorage.updateLocalTarget(() async {
         return '4';
       });
 
       expect(
-          db.select('SELECT description FROM assets WHERE id = \'O3\''),
+          await powersync
+              .execute('SELECT description FROM assets WHERE id = \'O3\''),
           equals([
             {'description': 'inserted'}
           ]));
@@ -706,7 +721,9 @@ void main() {
           writeCheckpoint: '4',
           checksums: [BucketChecksum(bucket: 'bucket1', checksum: 6)]));
 
-      expect(db.select('SELECT description FROM assets WHERE id = \'O3\''),
+      expect(
+          await powersync
+              .execute('SELECT description FROM assets WHERE id = \'O3\''),
           equals([]));
     });
 
@@ -724,12 +741,14 @@ void main() {
           checksums: [BucketChecksum(bucket: 'bucket1', checksum: 6)]));
 
       // Local delete, later rejected by server
-      db.execute('DELETE FROM assets WHERE id = ?', ['O2']);
+      await powersync.execute('DELETE FROM assets WHERE id = ?', ['O2']);
 
-      expect(db.select('SELECT description FROM assets WHERE id = \'O2\''),
+      expect(
+          await powersync
+              .execute('SELECT description FROM assets WHERE id = \'O2\''),
           equals([]));
       // Simulate a permissions error when uploading - data should be preserved.
-      final batch = bucketStorage.getCrudBatch();
+      final batch = await bucketStorage.getCrudBatch();
       await batch!.complete();
 
       await bucketStorage.updateLocalTarget(() async {
@@ -742,7 +761,8 @@ void main() {
           checksums: [BucketChecksum(bucket: 'bucket1', checksum: 6)]));
 
       expect(
-          db.select('SELECT description FROM assets WHERE id = \'O2\''),
+          await powersync
+              .execute('SELECT description FROM assets WHERE id = \'O2\''),
           equals([
             {'description': 'bar'}
           ]));
@@ -762,16 +782,17 @@ void main() {
           checksums: [BucketChecksum(bucket: 'bucket1', checksum: 6)]));
 
       // Local update, later rejected by server
-      db.execute(
+      await powersync.execute(
           'UPDATE assets SET description = ? WHERE id = ?', ['updated', 'O2']);
 
       expect(
-          db.select('SELECT description FROM assets WHERE id = \'O2\''),
+          await powersync
+              .execute('SELECT description FROM assets WHERE id = \'O2\''),
           equals([
             {'description': 'updated'}
           ]));
       // Simulate a permissions error when uploading - data should be preserved.
-      final batch = bucketStorage.getCrudBatch();
+      final batch = await bucketStorage.getCrudBatch();
       await batch!.complete();
 
       await bucketStorage.updateLocalTarget(() async {
@@ -784,7 +805,8 @@ void main() {
           checksums: [BucketChecksum(bucket: 'bucket1', checksum: 6)]));
 
       expect(
-          db.select('SELECT description FROM assets WHERE id = \'O2\''),
+          await powersync
+              .execute('SELECT description FROM assets WHERE id = \'O2\''),
           equals([
             {'description': 'bar'}
           ]));

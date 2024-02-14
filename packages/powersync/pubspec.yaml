@@ -1,5 +1,5 @@
 name: powersync
-version: 1.2.1
+version: 1.3.0-alpha.1
 homepage: https://powersync.com
 repository: https://github.com/powersync-ja/powersync.dart
 description: PowerSync Flutter SDK - keep PostgreSQL databases in sync with on-device SQLite databases.
@@ -10,15 +10,19 @@ dependencies:
   flutter:
     sdk: flutter
 
-  sqlite_async: ^0.6.0
+  sqlite_async: ^0.7.0-alpha.1
   sqlite3_flutter_libs: ^0.5.15
+  meta: ^1.0.0
   http: ^1.1.0
   uuid: ^4.2.0
   async: ^2.10.0
   logging: ^1.1.1
   collection: ^1.17.0
+  fetch_client: ^1.0.2
+  js: ^0.6.7
 
 dev_dependencies:
+  dcli: ^3.3.5
   lints: ^3.0.0
   test: ^1.25.0
   test_api: ^0.7.0
@@ -26,7 +30,10 @@ dev_dependencies:
   sqlite3: ^2.3.0
   shelf: ^1.4.1
   shelf_router: ^1.1.4
+  shelf_static: ^1.1.2
+  stream_channel: ^2.1.2
   path: ^1.8.3
+  drift: 2.15.0
 
 platforms:
   android:
@@ -34,3 +41,4 @@ platforms:
   linux:
   macos:
   windows:
+  web:
