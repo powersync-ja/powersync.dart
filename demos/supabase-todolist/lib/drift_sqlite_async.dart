@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:drift/backends.dart';
-import 'package:drift/drift.dart';
 import 'package:sqlite_async/sqlite_async.dart' as s;
 
 class _SqliteAsyncDelegate extends DatabaseDelegate {
@@ -132,35 +131,20 @@ class _SqliteAsyncVersionDelegate extends DynamicVersionDelegate {
   }
 }
 
-/// A query executor that uses sqflite internally.
+/// A query executor that uses sqlite_async internally.
 class SqliteAsyncQueryExecutor extends DelegatedDatabase {
-  /// A query executor that will store the database in the file declared by
-  /// [path]. If [logStatements] is true, statements sent to the database will
-  /// be [print]ed, which can be handy for debugging. The [singleInstance]
-  /// parameter sets the corresponding parameter on [s.openDatabase].
-  /// The [creator] will be called when the database file doesn't exist. It can
-  /// be used to, for instance, populate default data from an asset. Note that
-  /// migrations might behave differently when populating the database this way.
-  /// For instance, a database created by an [creator] will not receive the
-  /// [MigrationStrategy.onCreate] callback because it hasn't been created by
-  /// drift.
   SqliteAsyncQueryExecutor(s.SqliteConnection db)
       : super(
           _SqliteAsyncDelegate(db),
         );
 
-  /// The underlying SqliteDatabase used by drift to send queries.
-  s.SqliteConnection? get db {
-    final sqfliteDelegate = delegate as _SqliteAsyncDelegate;
-    return sqfliteDelegate.isOpen ? sqfliteDelegate.db : null;
+  /// The underlying SqliteConnection used by drift to send queries.
+  s.SqliteConnection get db {
+    return (delegate as _SqliteAsyncDelegate).db;
   }
 
   @override
-  // We're not really required to be sequential since sqflite has an internal
-  // lock to bring statements into a sequential order.
-  // Setting isSequential here helps with cancellations in stream queries
-  // though.
-  bool get isSequential => true;
+  bool get isSequential => false;
 }
 
 class _SqliteAsyncTransactionDelegate extends SupportedTransactionDelegate {
