@@ -558,12 +558,11 @@ packages:
   sqlite_async:
     dependency: "direct main"
     description:
-      path: "."
-      ref: web
-      resolved-ref: "3960604ebbebd156e04965d765bb76018b973913"
-      url: "https://github.com/powersync-ja/sqlite_async.dart.git"
-    source: git
-    version: "0.6.0"
+      name: sqlite_async
+      sha256: "91f454cddc85617bea2c7c1544ff386887d0d2cf0ecdb3599015c05cc141ff4d"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.7.0-alpha.1"
   stack_trace:
     dependency: transitive
     description:

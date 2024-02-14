@@ -10,7 +10,7 @@ dependencies:
   flutter:
     sdk: flutter
 
-  sqlite_async: ^0.6.0
+  sqlite_async: 0.7.0-alpha.1
   sqlite3_flutter_libs: ^0.5.15
   meta: ^1.0.0
   http: ^1.1.0
@@ -20,12 +20,6 @@ dependencies:
   collection: ^1.17.0
   fetch_client: ^1.0.2
   js: ^0.6.7
-
-dependency_overrides:
-  sqlite_async:
-    git:
-      url: https://github.com/powersync-ja/sqlite_async.dart.git
-      ref: web # branch name
 
 dev_dependencies:
   dcli: ^3.3.5
