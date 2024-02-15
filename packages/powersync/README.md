@@ -157,11 +157,8 @@ Web support is currently in an alpha release.
 
 Web support requires `sqlite3.wasm` and `powersync_db.worker.js` assets to be served from the web application. This is typically achieved by placing the files in the project `web` directory.
 
-These assets are automatically configured in this monorepo when running `melos prepare`.
-
 - `sqlite3.wasm` can be found [here](https://github.com/simolus3/sqlite3.dart/releases)
-- `powersync_db.worker.js` will eventually be released in the repo's releases.
-  - In the interim the asset can be retrieved from the `./assets` folder after executing `melos prepare`
+- `powersync_db.worker.js` can be found in the repo's [releases](https://github.com/powersync-ja/powersync.dart/releases) page.
 
 Currently the Drift SQLite library is used under the hood for DB connections. See [here](https://drift.simonbinder.eu/web/#getting-started) for detailed compatibility
 and setup notes.
