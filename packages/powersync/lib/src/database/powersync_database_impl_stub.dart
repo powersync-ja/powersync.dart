@@ -48,7 +48,7 @@ class PowerSyncDatabaseImpl
       required String path,
       int maxReaders = SqliteDatabase.defaultMaxReaders,
       Logger? logger,
-      @Deprecated("Use [PowerSyncDatabase.withFactory] instead")
+      @Deprecated("Use [PowerSyncDatabase.withFactory] instead.")
       // ignore: deprecated_member_use_from_same_package
       SqliteConnectionSetup? sqliteSetup}) {
     throw UnimplementedError();

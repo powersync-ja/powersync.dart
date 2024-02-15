@@ -5,7 +5,7 @@ class PowerSyncOpenFactory extends open_factory.AbstractPowerSyncOpenFactory {
   PowerSyncOpenFactory(
       {required super.path,
       super.sqliteOptions,
-      @Deprecated('Override PowerSyncOpenFactory instead')
+      @Deprecated('Override PowerSyncOpenFactory instead.')
       // ignore: deprecated_member_use_from_same_package
       open_factory.SqliteConnectionSetup? sqliteSetup});
 

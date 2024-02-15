@@ -1,6 +1,14 @@
+## 1.3.0-alpha.2
+
+ - **FIX**(powersync-attachements-helper): pubspec file (#29).
+ - **DOCS**: update readme and getting started (#51).
+
 ## 1.3.0-alpha.1
 
 - Added initial support for Web platform.
+## 1.2.2
+
+- Deprecate DevConnector and related
 
 ## 1.2.1
 

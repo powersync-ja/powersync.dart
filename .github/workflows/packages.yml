@@ -33,7 +33,7 @@ jobs:
       - name: Check publish score
         run: |
           flutter pub global activate pana
-          ./.github/workflows/scripts/run-pana.sh
+          melos analyze:packages:pana --no-select
 
   test:
     runs-on: ubuntu-latest

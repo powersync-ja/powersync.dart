@@ -21,7 +21,7 @@ Future<void> main() async {
         'js',
         '-o',
         outputPath,
-        '-O0',
+        '-O4',
         workerSourcePath,
       ],
       workingDirectory: cwd);
