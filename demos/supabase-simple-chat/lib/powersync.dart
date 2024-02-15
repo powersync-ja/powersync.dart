@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/foundation.dart';
 import 'package:powersync/powersync.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -27,8 +25,13 @@ final List<RegExp> fatalResponseCodes = [
 late final PowerSyncDatabase db;
 
 Future<String> getDatabasePath() async {
-  final dir = kIsWeb ? Directory('/') : await getApplicationSupportDirectory();
-  return join(dir.path, 'powersync-demo.db');
+  const dbFilename = 'powersync-demo.db';
+  // getApplicationSupportDirectory is not supported on Web
+  if (kIsWeb) {
+    return dbFilename;
+  }
+  final dir = await getApplicationSupportDirectory();
+  return join(dir.path, dbFilename);
 }
 
 bool isLoggedIn() {

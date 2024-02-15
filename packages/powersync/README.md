@@ -31,6 +31,7 @@ You'll need to create a PowerSync account and set up a PowerSync instance. You c
 import 'package:powersync/powersync.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart';
+import 'package:flutter/foundation.dart';
 
 // Define the schema for the local SQLite database.
 // You can automatically generate this schema based on your sync rules:
@@ -60,8 +61,13 @@ class MyBackendConnector extends PowerSyncBackendConnector {
 }
 
 openDatabase() async {
-  final dir = await getApplicationSupportDirectory();
-  final path = join(dir.path, 'powersync-dart.db');
+  var path = 'powersync-demo.db';
+  // getApplicationSupportDirectory is not supported on Web
+  if (!kIsWeb) {
+    final dir = await getApplicationSupportDirectory();
+    path = join(dir.path, 'powersync-dart.db');
+  }
+
 
   // Setup the database.
   db = PowerSyncDatabase(schema: schema, path: path);
