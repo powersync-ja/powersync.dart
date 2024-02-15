@@ -4,7 +4,9 @@ name: Compile Assets and Create Draft Release
 on:
   push:
     tags:
-      - 'v*' # Trigger on tags beginning with 'v'
+      # Trigger on tags beginning with 'powersync-v'
+      # This is how `melos version ..` tags things
+      - 'powersync-v*'
 
 jobs:
   build:
