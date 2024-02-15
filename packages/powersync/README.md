@@ -79,6 +79,13 @@ Direct access to the synchronous `CommonDatabase` (`sqlite.Database` equivalent 
 - Subscribe to queries for live updates.
 
 
+## Examples	
+
+For complete app examples, see our [example app gallery](https://docs.powersync.com/resources/demo-apps-example-projects#flutter)	
+
+
+For examples of some common patterns, see our [example snippets](./example/README.md)
+
 
 ## Getting started
 
