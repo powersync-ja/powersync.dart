@@ -24,13 +24,13 @@ class SqliteConnectionSetup {
 }
 
 class PowerSyncOpenFactory extends DefaultSqliteOpenFactory {
-  @Deprecated('Override PowerSyncOpenFactory instead')
+  @Deprecated('Override PowerSyncOpenFactory instead.')
   final SqliteConnectionSetup? _sqliteSetup;
 
   PowerSyncOpenFactory(
       {required super.path,
       super.sqliteOptions,
-      @Deprecated('Override PowerSyncOpenFactory instead')
+      @Deprecated('Override PowerSyncOpenFactory instead.')
       // ignore: deprecated_member_use_from_same_package
       SqliteConnectionSetup? sqliteSetup})
       // ignore: deprecated_member_use_from_same_package
