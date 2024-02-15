@@ -109,7 +109,30 @@ class _SqliteAsyncVersionDelegate extends DynamicVersionDelegate {
   }
 }
 
+class SqliteAsyncConnection extends DatabaseConnection {
+  late StreamSubscription _updateSubscription;
+
+  SqliteAsyncConnection(SqliteConnection db)
+      : super(SqliteAsyncQueryExecutor(db)) {
+    _updateSubscription = (db as SqliteQueries).updates!.listen((event) {
+      var setUpdates = <TableUpdate>{};
+      for (var tableName in event.tables) {
+        setUpdates.add(TableUpdate(tableName));
+      }
+      super.streamQueries.handleTableUpdates(setUpdates);
+    });
+  }
+
+  @override
+  Future<void> close() async {
+    await _updateSubscription.cancel();
+    await super.close();
+  }
+}
+
 /// A query executor that uses sqlite_async internally.
+/// In most cases, SqliteAsyncConnection should be used instead, as it handles
+/// stream queries automatically.
 class SqliteAsyncQueryExecutor extends DelegatedDatabase {
   static StreamSubscription forwardUpdates(
       SqliteQueries db, DatabaseConnection connection) {

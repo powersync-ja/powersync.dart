@@ -46,10 +46,7 @@ class ListItemWithStats {
 
 @DriftDatabase(tables: [TodoItems, ListItems], include: {'queries.drift'})
 class AppDatabase extends _$AppDatabase {
-  AppDatabase(PowerSyncDatabase db) : super(SqliteAsyncQueryExecutor(db)) {
-    // Important for watch() to work
-    SqliteAsyncQueryExecutor.forwardUpdates(db, super.connection);
-  }
+  AppDatabase(PowerSyncDatabase db) : super(SqliteAsyncConnection(db));
 
   @override
   int get schemaVersion => 1;
