@@ -38,7 +38,7 @@ scripts:
       scope:
         - powersync_web_worker
 
-  update:wasm: sh scripts/init_sqlite_wasm.sh
+  update:wasm: dart run scripts/init_sqlite_wasm.dart
 
   test:
     description: Run tests in a specific package.
