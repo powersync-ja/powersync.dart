@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:drift/backends.dart';
+import 'package:sqlite_async/sqlite3.dart';
 import 'package:sqlite_async/sqlite_async.dart' as s;
 
 class _SqliteAsyncDelegate extends DatabaseDelegate {
@@ -18,6 +19,13 @@ class _SqliteAsyncDelegate extends DatabaseDelegate {
 
   @override
   bool get isOpen => !db.closed;
+
+  // Ends with " RETURNING *", or starts with insert/update/delete.
+  // Drift-generated queries will always have the RETURNING *.
+  // The INSERT/UPDATE/DELETE check is for custom queries, and is not exhaustive.
+  final _returningCheck = RegExp(
+      r'( RETURNING \*;?$)|(^(INSERT|UPDATE|DELETE))',
+      caseSensitive: false);
 
   @override
   Future<void> open(QueryExecutorUser user) async {
@@ -58,8 +66,18 @@ class _SqliteAsyncDelegate extends DatabaseDelegate {
 
   @override
   Future<QueryResult> runSelect(String statement, List<Object?> args) async {
-    // Could be "INSERT INTO ... RETURNING *", so we need to use execute() instead of getAll()
-    final result = await db.execute(statement, args);
+    ResultSet result;
+    if (_returningCheck.hasMatch(statement)) {
+      // Could be "INSERT INTO ... RETURNING *" (or update or delete),
+      // so we need to use execute() instead of getAll().
+      // This takes write lock, so we want to avoid it for plain select statements.
+      // This is not an exhaustive check, but should cover all Drift-generated queries using
+      // `runSelect()`.
+      result = await db.execute(statement, args);
+    } else {
+      // Plain SELECT statement - use getAll() to avoid using a write lock.
+      result = await db.getAll(statement, args);
+    }
     return QueryResult(result.columnNames, result.rows);
   }
 
