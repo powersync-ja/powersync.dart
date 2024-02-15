@@ -22,8 +22,9 @@ The easiest way to test out the alpha is to run the [Supabase Todo-List](./demos
 Install the latest alpha version of the package, for example:
 
 ```
-flutter pub add powersync:1.3.0-alpha.1
+flutter pub add powersync:'^1.3.0-alpha.1'
 ```
+
 The latest prerelease version can be found [here](https://pub.dev/packages/powersync/versions).
 
 ### Additional config
@@ -97,7 +98,9 @@ You'll need to create a PowerSync account and set up a PowerSync instance. You c
 ### Install the package
 To test web support, install the latest alpha version of the SDK, for example:
 
-```flutter pub add powersync:1.3.0-alpha.1```
+```
+flutter pub add powersync:'^1.3.0-alpha.1'
+```
 
 The latest prerelease version can be found [here](https://pub.dev/packages/powersync/versions).
 
