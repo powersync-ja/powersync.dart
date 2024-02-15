@@ -11,25 +11,19 @@ ide:
 scripts:
   prepare: melos bootstrap && melos compile:webworker && melos update:wasm
 
-  format:
-    description: Format Dart code.
-    run: dart format .
-
-  format:check:packages:
-    description: Check formatting of Dart code in packages.
-    run: dart format --output none --set-exit-if-changed packages
-
-  format:check:demos:
-    description: Check formatting of Dart code in demos.
-    run: dart format --output none --set-exit-if-changed demos
+  analyze:demos:
+    description: Analyze Dart code in demos.
+    run: dart analyze demos --fatal-infos
 
   analyze:packages:
     description: Analyze Dart code in packages.
     run: dart analyze packages --fatal-infos
 
-  analyze:demos:
-    description: Analyze Dart code in demos.
-    run: dart analyze demos --fatal-infos
+  analyze:packages:pana:
+    description: Analyze Dart packages with Pana
+    exec: flutter pub global run pana --no-warning --exit-code-threshold 10
+    packageFilters:
+      noPrivate: true
 
   compile:webworker:
     description: Compile Javascript web worker distributable
@@ -38,7 +32,17 @@ scripts:
       scope:
         - powersync_web_worker
 
-  update:wasm: dart run scripts/init_sqlite_wasm.dart
+  format:
+    description: Format Dart code.
+    run: dart format .
+
+  format:check:demos:
+    description: Check formatting of Dart code in demos.
+    run: dart format --output none --set-exit-if-changed demos
+
+  format:check:packages:
+    description: Check formatting of Dart code in packages.
+    run: dart format --output none --set-exit-if-changed packages
 
   test:
     description: Run tests in a specific package.
@@ -52,3 +56,5 @@ scripts:
     # as they could change the behaviour of how tests filter packages.
     env:
       MELOS_TEST: true
+
+  update:wasm: dart run scripts/init_sqlite_wasm.dart
