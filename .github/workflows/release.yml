@@ -12,7 +12,7 @@ jobs:
 
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Install Flutter
         uses: subosito/flutter-action@v2
@@ -23,29 +23,14 @@ jobs:
       - name: Install Melos
         run: flutter pub global activate melos
 
-      - name: Install dependencies and compile assets
+      - name: Install Dependencies and Compile Assets
         run: melos prepare
 
-      # Create the Draft release using the tag name
       - name: Create Draft Release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: 'marvinpinto/action-automatic-releases@latest'
         with:
-          tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.ref }}
+          repo_token: '${{ secrets.GITHUB_TOKEN }}'
+          prerelease: true # TODO update when out of alpha
           draft: true
-          prerelease: true # TODO set this as false in future
-
-      # Upload the compiled assets to the Draft release.
-      - name: Upload Assets to Draft Release
-        id: upload-release-asset
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./assets/powersync_db.worker.js
-          asset_name: powersync_db.worker.js
-          asset_content_type: text/javascript
+          files: |
+            assets/powersync_db.worker.js
