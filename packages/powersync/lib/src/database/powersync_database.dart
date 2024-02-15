@@ -40,7 +40,11 @@ abstract class PowerSyncDatabase
       // ignore: deprecated_member_use_from_same_package
       SqliteConnectionSetup? sqliteSetup}) {
     return PowerSyncDatabaseImpl(
-        schema: schema, path: path, logger: logger, sqliteSetup: sqliteSetup);
+        schema: schema,
+        path: path,
+        logger: logger,
+        // ignore: deprecated_member_use_from_same_package
+        sqliteSetup: sqliteSetup);
   }
 
   /// Open a [PowerSyncDatabase] with a [PowerSyncOpenFactory].
