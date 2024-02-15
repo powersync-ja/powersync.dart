@@ -10,9 +10,9 @@ Web support is currently in an alpha release. This Readme has been updated to re
 
 The easiest way to test out the alpha is to run the [Supabase Todo-List](./demos/supabase-todolist) demo app:
 
-1. Checkout this repo's `alpha_release` branch. 
-  * Note: If you are an existing user updating to the latest code after a git pull, run `melos exec 'flutter pub upgrade'` in the project's root and make sure it succeeds.
-2. Run `melos prepare` in the project's root 
+1. Checkout [this repo's](https://github.com/powersync-ja/powersync.dart/tree/alpha-release) `alpha_release` branch. 
+  * Note: If you are an existing user updating to the latest code after a git pull, run `melos exec 'flutter pub upgrade'` in the repo's root and make sure it succeeds.
+2. Run `melos prepare` in the repo's root 
 3. cd into the `demos/supabase-todolist` folder 
 4. If you haven’t yet: `cp lib/app_config_template.dart lib/app_config.dart` (optionally update this config with your own Supabase and PowerSync project details).
 5. Run `flutter run -d chrome`
@@ -24,6 +24,7 @@ Install the latest alpha version of the package, for example:
 ```
 flutter pub add powersync:1.3.0-alpha.1
 ```
+The latest prerelease version can be found [here](https://pub.dev/packages/powersync/versions).
 
 ### Additional config
 Web support requires `sqlite3.wasm` and `powersync_db.worker.js` assets to be served from the web application. This is typically achieved by placing the files in the project `web` directory.
@@ -97,6 +98,8 @@ You'll need to create a PowerSync account and set up a PowerSync instance. You c
 To test web support, install the latest alpha version of the SDK, for example:
 
 ```flutter pub add powersync:1.3.0-alpha.1```
+
+The latest prerelease version can be found [here](https://pub.dev/packages/powersync/versions).
 
 If you want to install the latest stable version of the SDK, run:
 `flutter pub add powersync`
