@@ -47,13 +47,8 @@ class ListItemWithStats {
 @DriftDatabase(tables: [TodoItems, ListItems], include: {'queries.drift'})
 class AppDatabase extends _$AppDatabase {
   AppDatabase(PowerSyncDatabase db) : super(SqliteAsyncQueryExecutor(db)) {
-    db.updates.listen((event) {
-      var setUpdates = <TableUpdate>{};
-      for (var tableName in event.tables) {
-        setUpdates.add(TableUpdate(tableName));
-      }
-      super.streamQueries.handleTableUpdates(setUpdates);
-    });
+    // Important for watch() to work
+    SqliteAsyncQueryExecutor.forwardUpdates(db, super.connection);
   }
 
   @override

@@ -1,12 +1,12 @@
 import 'dart:async';
 
 import 'package:drift/backends.dart';
-import 'package:powersync/sqlite_async.dart';
+import 'package:drift/drift.dart';
 import 'package:sqlite_async/sqlite3.dart';
-import 'package:sqlite_async/sqlite_async.dart' as s;
+import 'package:sqlite_async/sqlite_async.dart';
 
 class _SqliteAsyncDelegate extends DatabaseDelegate {
-  final s.SqliteConnection db;
+  final SqliteConnection db;
 
   _SqliteAsyncDelegate(this.db);
 
@@ -93,7 +93,7 @@ class _SqliteAsyncDelegate extends DatabaseDelegate {
 }
 
 class _SqliteAsyncVersionDelegate extends DynamicVersionDelegate {
-  final s.SqliteConnection _db;
+  final SqliteConnection _db;
 
   _SqliteAsyncVersionDelegate(this._db);
 
@@ -111,13 +111,24 @@ class _SqliteAsyncVersionDelegate extends DynamicVersionDelegate {
 
 /// A query executor that uses sqlite_async internally.
 class SqliteAsyncQueryExecutor extends DelegatedDatabase {
-  SqliteAsyncQueryExecutor(s.SqliteConnection db)
+  static StreamSubscription forwardUpdates(
+      SqliteQueries db, DatabaseConnection connection) {
+    return db.updates!.listen((event) {
+      var setUpdates = <TableUpdate>{};
+      for (var tableName in event.tables) {
+        setUpdates.add(TableUpdate(tableName));
+      }
+      connection.streamQueries.handleTableUpdates(setUpdates);
+    });
+  }
+
+  SqliteAsyncQueryExecutor(SqliteConnection db)
       : super(
           _SqliteAsyncDelegate(db),
         );
 
   /// The underlying SqliteConnection used by drift to send queries.
-  s.SqliteConnection get db {
+  SqliteConnection get db {
     return (delegate as _SqliteAsyncDelegate).db;
   }
 
@@ -181,7 +192,7 @@ mixin _QueryMixin implements QueryExecutor, _QueryDelegate {
 /// Extended to support nested transactions.
 class _SqliteAsyncTransactionExecutor extends TransactionExecutor
     with _QueryMixin {
-  final s.SqliteConnection _db;
+  final SqliteConnection _db;
   static final _artificialRollback =
       Exception('artificial exception to rollback the transaction');
   final Zone _createdIn = Zone.current;
