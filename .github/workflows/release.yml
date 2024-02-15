@@ -26,16 +26,6 @@ jobs:
       - name: Install dependencies and compile assets
         run: melos prepare
 
-      # Extract the tag name from the event payload
-      - name: Get Tag Name
-        id: get_tag_name
-        run: echo ::set-output name=tag_name::${GITHUB_REF/refs\/tags\//}
-
-      # Determine if the release should be a prerelease (true if the version contains "-")
-      - name: Determine Prerelease
-        id: determine_prerelease
-        run: echo ::set-output name=is_prerelease::$(echo ${{ steps.get_tag_name.outputs.tag_name }} | grep -q "-" && echo "true" || echo "false")
-
       # Create the Draft release using the tag name
       - name: Create Draft Release
         id: create_release
@@ -43,10 +33,10 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ steps.get_tag_name.outputs.tag_name }} # Use the pushed tag name
-          release_name: Release ${{ steps.get_tag_name.outputs.tag_name }}
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
           draft: true
-          prerelease: ${{ steps.determine_prerelease.outputs.is_prerelease }}
+          prerelease: true # TODO set this as false in future
 
       # Upload the compiled assets to the Draft release.
       - name: Upload Assets to Draft Release
