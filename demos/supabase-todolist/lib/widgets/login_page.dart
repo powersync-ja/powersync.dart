@@ -34,7 +34,7 @@ class _LoginPageState extends State<LoginPage> {
       await Supabase.instance.client.auth.signInWithPassword(
           email: _usernameController.text, password: _passwordController.text);
 
-      if (mounted) {
+      if (context.mounted) {
         Navigator.of(context).pushReplacement(MaterialPageRoute(
           builder: (context) => listsPage,
         ));
