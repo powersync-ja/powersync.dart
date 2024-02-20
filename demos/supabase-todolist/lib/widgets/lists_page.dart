@@ -1,11 +1,12 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:powersync_flutter_demo/database.dart';
+import 'package:powersync_flutter_demo/powersync.dart';
 
+import '../main.dart';
 import './list_item.dart';
 import './list_item_dialog.dart';
-import '../main.dart';
-import '../models/todo_list.dart';
 
 void _showAddDialog(BuildContext context) async {
   return showDialog<void>(
@@ -51,7 +52,7 @@ class ListsWidget extends StatefulWidget {
 }
 
 class _ListsWidgetState extends State<ListsWidget> {
-  List<TodoList> _data = [];
+  List<ListItemWithStats> _data = [];
   StreamSubscription? _subscription;
 
   _ListsWidgetState();
@@ -59,7 +60,7 @@ class _ListsWidgetState extends State<ListsWidget> {
   @override
   void initState() {
     super.initState();
-    final stream = TodoList.watchListsWithStats();
+    final stream = appDb.watchListsWithStats();
     _subscription = stream.listen((data) {
       if (!mounted) {
         return;

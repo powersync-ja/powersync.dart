@@ -4,7 +4,6 @@ import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:powersync/powersync.dart' as powersync;
 import 'package:powersync_flutter_demo/attachments/queue.dart';
-import 'package:powersync_flutter_demo/models/todo_item.dart';
 import 'package:powersync_flutter_demo/powersync.dart';
 
 class TakePhotoWidget extends StatefulWidget {
@@ -43,7 +42,7 @@ class _TakePhotoWidgetState extends State<TakePhotoWidget> {
     super.dispose();
   }
 
-  Future<void> _takePhoto(context) async {
+  Future<void> _takePhoto(BuildContext context) async {
     try {
       // Ensure the camera is initialized before taking a photo
       await _initializeControllerFuture;
@@ -57,13 +56,14 @@ class _TakePhotoWidgetState extends State<TakePhotoWidget> {
 
       int photoSize = await photo.length();
 
-      TodoItem.addPhoto(photoId, widget.todoId);
-      attachmentQueue.savePhoto(photoId, photoSize);
+      await appDb.addTodoPhoto(widget.todoId, photoId);
+      await attachmentQueue.savePhoto(photoId, photoSize);
     } catch (e) {
       log.info('Error taking photo: $e');
     }
 
     // After taking the photo, navigate back to the previous screen
+    if (!context.mounted) return;
     Navigator.pop(context);
   }
 

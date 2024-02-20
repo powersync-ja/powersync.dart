@@ -1,0 +1,9 @@
+import 'database.dart';
+
+listsWithStats WITH ListItemWithStats:
+  SELECT
+    self.**,
+    (SELECT count() FROM todos WHERE list_id = self.id AND completed = TRUE) as completed_count,
+    (SELECT count() FROM todos WHERE list_id = self.id AND completed = FALSE) as pending_count
+  FROM lists as self
+  ORDER BY created_at;

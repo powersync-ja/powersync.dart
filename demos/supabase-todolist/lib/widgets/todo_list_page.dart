@@ -1,14 +1,14 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:powersync_flutter_demo/models/todo_item.dart';
+import 'package:powersync_flutter_demo/database.dart';
+import 'package:powersync_flutter_demo/powersync.dart';
 
 import './status_app_bar.dart';
 import './todo_item_dialog.dart';
 import './todo_item_widget.dart';
-import '../models/todo_list.dart';
 
-void _showAddDialog(BuildContext context, TodoList list) async {
+void _showAddDialog(BuildContext context, ListItem list) async {
   return showDialog<void>(
     context: context,
     barrierDismissible: false, // user must tap button!
@@ -19,7 +19,7 @@ void _showAddDialog(BuildContext context, TodoList list) async {
 }
 
 class TodoListPage extends StatelessWidget {
-  final TodoList list;
+  final ListItem list;
 
   const TodoListPage({super.key, required this.list});
 
@@ -41,7 +41,7 @@ class TodoListPage extends StatelessWidget {
 }
 
 class TodoListWidget extends StatefulWidget {
-  final TodoList list;
+  final ListItem list;
 
   const TodoListWidget({super.key, required this.list});
 
@@ -60,7 +60,7 @@ class TodoListWidgetState extends State<TodoListWidget> {
   @override
   void initState() {
     super.initState();
-    final stream = widget.list.watchItems();
+    final stream = appDb.watchTodoItems(widget.list);
     _subscription = stream.listen((data) {
       if (!mounted) {
         return;

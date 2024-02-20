@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
+import 'package:powersync_flutter_demo/database.dart';
 import 'package:powersync_flutter_demo/fts_helpers.dart' as fts_helpers;
-import 'package:powersync_flutter_demo/models/todo_list.dart';
-
-import './todo_list_page.dart';
+import 'package:powersync_flutter_demo/powersync.dart';
+import 'package:powersync_flutter_demo/widgets/todo_list_page.dart';
 
 final log = Logger('powersync-supabase');
 
@@ -69,8 +69,8 @@ class FtsSearchDelegate extends SearchDelegate {
               return ListTile(
                 title: Text(snapshot.data?[index]['name'] ?? ''),
                 onTap: () async {
-                  TodoList list =
-                      await TodoList.find(snapshot.data![index]['id']);
+                  ListItem list =
+                      await appDb.findList(snapshot.data![index]['id']);
                   navigator.push(MaterialPageRoute(
                     builder: (context) => TodoListPage(list: list),
                   ));
