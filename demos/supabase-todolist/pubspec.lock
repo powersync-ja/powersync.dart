@@ -149,10 +149,10 @@ packages:
     dependency: transitive
     description:
       name: camera_avfoundation
-      sha256: "7d0763dfcbf060f56aa254a68c103210280bee9e97bbe4fdef23e257a4f70ab9"
+      sha256: "608b56b0880722f703871329c4d7d4c2f379c8e2936940851df7fc041abc6f51"
       url: "https://pub.dev"
     source: hosted
-    version: "0.9.14"
+    version: "0.9.13+10"
   camera_platform_interface:
     dependency: transitive
     description:
@@ -260,11 +260,10 @@ packages:
   drift:
     dependency: "direct main"
     description:
-      path: drift
-      ref: test
-      resolved-ref: e37557b92e371748865e42468c3273b76fda89c8
-      url: "https://github.com/powersync-ja/drift.git"
-    source: git
+      name: drift
+      sha256: b50a8342c6ddf05be53bda1d246404cbad101b64dc73e8d6d1ac1090d119b4e2
+      url: "https://pub.dev"
+    source: hosted
     version: "2.15.0"
   drift_dev:
     dependency: "direct dev"
@@ -274,6 +273,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.15.0"
+  drift_sqlite_async:
+    dependency: "direct main"
+    description:
+      name: drift_sqlite_async
+      sha256: fb0f7681e1f314326874193d2b0c998def00f97d44c29d66239623e7a32b79fd
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.1.0-alpha.1"
   fake_async:
     dependency: transitive
     description:
@@ -1037,5 +1044,5 @@ packages:
     source: hosted
     version: "2.0.0"
 sdks:
-  dart: ">=3.2.3 <4.0.0"
-  flutter: ">=3.16.6"
+  dart: ">=3.2.0 <4.0.0"
+  flutter: ">=3.16.0"

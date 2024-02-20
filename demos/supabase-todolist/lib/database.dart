@@ -1,6 +1,6 @@
 import 'package:drift/drift.dart';
 import 'package:powersync/powersync.dart' show uuid, PowerSyncDatabase;
-import 'package:powersync_flutter_demo/drift_sqlite_async.dart';
+import 'package:drift_sqlite_async/drift_sqlite_async.dart';
 import 'package:powersync_flutter_demo/powersync.dart';
 
 part 'database.g.dart';
@@ -46,7 +46,7 @@ class ListItemWithStats {
 
 @DriftDatabase(tables: [TodoItems, ListItems], include: {'queries.drift'})
 class AppDatabase extends _$AppDatabase {
-  AppDatabase(PowerSyncDatabase db) : super(SqliteAsyncConnection(db));
+  AppDatabase(PowerSyncDatabase db) : super(SqliteAsyncDriftConnection(db));
 
   @override
   int get schemaVersion => 1;
