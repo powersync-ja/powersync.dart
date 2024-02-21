@@ -54,7 +54,7 @@ class _PhotoWidgetState extends State<PhotoWidget> {
           Widget takePhotoButton = ElevatedButton(
             onPressed: () async {
               final camera = await setupCamera();
-              if (!mounted) return;
+              if (!context.mounted) return;
 
               if (camera == null) {
                 const snackBar = SnackBar(
