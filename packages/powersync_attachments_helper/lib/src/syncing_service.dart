@@ -26,7 +26,7 @@ class SyncingService {
 
   /// Upload attachment from local storage and to remote storage
   /// then remove it from the queue.
-  /// If duplicate of the file is found uploading is ignored and
+  /// If duplicate of the file is found uploading is archived and
   /// the attachment is removed from the queue.
   Future<void> uploadAttachment(Attachment attachment) async {
     if (attachment.localUri == null) {
@@ -50,9 +50,9 @@ class SyncingService {
 
       log.severe('Upload attachment error for attachment $attachment', e);
       if (onUploadError != null) {
-        bool shouldIgnoreAttachment = await onUploadError!(attachment, e);
-        if (shouldIgnoreAttachment) {
-          log.info('Attachment with ID ${attachment.id} has been ignored', e);
+        bool shouldRetry = await onUploadError!(attachment, e);
+        if (!shouldRetry) {
+          log.info('Attachment with ID ${attachment.id} has been archived', e);
           await attachmentsService.ignoreAttachment(attachment.id);
         }
       }
@@ -77,9 +77,9 @@ class SyncingService {
       return;
     } catch (e) {
       if (onDownloadError != null) {
-        bool shouldIgnoreAttachment = await onDownloadError!(attachment, e);
-        if (shouldIgnoreAttachment) {
-          log.info('Attachment with ID ${attachment.id} has been ignored', e);
+        bool shouldRetry = await onDownloadError!(attachment, e);
+        if (!shouldRetry) {
+          log.info('Attachment with ID ${attachment.id} has been archived', e);
           await attachmentsService.ignoreAttachment(attachment.id);
           return;
         }

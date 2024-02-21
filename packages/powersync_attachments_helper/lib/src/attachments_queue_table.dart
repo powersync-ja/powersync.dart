@@ -64,8 +64,8 @@ class Attachment {
 /// 1. Attachment to be uploaded
 /// 2. Attachment to be downloaded
 /// 3. Attachment to be deleted
-/// 3. Attachment to be ignored
-enum AttachmentState { queuedUpload, queuedDownload, queuedDelete, ignore }
+/// 3. Attachment to be archived
+enum AttachmentState { queuedUpload, queuedDownload, queuedDelete, archived }
 
 class AttachmentsQueueTable extends Table {
   AttachmentsQueueTable(

@@ -25,7 +25,7 @@ class AttachmentsService {
 
   ///Set the state of the attachment to ignore.
   Future<void> ignoreAttachment(String id) async => db.execute(
-      'UPDATE $table SET state = ${AttachmentState.ignore.index} WHERE id = ?',
+      'UPDATE $table SET state = ${AttachmentState.archived.index} WHERE id = ?',
       [id]);
 
   /// Get the attachment from the attachment queue using an ID.
