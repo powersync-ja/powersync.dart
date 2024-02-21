@@ -15,9 +15,14 @@ class SyncingService {
   final LocalStorageAdapter localStorage;
   final AttachmentsService attachmentsService;
   final Function getLocalUri;
+  final Future<bool> Function(Attachment attachment, Object exception)?
+      onDownloadError;
+  final Future<bool> Function(Attachment attachment, Object exception)?
+      onUploadError;
 
   SyncingService(this.db, this.remoteStorage, this.localStorage,
-      this.attachmentsService, this.getLocalUri);
+      this.attachmentsService, this.getLocalUri,
+      {this.onDownloadError, this.onUploadError});
 
   /// Upload attachment from local storage and to remote storage
   /// then remove it from the queue.
@@ -44,6 +49,14 @@ class SyncingService {
       }
 
       log.severe('Upload attachment error for attachment $attachment', e);
+      if (onUploadError != null) {
+        bool shouldIgnoreAttachment = await onUploadError!(attachment, e);
+        if (shouldIgnoreAttachment) {
+          log.info('Attachment with ID ${attachment.id} has been ignored', e);
+          await attachmentsService.ignoreAttachment(attachment.id);
+        }
+      }
+
       return;
     }
   }
@@ -63,6 +76,15 @@ class SyncingService {
       await attachmentsService.deleteAttachment(attachment.id);
       return;
     } catch (e) {
+      if (onDownloadError != null) {
+        bool shouldIgnoreAttachment = await onDownloadError!(attachment, e);
+        if (shouldIgnoreAttachment) {
+          log.info('Attachment with ID ${attachment.id} has been ignored', e);
+          await attachmentsService.ignoreAttachment(attachment.id);
+          return;
+        }
+      }
+
       log.severe('Download attachment error for attachment $attachment', e);
       return;
     }
