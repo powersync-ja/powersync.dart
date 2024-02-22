@@ -13,11 +13,11 @@ final remoteStorage = SupabaseStorageAdapter();
 
 /// Function to handle errors when downloading attachments
 /// Return false if you want to archive the attachment
-Future<bool> onDownloadError(Attachment attachment, Object exception) {
+Future<bool> onDownloadError(Attachment attachment, Object exception) async {
   if (exception.toString().contains('Object not found')) {
-    return Future.value(false);
+    return false;
   }
-  return Future.value(true);
+  return true;
 }
 
 class PhotoAttachmentQueue extends AbstractAttachmentQueue {
