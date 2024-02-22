@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:powersync_attachments_helper/powersync_attachments_helper.dart';
 import 'package:powersync_flutter_demo/attachments/camera_helpers.dart';
 import 'package:powersync_flutter_demo/attachments/photo_capture_widget.dart';
 import 'package:powersync_flutter_demo/attachments/queue.dart';
@@ -23,8 +24,10 @@ class PhotoWidget extends StatefulWidget {
 class _ResolvedPhotoState {
   String? photoPath;
   bool fileExists;
+  Attachment? attachment;
 
-  _ResolvedPhotoState({required this.photoPath, required this.fileExists});
+  _ResolvedPhotoState(
+      {required this.photoPath, required this.fileExists, this.attachment});
 }
 
 class _PhotoWidgetState extends State<PhotoWidget> {
@@ -35,10 +38,14 @@ class _PhotoWidgetState extends State<PhotoWidget> {
       return _ResolvedPhotoState(photoPath: null, fileExists: false);
     }
     photoPath = await attachmentQueue.getLocalUri('$photoId.jpg');
+    final row = await attachmentQueue.db
+        .get('SELECT * FROM attachments_queue WHERE id = ?', [photoId]);
+    Attachment attachment = Attachment.fromRow(row);
 
     bool fileExists = await File(photoPath).exists();
 
-    return _ResolvedPhotoState(photoPath: photoPath, fileExists: fileExists);
+    return _ResolvedPhotoState(
+        photoPath: photoPath, fileExists: fileExists, attachment: attachment);
   }
 
   @override
@@ -84,6 +91,20 @@ class _PhotoWidgetState extends State<PhotoWidget> {
 
           String? filePath = data.photoPath;
           bool fileIsDownloading = !data.fileExists;
+          bool fileArchived =
+              data.attachment?.state == AttachmentState.archived.index;
+
+          if (fileArchived) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Text("Unavailable"),
+                const SizedBox(height: 8),
+                takePhotoButton
+              ],
+            );
+          }
 
           if (fileIsDownloading) {
             return const Text("Downloading...");
