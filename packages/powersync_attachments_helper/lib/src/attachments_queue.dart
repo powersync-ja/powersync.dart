@@ -24,16 +24,28 @@ abstract class AbstractAttachmentQueue {
   final LocalStorageAdapter localStorage = LocalStorageAdapter();
   String attachmentsQueueTableName;
 
+  /// Function to handle errors when downloading attachments
+  /// Return true if you want to ignore attachment
+  Future<bool> Function(Attachment attachment, Object exception)?
+      onDownloadError;
+
+  /// Function to handle errors when uploading attachments
+  /// Return true if you want to ignore attachment
+  Future<bool> Function(Attachment attachment, Object exception)? onUploadError;
+
   AbstractAttachmentQueue(
       {required this.db,
       required this.remoteStorage,
       this.attachmentDirectoryName = 'attachments',
       this.attachmentsQueueTableName = defaultAttachmentsQueueTableName,
+      this.onDownloadError,
+      this.onUploadError,
       performInitialSync = true}) {
     attachmentsService = AttachmentsService(
         db, localStorage, attachmentDirectoryName, attachmentsQueueTableName);
     syncingService = SyncingService(
-        db, remoteStorage, localStorage, attachmentsService, getLocalUri);
+        db, remoteStorage, localStorage, attachmentsService, getLocalUri,
+        onDownloadError: onDownloadError, onUploadError: onUploadError);
   }
 
   /// Create watcher to get list of ID's from a table to be used for syncing in the attachment queue.

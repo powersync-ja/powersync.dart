@@ -23,6 +23,11 @@ class AttachmentsService {
   Future<void> deleteAttachment(String id) async =>
       db.execute('DELETE FROM $table WHERE id = ?', [id]);
 
+  ///Set the state of the attachment to ignore.
+  Future<void> ignoreAttachment(String id) async => db.execute(
+      'UPDATE $table SET state = ${AttachmentState.archived.index} WHERE id = ?',
+      [id]);
+
   /// Get the attachment from the attachment queue using an ID.
   Future<Attachment?> getAttachment(String id) async =>
       db.getOptional('SELECT * FROM $table WHERE id = ?', [id]).then((row) {

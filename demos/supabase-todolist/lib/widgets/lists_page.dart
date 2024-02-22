@@ -61,7 +61,7 @@ class _ListsWidgetState extends State<ListsWidget> {
     super.initState();
     final stream = TodoList.watchListsWithStats();
     _subscription = stream.listen((data) {
-      if (!mounted) {
+      if (!context.mounted) {
         return;
       }
       setState(() {
