@@ -38,14 +38,20 @@ class _PhotoWidgetState extends State<PhotoWidget> {
       return _ResolvedPhotoState(photoPath: null, fileExists: false);
     }
     photoPath = await attachmentQueue.getLocalUri('$photoId.jpg');
-    final row = await attachmentQueue.db
-        .get('SELECT * FROM attachments_queue WHERE id = ?', [photoId]);
-    Attachment attachment = Attachment.fromRow(row);
 
     bool fileExists = await File(photoPath).exists();
 
+    final row = await attachmentQueue.db
+        .getOptional('SELECT * FROM attachments_queue WHERE id = ?', [photoId]);
+
+    if (row != null) {
+      Attachment attachment = Attachment.fromRow(row);
+      return _ResolvedPhotoState(
+          photoPath: photoPath, fileExists: fileExists, attachment: attachment);
+    }
+
     return _ResolvedPhotoState(
-        photoPath: photoPath, fileExists: fileExists, attachment: attachment);
+        photoPath: photoPath, fileExists: fileExists, attachment: null);
   }
 
   @override
