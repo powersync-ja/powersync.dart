@@ -1,3 +1,8 @@
+## 0.2.1
+
+- Added `onUploadError` as an optional function that can be set when setting up the queue to handle upload errors
+- Added `onDownloadError` as an optional function that can be set when setting up the queue to handle upload errors
+
 ## 0.2.0
 
 - Potentially BREAKING CHANGE for users who rely on multiple attachment queues.

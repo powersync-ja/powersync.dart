@@ -15,13 +15,18 @@ class SyncingService {
   final LocalStorageAdapter localStorage;
   final AttachmentsService attachmentsService;
   final Function getLocalUri;
+  final Future<bool> Function(Attachment attachment, Object exception)?
+      onDownloadError;
+  final Future<bool> Function(Attachment attachment, Object exception)?
+      onUploadError;
 
   SyncingService(this.db, this.remoteStorage, this.localStorage,
-      this.attachmentsService, this.getLocalUri);
+      this.attachmentsService, this.getLocalUri,
+      {this.onDownloadError, this.onUploadError});
 
   /// Upload attachment from local storage and to remote storage
   /// then remove it from the queue.
-  /// If duplicate of the file is found uploading is ignored and
+  /// If duplicate of the file is found uploading is archived and
   /// the attachment is removed from the queue.
   Future<void> uploadAttachment(Attachment attachment) async {
     if (attachment.localUri == null) {
@@ -44,6 +49,14 @@ class SyncingService {
       }
 
       log.severe('Upload attachment error for attachment $attachment', e);
+      if (onUploadError != null) {
+        bool shouldRetry = await onUploadError!(attachment, e);
+        if (!shouldRetry) {
+          log.info('Attachment with ID ${attachment.id} has been archived', e);
+          await attachmentsService.ignoreAttachment(attachment.id);
+        }
+      }
+
       return;
     }
   }
@@ -63,6 +76,15 @@ class SyncingService {
       await attachmentsService.deleteAttachment(attachment.id);
       return;
     } catch (e) {
+      if (onDownloadError != null) {
+        bool shouldRetry = await onDownloadError!(attachment, e);
+        if (!shouldRetry) {
+          log.info('Attachment with ID ${attachment.id} has been archived', e);
+          await attachmentsService.ignoreAttachment(attachment.id);
+          return;
+        }
+      }
+
       log.severe('Download attachment error for attachment $attachment', e);
       return;
     }
