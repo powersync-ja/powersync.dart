@@ -44,6 +44,8 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
   StreamController<SyncStatus> statusStreamController =
       StreamController<SyncStatus>.broadcast();
 
+  @override
+
   /// Broadcast stream that is notified of any table updates.
   ///
   /// Unlike in [SqliteDatabase.updates], the tables reported here are the
