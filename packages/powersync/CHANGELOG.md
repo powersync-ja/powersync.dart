@@ -1,3 +1,7 @@
+## 1.3.0-alpha.3
+
+ - Fixed issue where disconnectAndClear would prevent subsequent sync connection on native platforms and would fail to clear the database on web.
+
 ## 1.3.0-alpha.2
 
  - **FIX**(powersync-attachements-helper): pubspec file (#29).
