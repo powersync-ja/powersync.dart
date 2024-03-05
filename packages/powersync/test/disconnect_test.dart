@@ -16,8 +16,6 @@ void main() {
     });
 
     test('Multiple calls to disconnect', () async {
-      // Start with "offline-only" schema.
-      // This does not record any operations to the crud queue.
       final db = await testUtils.setupPowerSync(path: path, schema: testSchema);
 
       credentialsCallback() async {
@@ -43,8 +41,6 @@ void main() {
     });
 
     test('disconnectAndClear clears DB', () async {
-      // Start with "offline-only" schema.
-      // This does not record any operations to the crud queue.
       final db = await testUtils.setupPowerSync(path: path, schema: testSchema);
 
       await db.execute(
