@@ -46,7 +46,7 @@ class QueryWidgetState extends State<QueryWidget> {
     _subscription?.cancel();
     final stream = db.watch(_query);
     _subscription = stream.listen((data) {
-      if (!mounted) {
+      if (!context.mounted) {
         return;
       }
       setState(() {
