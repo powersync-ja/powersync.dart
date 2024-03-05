@@ -54,6 +54,7 @@ class StreamingSyncImplementation {
     var invalidCredentials = false;
     while (true) {
       if (abortController?.aborted == true) {
+        abortController!.completeAbort();
         return;
       }
       _updateStatus(connecting: true);
