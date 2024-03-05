@@ -49,7 +49,7 @@ class StreamingSyncImplementation {
     statusStream = _statusStreamController.stream;
   }
 
-  Future<void> streamingSync(AbortController? abortController) async {
+  Future<void> streamingSync({AbortController? abortController}) async {
     crudLoop();
     var invalidCredentials = false;
     while (true) {
@@ -65,7 +65,7 @@ class StreamingSyncImplementation {
           await invalidCredentialsCallback!();
           invalidCredentials = false;
         }
-        await streamingSyncIteration(abortController);
+        await streamingSyncIteration(abortController: abortController);
         // Continue immediately
       } catch (e, stacktrace) {
         final message = _syncErrorMessage(e);
@@ -178,7 +178,8 @@ class StreamingSyncImplementation {
     _statusStreamController.add(newStatus);
   }
 
-  Future<bool> streamingSyncIteration(AbortController? abortController) async {
+  Future<bool> streamingSyncIteration(
+      {AbortController? abortController}) async {
     adapter.startSession();
     final bucketEntries = await adapter.getBucketStates();
 
