@@ -34,7 +34,7 @@ class _SignupPageState extends State<SignupPage> {
       final response = await Supabase.instance.client.auth.signUp(
           email: _usernameController.text, password: _passwordController.text);
 
-      if (mounted) {
+      if (context.mounted) {
         if (response.session != null) {
           Navigator.of(context).pushReplacement(MaterialPageRoute(
             builder: (context) => homePage,

@@ -11,9 +11,21 @@ import 'package:powersync_flutter_demo/models/schema.dart';
 late final PhotoAttachmentQueue attachmentQueue;
 final remoteStorage = SupabaseStorageAdapter();
 
+/// Function to handle errors when downloading attachments
+/// Return false if you want to archive the attachment
+Future<bool> onDownloadError(Attachment attachment, Object exception) async {
+  if (exception.toString().contains('Object not found')) {
+    return false;
+  }
+  return true;
+}
+
 class PhotoAttachmentQueue extends AbstractAttachmentQueue {
   PhotoAttachmentQueue(db, remoteStorage)
-      : super(db: db, remoteStorage: remoteStorage);
+      : super(
+            db: db,
+            remoteStorage: remoteStorage,
+            onDownloadError: onDownloadError);
 
   @override
   init() async {
