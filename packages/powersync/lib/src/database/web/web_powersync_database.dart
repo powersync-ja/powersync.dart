@@ -124,8 +124,7 @@ class PowerSyncDatabaseImpl
 
     // Disconnect if connected
     await disconnect();
-    final disconnector = AbortController();
-    disconnecter = disconnector;
+    disconnecter = AbortController();
 
     await isInitialized;
 
@@ -145,7 +144,7 @@ class PowerSyncDatabaseImpl
     sync.statusStream.listen((event) {
       setStatus(event);
     });
-    sync.streamingSync();
+    sync.streamingSync(disconnecter);
   }
 
   /// Takes a read lock, without starting a transaction.

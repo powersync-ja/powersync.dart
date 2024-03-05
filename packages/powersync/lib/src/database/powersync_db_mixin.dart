@@ -125,7 +125,16 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
   /// Use [connect] to connect again.
   Future<void> disconnect() async {
     if (disconnecter != null) {
-      await disconnecter!.abort();
+      /// Checking `disconnecter.aborted` prevents race conditions
+      /// where multiple calls to `disconnect` can attempt to abort
+      /// the controller more than once before it has finished aborting.
+      if (disconnecter!.aborted == false) {
+        await disconnecter!.abort();
+        disconnecter = null;
+      } else {
+        /// Wait for the abort to complete. Continue updating the sync status after completed
+        await disconnecter!.onAbort;
+      }
     }
     setStatus(
         SyncStatus(connected: false, lastSyncedAt: currentStatus.lastSyncedAt));

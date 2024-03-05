@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert' as convert;
 import 'package:http/http.dart' as http;
+import 'package:powersync/src/abort_controller.dart';
 import 'package:powersync/src/exceptions.dart';
 import 'package:powersync/src/log_internal.dart';
 
@@ -48,10 +49,13 @@ class StreamingSyncImplementation {
     statusStream = _statusStreamController.stream;
   }
 
-  Future<void> streamingSync() async {
+  Future<void> streamingSync(AbortController? abortController) async {
     crudLoop();
     var invalidCredentials = false;
     while (true) {
+      if (abortController?.aborted == true) {
+        return;
+      }
       _updateStatus(connecting: true);
       try {
         if (invalidCredentials && invalidCredentialsCallback != null) {
@@ -60,7 +64,7 @@ class StreamingSyncImplementation {
           await invalidCredentialsCallback!();
           invalidCredentials = false;
         }
-        await streamingSyncIteration();
+        await streamingSyncIteration(abortController);
         // Continue immediately
       } catch (e, stacktrace) {
         final message = _syncErrorMessage(e);
@@ -173,7 +177,7 @@ class StreamingSyncImplementation {
     _statusStreamController.add(newStatus);
   }
 
-  Future<bool> streamingSyncIteration() async {
+  Future<bool> streamingSyncIteration(AbortController? abortController) async {
     adapter.startSession();
     final bucketEntries = await adapter.getBucketStates();
 
@@ -201,6 +205,9 @@ class StreamingSyncImplementation {
     bool haveInvalidated = false;
 
     await for (var line in merged) {
+      if (abortController?.aborted == true) {
+        return false;
+      }
       _updateStatus(connected: true, connecting: false);
       if (line is Checkpoint) {
         targetCheckpoint = line;

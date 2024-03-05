@@ -332,7 +332,7 @@ Future<void> _powerSyncDatabaseIsolate(
         updateStream: updateController.stream,
         retryDelay: args.retryDelay,
         client: http.Client());
-    sync.streamingSync();
+    sync.streamingSync(null);
     sync.statusStream.listen((event) {
       sPort.send(['status', event]);
     });
