@@ -1,8 +1,7 @@
 import 'dart:async';
 import 'dart:convert' as convert;
-import 'dart:io';
-
 import 'package:http/http.dart' as http;
+import 'package:powersync/src/abort_controller.dart';
 import 'package:powersync/src/exceptions.dart';
 import 'package:powersync/src/log_internal.dart';
 
@@ -24,13 +23,13 @@ class StreamingSyncImplementation {
 
   final Future<void> Function() uploadCrud;
 
-  late http.Client _client;
-
   final Stream updateStream;
 
   final StreamController<SyncStatus> _statusStreamController =
       StreamController<SyncStatus>.broadcast();
   late final Stream<SyncStatus> statusStream;
+
+  late final http.Client _client;
 
   final StreamController _localPingController = StreamController.broadcast();
 
@@ -44,15 +43,20 @@ class StreamingSyncImplementation {
       this.invalidCredentialsCallback,
       required this.uploadCrud,
       required this.updateStream,
-      required this.retryDelay}) {
-    _client = http.Client();
+      required this.retryDelay,
+      required http.Client client}) {
+    _client = client;
     statusStream = _statusStreamController.stream;
   }
 
-  Future<void> streamingSync() async {
+  Future<void> streamingSync({AbortController? abortController}) async {
     crudLoop();
     var invalidCredentials = false;
     while (true) {
+      if (abortController?.aborted == true) {
+        abortController!.completeAbort();
+        return;
+      }
       _updateStatus(connecting: true);
       try {
         if (invalidCredentials && invalidCredentialsCallback != null) {
@@ -61,7 +65,7 @@ class StreamingSyncImplementation {
           await invalidCredentialsCallback!();
           invalidCredentials = false;
         }
-        await streamingSyncIteration();
+        await streamingSyncIteration(abortController: abortController);
         // Continue immediately
       } catch (e, stacktrace) {
         final message = _syncErrorMessage(e);
@@ -106,7 +110,7 @@ class StreamingSyncImplementation {
   }
 
   Future<bool> uploadCrudBatch() async {
-    if (adapter.hasCrud()) {
+    if ((await adapter.hasCrud())) {
       _updateStatus(uploading: true);
       await uploadCrud();
       return false;
@@ -132,7 +136,6 @@ class StreamingSyncImplementation {
 
     final response = await _client.get(uri, headers: {
       'Content-Type': 'application/json',
-      'User-Id': credentials.userId ?? '',
       'Authorization': "Token ${credentials.token}"
     });
     if (response.statusCode == 401) {
@@ -175,9 +178,10 @@ class StreamingSyncImplementation {
     _statusStreamController.add(newStatus);
   }
 
-  Future<bool> streamingSyncIteration() async {
+  Future<bool> streamingSyncIteration(
+      {AbortController? abortController}) async {
     adapter.startSession();
-    final bucketEntries = adapter.getBucketStates();
+    final bucketEntries = await adapter.getBucketStates();
 
     Map<String, String> initialBucketStates = {};
 
@@ -203,6 +207,9 @@ class StreamingSyncImplementation {
     bool haveInvalidated = false;
 
     await for (var line in merged) {
+      if (abortController?.aborted == true) {
+        return false;
+      }
       _updateStatus(connected: true, connecting: false);
       if (line is Checkpoint) {
         targetCheckpoint = line;
@@ -331,11 +338,11 @@ class StreamingSyncImplementation {
 
     final request = http.Request('POST', uri);
     request.headers['Content-Type'] = 'application/json';
-    request.headers['User-Id'] = credentials.userId ?? '';
     request.headers['Authorization'] = "Token ${credentials.token}";
     request.body = convert.jsonEncode(data);
 
     final res = await _client.send(request);
+
     if (res.statusCode == 401) {
       if (invalidCredentialsCallback != null) {
         await invalidCredentialsCallback!();
@@ -357,7 +364,7 @@ class StreamingSyncImplementation {
 String _syncErrorMessage(Object? error) {
   if (error == null) {
     return 'Unknown';
-  } else if (error is HttpException) {
+  } else if (error is http.ClientException) {
     return 'Sync service error';
   } else if (error is SyncResponseException) {
     if (error.statusCode == 401) {
@@ -365,8 +372,6 @@ String _syncErrorMessage(Object? error) {
     } else {
       return 'Sync service error';
     }
-  } else if (error is SocketException) {
-    return 'Connection error';
   } else if (error is ArgumentError || error is FormatException) {
     return 'Configuration error';
   } else if (error is CredentialsException) {

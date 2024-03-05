@@ -57,8 +57,12 @@ Stream<T> mergeStreams<T>(List<Stream<T>> streams) {
 Stream<Object?> ndjson(ByteStream input) {
   final textInput = input.transform(convert.utf8.decoder);
   final lineInput = textInput.transform(const convert.LineSplitter());
-  final jsonInput = lineInput.transform(StreamTransformer.fromHandlers(
-      handleData: (String data, EventSink<dynamic> sink) {
+  final jsonInput = lineInput.transform(
+      StreamTransformer.fromHandlers(handleError: (error, stackTrace, sink) {
+    /// On Web if the connection is closed, this error will throw, but
+    /// the stream is never closed. This closes the stream on error.
+    sink.close();
+  }, handleData: (String data, EventSink<dynamic> sink) {
     sink.add(convert.jsonDecode(data));
   }));
   return jsonInput;

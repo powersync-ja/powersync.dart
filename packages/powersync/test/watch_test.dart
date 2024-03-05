@@ -1,3 +1,9 @@
+@TestOn('!browser')
+
+/// TODO, this requires a custom Drift worker script on web.
+/// Verified manually for now
+library;
+
 import 'dart:async';
 import 'dart:math';
 
@@ -5,7 +11,9 @@ import 'package:powersync/powersync.dart';
 import 'package:sqlite_async/sqlite_async.dart';
 import 'package:test/test.dart';
 
-import 'util.dart';
+import 'utils/test_utils_impl.dart';
+
+final testUtils = TestUtils();
 
 const testSchema = Schema([
   Table('assets', [
@@ -29,12 +37,13 @@ void main() {
     late String path;
 
     setUp(() async {
-      path = dbPath();
-      await cleanDb(path: path);
+      path = testUtils.dbPath();
+      await testUtils.cleanDb(path: path);
     });
 
     test('watch', () async {
-      final powersync = await setupPowerSync(path: path, schema: testSchema);
+      final powersync =
+          await testUtils.setupPowerSync(path: path, schema: testSchema);
 
       const baseTime = 20;
 
@@ -97,7 +106,8 @@ void main() {
     });
 
     test('onChange', () async {
-      final powersync = await setupPowerSync(path: path, schema: testSchema);
+      final powersync =
+          await testUtils.setupPowerSync(path: path, schema: testSchema);
 
       const baseTime = 20;
 

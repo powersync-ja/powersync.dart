@@ -1,9 +1,6 @@
 import 'dart:convert';
-import 'dart:io';
-
 import 'package:http/http.dart' as http;
-
-import 'powersync_database.dart';
+import 'database/powersync_database.dart';
 
 /// Implement this to connect an app backend.
 ///
@@ -263,7 +260,7 @@ class DevConnector extends PowerSyncBackendConnector {
           token: parsed['data']['token'],
           userId: parsed['data']['user_id']));
     } else {
-      throw HttpException(res.reasonPhrase ?? 'Request failed', uri: uri);
+      throw http.ClientException(res.reasonPhrase ?? 'Request failed', uri);
     }
   }
 
@@ -281,7 +278,7 @@ class DevConnector extends PowerSyncBackendConnector {
       clearDevToken();
     }
     if (res.statusCode != 200) {
-      throw HttpException(res.reasonPhrase ?? 'Request failed', uri: uri);
+      throw http.ClientException(res.reasonPhrase ?? 'Request failed', uri);
     }
 
     return PowerSyncCredentials.fromJson(jsonDecode(res.body)['data']);
@@ -315,9 +312,8 @@ class DevConnector extends PowerSyncBackendConnector {
     }
 
     if (response.statusCode != 200) {
-      throw HttpException(
-          response.reasonPhrase ?? "Failed due to server error.",
-          uri: uri);
+      throw http.ClientException(
+          response.reasonPhrase ?? "Failed due to server error.", uri);
     }
 
     final body = jsonDecode(response.body);
