@@ -6,11 +6,11 @@ Demo app demonstrating use of the PowerSync SDK for Flutter together with Supaba
 
 # Running the app
 
-Install the Flutter SDK, then:
+Install the Flutter SDK and [melos](https://melos.invertase.dev/~melos-latest/getting-started), then:
 
 ```sh
 cp lib/app_config_template.dart lib/app_config.dart
-flutter pub get
+melos bootstrap
 flutter run
 ```
 
