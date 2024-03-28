@@ -10,7 +10,7 @@ Ensure you have [melos](https://melos.invertase.dev/~melos-latest/getting-starte
 
 1. `cd demos/supabase-todolist`
 2. `melos bootstrap`
-3. `cp lib/app_config_template lib/app_config.dart`
+3. `cp lib/app_config_template.dart lib/app_config.dart`
 4. Insert your Supabase and PowerSync project credentials into `lib/app_config.dart` (See instructions below)
 5. `flutter run`
 
