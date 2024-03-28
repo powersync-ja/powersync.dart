@@ -4,8 +4,10 @@ Based on the Supabase Flutter tutorial to build a simple chat app: <https://supa
 
 ## Instructions
 
-1. `git clone`
-2. `cd` into folder
+Ensure you have [melos](https://melos.invertase.dev/~melos-latest/getting-started) installed.
+
+1. `cd demos/supabase-simple-chat`
+2. `melos bootstrap`
 3. `cp lib/app_config_template lib/app_config.dart`
-4. edit `app_config.dart`
+4. Insert your Supabase project credentials into `lib/app_config.dart`
 5. `flutter run`
