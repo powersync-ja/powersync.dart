@@ -74,9 +74,9 @@ class PhotoAttachmentQueue extends AbstractAttachmentQueue {
       return results.map((row) => row['photo_id'] as String).toList();
     }).listen((ids) async {
       List<String> idsInQueue = await attachmentsService.getAttachmentIds();
-      for (String id in ids) {
-        await syncingService.reconcileId(id, idsInQueue, fileExtension);
-      }
+      List<String> relevantIds =
+          ids.where((element) => !idsInQueue.contains(element)).toList();
+      syncingService.processIds(relevantIds, fileExtension);
     });
   }
 }

@@ -429,7 +429,7 @@ packages:
       path: "../../packages/powersync_attachments_helper"
       relative: true
     source: path
-    version: "0.2.1"
+    version: "0.3.0"
   realtime_client:
     dependency: transitive
     description:
