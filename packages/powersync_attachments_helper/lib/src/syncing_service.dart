@@ -136,6 +136,7 @@ class SyncingService {
     log.info('Watching attachments...');
     return db.watch('''
       SELECT * FROM ${attachmentsService.table}
+      WHERE state != ${AttachmentState.archived.index}
     ''').map((results) {
       return results.map((row) => Attachment.fromRow(row));
     }).listen((attachments) async {
@@ -147,6 +148,7 @@ class SyncingService {
   Future<void> runSync() async {
     List<Attachment> attachments = await db.execute('''
       SELECT * FROM ${attachmentsService.table}
+      WHERE state != ${AttachmentState.archived.index}
     ''').then((results) {
       return results.map((row) => Attachment.fromRow(row)).toList();
     });
