@@ -59,6 +59,47 @@ class AttachmentsService {
     return updatedRecord;
   }
 
+  /// Save the attachments to the attachment queue.
+  Future<void> saveAttachments(List<Attachment> attachments) async {
+    if (attachments.isEmpty) {
+      return;
+    }
+    List<List<String>> ids = List.empty(growable: true);
+
+    RegExp extractObjectValueRegEx = RegExp(r': (.*?)(?:,|$)');
+
+    // This adds a timestamp to the attachments and
+    // extracts the values from the attachment object
+    // e.g "foo: bar, baz: qux" => ["bar", "qux"]
+    // TODO: Extract value without needing to use regex
+    List<List<String?>> updatedRecords = attachments
+        .map((attachment) {
+          ids.add([attachment.id]);
+          return attachment.copyWith(
+            timestamp: DateTime.now().millisecondsSinceEpoch,
+          );
+        })
+        .toList()
+        .map((attachment) {
+          return extractObjectValueRegEx
+              .allMatches(attachment.toString().replaceAll('}', ''))
+              .map((match) => match.group(1))
+              .toList();
+        })
+        .toList();
+
+    await db.executeBatch('''
+      INSERT OR REPLACE INTO $table
+      (id, filename, local_uri, media_type, size, timestamp, state) VALUES (?, ?, ?, ?, ?, ?, ?)
+    ''', updatedRecords);
+
+    await db.executeBatch('''
+      DELETE FROM $table WHERE id = ?
+    ''', ids);
+
+    return;
+  }
+
   /// Get all the ID's of attachments in the attachment queue.
   Future<List<String>> getAttachmentIds() async {
     ResultSet results =

@@ -1,3 +1,8 @@
+## 0.3.0
+
+- BREAKING CHANGE: `reconcileId` has been removed in favour of `reconcileIds`. This will require a change to `watchIds` implementation which is shown in `example/getting_started.dart`
+- Improved queue so that uploads, downloads and deletes do not happen multiple times
+
 ## 0.2.1
 
 - Added `onUploadError` as an optional function that can be set when setting up the queue to handle upload errors

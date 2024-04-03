@@ -62,7 +62,7 @@ class PhotoAttachmentQueue extends AbstractAttachmentQueue {
   // This watcher will handle adding items to the queue based on
   // a users table element receiving a photoId
   @override
-  StreamSubscription<void> watchIds() {
+  StreamSubscription<void> watchIds({String fileExtension = 'jpg'}) {
     return db.watch('''
       SELECT photo_id FROM users
       WHERE photo_id IS NOT NULL
@@ -70,9 +70,9 @@ class PhotoAttachmentQueue extends AbstractAttachmentQueue {
       return results.map((row) => row['photo_id'] as String).toList();
     }).listen((ids) async {
       List<String> idsInQueue = await attachmentsService.getAttachmentIds();
-      for (String id in ids) {
-        await syncingService.reconcileId(id, idsInQueue);
-      }
+      List<String> relevantIds =
+          ids.where((element) => !idsInQueue.contains(element)).toList();
+      syncingService.processIds(relevantIds, fileExtension);
     });
   }
 }
