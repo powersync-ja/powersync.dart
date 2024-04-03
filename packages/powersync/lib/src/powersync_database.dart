@@ -21,6 +21,13 @@ import 'schema_logic.dart';
 import 'streaming_sync.dart';
 import 'sync_status.dart';
 
+// Internal tables used by PowerSync.
+enum PowerSyncInternalTable { data, crud, buckets, oplog, tx }
+
+extension PSInternalTableExtension on PowerSyncInternalTable {
+  String get name => 'ps_${toString().split('.').last.toLowerCase()}';
+}
+
 /// A PowerSync managed database.
 ///
 /// Use one instance per database file.
@@ -63,6 +70,11 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
   /// Defaults to 5 seconds.
   /// Only has an effect if changed before calling [connect].
   Duration retryDelay = const Duration(seconds: 5);
+
+  /// Backend Connector CRUD operations are throttled
+  /// to occur at most every `crudUploadThrottleMs` milliseconds.
+  /// Defaults to 1000 milliseconds.
+  Duration crudUploadThrottleMs = const Duration(milliseconds: 1000);
 
   late Future<void> _initialized;
 
@@ -199,43 +211,51 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
     rPort.listen((data) async {
       if (data is List) {
         String action = data[0];
-        if (action == "getCredentials") {
-          await (data[1] as PortCompleter).handle(() async {
-            final token = await connector.getCredentialsCached();
-            logger.fine('Credentials: $token');
-            return token;
-          });
-        } else if (action == "invalidateCredentials") {
-          logger.fine('Refreshing credentials');
-          await (data[1] as PortCompleter).handle(() async {
-            await connector.prefetchCredentials();
-          });
-        } else if (action == 'init') {
-          SendPort port = data[1];
-          var throttled = UpdateNotification.throttleStream(
-              updates, const Duration(milliseconds: 10));
-          updateSubscription = throttled.listen((event) {
-            port.send(['update']);
-          });
-          disconnector.onAbort.then((_) {
-            port.send(['close']);
-          }).ignore();
-        } else if (action == 'uploadCrud') {
-          await (data[1] as PortCompleter).handle(() async {
-            await connector.uploadData(this);
-          });
-        } else if (action == 'status') {
-          final SyncStatus status = data[1];
-          _setStatus(status);
-        } else if (action == 'close') {
-          // Clear status apart from lastSyncedAt
-          _setStatus(SyncStatus(lastSyncedAt: currentStatus.lastSyncedAt));
-          rPort.close();
-          updateSubscription?.cancel();
-        } else if (action == 'log') {
-          LogRecord record = data[1];
-          logger.log(
-              record.level, record.message, record.error, record.stackTrace);
+        switch (action) {
+          case "getCredentials":
+            await (data[1] as PortCompleter).handle(() async {
+              final token = await connector.getCredentialsCached();
+              logger.fine('Credentials: $token');
+              return token;
+            });
+            break;
+          case "invalidateCredentials":
+            logger.fine('Refreshing credentials');
+            await (data[1] as PortCompleter).handle(() async {
+              await connector.prefetchCredentials();
+            });
+            break;
+          case 'init':
+            SendPort port = data[1];
+            var throttled = UpdateNotification.throttleStream(
+                updates, const Duration(milliseconds: 10));
+            updateSubscription = throttled.listen((event) {
+              port.send(['update']);
+            });
+            disconnector.onAbort.then((_) {
+              port.send(['close']);
+            }).ignore();
+            break;
+          case 'uploadCrud':
+            await (data[1] as PortCompleter).handle(() async {
+              await connector.uploadData(this);
+            });
+            break;
+          case 'status':
+            final SyncStatus status = data[1];
+            _setStatus(status);
+            break;
+          case 'close':
+            // Clear status apart from lastSyncedAt
+            _setStatus(SyncStatus(lastSyncedAt: currentStatus.lastSyncedAt));
+            rPort.close();
+            updateSubscription?.cancel();
+            break;
+          case 'log':
+            LogRecord record = data[1];
+            logger.log(
+                record.level, record.message, record.error, record.stackTrace);
+            break;
         }
       }
     });
@@ -275,8 +295,10 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
       return;
     }
 
-    Isolate.spawn(_powerSyncDatabaseIsolate,
-        _PowerSyncDatabaseIsolateArgs(rPort.sendPort, dbref, retryDelay),
+    Isolate.spawn(
+        _powerSyncDatabaseIsolate,
+        _PowerSyncDatabaseIsolateArgs(
+            rPort.sendPort, dbref, retryDelay, crudUploadThrottleMs),
         debugName: 'PowerSyncDatabase',
         onError: errorPort.sendPort,
         onExit: exitPort.sendPort);
@@ -310,9 +332,9 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
     await disconnect();
 
     await writeTransaction((tx) async {
-      await tx.execute('DELETE FROM ps_oplog');
-      await tx.execute('DELETE FROM ps_crud');
-      await tx.execute('DELETE FROM ps_buckets');
+      await tx.execute('DELETE FROM ${PowerSyncInternalTable.oplog.name}');
+      await tx.execute('DELETE FROM ${PowerSyncInternalTable.crud.name}');
+      await tx.execute('DELETE FROM ${PowerSyncInternalTable.buckets.name}');
 
       final tableGlob = clearLocal ? 'ps_data_*' : 'ps_data__*';
       final existingTableRows = await tx.getAll(
@@ -347,11 +369,12 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
       {bool includeSize = false}) async {
     if (includeSize) {
       final row = await getOptional(
-          'SELECT SUM(cast(data as blob) + 20) as size, count(*) as count FROM ps_crud');
+          'SELECT SUM(cast(data as blob) + 20) as size, count(*) as count FROM ${PowerSyncInternalTable.crud.name}');
       return UploadQueueStats(
           count: row?['count'] ?? 0, size: row?['size'] ?? 0);
     } else {
-      final row = await getOptional('SELECT count(*) as count FROM ps_crud');
+      final row = await getOptional(
+          'SELECT count(*) as count FROM ${PowerSyncInternalTable.crud.name}');
       return UploadQueueStats(count: row?['count'] ?? 0);
     }
   }
@@ -373,7 +396,7 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
   /// and a single transaction may be split over multiple batches.
   Future<CrudBatch?> getCrudBatch({limit = 100}) async {
     final rows = await getAll(
-        'SELECT id, tx_id, data FROM ps_crud ORDER BY id ASC LIMIT ?',
+        'SELECT id, tx_id, data FROM ${PowerSyncInternalTable.crud.name} ORDER BY id ASC LIMIT ?',
         [limit + 1]);
     List<CrudEntry> all = [for (var row in rows) CrudEntry.fromRow(row)];
 
@@ -391,15 +414,18 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
         haveMore: haveMore,
         complete: ({String? writeCheckpoint}) async {
           await writeTransaction((db) async {
-            await db
-                .execute('DELETE FROM ps_crud WHERE id <= ?', [last.clientId]);
+            await db.execute(
+                'DELETE FROM ${PowerSyncInternalTable.crud.name} WHERE id <= ?',
+                [last.clientId]);
             if (writeCheckpoint != null &&
-                await db.getOptional('SELECT 1 FROM ps_crud LIMIT 1') == null) {
+                await db.getOptional(
+                        'SELECT 1 FROM ${PowerSyncInternalTable.crud.name} LIMIT 1') ==
+                    null) {
               await db.execute(
-                  'UPDATE ps_buckets SET target_op = $writeCheckpoint WHERE name=\'\$local\'');
+                  'UPDATE ${PowerSyncInternalTable.buckets.name} SET target_op = $writeCheckpoint WHERE name=\'\$local\'');
             } else {
               await db.execute(
-                  'UPDATE ps_buckets SET target_op = $maxOpId WHERE name=\'\$local\'');
+                  'UPDATE ${PowerSyncInternalTable.buckets.name} SET target_op = $maxOpId WHERE name=\'\$local\'');
             }
           });
         });
@@ -419,7 +445,7 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
   Future<CrudTransaction?> getNextCrudTransaction() async {
     return await readTransaction((tx) async {
       final first = await tx.getOptional(
-          'SELECT id, tx_id, data FROM ps_crud ORDER BY id ASC LIMIT 1');
+          'SELECT id, tx_id, data FROM ${PowerSyncInternalTable.crud.name} ORDER BY id ASC LIMIT 1');
       if (first == null) {
         return null;
       }
@@ -429,7 +455,7 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
         all = [CrudEntry.fromRow(first)];
       } else {
         final rows = await tx.getAll(
-            'SELECT id, tx_id, data FROM ps_crud WHERE tx_id = ? ORDER BY id ASC',
+            'SELECT id, tx_id, data FROM ${PowerSyncInternalTable.crud.name} WHERE tx_id = ? ORDER BY id ASC',
             [txId]);
         all = [for (var row in rows) CrudEntry.fromRow(row)];
       }
@@ -442,15 +468,17 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
           complete: ({String? writeCheckpoint}) async {
             await writeTransaction((db) async {
               await db.execute(
-                  'DELETE FROM ps_crud WHERE id <= ?', [last.clientId]);
+                  'DELETE FROM ${PowerSyncInternalTable.crud.name} WHERE id <= ?',
+                  [last.clientId]);
               if (writeCheckpoint != null &&
-                  await db.getOptional('SELECT 1 FROM ps_crud LIMIT 1') ==
+                  await db.getOptional(
+                          'SELECT 1 FROM ${PowerSyncInternalTable.crud.name} LIMIT 1') ==
                       null) {
                 await db.execute(
-                    'UPDATE ps_buckets SET target_op = $writeCheckpoint WHERE name=\'\$local\'');
+                    'UPDATE ${PowerSyncInternalTable.buckets.name} SET target_op = $writeCheckpoint WHERE name=\'\$local\'');
               } else {
                 await db.execute(
-                    'UPDATE ps_buckets SET target_op = $maxOpId WHERE name=\'\$local\'');
+                    'UPDATE ${PowerSyncInternalTable.buckets.name} SET target_op = $maxOpId WHERE name=\'\$local\'');
               }
             });
           });
@@ -513,10 +541,11 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
     return writeLock((ctx) async {
       try {
         await ctx.execute(
-            'UPDATE ps_tx SET current_tx = next_tx, next_tx = next_tx + 1 WHERE id = 1');
+            'UPDATE ${PowerSyncInternalTable.tx.name} SET current_tx = next_tx, next_tx = next_tx + 1 WHERE id = 1');
         return await ctx.execute(sql, parameters);
       } finally {
-        await ctx.execute('UPDATE ps_tx SET current_tx = NULL WHERE id = 1');
+        await ctx.execute(
+            'UPDATE ${PowerSyncInternalTable.tx.name} SET current_tx = NULL WHERE id = 1');
       }
     }, debugContext: 'execute()');
   }
@@ -531,8 +560,10 @@ class _PowerSyncDatabaseIsolateArgs {
   final SendPort sPort;
   final IsolateConnectionFactory dbRef;
   final Duration retryDelay;
+  final Duration crudUploadThrottleMs;
 
-  _PowerSyncDatabaseIsolateArgs(this.sPort, this.dbRef, this.retryDelay);
+  _PowerSyncDatabaseIsolateArgs(
+      this.sPort, this.dbRef, this.retryDelay, this.crudUploadThrottleMs);
 }
 
 Future<void> _powerSyncDatabaseIsolate(
@@ -546,13 +577,16 @@ Future<void> _powerSyncDatabaseIsolate(
   rPort.listen((message) {
     if (message is List) {
       String action = message[0];
-      if (action == 'update') {
-        updateController.add('update');
-      } else if (action == 'close') {
-        db?.dispose();
-        updateController.close();
-        upstreamDbClient.close();
-        Isolate.current.kill();
+      switch (action) {
+        case 'update':
+          updateController.add('update');
+          break;
+        case 'close':
+          db?.dispose();
+          updateController.close();
+          upstreamDbClient.close();
+          Isolate.current.kill();
+          break;
       }
     }
   });
@@ -598,7 +632,8 @@ Future<void> _powerSyncDatabaseIsolate(
         invalidCredentialsCallback: invalidateCredentials,
         uploadCrud: uploadCrud,
         updateStream: updateController.stream,
-        retryDelay: args.retryDelay);
+        retryDelay: args.retryDelay,
+        crudUploadThrottleMs: args.crudUploadThrottleMs);
     sync.streamingSync();
     sync.statusStream.listen((event) {
       sPort.send(['status', event]);

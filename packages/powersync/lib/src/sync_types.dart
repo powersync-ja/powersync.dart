@@ -85,18 +85,26 @@ class StreamingSyncKeepalive {
 Object? parseStreamingSyncLine(Map<String, dynamic> line) {
   if (line.containsKey('checkpoint')) {
     return Checkpoint.fromJson(line['checkpoint']);
-  } else if (line.containsKey('checkpoint_diff')) {
+  }
+
+  if (line.containsKey('checkpoint_diff')) {
     return StreamingSyncCheckpointDiff.fromJson(line['checkpoint_diff']);
-  } else if (line.containsKey('checkpoint_complete')) {
+  }
+
+  if (line.containsKey('checkpoint_complete')) {
     return StreamingSyncCheckpointComplete.fromJson(
         line['checkpoint_complete']);
-  } else if (line.containsKey('data')) {
-    return SyncBucketData.fromJson(line['data']);
-  } else if (line.containsKey('token_expires_in')) {
-    return StreamingSyncKeepalive.fromJson(line);
-  } else {
-    return null;
   }
+
+  if (line.containsKey('data')) {
+    return SyncBucketData.fromJson(line['data']);
+  }
+
+  if (line.containsKey('token_expires_in')) {
+    return StreamingSyncKeepalive.fromJson(line);
+  }
+
+  return null;
 }
 
 class StreamingSyncRequest {

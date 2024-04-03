@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:powersync/src/exceptions.dart';
 import 'package:powersync/src/log_internal.dart';
+import 'package:powersync/src/throttle.dart';
 
 import 'bucket_storage.dart';
 import 'connector.dart';
@@ -36,6 +37,8 @@ class StreamingSyncImplementation {
 
   final Duration retryDelay;
 
+  final Duration crudUploadThrottleMs;
+
   SyncStatus lastStatus = const SyncStatus();
 
   StreamingSyncImplementation(
@@ -44,7 +47,8 @@ class StreamingSyncImplementation {
       this.invalidCredentialsCallback,
       required this.uploadCrud,
       required this.updateStream,
-      required this.retryDelay}) {
+      required this.retryDelay,
+      required this.crudUploadThrottleMs}) {
     _client = http.Client();
     statusStream = _statusStreamController.stream;
   }
@@ -80,11 +84,19 @@ class StreamingSyncImplementation {
     }
   }
 
+  Future<void> triggerCrudUpload() async {
+    if (!lastStatus.connected || lastStatus.uploading) {
+      return;
+    }
+
+    throttle(uploadAllCrud, crudUploadThrottleMs);
+  }
+
   Future<void> crudLoop() async {
-    await uploadAllCrud();
+    await triggerCrudUpload();
 
     await for (var _ in updateStream) {
-      await uploadAllCrud();
+      await triggerCrudUpload();
     }
   }
 
@@ -110,17 +122,18 @@ class StreamingSyncImplementation {
       _updateStatus(uploading: true);
       await uploadCrud();
       return false;
-    } else {
-      // This isolate is the only one triggering
-      final updated = await adapter.updateLocalTarget(() async {
-        return getWriteCheckpoint();
-      });
-      if (updated) {
-        _localPingController.add(null);
-      }
-
-      return true;
     }
+
+    // This isolate is the only one triggering
+    final updated = await adapter.updateLocalTarget(() async {
+      return getWriteCheckpoint();
+    });
+
+    if (updated) {
+      _localPingController.add(null);
+    }
+
+    return true;
   }
 
   Future<String> getWriteCheckpoint() async {
@@ -135,11 +148,11 @@ class StreamingSyncImplementation {
       'User-Id': credentials.userId ?? '',
       'Authorization': "Token ${credentials.token}"
     });
-    if (response.statusCode == 401) {
-      if (invalidCredentialsCallback != null) {
-        await invalidCredentialsCallback!();
-      }
+
+    if (response.statusCode == 401 && invalidCredentialsCallback != null) {
+      await invalidCredentialsCallback!();
     }
+
     if (response.statusCode != 200) {
       throw SyncResponseException.fromResponse(response);
     }
@@ -336,11 +349,10 @@ class StreamingSyncImplementation {
     request.body = convert.jsonEncode(data);
 
     final res = await _client.send(request);
-    if (res.statusCode == 401) {
-      if (invalidCredentialsCallback != null) {
-        await invalidCredentialsCallback!();
-      }
+    if (res.statusCode == 401 && invalidCredentialsCallback != null) {
+      await invalidCredentialsCallback!();
     }
+
     if (res.statusCode != 200) {
       throw await SyncResponseException.fromStreamedResponse(res);
     }
@@ -357,23 +369,34 @@ class StreamingSyncImplementation {
 String _syncErrorMessage(Object? error) {
   if (error == null) {
     return 'Unknown';
-  } else if (error is HttpException) {
+  }
+
+  if (error is HttpException) {
     return 'Sync service error';
-  } else if (error is SyncResponseException) {
+  }
+
+  if (error is SyncResponseException) {
     if (error.statusCode == 401) {
       return 'Authorization error';
-    } else {
-      return 'Sync service error';
     }
-  } else if (error is SocketException) {
-    return 'Connection error';
-  } else if (error is ArgumentError || error is FormatException) {
-    return 'Configuration error';
-  } else if (error is CredentialsException) {
-    return 'Credentials error';
-  } else if (error is PowerSyncProtocolException) {
-    return 'Protocol error';
-  } else {
-    return '${error.runtimeType}';
+    return 'Sync service error';
   }
+
+  if (error is SocketException) {
+    return 'Connection error';
+  }
+
+  if (error is ArgumentError || error is FormatException) {
+    return 'Configuration error';
+  }
+
+  if (error is CredentialsException) {
+    return 'Credentials error';
+  }
+
+  if (error is PowerSyncProtocolException) {
+    return 'Protocol error';
+  }
+
+  return '${error.runtimeType}';
 }

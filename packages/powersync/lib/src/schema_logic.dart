@@ -1,6 +1,7 @@
 import 'package:sqlite_async/sqlite3.dart' as sqlite;
 import 'package:sqlite_async/sqlite_async.dart';
 
+import 'powersync_database.dart';
 import 'schema.dart';
 
 const String maxOpId = '9223372036854775807';
@@ -52,8 +53,8 @@ INSTEAD OF DELETE ON ${quoteIdentifier(viewName)}
 FOR EACH ROW
 BEGIN
   DELETE FROM $internalNameE WHERE id = OLD.id;
-  INSERT INTO ps_crud(tx_id, data) SELECT current_tx, json_object('op', 'DELETE', 'type', ${quoteString(type)}, 'id', OLD.id) FROM ps_tx WHERE id = 1;
-  INSERT INTO ps_oplog(bucket, op_id, op, row_type, row_id, hash, superseded)
+  INSERT INTO ${PowerSyncInternalTable.crud.name}(tx_id, data) SELECT current_tx, json_object('op', 'DELETE', 'type', ${quoteString(type)}, 'id', OLD.id) FROM ${PowerSyncInternalTable.tx.name} WHERE id = 1;
+  INSERT INTO ${PowerSyncInternalTable.oplog.name}(bucket, op_id, op, row_type, row_id, hash, superseded)
     SELECT '\$local',
            1,
            'REMOVE',
@@ -61,7 +62,7 @@ BEGIN
            OLD.id,
            0,
            0;
-  INSERT OR REPLACE INTO ps_buckets(name, pending_delete, last_op, target_op) VALUES('\$local', 1, 0, $maxOpId);
+  INSERT OR REPLACE INTO ${PowerSyncInternalTable.buckets.name}(name, pending_delete, last_op, target_op) VALUES('\$local', 1, 0, $maxOpId);
 END""",
     """
 CREATE TRIGGER ${quoteIdentifier('ps_view_insert_$viewName')}
@@ -74,8 +75,8 @@ BEGIN
   END;
   INSERT INTO $internalNameE(id, data)
     SELECT NEW.id, json_object($jsonFragment);
-  INSERT INTO ps_crud(tx_id, data) SELECT current_tx, json_object('op', 'PUT', 'type', ${quoteString(type)}, 'id', NEW.id, 'data', json(powersync_diff('{}', json_object($jsonFragment)))) FROM ps_tx WHERE id = 1;
-  INSERT INTO ps_oplog(bucket, op_id, op, row_type, row_id, hash, superseded)
+  INSERT INTO ${PowerSyncInternalTable.crud.name}(tx_id, data) SELECT current_tx, json_object('op', 'PUT', 'type', ${quoteString(type)}, 'id', NEW.id, 'data', json(powersync_diff('{}', json_object($jsonFragment)))) FROM ${PowerSyncInternalTable.tx.name} WHERE id = 1;
+  INSERT INTO ${PowerSyncInternalTable.oplog.name}(bucket, op_id, op, row_type, row_id, hash, superseded)
     SELECT '\$local',
            1,
            'REMOVE',
@@ -83,7 +84,7 @@ BEGIN
            NEW.id,
            0,
            0;
-  INSERT OR REPLACE INTO ps_buckets(name, pending_delete, last_op, target_op) VALUES('\$local', 1, 0, $maxOpId);
+  INSERT OR REPLACE INTO ${PowerSyncInternalTable.buckets.name}(name, pending_delete, last_op, target_op) VALUES('\$local', 1, 0, $maxOpId);
 END""",
     """
 CREATE TRIGGER ${quoteIdentifier('ps_view_update_$viewName')}
@@ -97,8 +98,8 @@ BEGIN
   UPDATE $internalNameE
         SET data = json_object($jsonFragment)
         WHERE id = NEW.id;
-  INSERT INTO ps_crud(tx_id, data) SELECT current_tx, json_object('op', 'PATCH', 'type', ${quoteString(type)}, 'id', NEW.id, 'data', json(powersync_diff(json_object($jsonFragmentOld), json_object($jsonFragment)))) FROM ps_tx WHERE id = 1;
-  INSERT INTO ps_oplog(bucket, op_id, op, row_type, row_id, hash, superseded)
+  INSERT INTO ${PowerSyncInternalTable.crud.name}(tx_id, data) SELECT current_tx, json_object('op', 'PATCH', 'type', ${quoteString(type)}, 'id', NEW.id, 'data', json(powersync_diff(json_object($jsonFragmentOld), json_object($jsonFragment)))) FROM ${PowerSyncInternalTable.tx.name} WHERE id = 1;
+  INSERT INTO ${PowerSyncInternalTable.oplog.name}(bucket, op_id, op, row_type, row_id, hash, superseded)
     SELECT '\$local',
            1,
            'REMOVE',
@@ -106,7 +107,7 @@ BEGIN
            NEW.id,
            0,
            0;
-  INSERT OR REPLACE INTO ps_buckets(name, pending_delete, last_op, target_op) VALUES('\$local', 1, 0, $maxOpId);
+  INSERT OR REPLACE INTO ${PowerSyncInternalTable.buckets.name}(name, pending_delete, last_op, target_op) VALUES('\$local', 1, 0, $maxOpId);
 END"""
   ];
 }
@@ -166,7 +167,7 @@ CREATE TRIGGER ${quoteIdentifier('ps_view_insert_$viewName')}
 INSTEAD OF INSERT ON ${quoteIdentifier(viewName)}
 FOR EACH ROW
 BEGIN
-  INSERT INTO ps_crud(tx_id, data) SELECT current_tx, json_object('op', 'PUT', 'type', ${quoteString(type)}, 'id', NEW.id, 'data', json(powersync_diff('{}', json_object($jsonFragment)))) FROM ps_tx WHERE id = 1;
+  INSERT INTO ${PowerSyncInternalTable.crud.name}(tx_id, data) SELECT current_tx, json_object('op', 'PUT', 'type', ${quoteString(type)}, 'id', NEW.id, 'data', json(powersync_diff('{}', json_object($jsonFragment)))) FROM ${PowerSyncInternalTable.tx.name} WHERE id = 1;
 END"""
   ];
 }

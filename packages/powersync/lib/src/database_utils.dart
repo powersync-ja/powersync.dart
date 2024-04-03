@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:sqlite_async/sqlite3.dart' as sqlite;
 import 'package:sqlite_async/sqlite_async.dart';
 
+import 'powersync_database.dart';
+
 Future<T> asyncDirectTransaction<T>(sqlite.Database db,
     FutureOr<T> Function(sqlite.Database db) callback) async {
   for (var i = 50; i >= 0; i--) {
@@ -41,9 +43,10 @@ Future<T> internalTrackedWriteTransaction<T>(SqliteWriteContext ctx,
   try {
     await ctx.execute('BEGIN IMMEDIATE');
     await ctx.execute(
-        'UPDATE ps_tx SET current_tx = next_tx, next_tx = next_tx + 1 WHERE id = 1');
+        'UPDATE ${PowerSyncInternalTable.tx.name} SET current_tx = next_tx, next_tx = next_tx + 1 WHERE id = 1');
     final result = await callback(ctx);
-    await ctx.execute('UPDATE ps_tx SET current_tx = NULL WHERE id = 1');
+    await ctx.execute(
+        'UPDATE ${PowerSyncInternalTable.tx.name} SET current_tx = NULL WHERE id = 1');
     await ctx.execute('COMMIT');
     return result;
   } catch (e) {

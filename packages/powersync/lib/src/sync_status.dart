@@ -86,8 +86,8 @@ class UploadQueueStats {
   String toString() {
     if (size == null) {
       return "UploadQueueStats<count: $count>";
-    } else {
-      return "UploadQueueStats<count: $count size: ${size! / 1024}kB>";
     }
+
+    return "UploadQueueStats<count: $count size: ${size! / 1024}kB>";
   }
 }
