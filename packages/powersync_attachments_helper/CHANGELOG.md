@@ -1,7 +1,8 @@
 ## 0.3.1
 
 - Add periodic syncing and deleting of attachments
-- Minor improvements
+- Remove unnecessary delete
+- Fix loop
 
 ## 0.3.0
 
