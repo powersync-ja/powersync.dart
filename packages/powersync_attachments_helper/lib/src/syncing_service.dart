@@ -20,6 +20,7 @@ class SyncingService {
   final Future<bool> Function(Attachment attachment, Object exception)?
       onUploadError;
   bool isProcessing = false;
+  Timer? timer;
 
   SyncingService(this.db, this.remoteStorage, this.localStorage,
       this.attachmentsService, this.getLocalUri,
@@ -166,8 +167,7 @@ class SyncingService {
       bool fileExists = await file.exists();
 
       if (fileExists) {
-        log.info('ignore file $id.$fileExtension as it already exists');
-        return;
+        continue;
       }
 
       log.info('Adding $id to queue');
@@ -178,5 +178,25 @@ class SyncingService {
     }
 
     await attachmentsService.saveAttachments(attachments);
+  }
+
+  /// Delete attachments which have been archived
+  deleteArchivedAttachments() async {
+    await db.execute('''
+      DELETE FROM ${attachmentsService.table}
+      WHERE state = ${AttachmentState.archived.index}
+    ''');
+  }
+
+  /// Periodically sync attachments and delete archived attachments
+  void startPeriodicSync(int intervalInMinutes) {
+    timer?.cancel();
+
+    timer = Timer.periodic(Duration(minutes: intervalInMinutes), (timer) {
+      log.info('Syncing attachments');
+      runSync();
+      log.info('Deleting archived attachments');
+      deleteArchivedAttachments();
+    });
   }
 }

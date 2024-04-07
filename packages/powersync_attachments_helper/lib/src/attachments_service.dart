@@ -93,10 +93,6 @@ class AttachmentsService {
       (id, filename, local_uri, media_type, size, timestamp, state) VALUES (?, ?, ?, ?, ?, ?, ?)
     ''', updatedRecords);
 
-    await db.executeBatch('''
-      DELETE FROM $table WHERE id = ?
-    ''', ids);
-
     return;
   }
 
