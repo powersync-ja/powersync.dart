@@ -1,3 +1,7 @@
+## 1.3.0
+
+- Add `crudThrottleTime` option to arguments when running `PowerSyncDatabase.connect` to set throttle time for crud operations.
+
 ## 1.2.2
 
 - Deprecate DevConnector and related
