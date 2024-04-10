@@ -33,7 +33,7 @@ abstract class AbstractAttachmentQueue {
   /// Return true if you want to ignore attachment
   Future<bool> Function(Attachment attachment, Object exception)? onUploadError;
 
-  /// Interval in minutes to periodically delete archived attachments
+  /// Interval in minutes to periodically run [syncingService.startPeriodicSync]
   /// Default is 5 minutes
   int intervalInMinutes;
 
