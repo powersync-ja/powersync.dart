@@ -184,7 +184,12 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
   /// The connection is automatically re-opened if it fails for any reason.
   ///
   /// Status changes are reported on [statusStream].
-  Future<void> connect({required PowerSyncBackendConnector connector}) async {
+  Future<void> connect(
+      {required PowerSyncBackendConnector connector,
+
+      /// Throttle time between CRUD operations
+      /// Defaults to 10 milliseconds.
+      Duration crudThrottleTime = const Duration(milliseconds: 10)}) async {
     await initialize();
 
     // Disconnect if connected
@@ -212,8 +217,8 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
           });
         } else if (action == 'init') {
           SendPort port = data[1];
-          var throttled = UpdateNotification.throttleStream(
-              updates, const Duration(milliseconds: 10));
+          var throttled =
+              UpdateNotification.throttleStream(updates, crudThrottleTime);
           updateSubscription = throttled.listen((event) {
             port.send(['update']);
           });
