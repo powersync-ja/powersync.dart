@@ -104,8 +104,8 @@ void main() {
     });
 
     test('multiple connect calls', () async {
-      // Test repeatedly creating new PowerSync connections, then disconnect
-      // and close the connection.
+      // Test calling connect() multiple times.
+      // We check that this does not cause multiple connections to be opened concurrently.
       final random = Random();
       var server = await createServer();
 

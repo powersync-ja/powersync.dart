@@ -3,6 +3,7 @@ import 'dart:isolate';
 
 import 'package:logging/logging.dart';
 import 'package:powersync/src/log_internal.dart';
+import 'package:sqlite_async/mutex.dart';
 import 'package:sqlite_async/sqlite3.dart' as sqlite;
 import 'package:sqlite_async/sqlite_async.dart';
 
@@ -68,6 +69,9 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
 
   /// null when disconnected, present when connecting or connected
   AbortController? _disconnecter;
+
+  /// Use to prevent multiple connections from being opened concurrently
+  final Mutex _connectMutex = Mutex();
 
   /// The Logger used by this [PowerSyncDatabase].
   ///
@@ -190,6 +194,13 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
       /// Throttle time between CRUD operations
       /// Defaults to 10 milliseconds.
       Duration crudThrottleTime = const Duration(milliseconds: 10)}) async {
+    _connectMutex.lock(() =>
+        _connect(connector: connector, crudThrottleTime: crudThrottleTime));
+  }
+
+  Future<void> _connect(
+      {required PowerSyncBackendConnector connector,
+      required Duration crudThrottleTime}) async {
     await initialize();
 
     // Disconnect if connected
