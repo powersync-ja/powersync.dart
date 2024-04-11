@@ -1,3 +1,7 @@
+## 1.3.1
+
+- Fix "Checksum mismatch" issue when calling `PowerSyncDatabase.connect` multiple times.
+
 ## 1.3.0
 
 - Add `crudThrottleTime` option to arguments when running `PowerSyncDatabase.connect` to set throttle time for crud operations.
