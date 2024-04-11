@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 import 'dart:math';
 
 import 'package:powersync/powersync.dart';
@@ -44,12 +43,8 @@ void main() {
         var server = await createServer();
 
         credentialsCallback() async {
-          final endpoint = 'http://${server.address.host}:${server.port}';
           return PowerSyncCredentials(
-              endpoint: endpoint,
-              token: 'token',
-              userId: 'u1',
-              expiresAt: DateTime.now());
+              endpoint: server.endpoint, token: 'token');
         }
 
         final pdb = await setupPowerSync(path: path);
@@ -59,12 +54,12 @@ void main() {
 
         await Future.delayed(Duration(milliseconds: random.nextInt(100)));
         if (random.nextBool()) {
-          server.close(force: true).ignore();
+          server.close();
         }
 
         await pdb.close();
 
-        server.close(force: true).ignore();
+        server.close();
       }
     });
 
@@ -81,18 +76,13 @@ void main() {
       // [PowerSync] WARNING: 2023-06-29 16:10:17.667537: Sync Isolate error
       // [Connection closed while receiving data, #0      IOClient.send.<anonymous closure> (package:http/src/io_client.dart:76:13)
 
-      HttpServer? server;
+      TestServer? server;
 
       credentialsCallback() async {
         if (server == null) {
           throw AssertionError('No active server');
         }
-        final endpoint = 'http://${server.address.host}:${server.port}';
-        return PowerSyncCredentials(
-            endpoint: endpoint,
-            token: 'token',
-            userId: 'u1',
-            expiresAt: DateTime.now());
+        return PowerSyncCredentials(endpoint: server.endpoint, token: 'token');
       }
 
       final pdb = await setupPowerSync(path: path);
@@ -107,9 +97,47 @@ void main() {
         // 2ms: HttpException: HttpServer is not bound to a socket
         // 20ms: Connection closed while receiving data
         await Future.delayed(Duration(milliseconds: 20));
-        server.close(force: true).ignore();
+        server.close();
       }
       await pdb.close();
+    });
+
+    test('multiple connect calls', () async {
+      // Test calling connect() multiple times.
+      // We check that this does not cause multiple connections to be opened concurrently.
+      final random = Random();
+      var server = await createServer();
+
+      credentialsCallback() async {
+        return PowerSyncCredentials(endpoint: server.endpoint, token: 'token');
+      }
+
+      final pdb = await setupPowerSync(path: path);
+      pdb.retryDelay = Duration(milliseconds: 5000);
+      var connector = TestConnector(credentialsCallback);
+      pdb.connect(connector: connector);
+      pdb.connect(connector: connector);
+
+      final watch = Stopwatch()..start();
+
+      // Wait for at least one connection
+      while (server.connectionCount < 1 && watch.elapsedMilliseconds < 500) {
+        await Future.delayed(Duration(milliseconds: random.nextInt(10)));
+      }
+      // Give some time for a second connection if any
+      await Future.delayed(Duration(milliseconds: random.nextInt(50)));
+
+      await pdb.close();
+
+      // Give some time for connections to close
+      while (server.connectionCount != 0 && watch.elapsedMilliseconds < 1000) {
+        await Future.delayed(Duration(milliseconds: random.nextInt(10)));
+      }
+
+      expect(server.connectionCount, equals(0));
+      expect(server.maxConnectionCount, equals(1));
+
+      server.close();
     });
   });
 }
