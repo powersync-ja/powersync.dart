@@ -102,5 +102,43 @@ void main() {
       }
       await pdb.close();
     });
+
+    test('multiple connect calls', () async {
+      // Test repeatedly creating new PowerSync connections, then disconnect
+      // and close the connection.
+      final random = Random();
+      var server = await createServer();
+
+      credentialsCallback() async {
+        return PowerSyncCredentials(endpoint: server.endpoint, token: 'token');
+      }
+
+      final pdb = await setupPowerSync(path: path);
+      pdb.retryDelay = Duration(milliseconds: 5000);
+      var connector = TestConnector(credentialsCallback);
+      pdb.connect(connector: connector);
+      pdb.connect(connector: connector);
+
+      final watch = Stopwatch()..start();
+
+      // Wait for at least one connection
+      while (server.connectionCount < 1 && watch.elapsedMilliseconds < 500) {
+        await Future.delayed(Duration(milliseconds: random.nextInt(10)));
+      }
+      // Give some time for a second connection if any
+      await Future.delayed(Duration(milliseconds: random.nextInt(50)));
+
+      await pdb.close();
+
+      // Give some time for connections to close
+      while (server.connectionCount != 0 && watch.elapsedMilliseconds < 1000) {
+        await Future.delayed(Duration(milliseconds: random.nextInt(10)));
+      }
+
+      expect(server.connectionCount, equals(0));
+      expect(server.maxConnectionCount, equals(1));
+
+      server.close();
+    });
   });
 }
