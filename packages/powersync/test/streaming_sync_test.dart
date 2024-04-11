@@ -44,12 +44,8 @@ void main() {
         var server = await createServer();
 
         credentialsCallback() async {
-          final endpoint = 'http://${server.address.host}:${server.port}';
           return PowerSyncCredentials(
-              endpoint: endpoint,
-              token: 'token',
-              userId: 'u1',
-              expiresAt: DateTime.now());
+              endpoint: server.endpoint, token: 'token');
         }
 
         final pdb = await setupPowerSync(path: path);
@@ -59,12 +55,12 @@ void main() {
 
         await Future.delayed(Duration(milliseconds: random.nextInt(100)));
         if (random.nextBool()) {
-          server.close(force: true).ignore();
+          server.close();
         }
 
         await pdb.close();
 
-        server.close(force: true).ignore();
+        server.close();
       }
     });
 
@@ -81,18 +77,13 @@ void main() {
       // [PowerSync] WARNING: 2023-06-29 16:10:17.667537: Sync Isolate error
       // [Connection closed while receiving data, #0      IOClient.send.<anonymous closure> (package:http/src/io_client.dart:76:13)
 
-      HttpServer? server;
+      TestServer? server;
 
       credentialsCallback() async {
         if (server == null) {
           throw AssertionError('No active server');
         }
-        final endpoint = 'http://${server.address.host}:${server.port}';
-        return PowerSyncCredentials(
-            endpoint: endpoint,
-            token: 'token',
-            userId: 'u1',
-            expiresAt: DateTime.now());
+        return PowerSyncCredentials(endpoint: server.endpoint, token: 'token');
       }
 
       final pdb = await setupPowerSync(path: path);
@@ -107,7 +98,7 @@ void main() {
         // 2ms: HttpException: HttpServer is not bound to a socket
         // 20ms: Connection closed while receiving data
         await Future.delayed(Duration(milliseconds: 20));
-        server.close(force: true).ignore();
+        server.close();
       }
       await pdb.close();
     });
