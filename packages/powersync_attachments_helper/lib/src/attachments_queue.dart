@@ -33,6 +33,10 @@ abstract class AbstractAttachmentQueue {
   /// Return true if you want to ignore attachment
   Future<bool> Function(Attachment attachment, Object exception)? onUploadError;
 
+  /// Interval in minutes to periodically run [syncingService.startPeriodicSync]
+  /// Default is 5 minutes
+  int intervalInMinutes;
+
   AbstractAttachmentQueue(
       {required this.db,
       required this.remoteStorage,
@@ -40,7 +44,7 @@ abstract class AbstractAttachmentQueue {
       this.attachmentsQueueTableName = defaultAttachmentsQueueTableName,
       this.onDownloadError,
       this.onUploadError,
-      performInitialSync = true}) {
+      this.intervalInMinutes = 5}) {
     attachmentsService = AttachmentsService(
         db, localStorage, attachmentDirectoryName, attachmentsQueueTableName);
     syncingService = SyncingService(
@@ -68,6 +72,7 @@ abstract class AbstractAttachmentQueue {
 
     watchIds();
     syncingService.watchAttachments();
+    syncingService.startPeriodicSync(intervalInMinutes);
 
     db.statusStream.listen((status) {
       if (db.currentStatus.connected) {
