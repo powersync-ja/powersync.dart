@@ -67,9 +67,7 @@ abstract class AbstractAttachmentQueue {
     await localStorage.makeDir(await getStorageDirectory());
 
     watchIds();
-    syncingService.watchUploads();
-    syncingService.watchDownloads();
-    syncingService.watchDeletes();
+    syncingService.watchAttachments();
 
     db.statusStream.listen((status) {
       if (db.currentStatus.connected) {
@@ -79,9 +77,7 @@ abstract class AbstractAttachmentQueue {
   }
 
   _trigger() async {
-    await syncingService.runDownloads();
-    await syncingService.runDeletes();
-    await syncingService.runUploads();
+    await syncingService.runSync();
   }
 
   /// Returns the local file path for the given filename, used to store in the database.

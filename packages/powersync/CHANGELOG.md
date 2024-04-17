@@ -1,15 +1,20 @@
 ## 1.3.0-alpha.3
 
- - Fixed issue where disconnectAndClear would prevent subsequent sync connection on native platforms and would fail to clear the database on web.
+- Fixed issue where disconnectAndClear would prevent subsequent sync connection on native platforms and would fail to clear the database on web.
 
 ## 1.3.0-alpha.2
 
- - **FIX**(powersync-attachements-helper): pubspec file (#29).
- - **DOCS**: update readme and getting started (#51).
+- **FIX**(powersync-attachements-helper): pubspec file (#29).
+- **DOCS**: update readme and getting started (#51).
 
 ## 1.3.0-alpha.1
 
 - Added initial support for Web platform.
+
+## 1.3.0
+
+- Add `crudThrottleTime` option to arguments when running `PowerSyncDatabase.connect` to set throttle time for crud operations.
+
 ## 1.2.2
 
 - Deprecate DevConnector and related
