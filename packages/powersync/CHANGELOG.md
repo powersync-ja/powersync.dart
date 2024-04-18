@@ -1,3 +1,7 @@
+## 1.3.0-alpha.4
+
+- Merge master branch in and resolve conflicts
+
 ## 1.3.0-alpha.3
 
 - Fixed issue where disconnectAndClear would prevent subsequent sync connection on native platforms and would fail to clear the database on web.
