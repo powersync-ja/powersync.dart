@@ -18,13 +18,14 @@ class PhotoAttachmentQueue extends AbstractAttachmentQueue {
       : super(db: db, remoteStorage: remoteStorage);
 
   @override
-  Future<Attachment> saveFile(String fileId, int size) async {
+  Future<Attachment> saveFile(String fileId, int size,
+      {mediaType = 'image/jpeg'}) async {
     String filename = '$fileId.jpg';
     Attachment photoAttachment = Attachment(
       id: fileId,
       filename: filename,
       state: AttachmentState.queuedUpload.index,
-      mediaType: 'image/jpeg',
+      mediaType: mediaType,
       localUri: getLocalFilePathSuffix(filename),
       size: size,
     );
