@@ -1,4 +1,4 @@
-## 0.4.1
+## 0.4.0
 
 - BREAKING CHANGE: Generalize naming so `savePhoto` and `deletePhoto` have been removed in favour of `saveFile` and `deleteFile`
 - Added optional subDirectories argument when initializing the queue so that local subDirectories are created to match any subDirectories on the storage provider allowing files to be saved instead of an error being thrown.
