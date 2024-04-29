@@ -129,7 +129,7 @@ class SyncingService {
         }
       }
     } catch (error) {
-      log.severe(e);
+      log.severe(error);
       rethrow;
     } finally {
       // if anything throws an exception
