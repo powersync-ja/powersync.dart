@@ -107,28 +107,32 @@ class SyncingService {
 
   /// Handle downloading, uploading or deleting of attachments
   Future<void> handleSync(Iterable<Attachment> attachments) async {
-    if (isProcessing == true) {
-      return;
+      if (isProcessing == true) {
+        return;
+      }
+  
+    try {
+      isProcessing = true;
+
+      for (Attachment attachment in attachments) {
+        if (AttachmentState.queuedDownload.index == attachment.state) {
+          log.info('Downloading ${attachment.filename}');
+          await downloadAttachment(attachment);
+        }
+        if (AttachmentState.queuedUpload.index == attachment.state) {
+          log.info('Uploading ${attachment.filename}');
+          await uploadAttachment(attachment);
+        }
+        if (AttachmentState.queuedDelete.index == attachment.state) {
+          log.info('Deleting ${attachment.filename}');
+          await deleteAttachment(attachment);
+        }
+      }
+    } finally {
+      // if anything throws an exception
+      // reset the ability to sync
+      isProcessing = false;
     }
-
-    isProcessing = true;
-
-    for (Attachment attachment in attachments) {
-      if (AttachmentState.queuedDownload.index == attachment.state) {
-        log.info('Downloading ${attachment.filename}');
-        await downloadAttachment(attachment);
-      }
-      if (AttachmentState.queuedUpload.index == attachment.state) {
-        log.info('Uploading ${attachment.filename}');
-        await uploadAttachment(attachment);
-      }
-      if (AttachmentState.queuedDelete.index == attachment.state) {
-        log.info('Deleting ${attachment.filename}');
-        await deleteAttachment(attachment);
-      }
-    }
-
-    isProcessing = false;
   }
 
   /// Watcher for changes to attachments table
