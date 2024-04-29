@@ -128,9 +128,12 @@ class SyncingService {
           await deleteAttachment(attachment);
         }
       }
+    } catch (error) {
+      log.severe(e);
+      rethrow;
     } finally {
       // if anything throws an exception
-      // reset the ability to sync
+      // reset the ability to sync again
       isProcessing = false;
     }
   }
