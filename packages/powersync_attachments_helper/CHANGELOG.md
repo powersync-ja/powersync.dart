@@ -1,3 +1,7 @@
+## 0.3.2
+
+- Fix sync not processing after an error
+
 ## 0.3.1
 
 - Add periodic syncing and deleting of attachments
