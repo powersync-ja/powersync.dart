@@ -1,9 +1,8 @@
+// Copy this template: `cp lib/app_config_template.dart lib/app_config.dart`
+// Edit lib/app_config.dart and enter your Supabase and PowerSync project details.
 class AppConfig {
-  static const String supabaseUrl = 'https://jrimaqxlgrpjipgssldo.supabase.co';
-  static const String supabaseAnonKey =
-      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpyaW1hcXhsZ3JwamlwZ3NzbGRvIiwicm9sZSI6ImFub24iLCJpYXQiOjE2OTE1ODY5MTAsImV4cCI6MjAwNzE2MjkxMH0.K-Qb-YFz0oVpLshUEezGU-Do-sX08zKqBzVccDoZp_Y';
-  static const String powersyncUrl =
-      'https://64d392172a3c226cddbd5070.powersync.journeyapps.com';
-  static const String supabaseStorageBucket =
-      ''; // Optional if you want to test out attachments
+  static const String supabaseUrl = 'https://foo.supabase.co';
+  static const String supabaseAnonKey = 'foo';
+  static const String powersyncUrl = 'https://foo.powersync.journeyapps.com';
+  static const String supabaseStorageBucket = ''; // Optional. Only required when syncing attachments and using Supabase Storage. See packages/powersync_attachments_helper.
 }
