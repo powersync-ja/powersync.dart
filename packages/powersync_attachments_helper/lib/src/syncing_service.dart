@@ -107,10 +107,10 @@ class SyncingService {
 
   /// Handle downloading, uploading or deleting of attachments
   Future<void> handleSync(Iterable<Attachment> attachments) async {
-      if (isProcessing == true) {
-        return;
-      }
-  
+    if (isProcessing == true) {
+      return;
+    }
+
     try {
       isProcessing = true;
 
