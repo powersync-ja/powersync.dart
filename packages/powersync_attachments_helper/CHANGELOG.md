@@ -1,6 +1,6 @@
 ## 0.3.2
 
-- Fix sync not processing after an error
+- Fix sync not resetting after an error is thrown
 
 ## 0.3.1
 
