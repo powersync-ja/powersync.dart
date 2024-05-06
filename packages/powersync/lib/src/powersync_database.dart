@@ -329,6 +329,7 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
       await tx.execute('DELETE FROM ps_oplog');
       await tx.execute('DELETE FROM ps_crud');
       await tx.execute('DELETE FROM ps_buckets');
+      await tx.execute('DELETE FROM ps_untyped');
 
       final tableGlob = clearLocal ? 'ps_data_*' : 'ps_data__*';
       final existingTableRows = await tx.getAll(
