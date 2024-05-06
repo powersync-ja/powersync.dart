@@ -37,6 +37,10 @@ abstract class AbstractAttachmentQueue {
   /// Default is 5 minutes
   int intervalInMinutes;
 
+  /// Provide the subdirectories located on external storage so that they are created
+  /// when the attachment queue is initialized.
+  List<String>? subdirectories;
+
   AbstractAttachmentQueue(
       {required this.db,
       required this.remoteStorage,
@@ -44,7 +48,8 @@ abstract class AbstractAttachmentQueue {
       this.attachmentsQueueTableName = defaultAttachmentsQueueTableName,
       this.onDownloadError,
       this.onUploadError,
-      this.intervalInMinutes = 5}) {
+      this.intervalInMinutes = 5,
+      this.subdirectories}) {
     attachmentsService = AttachmentsService(
         db, localStorage, attachmentDirectoryName, attachmentsQueueTableName);
     syncingService = SyncingService(
@@ -56,11 +61,11 @@ abstract class AbstractAttachmentQueue {
   /// Set the file extension if you are using a different file type
   StreamSubscription<void> watchIds({String fileExtension = 'jpg'});
 
-  /// Create a function to save photos using the attachment queue
-  Future<Attachment> savePhoto(String photoId, int size);
+  /// Create a function to save files using the attachment queue
+  Future<Attachment> saveFile(String fileId, int size);
 
-  /// Create a function to delete photos using the attachment queue
-  Future<Attachment> deletePhoto(String photoId);
+  /// Create a function to delete files using the attachment queue
+  Future<Attachment> deleteFile(String fileId);
 
   /// Initialize the attachment queue by
   /// 1. Creating attachments directory
@@ -69,6 +74,13 @@ abstract class AbstractAttachmentQueue {
   init() async {
     // Ensure the directory where attachments are downloaded, exists
     await localStorage.makeDir(await getStorageDirectory());
+
+    if (subdirectories != null) {
+      for (String subdirectory in subdirectories!) {
+        await localStorage
+            .makeDir('${await getStorageDirectory()}/$subdirectory');
+      }
+    }
 
     watchIds();
     syncingService.watchAttachments();

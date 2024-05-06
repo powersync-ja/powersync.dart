@@ -111,24 +111,31 @@ class SyncingService {
       return;
     }
 
-    isProcessing = true;
+    try {
+      isProcessing = true;
 
-    for (Attachment attachment in attachments) {
-      if (AttachmentState.queuedDownload.index == attachment.state) {
-        log.info('Downloading ${attachment.filename}');
-        await downloadAttachment(attachment);
+      for (Attachment attachment in attachments) {
+        if (AttachmentState.queuedDownload.index == attachment.state) {
+          log.info('Downloading ${attachment.filename}');
+          await downloadAttachment(attachment);
+        }
+        if (AttachmentState.queuedUpload.index == attachment.state) {
+          log.info('Uploading ${attachment.filename}');
+          await uploadAttachment(attachment);
+        }
+        if (AttachmentState.queuedDelete.index == attachment.state) {
+          log.info('Deleting ${attachment.filename}');
+          await deleteAttachment(attachment);
+        }
       }
-      if (AttachmentState.queuedUpload.index == attachment.state) {
-        log.info('Uploading ${attachment.filename}');
-        await uploadAttachment(attachment);
-      }
-      if (AttachmentState.queuedDelete.index == attachment.state) {
-        log.info('Deleting ${attachment.filename}');
-        await deleteAttachment(attachment);
-      }
+    } catch (error) {
+      log.severe(error);
+      rethrow;
+    } finally {
+      // if anything throws an exception
+      // reset the ability to sync again
+      isProcessing = false;
     }
-
-    isProcessing = false;
   }
 
   /// Watcher for changes to attachments table
