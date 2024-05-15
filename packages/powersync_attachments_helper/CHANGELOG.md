@@ -1,3 +1,7 @@
+## 0.4.1
+
+- Reduce version number of `path_provider` to `2.0.13`
+
 ## 0.4.0
 
 - BREAKING CHANGE: Generalize naming so `savePhoto` and `deletePhoto` have been removed in favour of `saveFile` and `deleteFile`
