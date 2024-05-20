@@ -20,6 +20,10 @@ dependencies:
   collection: ^1.17.0
   fetch_client: ^1.0.2
   js: ^0.6.7
+  sqlite3_web:
+    path: /Users/stevenontong/Documents/platform_code/powersync/dart_deps/sqlite3.dart/sqlite3_web
+  sqlite3:
+    path: /Users/stevenontong/Documents/platform_code/powersync/dart_deps/sqlite3.dart/sqlite3
 
 dev_dependencies:
   dcli: ^3.3.5
@@ -27,13 +31,20 @@ dev_dependencies:
   test: ^1.25.0
   test_api: ^0.7.0
   path_provider: ^2.0.13
-  sqlite3: ^2.3.0
+
   shelf: ^1.4.1
   shelf_router: ^1.1.4
   shelf_static: ^1.1.2
   stream_channel: ^2.1.2
   path: ^1.8.3
-  drift: 2.15.0
+
+dependency_overrides:
+  sqlite3_web:
+    path: /Users/stevenontong/Documents/platform_code/powersync/dart_deps/sqlite3.dart/sqlite3_web
+  sqlite3:
+    path: /Users/stevenontong/Documents/platform_code/powersync/dart_deps/sqlite3.dart/sqlite3
+  sqlite_async:
+    path: /Users/stevenontong/Documents/platform_code/powersync/sqlite_async.dart
 
 platforms:
   android:

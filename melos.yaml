@@ -9,7 +9,7 @@ ide:
   intellij: false
 
 scripts:
-  prepare: melos bootstrap && melos compile:webworker && melos update:wasm
+  prepare: melos bootstrap && dart ./scripts/compile_webworker.dart && dart ./scripts/init_sqlite_wasm.dart
 
   analyze:demos:
     description: Analyze Dart code in demos.

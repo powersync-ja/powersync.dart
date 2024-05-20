@@ -8,12 +8,6 @@ environment:
 
 # Add regular dependencies here.
 
-dependency_overrides:
-  sqlite_async:
-    git:
-      url: https://github.com/powersync-ja/sqlite_async.dart.git
-      ref: web # branch name
-
 dev_dependencies:
   lints: ^2.1.1
   melos: ^3.4.0

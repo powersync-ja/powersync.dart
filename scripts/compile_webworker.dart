@@ -5,13 +5,14 @@ import 'package:path/path.dart' as path;
 Future<void> main() async {
   // This should be the package root
   final cwd = Directory.current.absolute.path;
-  final repoRoot = path.normalize(path.join(cwd, '../../'));
+  final repoRoot = path.normalize(cwd);
 
   /// The monorepo root assets directory
   final workerFilename = 'powersync_db.worker.js';
   final outputPath = path.join(repoRoot, 'assets/$workerFilename');
 
-  final workerSourcePath = './lib/src/powersync_db.worker.dart';
+  final workerSourcePath = path.join(
+      repoRoot, './packages/powersync/lib/src/web/powersync_db.worker.dart');
 
   // And compile worker code
   final process = await Process.run(
