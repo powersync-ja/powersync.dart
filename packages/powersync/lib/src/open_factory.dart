@@ -78,7 +78,9 @@ class PowerSyncOpenFactory extends DefaultSqliteOpenFactory {
   }
 
   void enableExtension() {
-    var powersyncLib = DynamicLibrary.open('libpowersync.so');
+    var powersyncLib = Platform.isIOS
+        ? DynamicLibrary.process()
+        : DynamicLibrary.open('libpowersync.so');
     sqlite.sqlite3.ensureExtensionLoaded(
         SqliteExtension.inLibrary(powersyncLib, 'sqlite3_powersync_init'));
   }
