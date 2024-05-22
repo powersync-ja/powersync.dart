@@ -3,10 +3,11 @@ import 'dart:convert' as convert;
 import 'dart:io';
 
 import 'package:http/http.dart' as http;
+import 'package:powersync/src/exceptions.dart';
+import 'package:powersync/src/log_internal.dart';
 
 import 'bucket_storage.dart';
 import 'connector.dart';
-import 'log.dart';
 import 'stream_utils.dart';
 import 'sync_status.dart';
 import 'sync_types.dart';
@@ -64,7 +65,8 @@ class StreamingSyncImplementation {
         await streamingSyncIteration();
         // Continue immediately
       } catch (e, stacktrace) {
-        log.warning('Sync error', e, stacktrace);
+        final message = _syncErrorMessage(e);
+        isolateLogger.warning('Sync error: $message', e, stacktrace);
         invalidCredentials = true;
 
         _updateStatus(
@@ -96,7 +98,7 @@ class StreamingSyncImplementation {
           break;
         }
       } catch (e, stacktrace) {
-        log.warning('Data upload error', e, stacktrace);
+        isolateLogger.warning('Data upload error', e, stacktrace);
         _updateStatus(uploading: false, uploadError: e);
         await Future.delayed(retryDelay);
       }
@@ -125,7 +127,7 @@ class StreamingSyncImplementation {
   Future<String> getWriteCheckpoint() async {
     final credentials = await credentialsCallback();
     if (credentials == null) {
-      throw AssertionError("Not logged in");
+      throw CredentialsException("Not logged in");
     }
     final uri = credentials.endpointUri('write-checkpoint2.json');
 
@@ -140,7 +142,7 @@ class StreamingSyncImplementation {
       }
     }
     if (response.statusCode != 200) {
-      throw getError(response);
+      throw SyncResponseException.fromResponse(response);
     }
 
     final body = convert.jsonDecode(response.body);
@@ -237,7 +239,8 @@ class StreamingSyncImplementation {
       } else if (line is StreamingSyncCheckpointDiff) {
         // TODO: It may be faster to just keep track of the diff, instead of the entire checkpoint
         if (targetCheckpoint == null) {
-          throw AssertionError('Checkpoint diff without previous checkpoint');
+          throw PowerSyncProtocolException(
+              'Checkpoint diff without previous checkpoint');
         }
         _updateStatus(downloading: true);
         final diff = line;
@@ -323,7 +326,7 @@ class StreamingSyncImplementation {
   Stream<Object?> streamingSyncRequest(StreamingSyncRequest data) async* {
     final credentials = await credentialsCallback();
     if (credentials == null) {
-      throw AssertionError('Not logged in');
+      throw CredentialsException('Not logged in');
     }
     final uri = credentials.endpointUri('sync/stream');
 
@@ -340,7 +343,7 @@ class StreamingSyncImplementation {
       }
     }
     if (res.statusCode != 200) {
-      throw await getStreamedError(res);
+      throw await SyncResponseException.fromStreamedResponse(res);
     }
 
     // Note: The response stream is automatically closed when this loop errors
@@ -350,40 +353,28 @@ class StreamingSyncImplementation {
   }
 }
 
-HttpException getError(http.Response response) {
-  try {
-    final body = response.body;
-    final decoded = convert.jsonDecode(body);
-    final details = stringOrFirst(decoded['error']?['details']) ?? body;
-    final message = '${response.reasonPhrase ?? "Request failed"}: $details';
-    return HttpException(message, uri: response.request?.url);
-  } on Error catch (_) {
-    return HttpException(response.reasonPhrase ?? "Request failed",
-        uri: response.request?.url);
-  }
-}
-
-Future<HttpException> getStreamedError(http.StreamedResponse response) async {
-  try {
-    final body = await response.stream.bytesToString();
-    final decoded = convert.jsonDecode(body);
-    final details = stringOrFirst(decoded['error']?['details']) ?? body;
-    final message = '${response.reasonPhrase ?? "Request failed"}: $details';
-    return HttpException(message, uri: response.request?.url);
-  } on Error catch (_) {
-    return HttpException(response.reasonPhrase ?? "Request failed",
-        uri: response.request?.url);
-  }
-}
-
-String? stringOrFirst(Object? details) {
-  if (details == null) {
-    return null;
-  } else if (details is String) {
-    return details;
-  } else if (details is List && details[0] is String) {
-    return details[0];
+/// Attempt to give a basic summary of the error for cases where the full error
+/// is not logged.
+String _syncErrorMessage(Object? error) {
+  if (error == null) {
+    return 'Unknown';
+  } else if (error is HttpException) {
+    return 'Sync service error';
+  } else if (error is SyncResponseException) {
+    if (error.statusCode == 401) {
+      return 'Authorization error';
+    } else {
+      return 'Sync service error';
+    }
+  } else if (error is SocketException) {
+    return 'Connection error';
+  } else if (error is ArgumentError || error is FormatException) {
+    return 'Configuration error';
+  } else if (error is CredentialsException) {
+    return 'Credentials error';
+  } else if (error is PowerSyncProtocolException) {
+    return 'Protocol error';
   } else {
-    return null;
+    return '${error.runtimeType}';
   }
 }

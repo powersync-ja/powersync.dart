@@ -25,8 +25,6 @@ const testSchema = Schema([
 ]);
 
 void main() {
-  setupLogger();
-
   group('Query Watch Tests', () {
     late String path;
 

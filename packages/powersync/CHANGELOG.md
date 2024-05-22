@@ -1,3 +1,39 @@
+## 1.3.1
+
+- Fix "Checksum mismatch" issue when calling `PowerSyncDatabase.connect` multiple times.
+
+## 1.3.0
+
+- Add `crudThrottleTime` option to arguments when running `PowerSyncDatabase.connect` to set throttle time for crud operations.
+
+## 1.2.2
+
+- Deprecate DevConnector and related
+
+## 1.2.1
+
+- Fix indexes incorrectly dropped after the first run.
+- Fix `viewName` override causing `view "..." already exists` errors after the first run.
+
+## 1.2.0
+
+This release improves the default log output and errors to better assist in debugging.
+
+Breaking changes:
+
+- `PowerSyncCredentials` constructor is no longer const, and the `endpoint` URL is validated in the constructor.
+- Different error and exception classes are now used by the library, including `CredentialsException`, `SyncResponseException` and `PowerSyncProtocolException`, instead of more generic `AssertionError` and `HttpException`.
+
+Other changes:
+
+- The library now logs to the console in debug builds by default. To get the old behavior, use `logger: attachedLogger` in the `PowerSyncDatabase` constructor.
+- Log messages have been improved to better explain the sync process and errors.
+
+## 1.1.1
+
+- Fix error occasionally occurring when calling `powersync.connect()` right when opening the database.
+- Update getting started docs.
+
 ## 1.1.0
 
 - Fix delete operations rejected by the server not being reverted locally.
@@ -5,10 +41,10 @@
 - Fix `SyncStatus.connected` to be updated when calling `PowerSyncDatabase.disconnect()`.
 - Fix network error messages only containing a single character in some cases.
 - Update `sqlite_async` dependency:
-   - Supports catching errors in transactions and continuing the transaction.
-   - Add `tx.closed` and `db/tx.getAutoCommit()`
+  - Supports catching errors in transactions and continuing the transaction.
+  - Add `tx.closed` and `db/tx.getAutoCommit()`
 - Update `uuid` dependency:
-   - Now uses `CryptoRNG` from `uuid` package now that the performance improvements are upstream.
+  - Now uses `CryptoRNG` from `uuid` package now that the performance improvements are upstream.
 - Requires Dart ^3.2.0 / Flutter ^3.16.0.
 
 ## 1.0.0
@@ -20,7 +56,7 @@
 - Improve HTTP error messages.
 - Enable SQLite recursive triggers.
 - Support overriding view names.
-- *Breaking change:* Validate schema definitions for duplicates.
+- _Breaking change:_ Validate schema definitions for duplicates.
   Remove `id` column and indexes from any tables in the schema if present.
 
 ## 0.4.1
@@ -74,9 +110,9 @@ Breaking changes:
 
 - `TableUpdate` renamed to `UpdateNotification`.
 - `PowerSyncDatabase.connectionFactory()` renamed to `PowerSyncDatabase.isolateConnectionFactory()`,
-   and should only be used to pass the connection to a different isolate.
+  and should only be used to pass the connection to a different isolate.
 - All tables apart from `ps_crud` are dropped and re-created when upgrading to this version.
-   This will not result in any data loss, but a full re-sync is required.
+  This will not result in any data loss, but a full re-sync is required.
 
 Fixes:
 

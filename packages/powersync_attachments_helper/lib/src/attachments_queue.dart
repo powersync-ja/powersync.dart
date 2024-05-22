@@ -22,26 +22,50 @@ abstract class AbstractAttachmentQueue {
   late AttachmentsService attachmentsService;
   late SyncingService syncingService;
   final LocalStorageAdapter localStorage = LocalStorageAdapter();
+  String attachmentsQueueTableName;
+
+  /// Function to handle errors when downloading attachments
+  /// Return true if you want to ignore attachment
+  Future<bool> Function(Attachment attachment, Object exception)?
+      onDownloadError;
+
+  /// Function to handle errors when uploading attachments
+  /// Return true if you want to ignore attachment
+  Future<bool> Function(Attachment attachment, Object exception)? onUploadError;
+
+  /// Interval in minutes to periodically run [syncingService.startPeriodicSync]
+  /// Default is 5 minutes
+  int intervalInMinutes;
+
+  /// Provide the subdirectories located on external storage so that they are created
+  /// when the attachment queue is initialized.
+  List<String>? subdirectories;
 
   AbstractAttachmentQueue(
       {required this.db,
       required this.remoteStorage,
       this.attachmentDirectoryName = 'attachments',
-      performInitialSync = true}) {
-    attachmentsService =
-        AttachmentsService(db, localStorage, attachmentDirectoryName);
+      this.attachmentsQueueTableName = defaultAttachmentsQueueTableName,
+      this.onDownloadError,
+      this.onUploadError,
+      this.intervalInMinutes = 5,
+      this.subdirectories}) {
+    attachmentsService = AttachmentsService(
+        db, localStorage, attachmentDirectoryName, attachmentsQueueTableName);
     syncingService = SyncingService(
-        db, remoteStorage, localStorage, attachmentsService, getLocalUri);
+        db, remoteStorage, localStorage, attachmentsService, getLocalUri,
+        onDownloadError: onDownloadError, onUploadError: onUploadError);
   }
 
-  /// Create watcher to get list of ID's from a table to be used for syncing in the attachment queue
-  StreamSubscription<void> watchIds();
+  /// Create watcher to get list of ID's from a table to be used for syncing in the attachment queue.
+  /// Set the file extension if you are using a different file type
+  StreamSubscription<void> watchIds({String fileExtension = 'jpg'});
 
-  /// Create a function to save photos using the attachment queue
-  Future<Attachment> savePhoto(String photoId, int size);
+  /// Create a function to save files using the attachment queue
+  Future<Attachment> saveFile(String fileId, int size);
 
-  /// Create a function to delete photos using the attachment queue
-  Future<Attachment> deletePhoto(String photoId);
+  /// Create a function to delete files using the attachment queue
+  Future<Attachment> deleteFile(String fileId);
 
   /// Initialize the attachment queue by
   /// 1. Creating attachments directory
@@ -51,10 +75,16 @@ abstract class AbstractAttachmentQueue {
     // Ensure the directory where attachments are downloaded, exists
     await localStorage.makeDir(await getStorageDirectory());
 
+    if (subdirectories != null) {
+      for (String subdirectory in subdirectories!) {
+        await localStorage
+            .makeDir('${await getStorageDirectory()}/$subdirectory');
+      }
+    }
+
     watchIds();
-    syncingService.watchUploads();
-    syncingService.watchDownloads();
-    syncingService.watchDeletes();
+    syncingService.watchAttachments();
+    syncingService.startPeriodicSync(intervalInMinutes);
 
     db.statusStream.listen((status) {
       if (db.currentStatus.connected) {
@@ -64,9 +94,7 @@ abstract class AbstractAttachmentQueue {
   }
 
   _trigger() async {
-    await syncingService.runDownloads();
-    await syncingService.runDeletes();
-    await syncingService.runUploads();
+    await syncingService.runSync();
   }
 
   /// Returns the local file path for the given filename, used to store in the database.

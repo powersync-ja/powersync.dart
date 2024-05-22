@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:isolate';
 
 import 'package:logging/logging.dart';
+import 'package:powersync/src/log_internal.dart';
+import 'package:sqlite_async/mutex.dart';
 import 'package:sqlite_async/sqlite3.dart' as sqlite;
 import 'package:sqlite_async/sqlite_async.dart';
 
@@ -66,6 +68,16 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
   /// null when disconnected, present when connecting or connected
   AbortController? _disconnecter;
 
+  /// Use to prevent multiple connections from being opened concurrently
+  final Mutex _connectMutex = Mutex();
+
+  /// The Logger used by this [PowerSyncDatabase].
+  ///
+  /// The default is [autoLogger], which logs to the console in debug builds.
+  /// Use [debugLogger] to always log to the console.
+  /// Use [attachedLogger] to propagate logs to [Logger.root] for custom logging.
+  late final Logger logger;
+
   /// Open a [PowerSyncDatabase].
   ///
   /// Only a single [PowerSyncDatabase] per [path] should be opened at a time.
@@ -78,16 +90,20 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
   /// from the last committed write transaction.
   ///
   /// A maximum of [maxReaders] concurrent read transactions are allowed.
+  ///
+  /// [logger] defaults to [autoLogger], which logs to the console in debug builds.
   factory PowerSyncDatabase(
       {required Schema schema,
       required String path,
       int maxReaders = SqliteDatabase.defaultMaxReaders,
-      @Deprecated("Use [PowerSyncDatabase.withFactory] instead")
+      Logger? logger,
+      @Deprecated("Use [PowerSyncDatabase.withFactory] instead.")
       // ignore: deprecated_member_use_from_same_package
       SqliteConnectionSetup? sqliteSetup}) {
     // ignore: deprecated_member_use_from_same_package
     var factory = PowerSyncOpenFactory(path: path, sqliteSetup: sqliteSetup);
-    return PowerSyncDatabase.withFactory(factory, schema: schema);
+    return PowerSyncDatabase.withFactory(factory,
+        schema: schema, logger: logger);
   }
 
   /// Open a [PowerSyncDatabase] with a [PowerSyncOpenFactory].
@@ -96,18 +112,35 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
   /// additional logic to run inside the database isolate before or after opening.
   ///
   /// Subclass [PowerSyncOpenFactory] to add custom logic to this process.
-  factory PowerSyncDatabase.withFactory(PowerSyncOpenFactory openFactory,
-      {required Schema schema,
-      int maxReaders = SqliteDatabase.defaultMaxReaders}) {
+  ///
+  /// [logger] defaults to [autoLogger], which logs to the console in debug builds.
+  factory PowerSyncDatabase.withFactory(
+    PowerSyncOpenFactory openFactory, {
+    required Schema schema,
+    int maxReaders = SqliteDatabase.defaultMaxReaders,
+    Logger? logger,
+  }) {
     final db = SqliteDatabase.withFactory(openFactory, maxReaders: maxReaders);
-    return PowerSyncDatabase.withDatabase(schema: schema, database: db);
+    return PowerSyncDatabase.withDatabase(
+        schema: schema, database: db, logger: logger);
   }
 
   /// Open a PowerSyncDatabase on an existing [SqliteDatabase].
   ///
   /// Migrations are run on the database when this constructor is called.
-  PowerSyncDatabase.withDatabase(
-      {required this.schema, required this.database}) {
+  ///
+  /// [logger] defaults to [autoLogger], which logs to the console in debug builds.
+  PowerSyncDatabase.withDatabase({
+    required this.schema,
+    required this.database,
+    Logger? logger,
+  }) {
+    if (logger != null) {
+      this.logger = logger;
+    } else {
+      this.logger = autoLogger;
+    }
+
     updates = database.updates
         .map((update) =>
             PowerSyncUpdateNotification.fromUpdateNotification(update))
@@ -153,7 +186,19 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
   /// The connection is automatically re-opened if it fails for any reason.
   ///
   /// Status changes are reported on [statusStream].
-  connect({required PowerSyncBackendConnector connector}) async {
+  Future<void> connect(
+      {required PowerSyncBackendConnector connector,
+
+      /// Throttle time between CRUD operations
+      /// Defaults to 10 milliseconds.
+      Duration crudThrottleTime = const Duration(milliseconds: 10)}) async {
+    _connectMutex.lock(() =>
+        _connect(connector: connector, crudThrottleTime: crudThrottleTime));
+  }
+
+  Future<void> _connect(
+      {required PowerSyncBackendConnector connector,
+      required Duration crudThrottleTime}) async {
     await initialize();
 
     // Disconnect if connected
@@ -171,18 +216,18 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
         if (action == "getCredentials") {
           await (data[1] as PortCompleter).handle(() async {
             final token = await connector.getCredentialsCached();
-            log.fine('Credentials: $token');
+            logger.fine('Credentials: $token');
             return token;
           });
         } else if (action == "invalidateCredentials") {
-          log.fine('Refreshing credentials');
+          logger.fine('Refreshing credentials');
           await (data[1] as PortCompleter).handle(() async {
             await connector.prefetchCredentials();
           });
         } else if (action == 'init') {
           SendPort port = data[1];
-          var throttled = UpdateNotification.throttleStream(
-              updates, const Duration(milliseconds: 10));
+          var throttled =
+              UpdateNotification.throttleStream(updates, crudThrottleTime);
           updateSubscription = throttled.listen((event) {
             port.send(['update']);
           });
@@ -203,7 +248,7 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
           updateSubscription?.cancel();
         } else if (action == 'log') {
           LogRecord record = data[1];
-          log.log(
+          logger.log(
               record.level, record.message, record.error, record.stackTrace);
         }
       }
@@ -219,7 +264,7 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
       // #3      _ForwardingStreamSubscription._handleError (dart:async/stream_pipe.dart:157:13)
       // #4      _HttpClientResponse.listen.<anonymous closure> (dart:_http/http_impl.dart:707:16)
       // ...
-      log.severe('Sync Isolate error', message);
+      logger.severe('Sync Isolate error', message);
 
       // Reconnect
       connect(connector: connector);
@@ -235,7 +280,7 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
 
     var exitPort = ReceivePort();
     exitPort.listen((message) {
-      log.fine('Sync Isolate exit');
+      logger.fine('Sync Isolate exit');
       disconnected();
     });
 
@@ -282,6 +327,7 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
       await tx.execute('DELETE FROM ps_oplog');
       await tx.execute('DELETE FROM ps_crud');
       await tx.execute('DELETE FROM ps_buckets');
+      await tx.execute('DELETE FROM ps_untyped');
 
       final tableGlob = clearLocal ? 'ps_data_*' : 'ps_data__*';
       final existingTableRows = await tx.getAll(
@@ -510,8 +556,8 @@ Future<void> _powerSyncDatabaseIsolate(
 
   // Is there a way to avoid the overhead if logging is not enabled?
   // This only takes effect in this isolate.
-  Logger.root.level = Level.ALL;
-  log.onRecord.listen((record) {
+  isolateLogger.level = Level.ALL;
+  isolateLogger.onRecord.listen((record) {
     var copy = LogRecord(record.level, record.message, record.loggerName,
         record.error, record.stackTrace);
     sPort.send(["log", copy]);

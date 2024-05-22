@@ -62,7 +62,7 @@ class TodoListWidgetState extends State<TodoListWidget> {
     super.initState();
     final stream = widget.list.watchItems();
     _subscription = stream.listen((data) {
-      if (!mounted) {
+      if (!context.mounted) {
         return;
       }
       setState(() {

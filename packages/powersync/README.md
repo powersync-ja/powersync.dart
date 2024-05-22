@@ -1,54 +1,39 @@
+<p align="center">
+  <a href="https://www.powersync.com" target="_blank"><img src="https://github.com/powersync-ja/.github/assets/19345049/602bafa0-41ce-4cee-a432-56848c278722"/></a>
+</p>
+
 # PowerSync SDK for Dart/Flutter
 
-[PowerSync](https://powersync.co) is a service and set of SDKs that keeps PostgreSQL databases in sync with on-device SQLite databases.
+[PowerSync](https://powersync.com) is a service and set of SDKs that keeps Postgres databases in sync with on-device SQLite databases.
 
-## SDK Features
+This package (`powersync`) is the PowerSync SDK for Dart/Flutter clients. 
 
-* Real-time streaming of changes.
-* Direct access to the SQLite database - use SQL on the client and server.
-* Operations are asynchronous by default - does not block the UI.
-* Supports one write and many reads concurrently.
-* No need for client-side database migrations - these are handled automatically.
-* Subscribe to queries for live updates.
+See a summary of features [here](https://docs.powersync.com/client-sdk-references/flutter).
 
-## Getting started
+# Installation
 
-```dart
-import 'package:powersync/powersync.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:path/path.dart';
-
-const schema = Schema([
-  Table('customers', [Column.text('name'), Column.text('email')])
-]);
-
-late PowerSyncDatabase db;
-
-openDatabase() async {
-  final dir = await getApplicationSupportDirectory();
-  final path = join(dir.path, 'powersync-dart.db');
-  // Setup the database.
-  db = PowerSyncDatabase(schema: schema, path: path);
-  await db.initialize();
-
-  // Run local statements.
-  await db.execute(
-      'INSERT INTO customers(id, name, email) VALUES(uuid(), ?, ?)',
-      ['Fred', 'fred@example.org']);
-}
-
-connectPowerSync() async {
-  // DevConnector stores credentials in-memory by default.
-  // Extend the class to persist credentials.
-  final connector = DevConnector();
-
-  // Login in dev mode.
-  await connector.devLogin(
-      endpoint: 'https://myinstance.powersync.co',
-      user: 'demo',
-      password: 'demo');
-
-  // Connect to PowerSync service and start sync.
-  db.connect(connector: connector);
-}
+```bash
+flutter pub add powersync
 ```
+
+# Getting Started
+
+Our [full SDK reference](https://docs.powersync.com/client-sdk-references/flutter) contains everything you need to know to get started implementing PowerSync in your project.
+
+# Changelog
+
+A changelog for this SDK is available [here](https://releases.powersync.com/announcements/flutter-client-sdk).
+
+# API Reference
+
+The full API reference for this SDK can be found [here](https://pub.dev/documentation/powersync/latest/powersync/powersync-library.html).
+
+# Examples
+
+For example projects built with PowerSync and Flutter, see our [Demo Apps / Example Projects](https://docs.powersync.com/resources/demo-apps-example-projects#flutter) gallery. Most of these projects can also be found in the [`demos/`](../demos/) directory.
+
+# Found a bug or need help?
+
+- Join our [Discord server](https://discord.gg/powersync) where you can browse topics from our community, ask questions, share feedback, or just say hello :)
+- Please open a [GitHub issue](https://github.com/powersync-ja/powersync.dart/issues) when you come across a bug.
+- Have feedback or an idea? [Submit an idea](https://roadmap.powersync.com/tabs/5-roadmap/submit-idea) via our public roadmap or [schedule a chat](https://calendly.com/powersync/powersync-chat) with someone from our product team.

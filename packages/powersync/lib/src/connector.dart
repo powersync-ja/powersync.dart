@@ -11,9 +11,6 @@ import 'powersync_database.dart';
 /// 1. Creating credentials for connecting to the PowerSync service.
 /// 2. Applying local changes against the backend application server.
 ///
-/// [DevConnector] is provided as a quick starting point, without user management
-/// or significant security.
-///
 /// For production, use a custom implementation.
 abstract class PowerSyncBackendConnector {
   PowerSyncCredentials? _cachedCredentials;
@@ -67,7 +64,7 @@ abstract class PowerSyncBackendConnector {
 
   /// Upload local changes to the app backend.
   ///
-  /// Use [PowerSyncDatabase.getCrudBatch] to get a batch of changes to upload. See [DevConnector] for an example implementation.
+  /// Use [PowerSyncDatabase.getCrudBatch] to get a batch of changes to upload.
   ///
   /// Any thrown errors will result in a retry after the configured wait period (default: 5 seconds).
   Future<void> uploadData(PowerSyncDatabase database);
@@ -87,11 +84,13 @@ class PowerSyncCredentials {
   /// When the token expires. Only use for debugging purposes.
   final DateTime? expiresAt;
 
-  const PowerSyncCredentials(
+  PowerSyncCredentials(
       {required this.endpoint,
       required this.token,
       this.userId,
-      this.expiresAt});
+      this.expiresAt}) {
+    _validateEndpoint();
+  }
 
   factory PowerSyncCredentials.fromJson(Map<String, dynamic> parsed) {
     String token = parsed['token'];
@@ -111,7 +110,8 @@ class PowerSyncCredentials {
     try {
       List<String> parts = token.split('.');
       if (parts.length == 3) {
-        final rawData = base64Decode(parts[1]);
+        // dart:convert doesn't like missing padding
+        final rawData = base64Url.decode(base64.normalize(parts[1]));
         final text = Utf8Decoder().convert(rawData);
         Map<String, dynamic> payload = jsonDecode(text);
         if (payload.containsKey('exp') && payload['exp'] is int) {
@@ -133,6 +133,15 @@ class PowerSyncCredentials {
   Uri endpointUri(String path) {
     return Uri.parse(endpoint).resolve(path);
   }
+
+  _validateEndpoint() {
+    final parsed = Uri.parse(endpoint);
+    if ((!parsed.isScheme('http') && !parsed.isScheme('https')) ||
+        parsed.host.isEmpty) {
+      throw ArgumentError.value(
+          endpoint, 'PowerSync endpoint must be a valid URL');
+    }
+  }
 }
 
 /// Credentials used to connect to the PowerSync dev API.
@@ -141,6 +150,7 @@ class PowerSyncCredentials {
 ///
 /// These cannot be used for the main PowerSync APIs. [DevConnector] uses these
 /// credentials to automatically fetch [PowerSyncCredentials].
+@Deprecated('We will be removing this in version 2.')
 class DevCredentials {
   /// Dev endpoint.
   String endpoint;
@@ -189,6 +199,7 @@ class DevCredentials {
 ///
 /// Development mode is intended to get up and running quickly, but is not for
 /// production use. For production, write a custom connector.
+@Deprecated('We will be removing this in version 2.')
 class DevConnector extends PowerSyncBackendConnector {
   DevCredentials? _inMemoryDevCredentials;
 

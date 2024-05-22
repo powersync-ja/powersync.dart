@@ -11,9 +11,21 @@ import 'package:powersync_flutter_demo/models/schema.dart';
 late final PhotoAttachmentQueue attachmentQueue;
 final remoteStorage = SupabaseStorageAdapter();
 
+/// Function to handle errors when downloading attachments
+/// Return false if you want to archive the attachment
+Future<bool> onDownloadError(Attachment attachment, Object exception) async {
+  if (exception.toString().contains('Object not found')) {
+    return false;
+  }
+  return true;
+}
+
 class PhotoAttachmentQueue extends AbstractAttachmentQueue {
   PhotoAttachmentQueue(db, remoteStorage)
-      : super(db: db, remoteStorage: remoteStorage);
+      : super(
+            db: db,
+            remoteStorage: remoteStorage,
+            onDownloadError: onDownloadError);
 
   @override
   init() async {
@@ -27,13 +39,15 @@ class PhotoAttachmentQueue extends AbstractAttachmentQueue {
   }
 
   @override
-  Future<Attachment> savePhoto(String photoId, int size) async {
-    String filename = '$photoId.jpg';
+  Future<Attachment> saveFile(String fileId, int size,
+      {mediaType = 'image/jpeg'}) async {
+    String filename = '$fileId.jpg';
+
     Attachment photoAttachment = Attachment(
-      id: photoId,
+      id: fileId,
       filename: filename,
       state: AttachmentState.queuedUpload.index,
-      mediaType: 'image/jpeg',
+      mediaType: mediaType,
       localUri: getLocalFilePathSuffix(filename),
       size: size,
     );
@@ -42,10 +56,11 @@ class PhotoAttachmentQueue extends AbstractAttachmentQueue {
   }
 
   @override
-  Future<Attachment> deletePhoto(String photoId) async {
-    String filename = '$photoId.jpg';
+  Future<Attachment> deleteFile(String fileId) async {
+    String filename = '$fileId.jpg';
+
     Attachment photoAttachment = Attachment(
-        id: photoId,
+        id: fileId,
         filename: filename,
         state: AttachmentState.queuedDelete.index);
 
@@ -53,7 +68,7 @@ class PhotoAttachmentQueue extends AbstractAttachmentQueue {
   }
 
   @override
-  StreamSubscription<void> watchIds() {
+  StreamSubscription<void> watchIds({String fileExtension = 'jpg'}) {
     log.info('Watching photos in $todosTable...');
     return db.watch('''
       SELECT photo_id FROM $todosTable
@@ -62,9 +77,9 @@ class PhotoAttachmentQueue extends AbstractAttachmentQueue {
       return results.map((row) => row['photo_id'] as String).toList();
     }).listen((ids) async {
       List<String> idsInQueue = await attachmentsService.getAttachmentIds();
-      for (String id in ids) {
-        await syncingService.reconcileId(id, idsInQueue);
-      }
+      List<String> relevantIds =
+          ids.where((element) => !idsInQueue.contains(element)).toList();
+      syncingService.processIds(relevantIds, fileExtension);
     });
   }
 }

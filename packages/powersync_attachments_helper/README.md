@@ -32,13 +32,13 @@ class PhotoAttachmentQueue extends AbstractAttachmentQueue {
   // This will create an item on the attachment queue to UPLOAD an image
   // to remote storage
   @override
-  Future<Attachment> savePhoto(String photoId, int size) async {
-    String filename = '$photoId.jpg';
+  Future<Attachment> saveFile(String fileId, int size, {mediaType = 'image/jpeg'}) async {
+    String filename = '$fileId.jpg';
     Attachment photoAttachment = Attachment(
-      id: photoId,
+      id: fileId,
       filename: filename,
       state: AttachmentState.queuedUpload.index,
-      mediaType: 'image/jpeg',
+      mediaType: mediaType,
       localUri: getLocalFilePathSuffix(filename),
       size: size,
     );
@@ -46,13 +46,13 @@ class PhotoAttachmentQueue extends AbstractAttachmentQueue {
     return attachmentsService.saveAttachment(photoAttachment);
   }
 
-  // This will create an item on the attachment queue to DELETE an image
+  // This will create an item on the attachment queue to DELETE a file
   // in local and remote storage
   @override
-  Future<Attachment> deletePhoto(String photoId) async {
-    String filename = '$photoId.jpg';
+  Future<Attachment> deleteFile(String fileId) async {
+    String filename = '$fileId.jpg';
     Attachment photoAttachment = Attachment(
-        id: photoId,
+        id: fileId,
         filename: filename,
         state: AttachmentState.queuedDelete.index);
 
@@ -62,7 +62,7 @@ class PhotoAttachmentQueue extends AbstractAttachmentQueue {
   // This watcher will handle adding items to the queue based on
   // a users table element receiving a photoId
   @override
-  StreamSubscription<void> watchIds() {
+  StreamSubscription<void> watchIds({String fileExtension = 'jpg'}) {
     return db.watch('''
       SELECT photo_id FROM users
       WHERE photo_id IS NOT NULL
@@ -70,9 +70,9 @@ class PhotoAttachmentQueue extends AbstractAttachmentQueue {
       return results.map((row) => row['photo_id'] as String).toList();
     }).listen((ids) async {
       List<String> idsInQueue = await attachmentsService.getAttachmentIds();
-      for (String id in ids) {
-        await syncingService.reconcileId(id, idsInQueue);
-      }
+      List<String> relevantIds =
+          ids.where((element) => !idsInQueue.contains(element)).toList();
+      syncingService.processIds(relevantIds, fileExtension);
     });
   }
 }

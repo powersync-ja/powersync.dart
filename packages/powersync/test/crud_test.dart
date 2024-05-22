@@ -7,8 +7,6 @@ import 'util.dart';
 const testId = "2290de4f-0488-4e50-abed-f8e8eb1d0b42";
 
 void main() {
-  setupLogger();
-
   group('CRUD Tests', () {
     late PowerSyncDatabase powersync;
     late String path;

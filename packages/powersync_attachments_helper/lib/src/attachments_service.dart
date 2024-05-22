@@ -9,17 +9,24 @@ class AttachmentsService {
   final PowerSyncDatabase db;
   final LocalStorageAdapter localStorage;
   final String attachmentDirectoryName;
+  final String attachmentsQueueTableName;
 
-  AttachmentsService(this.db, this.localStorage, this.attachmentDirectoryName);
+  AttachmentsService(this.db, this.localStorage, this.attachmentDirectoryName,
+      this.attachmentsQueueTableName);
 
   /// Table used for storing attachments in the attachment queue.
   get table {
-    return attachmentsQueueTable;
+    return attachmentsQueueTableName;
   }
 
   /// Delete the attachment from the attachment queue.
   Future<void> deleteAttachment(String id) async =>
       db.execute('DELETE FROM $table WHERE id = ?', [id]);
+
+  ///Set the state of the attachment to ignore.
+  Future<void> ignoreAttachment(String id) async => db.execute(
+      'UPDATE $table SET state = ${AttachmentState.archived.index} WHERE id = ?',
+      [id]);
 
   /// Get the attachment from the attachment queue using an ID.
   Future<Attachment?> getAttachment(String id) async =>
@@ -50,6 +57,43 @@ class AttachmentsService {
     ]);
 
     return updatedRecord;
+  }
+
+  /// Save the attachments to the attachment queue.
+  Future<void> saveAttachments(List<Attachment> attachments) async {
+    if (attachments.isEmpty) {
+      return;
+    }
+    List<List<String>> ids = List.empty(growable: true);
+
+    RegExp extractObjectValueRegEx = RegExp(r': (.*?)(?:,|$)');
+
+    // This adds a timestamp to the attachments and
+    // extracts the values from the attachment object
+    // e.g "foo: bar, baz: qux" => ["bar", "qux"]
+    // TODO: Extract value without needing to use regex
+    List<List<String?>> updatedRecords = attachments
+        .map((attachment) {
+          ids.add([attachment.id]);
+          return attachment.copyWith(
+            timestamp: DateTime.now().millisecondsSinceEpoch,
+          );
+        })
+        .toList()
+        .map((attachment) {
+          return extractObjectValueRegEx
+              .allMatches(attachment.toString().replaceAll('}', ''))
+              .map((match) => match.group(1))
+              .toList();
+        })
+        .toList();
+
+    await db.executeBatch('''
+      INSERT OR REPLACE INTO $table
+      (id, filename, local_uri, media_type, size, timestamp, state) VALUES (?, ?, ?, ?, ?, ?, ?)
+    ''', updatedRecords);
+
+    return;
   }
 
   /// Get all the ID's of attachments in the attachment queue.

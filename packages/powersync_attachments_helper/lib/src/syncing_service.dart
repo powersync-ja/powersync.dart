@@ -15,13 +15,20 @@ class SyncingService {
   final LocalStorageAdapter localStorage;
   final AttachmentsService attachmentsService;
   final Function getLocalUri;
+  final Future<bool> Function(Attachment attachment, Object exception)?
+      onDownloadError;
+  final Future<bool> Function(Attachment attachment, Object exception)?
+      onUploadError;
+  bool isProcessing = false;
+  Timer? timer;
 
   SyncingService(this.db, this.remoteStorage, this.localStorage,
-      this.attachmentsService, this.getLocalUri);
+      this.attachmentsService, this.getLocalUri,
+      {this.onDownloadError, this.onUploadError});
 
   /// Upload attachment from local storage and to remote storage
   /// then remove it from the queue.
-  /// If duplicate of the file is found uploading is ignored and
+  /// If duplicate of the file is found uploading is archived and
   /// the attachment is removed from the queue.
   Future<void> uploadAttachment(Attachment attachment) async {
     if (attachment.localUri == null) {
@@ -44,6 +51,14 @@ class SyncingService {
       }
 
       log.severe('Upload attachment error for attachment $attachment', e);
+      if (onUploadError != null) {
+        bool shouldRetry = await onUploadError!(attachment, e);
+        if (!shouldRetry) {
+          log.info('Attachment with ID ${attachment.id} has been archived', e);
+          await attachmentsService.ignoreAttachment(attachment.id);
+        }
+      }
+
       return;
     }
   }
@@ -63,7 +78,16 @@ class SyncingService {
       await attachmentsService.deleteAttachment(attachment.id);
       return;
     } catch (e) {
-      log.severe('Download attachment error for attachment $attachment}', e);
+      if (onDownloadError != null) {
+        bool shouldRetry = await onDownloadError!(attachment, e);
+        if (!shouldRetry) {
+          log.info('Attachment with ID ${attachment.id} has been archived', e);
+          await attachmentsService.ignoreAttachment(attachment.id);
+          return;
+        }
+      }
+
+      log.severe('Download attachment error for attachment $attachment', e);
       return;
     }
   }
@@ -81,139 +105,105 @@ class SyncingService {
     }
   }
 
-  /// Function to manually run downloads for attachments marked for download
-  /// in the attachment queue.
-  /// Once a an attachment marked for download is found it will initiate a
-  /// download of the file to local storage.
-  StreamSubscription<void> watchDownloads() {
-    log.info('Watching downloads...');
+  /// Handle downloading, uploading or deleting of attachments
+  Future<void> handleSync(Iterable<Attachment> attachments) async {
+    if (isProcessing == true) {
+      return;
+    }
+
+    try {
+      isProcessing = true;
+
+      for (Attachment attachment in attachments) {
+        if (AttachmentState.queuedDownload.index == attachment.state) {
+          log.info('Downloading ${attachment.filename}');
+          await downloadAttachment(attachment);
+        }
+        if (AttachmentState.queuedUpload.index == attachment.state) {
+          log.info('Uploading ${attachment.filename}');
+          await uploadAttachment(attachment);
+        }
+        if (AttachmentState.queuedDelete.index == attachment.state) {
+          log.info('Deleting ${attachment.filename}');
+          await deleteAttachment(attachment);
+        }
+      }
+    } catch (error) {
+      log.severe(error);
+      rethrow;
+    } finally {
+      // if anything throws an exception
+      // reset the ability to sync again
+      isProcessing = false;
+    }
+  }
+
+  /// Watcher for changes to attachments table
+  /// Once a change is detected it will initiate a sync of the attachments
+  StreamSubscription<void> watchAttachments() {
+    log.info('Watching attachments...');
     return db.watch('''
       SELECT * FROM ${attachmentsService.table}
-      WHERE state = ${AttachmentState.queuedDownload.index}
+      WHERE state != ${AttachmentState.archived.index}
     ''').map((results) {
       return results.map((row) => Attachment.fromRow(row));
     }).listen((attachments) async {
-      for (Attachment attachment in attachments) {
-        log.info('Downloading ${attachment.filename}');
-        await downloadAttachment(attachment);
-      }
+      await handleSync(attachments);
     });
   }
 
-  /// Watcher for attachments marked for download in the attachment queue.
-  /// Once a an attachment marked for download is found it will initiate a
-  /// download of the file to local storage.
-  Future<void> runDownloads() async {
+  /// Run the sync process on all attachments
+  Future<void> runSync() async {
     List<Attachment> attachments = await db.execute('''
       SELECT * FROM ${attachmentsService.table}
-      WHERE state = ${AttachmentState.queuedDownload.index}
+      WHERE state != ${AttachmentState.archived.index}
     ''').then((results) {
       return results.map((row) => Attachment.fromRow(row)).toList();
     });
 
-    for (Attachment attachment in attachments) {
-      log.info('Downloading ${attachment.filename}');
-      await downloadAttachment(attachment);
-    }
+    await handleSync(attachments);
   }
 
-  /// Watcher for attachments marked for upload in the attachment queue.
-  /// Once a an attachment marked for upload is found it will initiate an
-  /// upload of the file to remote storage.
-  StreamSubscription<void> watchUploads() {
-    log.info('Watching uploads...');
-    return db.watch('''
-      SELECT * FROM ${attachmentsService.table}
-      WHERE local_uri IS NOT NULL
-      AND state = ${AttachmentState.queuedUpload.index}
-    ''').map((results) {
-      return results.map((row) => Attachment.fromRow(row));
-    }).listen((attachments) async {
-      for (Attachment attachment in attachments) {
-        log.info('Uploading ${attachment.filename}');
-        await uploadAttachment(attachment);
-      }
-    });
-  }
+  /// Process ID's to be included in the attachment queue.
+  processIds(List<String> ids, String fileExtension) async {
+    List<Attachment> attachments = List.empty(growable: true);
 
-  /// Function to manually run uploads for attachments marked for upload
-  /// in the attachment queue.
-  /// Once a an attachment marked for deletion is found it will initiate an
-  /// upload of the file to remote storage
-  Future<void> runUploads() async {
-    List<Attachment> attachments = await db.execute('''
-      SELECT * FROM ${attachmentsService.table}
-      WHERE local_uri IS NOT NULL
-      AND state = ${AttachmentState.queuedUpload.index}
-    ''').then((results) {
-      return results.map((row) => Attachment.fromRow(row)).toList();
-    });
+    for (String id in ids) {
+      String path = await getLocalUri('$id.$fileExtension');
+      File file = File(path);
+      bool fileExists = await file.exists();
 
-    for (Attachment attachment in attachments) {
-      log.info('Uploading ${attachment.filename}');
-      await uploadAttachment(attachment);
-    }
-  }
-
-  /// Watcher for attachments marked for deletion in the attachment queue.
-  /// Once a an attachment marked for deletion is found it will initiate remote
-  /// and local deletions of the file.
-  StreamSubscription<void> watchDeletes() {
-    log.info('Watching deletes...');
-    return db.watch('''
-      SELECT * FROM ${attachmentsService.table}
-      WHERE state = ${AttachmentState.queuedDelete.index}
-    ''').map((results) {
-      return results.map((row) => Attachment.fromRow(row));
-    }).listen((attachments) async {
-      for (Attachment attachment in attachments) {
-        log.info('Deleting ${attachment.filename}');
-        await deleteAttachment(attachment);
-      }
-    });
-  }
-
-  /// Function to manually run deletes for attachments marked for deletion
-  /// in the attachment queue.
-  /// Once a an attachment marked for deletion is found it will initiate remote
-  /// and local deletions of the file.
-  Future<void> runDeletes() async {
-    List<Attachment> attachments = await db.execute('''
-      SELECT * FROM ${attachmentsService.table}
-      WHERE state = ${AttachmentState.queuedDelete.index}
-    ''').then((results) {
-      return results.map((row) => Attachment.fromRow(row)).toList();
-    });
-
-    for (Attachment attachment in attachments) {
-      log.info('Deleting ${attachment.filename}');
-      await deleteAttachment(attachment);
-    }
-  }
-
-  /// Reconcile an ID with ID's in the attachment queue.
-  /// If the ID is not in the queue, but the file exists locally then it is
-  /// in local and remote storage.
-  /// If the ID is in the queue, but the file does not exist locally then it is
-  /// marked for download.
-  reconcileId(String id, List<String> idsInQueue) async {
-    bool idIsInQueue = idsInQueue.contains(id);
-
-    String imagePath = await getLocalUri('$id.jpg');
-    File file = File(imagePath);
-    bool fileExists = await file.exists();
-
-    if (!idIsInQueue) {
       if (fileExists) {
-        log.info('ignore file $id.jpg as it already exists');
-        return;
+        continue;
       }
+
       log.info('Adding $id to queue');
-      return await attachmentsService.saveAttachment(Attachment(
-        id: id,
-        filename: '$id.jpg',
-        state: AttachmentState.queuedDownload.index,
-      ));
+      attachments.add(Attachment(
+          id: id,
+          filename: '$id.$fileExtension',
+          state: AttachmentState.queuedDownload.index));
     }
+
+    await attachmentsService.saveAttachments(attachments);
+  }
+
+  /// Delete attachments which have been archived
+  deleteArchivedAttachments() async {
+    await db.execute('''
+      DELETE FROM ${attachmentsService.table}
+      WHERE state = ${AttachmentState.archived.index}
+    ''');
+  }
+
+  /// Periodically sync attachments and delete archived attachments
+  void startPeriodicSync(int intervalInMinutes) {
+    timer?.cancel();
+
+    timer = Timer.periodic(Duration(minutes: intervalInMinutes), (timer) {
+      log.info('Syncing attachments');
+      runSync();
+      log.info('Deleting archived attachments');
+      deleteArchivedAttachments();
+    });
   }
 }

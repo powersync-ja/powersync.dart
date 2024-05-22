@@ -58,7 +58,7 @@ class _TakePhotoWidgetState extends State<TakePhotoWidget> {
       int photoSize = await photo.length();
 
       TodoItem.addPhoto(photoId, widget.todoId);
-      attachmentQueue.savePhoto(photoId, photoSize);
+      attachmentQueue.saveFile(photoId, photoSize);
     } catch (e) {
       log.info('Error taking photo: $e');
     }

@@ -38,8 +38,6 @@ const removeAsset1_5 = OplogEntry(
     opId: '5', op: OpType.remove, rowType: 'assets', rowId: 'O1', checksum: 5);
 
 void main() {
-  setupLogger();
-
   group('Bucket Storage Tests', () {
     late PowerSyncDatabase powersync;
     late sqlite.Database db;
