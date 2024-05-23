@@ -10,7 +10,8 @@ dependencies:
   flutter:
     sdk: flutter
 
-  powersync: ^1.2.2
+  powersync:
+    path: ../powersync
   logging: ^1.2.0
   sqlite_async: ^0.6.1
   path_provider: ^2.0.13

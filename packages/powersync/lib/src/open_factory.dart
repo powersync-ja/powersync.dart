@@ -78,9 +78,9 @@ class PowerSyncOpenFactory extends DefaultSqliteOpenFactory {
   }
 
   void enableExtension() {
-    var powersyncLib = Platform.isIOS
+    var powersyncLib = Platform.isIOS || Platform.isMacOS
         ? DynamicLibrary.process()
-        : DynamicLibrary.open('libpowersync.so');
+        : DynamicLibrary.open("libpowersync.so");
     sqlite.sqlite3.ensureExtensionLoaded(
         SqliteExtension.inLibrary(powersyncLib, 'sqlite3_powersync_init'));
   }
@@ -104,4 +104,59 @@ class PowerSyncOpenFactory extends DefaultSqliteOpenFactory {
       },
     );
   }
+}
+
+extension on Abi {
+  String get localName {
+    switch (Abi.current()) {
+      case Abi.androidArm:
+      case Abi.androidArm64:
+      case Abi.androidX64:
+        return 'libisar.so';
+      case Abi.macosArm64:
+      case Abi.macosX64:
+        return 'libisar.dylib';
+      case Abi.linuxX64:
+        return 'libisar.so';
+      case Abi.windowsArm64:
+      case Abi.windowsX64:
+        return 'isar.dll';
+      case Abi.androidIA32:
+        throw PowersyncNotReadyError(
+          'Unsupported processor architecture. X86 Android emulators are not '
+          'supported. Please use an x86_64 emulator instead. All physical '
+          'Android devices are supported including 32bit ARM.',
+        );
+      default:
+        throw PowersyncNotReadyError(
+          'Unsupported processor architecture "${Abi.current()}". '
+          'Please open an issue on GitHub to request it.',
+        );
+    }
+  }
+}
+
+/// Superclass of all powersync errors.
+sealed class PowersyncError extends Error {
+  /// Name of the error.
+  String get name;
+
+  /// Error message.
+  String get message;
+
+  @override
+  String toString() {
+    return '$name: $message';
+  }
+}
+
+class PowersyncNotReadyError extends PowersyncError {
+  /// @nodoc
+  PowersyncNotReadyError(this.message);
+
+  @override
+  String get name => 'IsarNotReadyError';
+
+  @override
+  final String message;
 }

@@ -10,9 +10,11 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  powersync_attachments_helper: ^0.1.4
+  powersync_attachments_helper:
+    path: ../../packages/powersync_attachments_helper
 
-  powersync: ^1.2.0
+  powersync:
+    path: ../../packages/powersync
   path_provider: ^2.1.1
   supabase_flutter: ^2.0.1
   path: ^1.8.3
