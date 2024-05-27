@@ -19,5 +19,6 @@ set(powersync_flutter_libs_bundled_libraries
   # Defined in ../src/CMakeLists.txt.
   # This can be changed to accommodate different builds.
   $<TARGET_FILE:powersync_flutter_libs>
+  "${CMAKE_CURRENT_SOURCE_DIR}/powersync.dll"
   PARENT_SCOPE
 )

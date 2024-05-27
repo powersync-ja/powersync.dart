@@ -417,7 +417,7 @@ packages:
   powersync_flutter_libs:
     dependency: transitive
     description:
-      path: "../../../powersync_flutter_libs"
+      path: "../../packages/powersync_flutter_libs"
       relative: true
     source: path
     version: "0.0.1"
