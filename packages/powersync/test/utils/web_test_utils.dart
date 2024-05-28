@@ -14,7 +14,7 @@ external String _createObjectURL(Blob blob);
 class TestUtils extends AbstractTestUtils {
   late Future<void> _isInitialized;
   late final String sqlite3WASMUri;
-  late final String driftUri;
+  late final String workerUri;
 
   TestUtils() {
     _isInitialized = _init();
@@ -26,11 +26,11 @@ class TestUtils extends AbstractTestUtils {
     final port = await channel.stream.first as int;
     sqlite3WASMUri = 'http://localhost:$port/sqlite3.wasm';
     // Cross origin workers are not supported, but we can supply a Blob
-    final driftUriSource = 'http://localhost:$port/powersync_db.worker.js';
+    final workerUriSource = 'http://localhost:$port/powersync_db.worker.js';
 
-    final blob = Blob(<String>['importScripts("$driftUriSource");'],
+    final blob = Blob(<String>['importScripts("$workerUriSource");'],
         'application/javascript');
-    driftUri = _createObjectURL(blob);
+    workerUri = _createObjectURL(blob);
   }
 
   @override
@@ -45,7 +45,7 @@ class TestUtils extends AbstractTestUtils {
 
     final webOptions = SqliteOptions(
         webSqliteOptions:
-            WebSqliteOptions(wasmUri: sqlite3WASMUri, workerUri: driftUri));
+            WebSqliteOptions(wasmUri: sqlite3WASMUri, workerUri: workerUri));
     return super.testFactory(path: path, options: webOptions);
   }
 

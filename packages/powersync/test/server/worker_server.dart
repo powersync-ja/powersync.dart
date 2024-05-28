@@ -20,10 +20,9 @@ Future<void> hybridMain(StreamChannel<Object?> channel) async {
         'sqlite3.wasm file should be present in the root assets folder');
   }
 
-  final driftWorkerOutputPath =
-      p.join(assetsDirectory, 'powersync_db.worker.js');
+  final workerOutputPath = p.join(assetsDirectory, 'powersync_db.worker.js');
 
-  if (!(await File(driftWorkerOutputPath).exists())) {
+  if (!(await File(workerOutputPath).exists())) {
     throw AssertionError(
         'powersync_db.worker.js file should be present in the ./assets folder');
   }

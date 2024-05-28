@@ -4,7 +4,7 @@ homepage: https://powersync.com
 repository: https://github.com/powersync-ja/powersync.dart
 description: PowerSync Flutter SDK - keep PostgreSQL databases in sync with on-device SQLite databases.
 environment:
-  sdk: ^3.2.3
+  sdk: '>=3.3.0 <4.0.0'
 dependencies:
   # Needed because of sqlite3_flutter_libs
   flutter:
@@ -18,15 +18,11 @@ dependencies:
   async: ^2.10.0
   logging: ^1.1.1
   collection: ^1.17.0
-  fetch_client: ^1.0.2
+  fetch_client: ^1.1.2
   js: ^0.6.7
-  sqlite3_web:
-    path: /Users/stevenontong/Documents/platform_code/powersync/dart_deps/sqlite3.dart/sqlite3_web
-  sqlite3:
-    path: /Users/stevenontong/Documents/platform_code/powersync/dart_deps/sqlite3.dart/sqlite3
-
+  sqlite3: ^2.4.3
 dev_dependencies:
-  dcli: ^3.3.5
+  dcli: ^4.0.0
   lints: ^3.0.0
   test: ^1.25.0
   test_api: ^0.7.0
@@ -39,12 +35,10 @@ dev_dependencies:
   path: ^1.8.3
 
 dependency_overrides:
-  sqlite3_web:
-    path: /Users/stevenontong/Documents/platform_code/powersync/dart_deps/sqlite3.dart/sqlite3_web
-  sqlite3:
-    path: /Users/stevenontong/Documents/platform_code/powersync/dart_deps/sqlite3.dart/sqlite3
   sqlite_async:
-    path: /Users/stevenontong/Documents/platform_code/powersync/sqlite_async.dart
+    git:
+      url: https://github.com/powersync-ja/sqlite_async.dart.git
+      ref: sqlite_proto
 
 platforms:
   android:
