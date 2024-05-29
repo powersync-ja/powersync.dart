@@ -116,7 +116,7 @@ void main() {
         return PowerSyncCredentials(endpoint: server.endpoint, token: 'token');
       }
 
-      final pdb = await setupPowerSync(path: path);
+      final pdb = await testUtils.setupPowerSync(path: path);
       pdb.retryDelay = Duration(milliseconds: 5000);
       var connector = TestConnector(credentialsCallback);
       pdb.connect(connector: connector);
