@@ -134,8 +134,7 @@ class PowerSyncDatabaseImpl
 
     // Disconnect if connected
     await disconnect();
-    final _disconnecter = AbortController();
-    disconnecter = _disconnecter;
+    disconnecter = AbortController();
 
     await isInitialized;
     final dbref = database.isolateConnectionFactory();
@@ -162,7 +161,7 @@ class PowerSyncDatabaseImpl
           updateSubscription = throttled.listen((event) {
             port.send(['update']);
           });
-          _disconnecter.onAbort.then((_) {
+          disconnecter?.onAbort.then((_) {
             port.send(['close']);
           }).ignore();
         } else if (action == 'uploadCrud') {
@@ -215,7 +214,7 @@ class PowerSyncDatabaseImpl
       disconnected();
     });
 
-    if (_disconnecter?.aborted == true) {
+    if (disconnecter?.aborted == true) {
       disconnected();
       return;
     }
