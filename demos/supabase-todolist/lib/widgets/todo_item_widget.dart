@@ -23,7 +23,7 @@ class TodoItemWidget extends StatelessWidget {
 
   Future<void> deleteTodo(TodoItem todo) async {
     if (todo.photoId != null) {
-      attachmentQueue.deletePhoto(todo.photoId!);
+      attachmentQueue.deleteFile(todo.photoId!);
     }
     await todo.delete();
   }

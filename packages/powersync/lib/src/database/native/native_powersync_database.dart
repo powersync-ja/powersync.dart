@@ -124,12 +124,18 @@ class PowerSyncDatabaseImpl
   /// The connection is automatically re-opened if it fails for any reason.
   ///
   /// Status changes are reported on [statusStream].
-  connect({required PowerSyncBackendConnector connector}) async {
+  baseConnect(
+      {required PowerSyncBackendConnector connector,
+
+      /// Throttle time between CRUD operations
+      /// Defaults to 10 milliseconds.
+      Duration crudThrottleTime = const Duration(milliseconds: 10)}) async {
     await initialize();
 
     // Disconnect if connected
     await disconnect();
-    disconnecter = AbortController();
+    final _disconnecter = AbortController();
+    disconnecter = _disconnecter;
 
     await isInitialized;
     final dbref = database.isolateConnectionFactory();
@@ -151,12 +157,12 @@ class PowerSyncDatabaseImpl
           });
         } else if (action == 'init') {
           SendPort port = data[1];
-          var throttled = UpdateNotification.throttleStream(
-              updates, const Duration(milliseconds: 10));
+          var throttled =
+              UpdateNotification.throttleStream(updates, crudThrottleTime);
           updateSubscription = throttled.listen((event) {
             port.send(['update']);
           });
-          disconnecter?.onAbort.then((_) {
+          _disconnecter.onAbort.then((_) {
             port.send(['close']);
           }).ignore();
         } else if (action == 'uploadCrud') {
@@ -167,8 +173,8 @@ class PowerSyncDatabaseImpl
           final SyncStatus status = data[1];
           setStatus(status);
         } else if (action == 'close') {
-          setStatus(SyncStatus(
-              connected: false, lastSyncedAt: currentStatus.lastSyncedAt));
+          // Clear status apart from lastSyncedAt
+          setStatus(SyncStatus(lastSyncedAt: currentStatus.lastSyncedAt));
           rPort.close();
           updateSubscription?.cancel();
         } else if (action == 'log') {
@@ -209,7 +215,7 @@ class PowerSyncDatabaseImpl
       disconnected();
     });
 
-    if (disconnecter?.aborted == true) {
+    if (_disconnecter?.aborted == true) {
       disconnected();
       return;
     }
@@ -269,21 +275,15 @@ Future<void> _powerSyncDatabaseIsolate(
   final upstreamDbClient = args.dbRef.upstreamPort.open();
 
   CommonDatabase? db;
-  final mutex = args.dbRef.mutex.open();
-
-  rPort.listen((message) async {
+  rPort.listen((message) {
     if (message is List) {
       String action = message[0];
       if (action == 'update') {
         updateController.add('update');
       } else if (action == 'close') {
-        // This prevents any further transactions being opened, which would
-        // eventually terminate the sync loop.
-        await mutex.close();
         db?.dispose();
-        db = null;
         updateController.close();
-        // upstreamDbClient.close();
+        upstreamDbClient.close();
         Isolate.current.kill();
       }
     }
@@ -319,6 +319,7 @@ Future<void> _powerSyncDatabaseIsolate(
   }
 
   runZonedGuarded(() async {
+    final mutex = args.dbRef.mutex.open();
     db = await args.dbRef.openFactory
         .open(SqliteOpenOptions(primaryConnection: false, readOnly: false));
     final connection = SyncSqliteConnection(db!, mutex);

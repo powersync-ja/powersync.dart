@@ -84,11 +84,6 @@ class PowerSyncDatabaseImpl
   }
 
   @override
-  connect({required PowerSyncBackendConnector connector}) {
-    throw UnimplementedError();
-  }
-
-  @override
   Future<T> readLock<T>(Future<T> Function(SqliteReadContext tx) callback,
       {String? debugContext, Duration? lockTimeout}) {
     throw UnimplementedError();
@@ -112,4 +107,11 @@ class PowerSyncDatabaseImpl
 
   @override
   Logger get logger => throw UnimplementedError();
+
+  @override
+  Future<void> baseConnect(
+      {required PowerSyncBackendConnector connector,
+      Duration crudThrottleTime = const Duration(milliseconds: 10)}) {
+    throw UnimplementedError();
+  }
 }

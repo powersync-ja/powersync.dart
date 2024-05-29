@@ -32,13 +32,13 @@ class PhotoAttachmentQueue extends AbstractAttachmentQueue {
   // This will create an item on the attachment queue to UPLOAD an image
   // to remote storage
   @override
-  Future<Attachment> savePhoto(String photoId, int size) async {
-    String filename = '$photoId.jpg';
+  Future<Attachment> saveFile(String fileId, int size, {mediaType = 'image/jpeg'}) async {
+    String filename = '$fileId.jpg';
     Attachment photoAttachment = Attachment(
-      id: photoId,
+      id: fileId,
       filename: filename,
       state: AttachmentState.queuedUpload.index,
-      mediaType: 'image/jpeg',
+      mediaType: mediaType,
       localUri: getLocalFilePathSuffix(filename),
       size: size,
     );
@@ -46,13 +46,13 @@ class PhotoAttachmentQueue extends AbstractAttachmentQueue {
     return attachmentsService.saveAttachment(photoAttachment);
   }
 
-  // This will create an item on the attachment queue to DELETE an image
+  // This will create an item on the attachment queue to DELETE a file
   // in local and remote storage
   @override
-  Future<Attachment> deletePhoto(String photoId) async {
-    String filename = '$photoId.jpg';
+  Future<Attachment> deleteFile(String fileId) async {
+    String filename = '$fileId.jpg';
     Attachment photoAttachment = Attachment(
-        id: photoId,
+        id: fileId,
         filename: filename,
         state: AttachmentState.queuedDelete.index);
 

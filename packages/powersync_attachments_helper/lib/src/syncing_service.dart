@@ -20,6 +20,7 @@ class SyncingService {
   final Future<bool> Function(Attachment attachment, Object exception)?
       onUploadError;
   bool isProcessing = false;
+  Timer? timer;
 
   SyncingService(this.db, this.remoteStorage, this.localStorage,
       this.attachmentsService, this.getLocalUri,
@@ -110,24 +111,31 @@ class SyncingService {
       return;
     }
 
-    isProcessing = true;
+    try {
+      isProcessing = true;
 
-    for (Attachment attachment in attachments) {
-      if (AttachmentState.queuedDownload.index == attachment.state) {
-        log.info('Downloading ${attachment.filename}');
-        await downloadAttachment(attachment);
+      for (Attachment attachment in attachments) {
+        if (AttachmentState.queuedDownload.index == attachment.state) {
+          log.info('Downloading ${attachment.filename}');
+          await downloadAttachment(attachment);
+        }
+        if (AttachmentState.queuedUpload.index == attachment.state) {
+          log.info('Uploading ${attachment.filename}');
+          await uploadAttachment(attachment);
+        }
+        if (AttachmentState.queuedDelete.index == attachment.state) {
+          log.info('Deleting ${attachment.filename}');
+          await deleteAttachment(attachment);
+        }
       }
-      if (AttachmentState.queuedUpload.index == attachment.state) {
-        log.info('Uploading ${attachment.filename}');
-        await uploadAttachment(attachment);
-      }
-      if (AttachmentState.queuedDelete.index == attachment.state) {
-        log.info('Deleting ${attachment.filename}');
-        await deleteAttachment(attachment);
-      }
+    } catch (error) {
+      log.severe(error);
+      rethrow;
+    } finally {
+      // if anything throws an exception
+      // reset the ability to sync again
+      isProcessing = false;
     }
-
-    isProcessing = false;
   }
 
   /// Watcher for changes to attachments table
@@ -166,8 +174,7 @@ class SyncingService {
       bool fileExists = await file.exists();
 
       if (fileExists) {
-        log.info('ignore file $id.$fileExtension as it already exists');
-        return;
+        continue;
       }
 
       log.info('Adding $id to queue');
@@ -178,5 +185,25 @@ class SyncingService {
     }
 
     await attachmentsService.saveAttachments(attachments);
+  }
+
+  /// Delete attachments which have been archived
+  deleteArchivedAttachments() async {
+    await db.execute('''
+      DELETE FROM ${attachmentsService.table}
+      WHERE state = ${AttachmentState.archived.index}
+    ''');
+  }
+
+  /// Periodically sync attachments and delete archived attachments
+  void startPeriodicSync(int intervalInMinutes) {
+    timer?.cancel();
+
+    timer = Timer.periodic(Duration(minutes: intervalInMinutes), (timer) {
+      log.info('Syncing attachments');
+      runSync();
+      log.info('Deleting archived attachments');
+      deleteArchivedAttachments();
+    });
   }
 }
