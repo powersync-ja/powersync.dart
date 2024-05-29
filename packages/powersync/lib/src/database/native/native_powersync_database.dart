@@ -197,7 +197,7 @@ class PowerSyncDatabaseImpl
       logger.severe('Sync Isolate error', message);
 
       // Reconnect
-      connect(connector: connector);
+      baseConnect(connector: connector);
     });
 
     disconnected() {
