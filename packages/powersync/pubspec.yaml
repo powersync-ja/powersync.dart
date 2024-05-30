@@ -22,7 +22,6 @@ dependencies:
   js: ^0.6.7
 
 dev_dependencies:
-  dcli: ^4.0.0
   lints: ^3.0.0
   test: ^1.25.0
   test_api: ^0.7.0
