@@ -137,6 +137,7 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
   /// classes. This is wrapped inside an exclusive mutex in the [connect]
   /// method.
   @protected
+  @internal
   Future<void> baseConnect(
       {required PowerSyncBackendConnector connector,
 

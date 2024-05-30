@@ -113,6 +113,7 @@ class PowerSyncDatabaseImpl
   }
 
   @override
+  @internal
 
   /// Connect to the PowerSync service, and keep the databases in sync.
   ///

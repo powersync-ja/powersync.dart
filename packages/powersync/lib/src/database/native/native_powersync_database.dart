@@ -118,6 +118,7 @@ class PowerSyncDatabaseImpl
   }
 
   @override
+  @internal
 
   /// Connect to the PowerSync service, and keep the databases in sync.
   ///
@@ -134,10 +135,11 @@ class PowerSyncDatabaseImpl
 
     // Disconnect if connected
     await disconnect();
-    disconnecter = AbortController();
+    final disconnector = AbortController();
+    disconnecter = disconnector;
 
     await isInitialized;
-    final dbref = database.isolateConnectionFactory();
+    final dbRef = database.isolateConnectionFactory();
     ReceivePort rPort = ReceivePort();
     StreamSubscription? updateSubscription;
     rPort.listen((data) async {
@@ -161,7 +163,7 @@ class PowerSyncDatabaseImpl
           updateSubscription = throttled.listen((event) {
             port.send(['update']);
           });
-          disconnecter?.onAbort.then((_) {
+          disconnector.onAbort.then((_) {
             port.send(['close']);
           }).ignore();
         } else if (action == 'uploadCrud') {
@@ -197,11 +199,11 @@ class PowerSyncDatabaseImpl
       logger.severe('Sync Isolate error', message);
 
       // Reconnect
-      baseConnect(connector: connector);
+      connect(connector: connector, crudThrottleTime: crudThrottleTime);
     });
 
     disconnected() {
-      disconnecter?.completeAbort();
+      disconnector.completeAbort();
       disconnecter = null;
       rPort.close();
       // Clear status apart from lastSyncedAt
@@ -220,7 +222,7 @@ class PowerSyncDatabaseImpl
     }
 
     Isolate.spawn(_powerSyncDatabaseIsolate,
-        _PowerSyncDatabaseIsolateArgs(rPort.sendPort, dbref, retryDelay),
+        _PowerSyncDatabaseIsolateArgs(rPort.sendPort, dbRef, retryDelay),
         debugName: 'PowerSyncDatabase',
         onError: errorPort.sendPort,
         onExit: exitPort.sendPort);
@@ -274,12 +276,17 @@ Future<void> _powerSyncDatabaseIsolate(
   final upstreamDbClient = args.dbRef.upstreamPort.open();
 
   CommonDatabase? db;
-  rPort.listen((message) {
+  final Mutex mutex = args.dbRef.mutex.open();
+  rPort.listen((message) async {
     if (message is List) {
       String action = message[0];
       if (action == 'update') {
         updateController.add('update');
       } else if (action == 'close') {
+        // The SyncSqliteConnection uses this mutex
+        // It needs to be closed before killing the isolate
+        // in order to free the mutex for other operations.
+        await mutex.close();
         db?.dispose();
         updateController.close();
         upstreamDbClient.close();
@@ -318,7 +325,6 @@ Future<void> _powerSyncDatabaseIsolate(
   }
 
   runZonedGuarded(() async {
-    final mutex = args.dbRef.mutex.open();
     db = await args.dbRef.openFactory
         .open(SqliteOpenOptions(primaryConnection: false, readOnly: false));
     final connection = SyncSqliteConnection(db!, mutex);
