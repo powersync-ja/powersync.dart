@@ -1,3 +1,14 @@
+## 0.3.0-alpha.2
+
+> Note: This release has breaking changes.
+
+ - **FIX**: reset isProcessing when exception is thrown during sync process. (#81).
+ - **FIX**: attachment queue duplicating requests (#68).
+ - **FIX**(powersync-attachements-helper): pubspec file (#29).
+ - **FEAT**(attachments): add error handlers (#65).
+ - **DOCS**: update readmes (#38).
+ - **BREAKING** **FEAT**(attachments): cater for subdirectories in storage (#78).
+
 ## 0.4.1
 
 - Reduce version number of `path_provider` to `2.0.13`

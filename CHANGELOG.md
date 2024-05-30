@@ -3,6 +3,37 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 2024-05-30
+
+### Changes
+
+---
+
+Packages with breaking changes:
+
+ - [`powersync_attachments_helper` - `v0.3.0-alpha.2`](#powersync_attachments_helper---v030-alpha2)
+
+Packages with other changes:
+
+ - [`powersync` - `v1.3.0-alpha.5`](#powersync---v130-alpha5)
+
+---
+
+#### `powersync_attachments_helper` - `v0.3.0-alpha.2`
+
+ - **FIX**: reset isProcessing when exception is thrown during sync process. (#81).
+ - **FIX**: attachment queue duplicating requests (#68).
+ - **FIX**(powersync-attachements-helper): pubspec file (#29).
+ - **FEAT**(attachments): add error handlers (#65).
+ - **DOCS**: update readmes (#38).
+ - **BREAKING** **FEAT**(attachments): cater for subdirectories in storage (#78).
+
+#### `powersync` - `v1.3.0-alpha.5`
+
+ - **FIX**(powersync-attachements-helper): pubspec file (#29).
+ - **DOCS**: update readme and getting started (#51).
+
+
 ## 2024-03-05
 
 ### Changes
