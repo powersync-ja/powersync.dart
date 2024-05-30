@@ -556,12 +556,13 @@ packages:
     source: hosted
     version: "7.0.0"
   sqlite3:
-    dependency: "direct overridden"
+    dependency: transitive
     description:
-      path: "/Users/stevenontong/Documents/platform_code/powersync/dart_deps/sqlite3.dart/sqlite3"
-      relative: false
-    source: path
-    version: "2.4.1-dev"
+      name: sqlite3
+      sha256: "1abbeb84bf2b1a10e5e1138c913123c8aa9d83cd64e5f9a0dd847b3c83063202"
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.4.2"
   sqlite3_flutter_libs:
     dependency: transitive
     description:
@@ -570,19 +571,13 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.5.21"
-  sqlite3_web:
-    dependency: "direct overridden"
-    description:
-      path: "/Users/stevenontong/Documents/platform_code/powersync/dart_deps/sqlite3.dart/sqlite3_web"
-      relative: false
-    source: path
-    version: "0.1.0"
   sqlite_async:
     dependency: "direct main"
     description:
-      path: "/Users/stevenontong/Documents/platform_code/powersync/sqlite_async.dart"
-      relative: false
-    source: path
+      name: sqlite_async
+      sha256: cfe14e9b10db9f40f550125f4a8528ad5f891754a4852bf1c1622a4b0192e80c
+      url: "https://pub.dev"
+    source: hosted
     version: "0.7.0-alpha.3"
   stack_trace:
     dependency: transitive
