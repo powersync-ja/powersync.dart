@@ -1,8 +1,3 @@
-## 1.3.0-alpha.5
-
- - **FIX**(powersync-attachements-helper): pubspec file (#29).
- - **DOCS**: update readme and getting started (#51).
-
 ## 1.3.1
 
 - Fix "Checksum mismatch" issue when calling `PowerSyncDatabase.connect` multiple times.
