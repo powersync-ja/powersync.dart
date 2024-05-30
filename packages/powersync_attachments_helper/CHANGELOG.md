@@ -24,7 +24,7 @@
 
 ## 0.3.0-alpha.1
 
-- Added initial support for Web platform.s
+- Added initial support for Web platforms
 
 ## 0.2.1
 
