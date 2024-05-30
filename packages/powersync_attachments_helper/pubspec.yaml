@@ -13,7 +13,7 @@ dependencies:
   powersync: ^1.3.0-alpha.3
   logging: ^1.2.0
   sqlite3: '>2.3.0 <2.4.3'
-  sqlite_async: ^0.7.0-alpha.3
+  sqlite_async: ^0.7.0-alpha.4
   path_provider: ^2.0.13
 
 dev_dependencies:

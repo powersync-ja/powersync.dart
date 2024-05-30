@@ -10,7 +10,7 @@ dependencies:
   flutter:
     sdk: flutter
 
-  sqlite_async: ^0.7.0-alpha.3
+  sqlite_async: ^0.7.0-alpha.4
   sqlite3_flutter_libs: ^0.5.15
   meta: ^1.0.0
   http: ^1.1.0
