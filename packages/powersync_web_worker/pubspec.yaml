@@ -16,8 +16,7 @@ dev_dependencies:
   uuid: ^4.2.0
   async: ^2.10.0
   path: ^1.8.3
-  # Note that 2.4.3 fails to compile the web worker
-  sqlite3: 2.4.2
+  sqlite3: ^2.3.0
   drift:
     git:
       url: https://github.com/powersync-ja/drift.git
