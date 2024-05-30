@@ -113,13 +113,19 @@ class PowerSyncDatabaseImpl
   }
 
   @override
+  @internal
 
   /// Connect to the PowerSync service, and keep the databases in sync.
   ///
   /// The connection is automatically re-opened if it fails for any reason.
   ///
   /// Status changes are reported on [statusStream].
-  connect({required PowerSyncBackendConnector connector}) async {
+  baseConnect(
+      {required PowerSyncBackendConnector connector,
+
+      /// Throttle time between CRUD operations
+      /// Defaults to 10 milliseconds.
+      Duration crudThrottleTime = const Duration(milliseconds: 10)}) async {
     await initialize();
 
     // Disconnect if connected

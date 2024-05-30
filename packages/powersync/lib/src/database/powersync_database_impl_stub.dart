@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:logging/logging.dart';
+import 'package:meta/meta.dart';
 import 'package:powersync/sqlite_async.dart';
 import 'package:powersync/src/database/powersync_db_mixin.dart';
 import 'package:powersync/src/open_factory/abstract_powersync_open_factory.dart';
@@ -84,11 +85,6 @@ class PowerSyncDatabaseImpl
   }
 
   @override
-  connect({required PowerSyncBackendConnector connector}) {
-    throw UnimplementedError();
-  }
-
-  @override
   Future<T> readLock<T>(Future<T> Function(SqliteReadContext tx) callback,
       {String? debugContext, Duration? lockTimeout}) {
     throw UnimplementedError();
@@ -112,4 +108,12 @@ class PowerSyncDatabaseImpl
 
   @override
   Logger get logger => throw UnimplementedError();
+
+  @override
+  @internal
+  Future<void> baseConnect(
+      {required PowerSyncBackendConnector connector,
+      Duration crudThrottleTime = const Duration(milliseconds: 10)}) {
+    throw UnimplementedError();
+  }
 }

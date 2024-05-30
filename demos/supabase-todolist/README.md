@@ -1,8 +1,6 @@
 # PowerSync + Supabase Flutter Demo: Todo List App
 
-![docs-supabase-integration](https://github.com/journeyapps/powersync-supabase-flutter-demo/assets/277659/291fa2eb-abe6-4567-8d4b-c88e0ee850cf)
-
-Demo app demonstrating use of the PowerSync SDK for Flutter together with Supabase. For a step-by-step guide, see [here](https://docs.powersync.co/integration-guides/supabase).
+Demo app demonstrating use of the PowerSync SDK for Flutter together with Supabase. For a step-by-step guide, see [here](https://docs.powersync.com/integration-guides/supabase).
 
 # Running the app
 

@@ -12,11 +12,12 @@ executables:
   compile_worker: bin/compile_worker.dart
 
 dev_dependencies:
-  dcli: ^3.3.5
   uuid: ^4.2.0
   async: ^2.10.0
   path: ^1.8.3
-  sqlite3: ^2.3.0
+  # Note that 2.4.3 fails to compile the web worker.
+  # This entire worker folder will be removed soon.
+  sqlite3: 2.4.2
   drift:
     git:
       url: https://github.com/powersync-ja/drift.git
