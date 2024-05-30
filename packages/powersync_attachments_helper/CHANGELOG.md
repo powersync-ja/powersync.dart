@@ -1,3 +1,14 @@
+## 0.3.0-alpha.2
+
+> Note: This release has breaking changes.
+
+ - **FIX**: reset isProcessing when exception is thrown during sync process. (#81).
+ - **FIX**: attachment queue duplicating requests (#68).
+ - **FIX**(powersync-attachements-helper): pubspec file (#29).
+ - **FEAT**(attachments): add error handlers (#65).
+ - **DOCS**: update readmes (#38).
+ - **BREAKING** **FEAT**(attachments): cater for subdirectories in storage (#78).
+
 ## 0.4.1
 
 - Reduce version number of `path_provider` to `2.0.13`
@@ -22,6 +33,10 @@
 - BREAKING CHANGE: `reconcileId` has been removed in favour of `reconcileIds`. This will require a change to `watchIds` implementation which is shown in `example/getting_started.dart`
 - Improved queue so that uploads, downloads and deletes do not happen multiple times
 
+## 0.3.0-alpha.1
+
+- Added initial support for Web platforms
+
 ## 0.2.1
 
 - Added `onUploadError` as an optional function that can be set when setting up the queue to handle upload errors
@@ -30,7 +45,7 @@
 ## 0.2.0
 
 - Potentially BREAKING CHANGE for users who rely on multiple attachment queues.
-  Moved away from randomly generating queue table name in favour of  a user creating a queue and table using a name of their choosing.
+  Moved away from randomly generating queue table name in favour of a user creating a queue and table using a name of their choosing.
 
 ## 0.1.5
 

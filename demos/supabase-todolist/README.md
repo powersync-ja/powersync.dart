@@ -7,7 +7,7 @@ Demo app demonstrating use of the PowerSync SDK for Flutter together with Supaba
 Ensure you have [melos](https://melos.invertase.dev/~melos-latest/getting-started) installed.
 
 1. `cd demos/supabase-todolist`
-2. `melos bootstrap`
+2. `melos prepare`
 3. `cp lib/app_config_template.dart lib/app_config.dart`
 4. Insert your Supabase and PowerSync project credentials into `lib/app_config.dart` (See instructions below)
 5. `flutter run`

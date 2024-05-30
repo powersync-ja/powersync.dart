@@ -6,6 +6,28 @@
 
 - Add `crudThrottleTime` option to arguments when running `PowerSyncDatabase.connect` to set throttle time for crud operations.
 
+## 1.3.0-alpha.5
+
+- Update `sqlite_async.dart` dependency
+- Fix issue where sync stream connection would fail to connect https://github.com/powersync-ja/powersync.dart/issues/11
+
+## 1.3.0-alpha.4
+
+- Merge master branch in and resolve conflicts
+
+## 1.3.0-alpha.3
+
+- Fixed issue where disconnectAndClear would prevent subsequent sync connection on native platforms and would fail to clear the database on web.
+
+## 1.3.0-alpha.2
+
+- **FIX**(powersync-attachements-helper): pubspec file (#29).
+- **DOCS**: update readme and getting started (#51).
+
+## 1.3.0-alpha.1
+
+- Added initial support for Web platform.
+
 ## 1.2.2
 
 - Deprecate DevConnector and related
