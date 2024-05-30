@@ -6,7 +6,7 @@
 
 *[PowerSync](https://www.powersync.com) is a Postgres-SQLite sync layer, which helps developers to create local-first real-time reactive apps that work seamlessly both online and offline.*
 
-This package (`powersync`) is the PowerSync client SDK for Dart/Flutter clients. 
+This package (`powersync`) is the PowerSync client SDK for Dart/Flutter. 
 
 See a summary of features [here](https://docs.powersync.com/client-sdk-references/flutter).
 
