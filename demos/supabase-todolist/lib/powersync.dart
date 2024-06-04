@@ -155,12 +155,6 @@ Future<void> openDatabase() async {
       schema: schema, path: await getDatabasePath(), logger: attachedLogger);
   await db.initialize();
 
-  var res = await db.get('select powersync_rs_version()');
-  print(res);
-
-  res = await db.get('select gen_random_uuid()');
-  print("UUID: ${res}");
-
   await loadSupabase();
 
   SupabaseConnector? currentConnector;
