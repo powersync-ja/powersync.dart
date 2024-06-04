@@ -36,18 +36,12 @@ endif ()
 
 set(POWERSYNC_FILE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/libpowersync.so")
 
-include(FetchContent)
-FetchContent_Declare(
-  powersync-download
-  URL https://github.com/powersync-ja/powersync-sqlite-core/releases/download/v${POWERSYNC_VERSION}/libpowersync_${POWERSYNC_ARCH}.so
-)
-
 if(NOT EXISTS ${POWERSYNC_FILE_PATH})
-  FetchContent_GetProperties(powersync-download)
-  if(NOT powersync-download_POPULATED)
-    FetchContent_Populate(powersync-download)
-    file(COPY ${powersync-download_SOURCE_DIR}/libpowersync_${POWERSYNC_ARCH}.so DESTINATION ${POWERSYNC_FILE_PATH})
-  endif()
+  file(DOWNLOAD
+    "https://github.com/powersync-ja/powersync-sqlite-core/releases/download/v${POWERSYNC_VERSION}/libpowersync_${POWERSYNC_ARCH}.so"
+    ${POWERSYNC_FILE_PATH}
+    SHOW_PROGRESS
+  )
 endif()
 
 # ----------------------------------------------------------------------
