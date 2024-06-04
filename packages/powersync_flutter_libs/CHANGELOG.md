@@ -1,3 +1,3 @@
 ## 0.0.1
 
-* TODO: Describe initial release.
+- Load the powersync extension binaries on Android, iOS, macOS, Windows and Linux
