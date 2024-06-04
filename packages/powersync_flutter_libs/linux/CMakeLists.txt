@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.14)
 
 # Project-level configuration.
 set(PROJECT_NAME "powersync_flutter_libs")
@@ -22,10 +22,40 @@ target_compile_definitions(${PLUGIN_NAME} PRIVATE FLUTTER_PLUGIN_IMPL)
 target_include_directories(${PLUGIN_NAME} INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/include")
 target_link_libraries(${PLUGIN_NAME} PRIVATE flutter)
 
+# ----------------------------------------------------------------------
+# Download and add powersync prebuilt library.
+
+set(POWERSYNC_VERSION 0.1.6)
+
+set(POWERSYNC_ARCH ${CMAKE_SYSTEM_PROCESSOR})
+if (${POWERSYNC_ARCH} MATCHES "x86_64")
+    set(POWERSYNC_ARCH x64)
+elseif (${POWERSYNC_ARCH} MATCHES "^arm64" OR ${POWERSYNC_ARCH} MATCHES "^armv8")
+    set(POWERSYNC_ARCH aarch64)
+endif ()
+
+set(POWERSYNC_FILE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/libpowersync.so")
+
+include(FetchContent)
+FetchContent_Declare(
+  powersync-download
+  URL https://github.com/powersync-ja/powersync-sqlite-core/releases/download/v${POWERSYNC_VERSION}/libpowersync_${POWERSYNC_ARCH}.so
+)
+
+if(NOT EXISTS ${POWERSYNC_FILE_PATH})
+  FetchContent_GetProperties(powersync-download)
+  if(NOT powersync-download_POPULATED)
+    FetchContent_Populate(powersync-download)
+    file(COPY ${powersync-download_SOURCE_DIR}/libpowersync_${POWERSYNC_ARCH}.so DESTINATION ${POWERSYNC_FILE_PATH})
+  endif()
+endif()
+
+# ----------------------------------------------------------------------
+
 # List of absolute paths to libraries that should be bundled with the plugin. 
 # This list could contain prebuilt libraries, or libraries created by an
 # external build triggered from this build file.
 set(powersync_flutter_libs_bundled_libraries
-  "${CMAKE_CURRENT_SOURCE_DIR}/libpowersync.so"
+  "${POWERSYNC_FILE_PATH}"
   PARENT_SCOPE
 )
