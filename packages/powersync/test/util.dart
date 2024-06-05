@@ -39,20 +39,20 @@ class TestOpenFactory extends PowerSyncOpenFactory {
   }
 
   @override
-  String getLibraryForPlatform({String? path}) {
+  String getLibraryForPlatform({String? path = "."}) {
     switch (Abi.current()) {
       case Abi.androidArm:
       case Abi.androidArm64:
       case Abi.androidX64:
-        return './libpowersync.so';
+        return '$path/libpowersync.so';
       case Abi.macosArm64:
       case Abi.macosX64:
-        return './libpowersync.dylib';
+        return '$path/libpowersync.dylib';
       case Abi.linuxX64:
-        return './libpowersync.so';
+        return '$path/libpowersync.so';
       case Abi.windowsArm64:
       case Abi.windowsX64:
-        return './powersync.dll';
+        return '$path/powersync.dll';
       case Abi.androidIA32:
         throw PowersyncNotReadyException(
           'Unsupported processor architecture. X86 Android emulators are not '

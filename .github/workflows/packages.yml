@@ -48,5 +48,15 @@ jobs:
         run: flutter pub global activate melos
       - name: Install dependencies
         run: melos bootstrap
+      - name: Download powersync binary
+        uses: dsaltares/fetch-gh-release-asset@master
+        with:
+          repo: 'powersync-ja/powersync-sqlite-core'
+          version: 'tags/v0.1.16'
+          file: 'libpowersync_x64.so'
+          target: 'libs/libpowersync.so'
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Copy powersync binary
+        run: cp libs/libpowersync.so packages/powersync/libpowersync.so
       - name: Run tests
         run: melos test

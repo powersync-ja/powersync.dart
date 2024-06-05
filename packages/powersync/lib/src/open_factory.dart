@@ -106,6 +106,8 @@ class PowerSyncOpenFactory extends DefaultSqliteOpenFactory {
     );
   }
 
+  /// Returns the library name for the current platform.
+  /// [path] is optional and is used when the library is not in the default location.
   String getLibraryForPlatform({String? path}) {
     switch (Abi.current()) {
       case Abi.androidArm:
