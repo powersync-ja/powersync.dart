@@ -33,6 +33,7 @@ dev_dependencies:
   stream_channel: ^2.1.2
   path: ^1.8.3
 
+# TODO remove this
 dependency_overrides:
   sqlite_async:
     git:

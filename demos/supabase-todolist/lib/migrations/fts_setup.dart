@@ -1,5 +1,5 @@
 import 'package:powersync/powersync.dart';
-import 'package:sqlite_async/sqlite_async.dart';
+import 'package:powersync/sqlite_async.dart';
 
 import 'helpers.dart';
 import '../models/schema.dart';

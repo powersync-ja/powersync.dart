@@ -13,10 +13,10 @@ packages:
     dependency: transitive
     description:
       name: archive
-      sha256: "6bd38d335f0954f5fad9c79e614604fbf03a0e5b975923dd001b6ea965ef5b4b"
+      sha256: cb6a278ef2dbb298455e1a713bda08524a175630ec643a242c399c932a0a1f7d
       url: "https://pub.dev"
     source: hosted
-    version: "3.6.0"
+    version: "3.6.1"
   async:
     dependency: transitive
     description:
@@ -97,14 +97,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.18.0"
-  convert:
-    dependency: transitive
-    description:
-      name: convert
-      sha256: "0f08b14755d163f6e2134cb58222dd25ea2a2ee8a195e53983d57c075324d592"
-      url: "https://pub.dev"
-    source: hosted
-    version: "3.1.1"
   cross_file:
     dependency: transitive
     description:
@@ -121,14 +113,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.0.3"
-  drift:
-    dependency: transitive
-    description:
-      name: drift
-      sha256: "6acedc562ffeed308049f78fb1906abad3d65714580b6745441ee6d50ec564cd"
-      url: "https://pub.dev"
-    source: hosted
-    version: "2.18.0"
   fake_async:
     dependency: transitive
     description:
@@ -567,17 +551,26 @@ packages:
     dependency: transitive
     description:
       name: sqlite3_flutter_libs
-      sha256: "1e62698dc1ab396152ccaf3b3990d826244e9f3c8c39b51805f209adcd6dbea3"
+      sha256: "9f89a7e7dc36eac2035808427eba1c3fbd79e59c3a22093d8dace6d36b1fe89e"
       url: "https://pub.dev"
     source: hosted
-    version: "0.5.22"
-  sqlite_async:
-    dependency: "direct main"
+    version: "0.5.23"
+  sqlite3_web:
+    dependency: transitive
     description:
-      name: sqlite_async
-      sha256: "4f43be2da7957c580643302c94ae3180045facc6b5872b7e5ba5241afd82c939"
+      name: sqlite3_web
+      sha256: "51fec34757577841cc72d79086067e3651c434669d5af557a5c106787198a76f"
       url: "https://pub.dev"
     source: hosted
+    version: "0.1.2-wip"
+  sqlite_async:
+    dependency: "direct overridden"
+    description:
+      path: "."
+      ref: sqlite_proto
+      resolved-ref: "94b7b956fa1ec808649a0cc9d8c2bcfa52015c2b"
+      url: "https://github.com/powersync-ja/sqlite_async.dart.git"
+    source: git
     version: "0.7.0-alpha.4"
   stack_trace:
     dependency: transitive
@@ -671,10 +664,10 @@ packages:
     dependency: transitive
     description:
       name: url_launcher
-      sha256: "6ce1e04375be4eed30548f10a315826fd933c1e493206eab82eed01f438c8d2e"
+      sha256: "21b704ce5fa560ea9f3b525b43601c678728ba46725bab9b01187b4831377ed3"
       url: "https://pub.dev"
     source: hosted
-    version: "6.2.6"
+    version: "6.3.0"
   url_launcher_android:
     dependency: transitive
     description:
