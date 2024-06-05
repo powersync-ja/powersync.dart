@@ -1,4 +1,4 @@
-package co.powersync.powersync_flutter_libs;
+package com.powersync.powersync_flutter_libs;
 
 import androidx.annotation.NonNull;
 
