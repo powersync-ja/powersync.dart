@@ -1,11 +1,41 @@
-## 0.3.0-alpha.1
+## 0.3.0-alpha.2
 
-- Added initial support for Web platform.
+> Note: This release has breaking changes.
+
+ - **FIX**: reset isProcessing when exception is thrown during sync process. (#81).
+ - **FIX**: attachment queue duplicating requests (#68).
+ - **FIX**(powersync-attachements-helper): pubspec file (#29).
+ - **FEAT**(attachments): add error handlers (#65).
+ - **DOCS**: update readmes (#38).
+ - **BREAKING** **FEAT**(attachments): cater for subdirectories in storage (#78).
+
+## 0.4.1
+
+- Reduce version number of `path_provider` to `2.0.13`
+
+## 0.4.0
+
+- BREAKING CHANGE: Generalize naming so `savePhoto` and `deletePhoto` have been removed in favour of `saveFile` and `deleteFile`
+- Added optional subDirectories argument when initializing the queue so that local subDirectories are created to match any subDirectories on the storage provider allowing files to be saved instead of an error being thrown.
+
+## 0.3.2
+
+- Fix sync not resetting after an error is thrown
+
+## 0.3.1
+
+- Add periodic syncing and deleting of attachments
+- Remove unnecessary delete
+- Fix loop
 
 ## 0.3.0
 
 - BREAKING CHANGE: `reconcileId` has been removed in favour of `reconcileIds`. This will require a change to `watchIds` implementation which is shown in `example/getting_started.dart`
 - Improved queue so that uploads, downloads and deletes do not happen multiple times
+
+## 0.3.0-alpha.1
+
+- Added initial support for Web platforms
 
 ## 0.2.1
 

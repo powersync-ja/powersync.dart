@@ -44,6 +44,9 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
   StreamController<SyncStatus> statusStreamController =
       StreamController<SyncStatus>.broadcast();
 
+  /// Use to prevent multiple connections from being opened concurrently
+  final Mutex _connectMutex = Mutex();
+
   @override
 
   /// Broadcast stream that is notified of any table updates.
@@ -120,7 +123,27 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
   /// The connection is automatically re-opened if it fails for any reason.
   ///
   /// Status changes are reported on [statusStream].
-  Future<void> connect({required PowerSyncBackendConnector connector});
+  Future<void> connect(
+      {required PowerSyncBackendConnector connector,
+
+      /// Throttle time between CRUD operations
+      /// Defaults to 10 milliseconds.
+      Duration crudThrottleTime = const Duration(milliseconds: 10)}) async {
+    _connectMutex.lock(() =>
+        baseConnect(connector: connector, crudThrottleTime: crudThrottleTime));
+  }
+
+  /// Abstract connection method to be implemented by platform specific
+  /// classes. This is wrapped inside an exclusive mutex in the [connect]
+  /// method.
+  @protected
+  @internal
+  Future<void> baseConnect(
+      {required PowerSyncBackendConnector connector,
+
+      /// Throttle time between CRUD operations
+      /// Defaults to 10 milliseconds.
+      Duration crudThrottleTime = const Duration(milliseconds: 10)});
 
   /// Close the sync connection.
   ///
@@ -157,6 +180,7 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
       await tx.execute('DELETE FROM ps_oplog');
       await tx.execute('DELETE FROM ps_crud');
       await tx.execute('DELETE FROM ps_buckets');
+      await tx.execute('DELETE FROM ps_untyped');
 
       final tableGlob = clearLocal ? 'ps_data_*' : 'ps_data__*';
       final existingTableRows = await tx.getAll(
@@ -274,7 +298,6 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
       if (first == null) {
         return null;
       }
-
       final int? txId = first['tx_id'];
       List<CrudEntry> all;
       if (txId == null) {
