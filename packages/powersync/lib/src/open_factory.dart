@@ -81,7 +81,12 @@ class PowerSyncOpenFactory extends DefaultSqliteOpenFactory {
   void enableExtension() {
     var powersyncLib = Platform.isIOS || Platform.isMacOS
         ? DynamicLibrary.process()
-        : DynamicLibrary.open(Abi.current().localName);
+        : DynamicLibrary.open(getLibraryForPlatform());
+    if (Platform.environment.containsKey('FLUTTER_TEST')) {
+      powersyncLib = Platform.isMacOS
+          ? DynamicLibrary.process()
+          : DynamicLibrary.open('./libpowersync.so');
+    }
     sqlite.sqlite3.ensureExtensionLoaded(
         SqliteExtension.inLibrary(powersyncLib, 'sqlite3_powersync_init'));
   }
@@ -105,10 +110,8 @@ class PowerSyncOpenFactory extends DefaultSqliteOpenFactory {
       },
     );
   }
-}
 
-extension on Abi {
-  String get localName {
+  String getLibraryForPlatform({String? path}) {
     switch (Abi.current()) {
       case Abi.androidArm:
       case Abi.androidArm64:
