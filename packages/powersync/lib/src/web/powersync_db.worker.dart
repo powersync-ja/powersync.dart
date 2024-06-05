@@ -6,10 +6,9 @@ library;
 
 import 'dart:js_interop';
 
-import 'package:sqlite3/wasm.dart';
-
 import 'package:sqlite_async/sqlite3_web_worker.dart';
-import 'package:sqlite3_web/sqlite3_web.dart';
+import 'package:sqlite_async/sqlite3_web.dart';
+import 'package:sqlite_async/sqlite3_wasm.dart';
 
 import 'worker_utils.dart';
 
