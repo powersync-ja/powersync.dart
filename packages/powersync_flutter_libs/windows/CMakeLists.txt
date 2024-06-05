@@ -37,13 +37,10 @@ endif ()
 
 set(POWERSYNC_FILE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/powersync.dll")
 
-if(NOT EXISTS ${POWERSYNC_FILE_PATH})
-  file(DOWNLOAD
-    "https://github.com/powersync-ja/powersync-sqlite-core/releases/download/v${POWERSYNC_VERSION}/powersync_${POWERSYNC_ARCH}.dll"
-    ${POWERSYNC_FILE_PATH}
-    SHOW_PROGRESS
-  )
-endif()
+file(DOWNLOAD
+  "https://github.com/powersync-ja/powersync-sqlite-core/releases/download/v${POWERSYNC_VERSION}/powersync_${POWERSYNC_ARCH}.dll"
+  ${POWERSYNC_FILE_PATH}
+)
 
 # ----------------------------------------------------------------------
 
