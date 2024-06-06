@@ -1,6 +1,7 @@
-## 1.3.2
+## 1.4.0
 
-- Introduces the use of the powersync-sqlite-core loadable extension.
+- Introduces the use of the `powersync-sqlite-core` native extension.
+- Added a new package dependency on `powersync_flutter_libs` for loading the extension.
 
 ## 1.3.1
 
