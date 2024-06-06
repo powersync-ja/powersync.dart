@@ -1,3 +1,7 @@
+## 1.3.2
+
+- Introduces the use of the powersync-sqlite-core loadable extension.
+
 ## 1.3.1
 
 - Fix "Checksum mismatch" issue when calling `PowerSyncDatabase.connect` multiple times.
