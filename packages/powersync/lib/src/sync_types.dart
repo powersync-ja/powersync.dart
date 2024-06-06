@@ -14,6 +14,16 @@ class Checkpoint {
         checksums = (json['buckets'] as List)
             .map((b) => BucketChecksum.fromJson(b))
             .toList();
+
+  Map<String, dynamic> toJson() {
+    return {
+      'last_op_id': lastOpId,
+      'write_checkpoint': writeCheckpoint,
+      'buckets': checksums
+          .map((c) => {'bucket': c.bucket, 'checksum': c.checksum})
+          .toList(growable: false)
+    };
+  }
 }
 
 class BucketChecksum {

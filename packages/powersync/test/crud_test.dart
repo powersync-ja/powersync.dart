@@ -95,11 +95,11 @@ void main() {
           ]));
 
       var tx = (await powersync.getNextCrudTransaction())!;
-      expect(tx.transactionId, equals(3));
+      expect(tx.transactionId, equals(2));
       expect(
           tx.crud,
           equals([
-            CrudEntry(2, UpdateType.patch, 'assets', testId, 3,
+            CrudEntry(2, UpdateType.patch, 'assets', testId, 2,
                 {"description": "test2"})
           ]));
     });
@@ -119,9 +119,9 @@ void main() {
           ]));
 
       var tx = (await powersync.getNextCrudTransaction())!;
-      expect(tx.transactionId, equals(3));
+      expect(tx.transactionId, equals(2));
       expect(tx.crud,
-          equals([CrudEntry(2, UpdateType.delete, 'assets', testId, 3, null)]));
+          equals([CrudEntry(2, UpdateType.delete, 'assets', testId, 2, null)]));
     });
 
     test('UPSERT not supported', () async {
@@ -154,18 +154,18 @@ void main() {
           equals([
             {
               'data':
-                  '{"op":"PUT","type":"logs","id":"$testId","data":{"level":"INFO","content":"test log"}}'
+                  '{"op":"PUT","type":"logs","id":"$testId","data":{"content":"test log","level":"INFO"}}'
             }
           ]));
 
       expect(await powersync.getAll('SELECT * FROM logs'), equals([]));
 
       var tx = (await powersync.getNextCrudTransaction())!;
-      expect(tx.transactionId, equals(2));
+      expect(tx.transactionId, equals(1));
       expect(
           tx.crud,
           equals([
-            CrudEntry(1, UpdateType.put, 'logs', testId, 2,
+            CrudEntry(1, UpdateType.put, 'logs', testId, 1,
                 {"level": "INFO", "content": "test log"})
           ]));
     });
@@ -230,7 +230,7 @@ void main() {
           equals([
             {
               'data':
-                  '{"op":"PATCH","type":"assets","id":"$testId","data":{"quantity":${bigNumber + 1},"description":"updated"}}'
+                  '{"op":"PATCH","type":"assets","id":"$testId","data":{"description":"updated","quantity":${bigNumber + 1}}}'
             }
           ]));
     });

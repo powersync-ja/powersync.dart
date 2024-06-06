@@ -1,3 +1,8 @@
+## 1.4.0
+
+- Introduces the use of the `powersync-sqlite-core` native extension.
+- Added a new package dependency on `powersync_flutter_libs` for loading the extension.
+
 ## 1.3.1
 
 - Fix "Checksum mismatch" issue when calling `PowerSyncDatabase.connect` multiple times.

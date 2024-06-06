@@ -32,7 +32,8 @@ class StreamingSyncImplementation {
       StreamController<SyncStatus>.broadcast();
   late final Stream<SyncStatus> statusStream;
 
-  final StreamController _localPingController = StreamController.broadcast();
+  final StreamController<String?> _localPingController =
+      StreamController.broadcast();
 
   final Duration retryDelay;
 
@@ -214,7 +215,6 @@ class StreamingSyncImplementation {
         }
         bucketSet = newBuckets;
         await adapter.removeBuckets([...bucketsToDelete]);
-        adapter.setTargetCheckpoint(targetCheckpoint);
         _updateStatus(downloading: true);
       } else if (line is StreamingSyncCheckpointComplete) {
         final result = await adapter.syncLocalDatabase(targetCheckpoint!);
@@ -242,6 +242,7 @@ class StreamingSyncImplementation {
           throw PowerSyncProtocolException(
               'Checkpoint diff without previous checkpoint');
         }
+        _updateStatus(downloading: true);
         final diff = line;
         final Map<String, BucketChecksum> newBuckets = {};
         for (var checksum in targetCheckpoint.checksums) {
@@ -263,10 +264,9 @@ class StreamingSyncImplementation {
         bucketSet = Set.from(newBuckets.keys);
         await adapter.removeBuckets(diff.removedBuckets);
         adapter.setTargetCheckpoint(targetCheckpoint);
-        _updateStatus(downloading: true);
       } else if (line is SyncBucketData) {
-        await adapter.saveSyncData(SyncDataBatch([line]));
         _updateStatus(downloading: true);
+        await adapter.saveSyncData(SyncDataBatch([line]));
       } else if (line is StreamingSyncKeepalive) {
         if (line.tokenExpiresIn == 0) {
           // Token expired already - stop the connection immediately
@@ -306,6 +306,7 @@ class StreamingSyncImplementation {
             // Continue waiting.
           } else {
             appliedCheckpoint = targetCheckpoint;
+
             _updateStatus(
                 downloading: false,
                 downloadError: _noError,

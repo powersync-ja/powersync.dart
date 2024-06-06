@@ -88,3 +88,10 @@ String? _stringOrFirst(Object? details) {
     return null;
   }
 }
+
+class PowersyncNotReadyException implements Exception {
+  /// @nodoc
+  PowersyncNotReadyException(this.message);
+
+  final String message;
+}

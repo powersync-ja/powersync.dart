@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:collection/collection.dart';
-import 'package:powersync/src/log_internal.dart';
 import 'package:sqlite_async/mutex.dart';
 import 'package:sqlite_async/sqlite3.dart' as sqlite;
 
@@ -10,7 +9,6 @@ import 'crud.dart';
 import 'database_utils.dart';
 import 'schema_logic.dart';
 import 'sync_types.dart';
-import 'uuid.dart';
 
 const compactOperationInterval = 1000;
 
@@ -19,30 +17,20 @@ class BucketStorage {
   final Mutex mutex;
   bool _hasCompletedSync = false;
   bool _pendingBucketDeletes = false;
-  Set<String> tableNames = {};
   int _compactCounter = compactOperationInterval;
-  ChecksumCache? _checksumCache;
 
   BucketStorage(sqlite.Database db, {required this.mutex}) : _internalDb = db {
     _init();
   }
 
-  _init() {
-    final existingTableRows = select(
-        "SELECT name FROM sqlite_master WHERE type='table' AND name GLOB 'ps_data_*'");
-    for (final row in existingTableRows) {
-      tableNames.add(row['name'] as String);
-    }
-  }
+  _init() {}
 
   // Use only for read statements
   sqlite.ResultSet select(String query, [List<Object?> parameters = const []]) {
     return _internalDb.select(query, parameters);
   }
 
-  void startSession() {
-    _checksumCache = null;
-  }
+  void startSession() {}
 
   List<BucketState> getBucketStates() {
     final rows = select(
@@ -53,158 +41,32 @@ class BucketStorage {
     ];
   }
 
+  Future<void> streamOp(String op) async {
+    await writeTransaction((db) {
+      db.execute('INSERT INTO powersync_operations(op, data) VALUES(?, ?)',
+          ['stream', op]);
+    });
+  }
+
   Future<void> saveSyncData(SyncDataBatch batch) async {
     var count = 0;
 
     await writeTransaction((db) {
       for (var b in batch.buckets) {
-        var bucket = b.bucket;
-        var data = b.data;
-
-        count += data.length;
-        final isFinal = !b.hasMore;
-        _updateBucket(db, bucket, data, isFinal);
+        count += b.data.length;
+        _updateBucket2(
+            db,
+            jsonEncode({
+              'buckets': [b]
+            }));
       }
     });
     _compactCounter += count;
   }
 
-  void _updateBucket(sqlite.Database db, String bucket, List<OplogEntry> data,
-      bool finalBucketUpdate) {
-    if (data.isEmpty) {
-      return;
-    }
-
-    String? lastOp;
-    String? firstOp;
-    BigInt? targetOp;
-
-    List<Map<String, dynamic>> inserts = [];
-    Map<String, Map<String, dynamic>> lastInsert = {};
-    List<String> allEntries = [];
-
-    List<SqliteOp> clearOps = [];
-
-    for (final op in data) {
-      lastOp = op.opId;
-      firstOp ??= op.opId;
-
-      final Map<String, dynamic> insert = {
-        'op_id': op.opId,
-        'op': op.op!.value,
-        'bucket': bucket,
-        'key': op.key,
-        'row_type': op.rowType,
-        'row_id': op.rowId,
-        'data': op.data,
-        'checksum': op.checksum,
-        'superseded': 0
-      };
-
-      if (op.op == OpType.move) {
-        insert['superseded'] = 1;
-      }
-
-      if (op.op == OpType.put ||
-          op.op == OpType.remove ||
-          op.op == OpType.move) {
-        inserts.add(insert);
-      }
-
-      if (op.op == OpType.put || op.op == OpType.remove) {
-        final key = op.key;
-        final prev = lastInsert[key];
-        if (prev != null) {
-          prev['superseded'] = 1;
-        }
-        lastInsert[key] = insert;
-        allEntries.add(key);
-      } else if (op.op == OpType.move) {
-        final target = op.parsedData?['target'] as String?;
-        if (target != null) {
-          final l = BigInt.parse(target, radix: 10);
-          if (targetOp == null || l < targetOp) {
-            targetOp = l;
-          }
-        }
-      } else if (op.op == OpType.clear) {
-        // Any remaining PUT operations should get an implicit REMOVE.
-        clearOps.add(SqliteOp(
-            "UPDATE ps_oplog SET op=${OpType.remove.value}, data=NULL, hash=0 WHERE (op=${OpType.put.value} OR op=${OpType.remove.value}) AND bucket=? AND op_id <= ?",
-            [bucket, op.opId]));
-        // And we need to re-apply all of those.
-        // We also replace the checksum with the checksum of the CLEAR op.
-        clearOps.add(SqliteOp(
-            "UPDATE ps_buckets SET last_applied_op = 0, add_checksum = ? WHERE name = ?",
-            [op.checksum, bucket]));
-      }
-    }
-
-    // Mark old ops as superseded
-    db.execute("""
-    UPDATE ps_oplog AS oplog
-    SET superseded = 1,
-    op = ${OpType.move.value},
-    data = NULL
-    WHERE oplog.superseded = 0
-    AND unlikely(oplog.bucket = ?)
-    AND oplog.key IN (SELECT json_each.value FROM json_each(?))
-    """, [bucket, jsonEncode(allEntries)]);
-
-    var stmt = db.prepare(
-        'INSERT INTO ps_oplog(op_id, op, bucket, key, row_type, row_id, data, hash, superseded) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)');
-    try {
-      for (var insert in inserts) {
-        stmt.execute([
-          insert['op_id'],
-          insert['op'],
-          insert['bucket'],
-          insert['key'],
-          insert['row_type'],
-          insert['row_id'],
-          insert['data'],
-          insert['checksum'],
-          insert['superseded']
-        ]);
-      }
-    } finally {
-      stmt.dispose();
-    }
-
-    db.execute("INSERT OR IGNORE INTO ps_buckets(name) VALUES(?)", [bucket]);
-
-    if (lastOp != null) {
-      db.execute(
-          "UPDATE ps_buckets SET last_op = ? WHERE name = ?", [lastOp, bucket]);
-    }
-    if (targetOp != null) {
-      db.execute(
-          "UPDATE ps_buckets AS buckets SET target_op = MAX(?, buckets.target_op) WHERE name = ?",
-          [targetOp.toString(), bucket]);
-    }
-
-    for (final op in clearOps) {
-      db.execute(op.sql, op.args);
-    }
-
-    // Compact superseded ops immediately, but only _after_ clearing
-    if (firstOp != null && lastOp != null) {
-      db.execute("""UPDATE ps_buckets AS buckets
-    SET add_checksum = add_checksum + (SELECT IFNULL(SUM(hash), 0)
-    FROM ps_oplog AS oplog
-    WHERE superseded = 1
-    AND oplog.bucket = ?
-    AND oplog.op_id >= ?
-    AND oplog.op_id <= ?)
-    WHERE buckets.name = ?""", [bucket, firstOp, lastOp, bucket]);
-
-      db.execute("""DELETE
-              FROM ps_oplog
-              WHERE superseded = 1
-              AND bucket = ?
-              AND op_id >= ?
-              AND op_id <= ?""", [bucket, firstOp, lastOp]);
-    }
+  void _updateBucket2(sqlite.Database db, String json) {
+    db.execute('INSERT INTO powersync_operations(op, data) VALUES(?, ?)',
+        ['save', json]);
   }
 
   Future<void> removeBuckets(List<String> buckets) async {
@@ -214,19 +76,9 @@ class BucketStorage {
   }
 
   Future<void> deleteBucket(String bucket) async {
-    final newName = "\$delete_${bucket}_${uuid.v4()}";
-
     await writeTransaction((db) {
-      db.execute(
-          "UPDATE ps_oplog SET op=${OpType.remove.value}, data=NULL WHERE op=${OpType.put.value} AND superseded=0 AND bucket=?",
-          [bucket]);
-      // Rename bucket
-      db.execute(
-          "UPDATE ps_oplog SET bucket=? WHERE bucket=?", [newName, bucket]);
-      db.execute("DELETE FROM ps_buckets WHERE name = ?", [bucket]);
-      db.execute(
-          "INSERT INTO ps_buckets(name, pending_delete, last_op) SELECT ?, 1, IFNULL(MAX(op_id), 0) FROM ps_oplog WHERE bucket = ?",
-          [newName, newName]);
+      db.execute('INSERT INTO powersync_operations(op, data) VALUES(?, ?)',
+          ['delete_bucket', bucket]);
     });
 
     _pendingBucketDeletes = true;
@@ -279,251 +131,30 @@ class BucketStorage {
 
   Future<bool> updateObjectsFromBuckets(Checkpoint checkpoint) async {
     return writeTransaction((db) {
-      if (!_canUpdateLocal(db)) {
+      db.execute("INSERT INTO powersync_operations(op, data) VALUES(?, ?)",
+          ['sync_local', '']);
+      final rs = db.select('SELECT last_insert_rowid() as result');
+      final result = rs[0]['result'];
+      if (result == 1) {
+        return true;
+      } else {
+        // can_update_local(db) == false
         return false;
       }
-
-      // Updated objects
-      // TODO: Reduce memory usage
-      // Some options here:
-      // 1. Create a VIEW objects_updates, which contains triggers to update individual tables.
-      //    This works well for individual tables, but difficult to have a catch all for untyped data,
-      //    and performance degrades when we have hundreds of object types.
-      // 2. Similar, but use a TEMP TABLE instead. We can then query those from JS, and populate the tables from JS.
-      // 3. Skip the temp table, and query the data directly. Sorting and limiting becomes tricky.
-      // 3a. LIMIT on the first oplog step. This prevents us from using JOIN after this.
-      // 3b. LIMIT after the second oplog query
-
-      // QUERY PLAN
-      // |--SCAN buckets
-      // |--SEARCH b USING INDEX ps_oplog_by_opid (bucket=? AND op_id>?)
-      // |--SEARCH r USING INDEX ps_oplog_by_row (row_type=? AND row_id=?)
-      // `--USE TEMP B-TREE FOR GROUP BY
-      // language=DbSqlite
-      var stmt = db.prepare(
-          """-- 3. Group the objects from different buckets together into a single one (ops).
-         SELECT r.row_type as type,
-                r.row_id as id,
-                r.data as data,
-                json_group_array(r.bucket) FILTER (WHERE r.op=${OpType.put.value}) as buckets,
-                /* max() affects which row is used for 'data' */
-                max(r.op_id) FILTER (WHERE r.op=${OpType.put.value}) as op_id
-         -- 1. Filter oplog by the ops added but not applied yet (oplog b).
-         FROM ps_buckets AS buckets
-                CROSS JOIN ps_oplog AS b ON b.bucket = buckets.name
-              AND (b.op_id > buckets.last_applied_op)
-                -- 2. Find *all* current ops over different buckets for those objects (oplog r).
-                INNER JOIN ps_oplog AS r
-                           ON r.row_type = b.row_type
-                             AND r.row_id = b.row_id
-         WHERE r.superseded = 0
-           AND b.superseded = 0
-         -- Group for (3)
-         GROUP BY r.row_type, r.row_id
-        """);
-      try {
-        // TODO: Perhaps we don't need batching for this?
-        var cursor = stmt.selectCursor([]);
-        List<sqlite.Row> rows = [];
-        while (cursor.moveNext()) {
-          var row = cursor.current;
-          rows.add(row);
-
-          if (rows.length >= 10000) {
-            saveOps(db, rows);
-            rows = [];
-          }
-        }
-        if (rows.isNotEmpty) {
-          saveOps(db, rows);
-        }
-      } finally {
-        stmt.dispose();
-      }
-
-      db.execute("""UPDATE ps_buckets
-                SET last_applied_op = last_op
-                WHERE last_applied_op != last_op""");
-
-      isolateLogger.fine('Applied checkpoint ${checkpoint.lastOpId}');
-      return true;
     });
   }
 
-  // { type: string; id: string; data: string; buckets: string; op_id: string }[]
-  void saveOps(sqlite.Database db, List<sqlite.Row> rows) {
-    Map<String, List<sqlite.Row>> byType = {};
-    for (final row in rows) {
-      byType.putIfAbsent(row['type'], () => []).add(row);
-    }
-
-    for (final entry in byType.entries) {
-      final type = entry.key;
-      final typeRows = entry.value;
-      final table = _getTypeTableName(type);
-
-      // Note that "PUT" and "DELETE" are split, and not applied in row order.
-      // So we only do either PUT or DELETE for each individual object, not both.
-      final Set<String> removeIds = {};
-      List<sqlite.Row> puts = [];
-      for (final row in typeRows) {
-        if (row['buckets'] == '[]') {
-          removeIds.add(row['id']);
-        } else {
-          puts.add(row);
-          removeIds.remove(row['id']);
-        }
-      }
-
-      puts = puts.where((update) => !removeIds.contains(update['id'])).toList();
-
-      if (tableNames.contains(table)) {
-        db.execute("""REPLACE INTO "$table"(id, data)
-               SELECT json_extract(json_each.value, '\$.id'),
-                      json_extract(json_each.value, '\$.data')
-               FROM json_each(?)""", [jsonEncode(puts)]);
-
-        db.execute("""DELETE
-        FROM "$table"
-        WHERE id IN (SELECT json_each.value FROM json_each(?))""", [
-          jsonEncode([...removeIds])
-        ]);
-      } else {
-        db.execute(r"""REPLACE INTO ps_untyped(type, id, data)
-        SELECT ?,
-      json_extract(json_each.value, '$.id'),
-      json_extract(json_each.value, '$.data')
-    FROM json_each(?)""", [type, jsonEncode(puts)]);
-
-        db.execute("""DELETE FROM ps_untyped
-    WHERE type = ?
-    AND id IN (SELECT json_each.value FROM json_each(?))""",
-            [type, jsonEncode(removeIds.toList())]);
-      }
-    }
-  }
-
-  bool _canUpdateLocal(sqlite.Database db) {
-    final invalidBuckets = db.select(
-        "SELECT name, target_op, last_op, last_applied_op FROM ps_buckets WHERE target_op > last_op AND (name = '\$local' OR pending_delete = 0)");
-    if (invalidBuckets.isNotEmpty) {
-      if (invalidBuckets.first['name'] == '\$local') {
-        isolateLogger.fine('Waiting for local changes to be acknowledged');
-      } else {
-        isolateLogger.fine('Waiting for more data: $invalidBuckets');
-      }
-      return false;
-    }
-    // This is specifically relevant for when data is added to crud before another batch is completed.
-    final rows = db.select('SELECT 1 FROM ps_crud LIMIT 1');
-    if (rows.isNotEmpty) {
-      return false;
-    }
-    return true;
-  }
-
   SyncLocalDatabaseResult validateChecksums(Checkpoint checkpoint) {
-    final rows = select("""WITH
-     bucket_list(bucket, lower_op_id) AS (
-         SELECT
-                json_extract(json_each.value, '\$.bucket') as bucket,
-                json_extract(json_each.value, '\$.last_op_id') as lower_op_id
-         FROM json_each(?)
-         )
-      SELECT
-         buckets.name as bucket,
-         buckets.add_checksum as add_checksum,
-         IFNULL(SUM(oplog.hash), 0) as oplog_checksum,
-         COUNT(oplog.op_id) as count,
-         CAST(MAX(oplog.op_id) as TEXT) as last_op_id,
-         CAST(buckets.last_applied_op as TEXT) as last_applied_op
-       FROM bucket_list
-         LEFT OUTER JOIN ps_buckets AS buckets ON
-             buckets.name = bucket_list.bucket
-         LEFT OUTER JOIN ps_oplog AS oplog ON
-             bucket_list.bucket = oplog.bucket AND
-             oplog.op_id <= ? AND oplog.op_id > bucket_list.lower_op_id
-       GROUP BY bucket_list.bucket""", [
-      jsonEncode(checkpoint.checksums
-          .map((checksum) => {
-                'bucket': checksum.bucket,
-                'last_op_id':
-                    _checksumCache?.checksums[checksum.bucket]?.lastOpId ?? '0'
-              })
-          .toList()),
-      checkpoint.lastOpId
-    ]);
-
-    Map<String, BucketChecksum> byBucket = {};
-    if (_checksumCache != null) {
-      final checksums = _checksumCache!.checksums;
-      for (var row in rows) {
-        final String? bucket = row['bucket'];
-        if (bucket == null) {
-          continue;
-        }
-        if (BigInt.parse(row['last_applied_op']) >
-            BigInt.parse(_checksumCache!.lastOpId)) {
-          throw AssertionError(
-              "assertion failed: ${row['last_applied_op']} > ${_checksumCache!.lastOpId}");
-        }
-        int checksum;
-        String? lastOpId = row['last_op_id'];
-        if (checksums.containsKey(bucket)) {
-          // All rows may have been filtered out, in which case we use the previous one
-          lastOpId ??= checksums[bucket]!.lastOpId;
-          checksum =
-              (checksums[bucket]!.checksum + row['oplog_checksum'] as int)
-                  .toSigned(32);
-        } else {
-          checksum = (row['add_checksum'] + row['oplog_checksum']).toSigned(32);
-        }
-        byBucket[bucket] = BucketChecksum(
-            bucket: bucket,
-            checksum: checksum,
-            count: row['count'],
-            lastOpId: lastOpId);
-      }
-    } else {
-      for (final row in rows) {
-        final String? bucket = row['bucket'];
-        if (bucket == null) {
-          continue;
-        }
-        final int c1 = row['add_checksum'];
-        final int c2 = row['oplog_checksum'];
-
-        final checksum = (c1 + c2).toSigned(32);
-
-        byBucket[bucket] = BucketChecksum(
-            bucket: bucket,
-            checksum: checksum,
-            count: row['count'],
-            lastOpId: row['last_op_id']);
-      }
-    }
-
-    List<String> failedChecksums = [];
-    for (final checksum in checkpoint.checksums) {
-      final local = byBucket[checksum.bucket] ??
-          BucketChecksum(bucket: checksum.bucket, checksum: 0, count: 0);
-      // Note: Count is informational only.
-      if (local.checksum != checksum.checksum) {
-        isolateLogger.warning(
-            'Checksum mismatch for ${checksum.bucket}: local ${local.checksum} != remote ${checksum.checksum}. Likely due to sync rule changes.');
-        failedChecksums.add(checksum.bucket);
-      }
-    }
-    if (failedChecksums.isEmpty) {
-      // FIXME: Checksum cache disabled since it's broken when add_checksum is modified
-      // _checksumCache = ChecksumCache(checkpoint.lastOpId, byBucket);
+    final rs = select("SELECT powersync_validate_checkpoint(?) as result",
+        [jsonEncode(checkpoint)]);
+    final result = jsonDecode(rs[0]['result']);
+    if (result['valid']) {
       return SyncLocalDatabaseResult(ready: true);
     } else {
-      _checksumCache = null;
       return SyncLocalDatabaseResult(
-          ready: false,
           checkpointValid: false,
-          checkpointFailures: failedChecksums);
+          ready: false,
+          checkpointFailures: result['failed_buckets'].cast<String>());
     }
   }
 
@@ -564,10 +195,8 @@ class BucketStorage {
     if (_pendingBucketDeletes) {
       // Executed once after start-up, and again when there are pending deletes.
       await writeTransaction((db) {
-        db.execute(
-            'DELETE FROM ps_oplog WHERE bucket IN (SELECT name FROM ps_buckets WHERE pending_delete = 1 AND last_applied_op = last_op AND last_op >= target_op)');
-        db.execute(
-            'DELETE FROM ps_buckets WHERE pending_delete = 1 AND last_applied_op = last_op AND last_op >= target_op');
+        db.execute('INSERT INTO powersync_operations(op, data) VALUES (?, ?)',
+            ['delete_pending_buckets', '']);
       });
       _pendingBucketDeletes = false;
     }
@@ -578,30 +207,10 @@ class BucketStorage {
       return;
     }
 
-    final rows = select(
-        'SELECT name, cast(last_applied_op as TEXT) as last_applied_op, cast(last_op as TEXT) as last_op FROM ps_buckets WHERE pending_delete = 0');
-    for (var row in rows) {
-      await writeTransaction((db) {
-        // Note: The row values here may be different from when queried. That should not be an issue.
-
-        db.execute("""UPDATE ps_buckets AS buckets
-           SET add_checksum = add_checksum + (SELECT IFNULL(SUM(hash), 0)
-                                              FROM ps_oplog AS oplog
-                                              WHERE (superseded = 1 OR op != ${OpType.put.value})
-                                                AND oplog.bucket = ?
-                                                AND oplog.op_id <= ?)
-           WHERE buckets.name = ?""",
-            [row['name'], row['last_applied_op'], row['name']]);
-        db.execute(
-            """DELETE
-           FROM ps_oplog
-           WHERE (superseded = 1 OR op != ${OpType.put.value})
-             AND bucket = ?
-             AND op_id <= ?""",
-            // Must use the same values as above
-            [row['name'], row['last_applied_op']]);
-      });
-    }
+    await writeTransaction((db) {
+      db.execute('INSERT INTO powersync_operations(op, data) VALUES (?, ?)',
+          ['clear_remove_ops', '']);
+    });
     _compactCounter = 0;
   }
 
@@ -750,6 +359,16 @@ class SyncBucketData {
         nextAfter = json['next_after'],
         data =
             (json['data'] as List).map((e) => OplogEntry.fromJson(e)).toList();
+
+  Map<String, dynamic> toJson() {
+    return {
+      'bucket': bucket,
+      'has_more': hasMore,
+      'after': after,
+      'next_after': nextAfter,
+      'data': data
+    };
+  }
 }
 
 class OplogEntry {
@@ -796,6 +415,18 @@ class OplogEntry {
   /// Relevant for put and remove ops.
   String get key {
     return "$rowType/$rowId/$subkey";
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'op_id': opId,
+      'op': op?.toJson(),
+      'object_type': rowType,
+      'object_id': rowId,
+      'checksum': checksum,
+      'subkey': subkey,
+      'data': data
+    };
   }
 }
 
@@ -868,17 +499,19 @@ enum OpType {
         return null;
     }
   }
-}
 
-/// Get a table name for a specific type. The table may or may not exist.
-///
-/// The table name must always be enclosed in "quotes" when using inside a SQL query.
-///
-/// @param type
-String _getTypeTableName(String type) {
-  // Test for invalid characters rather than escaping.
-  if (invalidSqliteCharacters.hasMatch(type)) {
-    throw AssertionError("Invalid characters in type name: $type");
+  String toJson() {
+    switch (this) {
+      case clear:
+        return 'CLEAR';
+      case move:
+        return 'MOVE';
+      case put:
+        return 'PUT';
+      case remove:
+        return 'REMOVE';
+      default:
+        return '';
+    }
   }
-  return "ps_data__$type";
 }

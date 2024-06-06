@@ -11,10 +11,8 @@ import 'abort_controller.dart';
 import 'bucket_storage.dart';
 import 'connector.dart';
 import 'crud.dart';
-import 'database_utils.dart';
 import 'isolate_completer.dart';
 import 'log.dart';
-import 'migrations.dart';
 import 'open_factory.dart';
 import 'powersync_update_notification.dart';
 import 'schema.dart';
@@ -154,7 +152,7 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
   Future<void> _init() async {
     statusStream = _statusStreamController.stream;
     await database.initialize();
-    await migrations.migrate(database);
+    await database.execute('SELECT powersync_init()');
     await updateSchema(schema);
   }
 
@@ -513,32 +511,6 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
   }
 
   @override
-  Future<T> writeTransaction<T>(
-      Future<T> Function(SqliteWriteContext tx) callback,
-      {Duration? lockTimeout,
-      String? debugContext}) async {
-    return writeLock((ctx) async {
-      return await internalTrackedWriteTransaction(ctx, callback);
-    },
-        lockTimeout: lockTimeout,
-        debugContext: debugContext ?? 'writeTransaction()');
-  }
-
-  @override
-  Future<sqlite.ResultSet> execute(String sql,
-      [List<Object?> parameters = const []]) async {
-    return writeLock((ctx) async {
-      try {
-        await ctx.execute(
-            'UPDATE ps_tx SET current_tx = next_tx, next_tx = next_tx + 1 WHERE id = 1');
-        return await ctx.execute(sql, parameters);
-      } finally {
-        await ctx.execute('UPDATE ps_tx SET current_tx = NULL WHERE id = 1');
-      }
-    }, debugContext: 'execute()');
-  }
-
-  @override
   Future<bool> getAutoCommit() {
     return database.getAutoCommit();
   }
@@ -560,13 +532,19 @@ Future<void> _powerSyncDatabaseIsolate(
   final upstreamDbClient = args.dbRef.upstreamPort.open();
 
   sqlite.Database? db;
-  rPort.listen((message) {
+  final mutex = args.dbRef.mutex.open();
+
+  rPort.listen((message) async {
     if (message is List) {
       String action = message[0];
       if (action == 'update') {
         updateController.add('update');
       } else if (action == 'close') {
+        // This prevents any further transactions being opened, which would
+        // eventually terminate the sync loop.
+        await mutex.close();
         db?.dispose();
+        db = null;
         updateController.close();
         upstreamDbClient.close();
         Isolate.current.kill();
@@ -604,7 +582,6 @@ Future<void> _powerSyncDatabaseIsolate(
   }
 
   runZonedGuarded(() async {
-    final mutex = args.dbRef.mutex.open();
     db = await args.dbRef.openFactory
         .open(SqliteOpenOptions(primaryConnection: false, readOnly: false));
 
@@ -645,6 +622,8 @@ Future<void> _powerSyncDatabaseIsolate(
     // This should be rare - any uncaught error is a bug. And in most cases,
     // it should occur after the database is already open.
     db?.dispose();
+    db = null;
+    mutex.close();
     throw error;
   });
 }
