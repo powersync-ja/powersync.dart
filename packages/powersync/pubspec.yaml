@@ -12,7 +12,7 @@ dependencies:
 
   sqlite_async: ^0.6.1
   sqlite3_flutter_libs: ^0.5.23
-  powersync_flutter_libs: ^0.0.1
+  powersync_flutter_libs: ^0.1.0
   http: ^1.1.0
   uuid: ^4.2.0
   async: ^2.10.0

@@ -1,3 +1,7 @@
+## 1.4.1
+
+- Upgrades dependency `powersync_flutter_libs` to version `0.1.0`.
+
 ## 1.4.0
 
 - Introduces the use of the `powersync-sqlite-core` native extension.
