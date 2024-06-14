@@ -333,7 +333,7 @@ packages:
       path: "../../packages/powersync_flutter_libs"
       relative: true
     source: path
-    version: "0.0.1"
+    version: "0.1.0"
   realtime_client:
     dependency: transitive
     description:
