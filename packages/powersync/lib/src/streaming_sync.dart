@@ -37,6 +37,8 @@ class StreamingSyncImplementation {
 
   final Duration retryDelay;
 
+  final Map<String, dynamic>? syncParameters;
+
   SyncStatus lastStatus = const SyncStatus();
 
   StreamingSyncImplementation(
@@ -45,7 +47,8 @@ class StreamingSyncImplementation {
       this.invalidCredentialsCallback,
       required this.uploadCrud,
       required this.updateStream,
-      required this.retryDelay}) {
+      required this.retryDelay,
+      this.syncParameters}) {
     _client = http.Client();
     statusStream = _statusStreamController.stream;
   }
@@ -186,9 +189,9 @@ class StreamingSyncImplementation {
       initialBucketStates[entry.bucket] = entry.opId;
     }
 
-    final List<BucketRequest> req = [];
+    final List<BucketRequest> buckets = [];
     for (var entry in initialBucketStates.entries) {
-      req.add(BucketRequest(entry.key, entry.value));
+      buckets.add(BucketRequest(entry.key, entry.value));
     }
 
     Checkpoint? targetCheckpoint;
@@ -196,7 +199,8 @@ class StreamingSyncImplementation {
     Checkpoint? appliedCheckpoint;
     var bucketSet = Set<String>.from(initialBucketStates.keys);
 
-    var requestStream = streamingSyncRequest(StreamingSyncRequest(req));
+    var requestStream =
+        streamingSyncRequest(StreamingSyncRequest(buckets, syncParameters));
 
     var merged = addBroadcast(requestStream, _localPingController.stream);
 
