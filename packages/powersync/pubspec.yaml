@@ -1,5 +1,5 @@
 name: powersync
-version: 1.4.0
+version: 1.4.1
 homepage: https://powersync.com
 repository: https://github.com/powersync-ja/powersync.dart
 description: PowerSync Flutter SDK - keep PostgreSQL databases in sync with on-device SQLite databases.

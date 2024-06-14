@@ -406,7 +406,7 @@ packages:
       path: "../../packages/powersync"
       relative: true
     source: path
-    version: "1.4.0"
+    version: "1.4.1"
   powersync_attachments_helper:
     dependency: "direct main"
     description:
