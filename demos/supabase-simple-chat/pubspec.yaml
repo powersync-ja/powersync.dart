@@ -37,7 +37,7 @@ dependencies:
 
   supabase_flutter: ^1.10.25
   timeago: ^3.6.0
-  powersync: ^1.2.0
+  powersync: ^1.4.1
   path_provider: ^2.1.1
   path: ^1.8.3
   logging: ^1.2.0
