@@ -4,7 +4,7 @@
 
 ## 1.4.0
 
-- Introduces the use of the `powersync-sqlite-core` native extension.
+- Introduces the use of the `powersync-sqlite-core` native extension. This is our common Rust core which means all PowerSync SDKs now use the same core logic for PowerSync functionality, improving maintainability and support.
 - Added a new package dependency on `powersync_flutter_libs` for loading the extension.
 
 ## 1.3.1
