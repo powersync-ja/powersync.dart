@@ -1,3 +1,7 @@
+## 1.4.2
+
+- Added support for user parameters when connecting.
+
 ## 1.4.1
 
 - Upgrades dependency `powersync_flutter_libs` to version `0.1.0`.

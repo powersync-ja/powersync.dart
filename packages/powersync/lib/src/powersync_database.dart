@@ -78,6 +78,8 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
   /// Use [attachedLogger] to propagate logs to [Logger.root] for custom logging.
   late final Logger logger;
 
+  ConnectOptions? connectOptions;
+
   /// Open a [PowerSyncDatabase].
   ///
   /// Only a single [PowerSyncDatabase] per [path] should be opened at a time.
@@ -191,14 +193,20 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
 
       /// Throttle time between CRUD operations
       /// Defaults to 10 milliseconds.
-      Duration crudThrottleTime = const Duration(milliseconds: 10)}) async {
-    _connectMutex.lock(() =>
-        _connect(connector: connector, crudThrottleTime: crudThrottleTime));
+      Duration crudThrottleTime = const Duration(milliseconds: 10),
+      ConnectOptions? connectOptions}) async {
+    _connectMutex.lock(() => _connect(
+        connector: connector,
+        crudThrottleTime: crudThrottleTime,
+        connectOptions: connectOptions));
   }
 
   Future<void> _connect(
       {required PowerSyncBackendConnector connector,
-      required Duration crudThrottleTime}) async {
+      required Duration crudThrottleTime,
+      ConnectOptions? connectOptions}) async {
+    this.connectOptions = connectOptions;
+
     await initialize();
 
     // Disconnect if connected
@@ -289,8 +297,10 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
       return;
     }
 
-    Isolate.spawn(_powerSyncDatabaseIsolate,
-        _PowerSyncDatabaseIsolateArgs(rPort.sendPort, dbref, retryDelay),
+    Isolate.spawn(
+        _powerSyncDatabaseIsolate,
+        _PowerSyncDatabaseIsolateArgs(
+            rPort.sendPort, dbref, retryDelay, connectOptions?.parameters),
         debugName: 'PowerSyncDatabase',
         onError: errorPort.sendPort,
         onExit: exitPort.sendPort);
@@ -516,12 +526,21 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
   }
 }
 
+class ConnectOptions {
+  // Client parameters to be passed to the sync rules.
+  final Map<String, dynamic>? parameters;
+
+  ConnectOptions(this.parameters);
+}
+
 class _PowerSyncDatabaseIsolateArgs {
   final SendPort sPort;
   final IsolateConnectionFactory dbRef;
   final Duration retryDelay;
+  final Map<String, dynamic>? parameters;
 
-  _PowerSyncDatabaseIsolateArgs(this.sPort, this.dbRef, this.retryDelay);
+  _PowerSyncDatabaseIsolateArgs(
+      this.sPort, this.dbRef, this.retryDelay, this.parameters);
 }
 
 Future<void> _powerSyncDatabaseIsolate(
@@ -592,7 +611,8 @@ Future<void> _powerSyncDatabaseIsolate(
         invalidCredentialsCallback: invalidateCredentials,
         uploadCrud: uploadCrud,
         updateStream: updateController.stream,
-        retryDelay: args.retryDelay);
+        retryDelay: args.retryDelay,
+        syncParameters: args.parameters);
     sync.streamingSync();
     sync.statusStream.listen((event) {
       sPort.send(['status', event]);
