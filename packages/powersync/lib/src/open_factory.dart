@@ -84,7 +84,9 @@ class PowerSyncOpenFactory extends DefaultSqliteOpenFactory {
         SqliteExtension.inLibrary(powersyncLib, 'sqlite3_powersync_init'));
   }
 
+  /// Returns the dynamic library for the current platform.
   DynamicLibrary _getDynamicLibraryForPlatform() {
+    /// When running tests, we need to load the library for all platforms.
     if (Platform.environment.containsKey('FLUTTER_TEST')) {
       return DynamicLibrary.open(getLibraryForPlatform());
     }
