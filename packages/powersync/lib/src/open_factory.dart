@@ -79,14 +79,18 @@ class PowerSyncOpenFactory extends DefaultSqliteOpenFactory {
   }
 
   void enableExtension() {
-    var powersyncLib = Platform.isIOS || Platform.isMacOS
-        ? DynamicLibrary.process()
-        : DynamicLibrary.open(getLibraryForPlatform());
-    if (Platform.environment.containsKey('FLUTTER_TEST')) {
-      powersyncLib = DynamicLibrary.open(getLibraryForPlatform());
-    }
+    var powersyncLib = _getDynamicLibraryForPlatform();
     sqlite.sqlite3.ensureExtensionLoaded(
         SqliteExtension.inLibrary(powersyncLib, 'sqlite3_powersync_init'));
+  }
+
+  DynamicLibrary _getDynamicLibraryForPlatform() {
+    if (Platform.environment.containsKey('FLUTTER_TEST')) {
+      return DynamicLibrary.open(getLibraryForPlatform());
+    }
+    return (Platform.isIOS || Platform.isMacOS)
+        ? DynamicLibrary.process()
+        : DynamicLibrary.open(getLibraryForPlatform());
   }
 
   void setupFunctions(sqlite.Database db) {
