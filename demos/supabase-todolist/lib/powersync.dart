@@ -190,10 +190,7 @@ Future<void> openDatabase() async {
 
   // Demo using SQLite Full-Text Search with PowerSync.
   // See https://docs.powersync.com/usage-examples/full-text-search for more details
-  if (!kIsWeb) {
-    // FTS does not seem to work well on web currently
-    await configureFts(db);
-  }
+  await configureFts(db);
 }
 
 /// Explicit sign out - clear database and log out.

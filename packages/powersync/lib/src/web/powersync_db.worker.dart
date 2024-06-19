@@ -21,6 +21,7 @@ final class PowerSyncAsyncSqliteController extends AsyncSqliteController {
   Future<WorkerDatabase> openDatabase(
       WasmSqlite3 sqlite3, String path, String vfs) async {
     final db = sqlite3.open(path, vfs: vfs);
+    db.execute('PRAGMA recursive_triggers = TRUE');
     setupPowerSyncDatabase(db);
 
     return AsyncSqliteDatabase(database: db);
