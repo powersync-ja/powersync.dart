@@ -17,14 +17,18 @@ class AbortController {
   /// Abort, and wait until aborting is complete.
   Future<void> abort() async {
     aborted = true;
-    _abortRequested.complete();
+    if (!_abortRequested.isCompleted) {
+      _abortRequested.complete();
+    }
 
     await _abortCompleter.future;
   }
 
   /// Signal that an abort has completed.
   void completeAbort() {
-    _abortCompleter.complete();
+    if (!_abortCompleter.isCompleted) {
+      _abortCompleter.complete();
+    }
   }
 
   /// Signal that an abort has failed.
