@@ -1,3 +1,7 @@
+## 1.4.2
+
+- Fix `Bad state: Future already completed` error when calling `disconnectAndClear()`.
+
 ## 1.4.1
 
 - Upgrades dependency `powersync_flutter_libs` to version `0.1.0`.
