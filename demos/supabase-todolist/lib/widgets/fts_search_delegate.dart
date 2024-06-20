@@ -89,6 +89,7 @@ class FtsSearchDelegate extends SearchDelegate {
   }
 
   Future<List> _search() async {
+    if (query.isEmpty) return [];
     List listsSearchResults = await fts_helpers.search(query, 'lists');
     List todoItemsSearchResults = await fts_helpers.search(query, 'todos');
     List formattedListResults = listsSearchResults
