@@ -21,7 +21,7 @@ class PowerSyncOpenFactory extends AbstractPowerSyncOpenFactory {
   Future<SqliteConnection> openConnection(SqliteOpenOptions options) async {
     var conn = await super.openConnection(options);
     for (final statement in super.pragmaStatements(options)) {
-      conn.execute(statement);
+      await conn.execute(statement);
     }
 
     return super.openConnection(options);
