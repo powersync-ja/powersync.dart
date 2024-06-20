@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:powersync/src/open_factory/abstract_powersync_open_factory.dart';
 import 'package:powersync/src/uuid.dart';
 import 'package:sqlite_async/sqlite3_common.dart';
+import 'package:sqlite_async/sqlite_async.dart';
 
 /// Web implementation for [AbstractPowerSyncOpenFactory]
 class PowerSyncOpenFactory extends AbstractPowerSyncOpenFactory {
@@ -12,6 +15,16 @@ class PowerSyncOpenFactory extends AbstractPowerSyncOpenFactory {
   @override
   void enableExtension() {
     // No op for web
+  }
+
+  @override
+  Future<SqliteConnection> openConnection(SqliteOpenOptions options) async {
+    var conn = await super.openConnection(options);
+    for (final statement in super.pragmaStatements(options)) {
+      conn.execute(statement);
+    }
+
+    return super.openConnection(options);
   }
 
   @override
