@@ -1,3 +1,7 @@
+## 1.4.3
+
+- Added support for user parameters when connecting.
+
 ## 1.4.2
 
 - Fix `Bad state: Future already completed` error when calling `disconnectAndClear()`.

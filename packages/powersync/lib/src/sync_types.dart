@@ -112,15 +112,23 @@ Object? parseStreamingSyncLine(Map<String, dynamic> line) {
 class StreamingSyncRequest {
   List<BucketRequest> buckets;
   bool includeChecksum = true;
+  Map<String, dynamic>? parameters;
 
-  StreamingSyncRequest(this.buckets);
+  StreamingSyncRequest(this.buckets, this.parameters);
 
-  Map<String, dynamic> toJson() => {
-        'buckets': buckets,
-        'include_checksum': includeChecksum,
-        // We want the JSON row data as a string
-        'raw_data': true
-      };
+  Map<String, dynamic> toJson() {
+    final Map<String, dynamic> json = {
+      'buckets': buckets,
+      'include_checksum': includeChecksum,
+      'raw_data': true,
+    };
+
+    if (parameters != null) {
+      json['parameters'] = parameters;
+    }
+
+    return json;
+  }
 }
 
 class BucketRequest {
