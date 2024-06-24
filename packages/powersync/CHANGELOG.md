@@ -1,3 +1,7 @@
+## 1.3.0-alpha.6
+
+- Fix `Bad state: Future already completed` error when calling `disconnectAndClear()`.
+
 ## 1.3.1
 
 - Fix "Checksum mismatch" issue when calling `PowerSyncDatabase.connect` multiple times.
