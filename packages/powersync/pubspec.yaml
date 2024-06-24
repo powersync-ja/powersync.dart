@@ -10,7 +10,10 @@ dependencies:
   flutter:
     sdk: flutter
 
-  sqlite_async: ^0.6.1
+  sqlite_async:
+    git:
+      url: git@github.com:powersync-ja/sqlite_async.dart.git
+      ref: fix/update-sqlite3-return-value-error
   sqlite3_flutter_libs: ^0.5.23
   powersync_flutter_libs: ^0.1.0
   http: ^1.1.0

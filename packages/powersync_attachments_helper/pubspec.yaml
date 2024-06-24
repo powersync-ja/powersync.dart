@@ -12,7 +12,10 @@ dependencies:
 
   powersync: ^1.2.2
   logging: ^1.2.0
-  sqlite_async: ^0.6.1
+  sqlite_async:
+    git:
+      url: git@github.com:powersync-ja/sqlite_async.dart.git
+      ref: fix/update-sqlite3-return-value-error
   path_provider: ^2.0.13
 
 dev_dependencies:

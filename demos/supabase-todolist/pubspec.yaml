@@ -16,7 +16,10 @@ dependencies:
   supabase_flutter: ^2.0.1
   path: ^1.8.3
   logging: ^1.2.0
-  sqlite_async: ^0.6.0
+  sqlite_async:
+    git:
+      url: git@github.com:powersync-ja/sqlite_async.dart.git
+      ref: fix/update-sqlite3-return-value-error
   camera: ^0.10.5+7
   image: ^4.1.3
 
