@@ -78,7 +78,7 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
   /// Use [attachedLogger] to propagate logs to [Logger.root] for custom logging.
   late final Logger logger;
 
-  ConnectOptions? connectOptions;
+  Map<String, dynamic>? clientParams;
 
   /// Open a [PowerSyncDatabase].
   ///
@@ -194,18 +194,18 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
       /// Throttle time between CRUD operations
       /// Defaults to 10 milliseconds.
       Duration crudThrottleTime = const Duration(milliseconds: 10),
-      ConnectOptions? connectOptions}) async {
+      Map<String, dynamic>? params}) async {
     _connectMutex.lock(() => _connect(
         connector: connector,
         crudThrottleTime: crudThrottleTime,
-        connectOptions: connectOptions));
+        params: params));
   }
 
   Future<void> _connect(
       {required PowerSyncBackendConnector connector,
       required Duration crudThrottleTime,
-      ConnectOptions? connectOptions}) async {
-    this.connectOptions = connectOptions;
+      Map<String, dynamic>? params}) async {
+    clientParams = params;
 
     await initialize();
 
@@ -300,7 +300,7 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
     Isolate.spawn(
         _powerSyncDatabaseIsolate,
         _PowerSyncDatabaseIsolateArgs(
-            rPort.sendPort, dbref, retryDelay, connectOptions?.parameters),
+            rPort.sendPort, dbref, retryDelay, clientParams),
         debugName: 'PowerSyncDatabase',
         onError: errorPort.sendPort,
         onExit: exitPort.sendPort);
@@ -524,13 +524,6 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
   Future<bool> getAutoCommit() {
     return database.getAutoCommit();
   }
-}
-
-class ConnectOptions {
-  // Client parameters to be passed to the sync rules.
-  final Map<String, dynamic>? parameters;
-
-  ConnectOptions(this.parameters);
 }
 
 class _PowerSyncDatabaseIsolateArgs {
