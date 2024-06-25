@@ -1,3 +1,8 @@
+## 1.5.0
+
+- Upgrade minimum Dart SDK constraint to `3.4.0`.
+- Upgrade `sqlite_async` to version 0.7.0 which updates all Database types to use a `CommonDatabase` interface.
+
 ## 1.4.2
 
 - Fix `Bad state: Future already completed` error when calling `disconnectAndClear()`.

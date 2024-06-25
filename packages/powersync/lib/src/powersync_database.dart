@@ -3,8 +3,7 @@ import 'dart:isolate';
 
 import 'package:logging/logging.dart';
 import 'package:powersync/src/log_internal.dart';
-import 'package:sqlite_async/mutex.dart';
-import 'package:sqlite_async/sqlite3.dart' as sqlite;
+import 'package:sqlite_async/sqlite3_common.dart';
 import 'package:sqlite_async/sqlite_async.dart';
 
 import 'abort_controller.dart';
@@ -531,7 +530,7 @@ Future<void> _powerSyncDatabaseIsolate(
   StreamController updateController = StreamController.broadcast();
   final upstreamDbClient = args.dbRef.upstreamPort.open();
 
-  sqlite.Database? db;
+  CommonDatabase? db;
   final mutex = args.dbRef.mutex.open();
 
   rPort.listen((message) async {
@@ -582,7 +581,7 @@ Future<void> _powerSyncDatabaseIsolate(
   }
 
   runZonedGuarded(() async {
-    db = await args.dbRef.openFactory
+    db = args.dbRef.openFactory
         .open(SqliteOpenOptions(primaryConnection: false, readOnly: false));
 
     final storage = BucketStorage(db!, mutex: mutex);
