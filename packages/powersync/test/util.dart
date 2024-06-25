@@ -7,6 +7,7 @@ import 'package:powersync/powersync.dart';
 import 'package:powersync/sqlite3.dart' as sqlite;
 import 'package:powersync/sqlite_async.dart';
 import 'package:sqlite3/open.dart' as sqlite_open;
+import 'package:sqlite_async/sqlite3_common.dart';
 import 'package:test_api/src/backend/invoker.dart';
 
 const schema = Schema([
@@ -31,7 +32,7 @@ class TestOpenFactory extends PowerSyncOpenFactory {
   TestOpenFactory({required super.path});
 
   @override
-  sqlite.Database open(SqliteOpenOptions options) {
+  Future<CommonDatabase> open(SqliteOpenOptions options) async {
     sqlite_open.open.overrideFor(sqlite_open.OperatingSystem.linux, () {
       return DynamicLibrary.open('libsqlite3.so.0');
     });
