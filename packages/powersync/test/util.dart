@@ -4,7 +4,6 @@ import 'dart:io';
 
 import 'package:logging/logging.dart';
 import 'package:powersync/powersync.dart';
-import 'package:powersync/sqlite3.dart' as sqlite;
 import 'package:powersync/sqlite_async.dart';
 import 'package:sqlite3/open.dart' as sqlite_open;
 import 'package:sqlite_async/sqlite3_common.dart';

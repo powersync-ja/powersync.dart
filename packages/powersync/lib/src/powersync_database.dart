@@ -581,7 +581,7 @@ Future<void> _powerSyncDatabaseIsolate(
   }
 
   runZonedGuarded(() async {
-    db = await args.dbRef.openFactory
+    db = args.dbRef.openFactory
         .open(SqliteOpenOptions(primaryConnection: false, readOnly: false));
 
     final storage = BucketStorage(db!, mutex: mutex);
