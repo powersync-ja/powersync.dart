@@ -32,7 +32,7 @@ class TestOpenFactory extends PowerSyncOpenFactory {
   TestOpenFactory({required super.path});
 
   @override
-  Future<CommonDatabase> open(SqliteOpenOptions options) async {
+  CommonDatabase open(SqliteOpenOptions options) {
     sqlite_open.open.overrideFor(sqlite_open.OperatingSystem.linux, () {
       return DynamicLibrary.open('libsqlite3.so.0');
     });
@@ -79,7 +79,7 @@ Future<PowerSyncDatabase> setupPowerSync(
   return db;
 }
 
-Future<sqlite.Database> setupSqlite(
+Future<CommonDatabase> setupSqlite(
     {required PowerSyncDatabase powersync}) async {
   await powersync.initialize();
 

@@ -38,13 +38,13 @@ class PowerSyncOpenFactory extends DefaultSqliteOpenFactory {
       : _sqliteSetup = sqliteSetup;
 
   @override
-  Future<CommonDatabase> open(SqliteOpenOptions options) async {
+  CommonDatabase open(SqliteOpenOptions options) {
     // ignore: deprecated_member_use_from_same_package
     _sqliteSetup?.setup();
 
     enableExtension();
 
-    final db = await _retriedOpen(options);
+    final db = _retriedOpen(options);
     db.execute('PRAGMA recursive_triggers = TRUE');
     setupFunctions(db);
     return db;
@@ -61,7 +61,7 @@ class PowerSyncOpenFactory extends DefaultSqliteOpenFactory {
   /// Usually a delay of 1-2ms is sufficient for the next try to succeed, but
   /// we increase the retry delay up to 16ms per retry, and a maximum of 500ms
   /// in total.
-  FutureOr<CommonDatabase> _retriedOpen(SqliteOpenOptions options) async {
+  CommonDatabase _retriedOpen(SqliteOpenOptions options) {
     final stopwatch = Stopwatch()..start();
     var retryDelay = 2;
     while (stopwatch.elapsedMilliseconds < 500) {
