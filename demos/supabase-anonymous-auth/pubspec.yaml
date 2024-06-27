@@ -1,6 +1,6 @@
 name: supabase_anonymous_auth
 description: PowerSync Supabase Anonymous Auth Demo
-publish_to: 'none'
+publish_to: "none"
 
 version: 1.0.1
 
@@ -16,7 +16,7 @@ dependencies:
   supabase_flutter: ^2.0.2
   path: ^1.8.3
   logging: ^1.2.0
-  sqlite_async: ^0.7.0-alpha.4
+  sqlite_async: 0.7.0-alpha.5
   universal_io: ^2.2.2
 
 dev_dependencies:
