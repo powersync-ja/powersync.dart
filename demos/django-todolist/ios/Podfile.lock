@@ -1,6 +1,4 @@
 PODS:
-  - app_links (0.0.1):
-    - Flutter
   - Flutter (1.0.0)
   - path_provider_foundation (0.0.1):
     - Flutter
@@ -27,17 +25,13 @@ PODS:
     - sqlite3/fts5
     - sqlite3/perf-threadsafe
     - sqlite3/rtree
-  - url_launcher_ios (0.0.1):
-    - Flutter
 
 DEPENDENCIES:
-  - app_links (from `.symlinks/plugins/app_links/ios`)
   - Flutter (from `Flutter`)
   - path_provider_foundation (from `.symlinks/plugins/path_provider_foundation/darwin`)
   - powersync_flutter_libs (from `.symlinks/plugins/powersync_flutter_libs/ios`)
   - shared_preferences_foundation (from `.symlinks/plugins/shared_preferences_foundation/darwin`)
   - sqlite3_flutter_libs (from `.symlinks/plugins/sqlite3_flutter_libs/ios`)
-  - url_launcher_ios (from `.symlinks/plugins/url_launcher_ios/ios`)
 
 SPEC REPOS:
   trunk:
@@ -45,8 +39,6 @@ SPEC REPOS:
     - sqlite3
 
 EXTERNAL SOURCES:
-  app_links:
-    :path: ".symlinks/plugins/app_links/ios"
   Flutter:
     :path: Flutter
   path_provider_foundation:
@@ -57,11 +49,8 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/shared_preferences_foundation/darwin"
   sqlite3_flutter_libs:
     :path: ".symlinks/plugins/sqlite3_flutter_libs/ios"
-  url_launcher_ios:
-    :path: ".symlinks/plugins/url_launcher_ios/ios"
 
 SPEC CHECKSUMS:
-  app_links: e70ca16b4b0f88253b3b3660200d4a10b4ea9795
   Flutter: e0871f40cf51350855a761d2e70bf5af5b9b5de7
   path_provider_foundation: 3784922295ac71e43754bd15e0653ccfd36a147c
   powersync-sqlite-core: 4c38c8f470f6dca61346789fd5436a6826d1e3dd
@@ -69,7 +58,6 @@ SPEC CHECKSUMS:
   shared_preferences_foundation: b4c3b4cddf1c21f02770737f147a3f5da9d39695
   sqlite3: 292c3e1bfe89f64e51ea7fc7dab9182a017c8630
   sqlite3_flutter_libs: 0d611efdf6d1c9297d5ab03dab21b75aeebdae31
-  url_launcher_ios: 6116280ddcfe98ab8820085d8d76ae7449447586
 
 PODFILE CHECKSUM: f7b3cb7384a2d5da4b22b090e1f632de7f377987
 

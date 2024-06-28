@@ -1,7 +1,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="co.powersync.demotodolist">
    <application
-        android:label="PowerSync Supabase Demo"
+        android:label="PowerSync Django Demo"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
