@@ -13,10 +13,10 @@ packages:
     dependency: transitive
     description:
       name: archive
-      sha256: "0763b45fa9294197a2885c8567927e2830ade852e5c896fd4ab7e0e348d0f373"
+      sha256: cb6a278ef2dbb298455e1a713bda08524a175630ec643a242c399c932a0a1f7d
       url: "https://pub.dev"
     source: hosted
-    version: "3.5.0"
+    version: "3.6.1"
   async:
     dependency: transitive
     description:
@@ -37,18 +37,18 @@ packages:
     dependency: "direct main"
     description:
       name: camera
-      sha256: "9499cbc2e51d8eb0beadc158b288380037618ce4e30c9acbc4fae1ac3ecb5797"
+      sha256: dfa8fc5a1adaeb95e7a54d86a5bd56f4bb0e035515354c8ac6d262e35cec2ec8
       url: "https://pub.dev"
     source: hosted
-    version: "0.10.5+9"
+    version: "0.10.6"
   camera_android:
     dependency: transitive
     description:
       name: camera_android
-      sha256: "7b0aba6398afa8475e2bc9115d976efb49cf8db781e922572d443795c04a4f4f"
+      sha256: "4ef97ae90dab306a4ed8d5eee14c85fd8daf403ae22488b5617c848774396d72"
       url: "https://pub.dev"
     source: hosted
-    version: "0.10.9+1"
+    version: "0.10.9+6"
   camera_avfoundation:
     dependency: transitive
     description:
@@ -162,10 +162,10 @@ packages:
     dependency: transitive
     description:
       name: flutter_plugin_android_lifecycle
-      sha256: "8cf40eebf5dec866a6d1956ad7b4f7016e6c0cc69847ab946833b7d43743809f"
+      sha256: c6b0b4c05c458e1c01ad9bcc14041dd7b1f6783d487be4386f793f47a8a4d03e
       url: "https://pub.dev"
     source: hosted
-    version: "2.0.19"
+    version: "2.0.20"
   flutter_test:
     dependency: "direct dev"
     description: flutter
@@ -220,18 +220,10 @@ packages:
     dependency: "direct main"
     description:
       name: image
-      sha256: "4c68bfd5ae83e700b5204c1e74451e7bf3cf750e6843c6e158289cf56bda018e"
+      sha256: "2237616a36c0d69aef7549ab439b833fb7f9fb9fc861af2cc9ac3eedddd69ca8"
       url: "https://pub.dev"
     source: hosted
-    version: "4.1.7"
-  js:
-    dependency: transitive
-    description:
-      name: js
-      sha256: c1b2e9b5ea78c45e1a0788d29606ba27dc5f71f019f32ca5140f61ef071838cf
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.7.1"
+    version: "4.2.0"
   jwt_decode:
     dependency: transitive
     description:
@@ -403,26 +395,23 @@ packages:
   powersync:
     dependency: "direct main"
     description:
-      name: powersync
-      sha256: "7a08ee50a515ccd2de0b5c037fe48d88df1ae5f725df75bfef5468548f2008f6"
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.4.1"
+      path: "../../packages/powersync"
+      relative: true
+    source: path
+    version: "1.5.0"
   powersync_attachments_helper:
     dependency: "direct main"
     description:
-      name: powersync_attachments_helper
-      sha256: fff2a73951cf7459a1dd4fa0c0f59415fd442175b0a1ad8230ebefc4a764afa7
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.4.1"
+      path: "../../packages/powersync_attachments_helper"
+      relative: true
+    source: path
+    version: "0.5.0"
   powersync_flutter_libs:
-    dependency: transitive
+    dependency: "direct overridden"
     description:
-      name: powersync_flutter_libs
-      sha256: "449063aa4956c6be215ea7dfb9cc61255188e82cf7bc3f75621796fcc6615b70"
-      url: "https://pub.dev"
-    source: hosted
+      path: "../../packages/powersync_flutter_libs"
+      relative: true
+    source: path
     version: "0.1.0"
   realtime_client:
     dependency: transitive
@@ -529,26 +518,26 @@ packages:
     dependency: transitive
     description:
       name: sqlite3
-      sha256: "1abbeb84bf2b1a10e5e1138c913123c8aa9d83cd64e5f9a0dd847b3c83063202"
+      sha256: "6d17989c0b06a5870b2190d391925186f944cb943e5262d0d3f778fcfca3bc6e"
       url: "https://pub.dev"
     source: hosted
-    version: "2.4.2"
+    version: "2.4.4"
   sqlite3_flutter_libs:
     dependency: transitive
     description:
       name: sqlite3_flutter_libs
-      sha256: "9f89a7e7dc36eac2035808427eba1c3fbd79e59c3a22093d8dace6d36b1fe89e"
+      sha256: "62bbb4073edbcdf53f40c80775f33eea01d301b7b81417e5b3fb7395416258c1"
       url: "https://pub.dev"
     source: hosted
-    version: "0.5.23"
+    version: "0.5.24"
   sqlite_async:
     dependency: "direct main"
     description:
       name: sqlite_async
-      sha256: "139c8f1085132d0941b925efacb4fa0fed9ee40d624739cc26a051dbc36bf727"
+      sha256: "7c121bd76b9063cd8189ce54512f243709c88addeced0f3d027eea5db64d3220"
       url: "https://pub.dev"
     source: hosted
-    version: "0.6.1"
+    version: "0.7.0"
   stack_trace:
     dependency: transitive
     description:
@@ -766,5 +755,5 @@ packages:
     source: hosted
     version: "2.0.0"
 sdks:
-  dart: ">=3.3.0 <4.0.0"
-  flutter: ">=3.19.0"
+  dart: ">=3.4.0 <4.0.0"
+  flutter: ">=3.22.0"
