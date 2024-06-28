@@ -1,0 +1,29 @@
+name: powersync_flutter_demo
+description: PowerSync Flutter Demo
+publish_to: "none"
+
+version: 1.0.1
+
+environment:
+  sdk: ^3.2.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  powersync: ^1.5.0
+  path_provider: ^2.1.1
+  supabase_flutter: ^2.0.1
+  path: ^1.8.3
+  logging: ^1.2.0
+  sqlite_async: ^0.7.0
+  http: ^1.2.1
+  shared_preferences: ^2.2.3
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  flutter_lints: ^3.0.1
+
+flutter:
+  uses-material-design: true
