@@ -1,11 +1,11 @@
-name: powersync_flutter_demo
+name: powersync_django_todolist_demo
 description: PowerSync Django Todolist Demo
 publish_to: "none"
 
 version: 1.0.1
 
 environment:
-  sdk: ^3.2.0
+  sdk: ^3.4.0
 
 dependencies:
   flutter:
@@ -14,7 +14,7 @@ dependencies:
   path_provider: ^2.1.1
   path: ^1.8.3
   logging: ^1.2.0
-  sqlite_async: ^0.7.0
+  sqlite_async: ^0.6.1
   http: ^1.2.1
   shared_preferences: ^2.2.3
 
