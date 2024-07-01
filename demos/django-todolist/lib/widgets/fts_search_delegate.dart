@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
-import 'package:powersync_flutter_demo/fts_helpers.dart' as fts_helpers;
-import 'package:powersync_flutter_demo/models/todo_list.dart';
+import 'package:powersync_django_todolist_demo/fts_helpers.dart' as fts_helpers;
+import 'package:powersync_django_todolist_demo/models/todo_list.dart';
 
 import './todo_list_page.dart';
 

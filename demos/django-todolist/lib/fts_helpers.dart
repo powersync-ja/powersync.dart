@@ -1,4 +1,4 @@
-import 'package:powersync_flutter_demo/powersync.dart';
+import 'package:powersync_django_todolist_demo/powersync.dart';
 
 String _createSearchTermWithOptions(String searchTerm) {
   // adding * to the end of the search term will match any word that starts with the search term

@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:powersync/powersync.dart';
-import 'package:powersync_flutter_demo/widgets/fts_search_delegate.dart';
+import 'package:powersync_django_todolist_demo/widgets/fts_search_delegate.dart';
 import '../powersync.dart';
 
 class StatusAppBar extends StatefulWidget implements PreferredSizeWidget {

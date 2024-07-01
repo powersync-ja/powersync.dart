@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:powersync_flutter_demo/models/todo_item.dart';
+import 'package:powersync_django_todolist_demo/models/todo_item.dart';
 
 import './status_app_bar.dart';
 import './todo_item_dialog.dart';
