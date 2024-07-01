@@ -1,3 +1,7 @@
+## 1.3.0-alpha.7
+
+- Updates and uses the latest `sqlite_async` alpha.
+
 ## 1.3.0-alpha.6
 
 - Fix `Bad state: Future already completed` error when calling `disconnectAndClear()`.
