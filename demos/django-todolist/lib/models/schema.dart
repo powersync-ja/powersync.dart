@@ -15,9 +15,6 @@ Schema schema = const Schema(([
     // Index to allow efficient lookup within a list
     Index('list', [IndexedColumn('list_id')])
   ]),
-  Table('lists', [
-    Column.text('created_at'),
-    Column.text('name'),
-    Column.text('owner_id')
-  ])
+  Table('lists',
+      [Column.text('created_at'), Column.text('name'), Column.text('owner_id')])
 ]));

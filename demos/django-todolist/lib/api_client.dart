@@ -9,7 +9,8 @@ class ApiClient {
 
   ApiClient(this.baseUrl);
 
-  Future<Map<String, dynamic>> authenticate(String username, String password) async {
+  Future<Map<String, dynamic>> authenticate(
+      String username, String password) async {
     final response = await http.post(
       Uri.parse('$baseUrl/api/auth/'),
       headers: {'Content-Type': 'application/json'},

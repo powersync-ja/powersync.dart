@@ -87,7 +87,7 @@ class DjangoConnector extends PowerSyncBackendConnector {
 /// Global reference to the database
 late final PowerSyncDatabase db;
 
-// Hacky flag to ensure the database is only initialized once, better to do this with listeners 
+// Hacky flag to ensure the database is only initialized once, better to do this with listeners
 bool _dbInitialized = false;
 
 Future<bool> isLoggedIn() async {

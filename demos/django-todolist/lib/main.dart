@@ -9,7 +9,6 @@ import './widgets/login_page.dart';
 import './widgets/query_widget.dart';
 import './widgets/status_app_bar.dart';
 
-
 void main() async {
   Logger.root.level = Level.INFO;
   Logger.root.onRecord.listen((record) {
@@ -28,7 +27,7 @@ void main() async {
 
   WidgetsFlutterBinding
       .ensureInitialized(); //required to get sqlite filepath from path_provider before UI has initialized
-  
+
   await openDatabase();
 
   final loggedIn = await isLoggedIn();

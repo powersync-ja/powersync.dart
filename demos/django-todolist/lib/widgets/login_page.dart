@@ -47,11 +47,10 @@ class _LoginPageState extends State<LoginPage> {
 
         //re-init PowerSync manually for first time sign in
         await openDatabase();
-      }
-      else {
-          setState(() {
-            _error = 'Invalid token payload';
-          });
+      } else {
+        setState(() {
+          _error = 'Invalid token payload';
+        });
       }
 
       if (context.mounted) {
