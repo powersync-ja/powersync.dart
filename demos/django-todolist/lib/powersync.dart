@@ -5,7 +5,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:powersync/powersync.dart';
 import 'package:powersync_flutter_demo/migrations/fts_setup.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:powersync_flutter_demo/apiclient.dart';
+import 'package:powersync_flutter_demo/api_client.dart';
 
 import './app_config.dart';
 import './models/schema.dart';

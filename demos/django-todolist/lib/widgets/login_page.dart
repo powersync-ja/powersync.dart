@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:powersync_flutter_demo/apiclient.dart';
+import 'package:powersync_flutter_demo/api_client.dart';
 import 'package:powersync_flutter_demo/app_config.dart';
 import 'package:powersync_flutter_demo/powersync.dart';
 import 'package:shared_preferences/shared_preferences.dart';
