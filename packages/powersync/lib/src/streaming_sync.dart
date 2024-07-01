@@ -153,6 +153,7 @@ class StreamingSyncImplementation {
   /// To clear errors, use [_noError] instead of null.
   void _updateStatus(
       {DateTime? lastSyncedAt,
+      bool? hasSynced,
       bool? connected,
       bool? connecting,
       bool? downloading,
@@ -164,6 +165,7 @@ class StreamingSyncImplementation {
         connected: c,
         connecting: !c && (connecting ?? lastStatus.connecting),
         lastSyncedAt: lastSyncedAt ?? lastStatus.lastSyncedAt,
+        hasSynced: hasSynced ?? lastStatus.hasSynced,
         downloading: downloading ?? lastStatus.downloading,
         uploading: uploading ?? lastStatus.uploading,
         uploadError: uploadError == _noError
@@ -232,6 +234,7 @@ class StreamingSyncImplementation {
           _updateStatus(
               downloading: false,
               downloadError: _noError,
+              hasSynced: true,
               lastSyncedAt: DateTime.now());
         }
 
@@ -293,6 +296,7 @@ class StreamingSyncImplementation {
           _updateStatus(
               downloading: false,
               downloadError: _noError,
+              hasSynced: true,
               lastSyncedAt: DateTime.now());
         } else if (validatedCheckpoint == targetCheckpoint) {
           final result = await adapter.syncLocalDatabase(targetCheckpoint!);
@@ -310,6 +314,7 @@ class StreamingSyncImplementation {
             _updateStatus(
                 downloading: false,
                 downloadError: _noError,
+                hasSynced: true,
                 lastSyncedAt: DateTime.now());
           }
         }
