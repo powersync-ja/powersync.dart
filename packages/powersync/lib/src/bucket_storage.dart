@@ -4,8 +4,7 @@ import 'dart:convert';
 import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
 import 'package:powersync/sqlite_async.dart';
-import 'package:sqlite_async/sqlite3_common.dart' as sqlite;
-import 'package:sqlite_async/sqlite_async.dart';
+import 'package:powersync/sqlite3_common.dart' as sqlite;
 
 import 'crud.dart';
 import 'schema_helpers.dart';

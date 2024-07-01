@@ -453,6 +453,8 @@ void main() {
           throwsA((e) =>
               e is SqliteException && e.message.contains('no such table')));
 
+      await powersync.close();
+
       // Add schema again
       powersync = PowerSyncDatabase.withFactory(
           await testUtils.testFactory(path: path),

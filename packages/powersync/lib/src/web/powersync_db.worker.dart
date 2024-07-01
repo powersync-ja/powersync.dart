@@ -1,53 +1,34 @@
-library;
-
 /// This file needs to be compiled to JavaScript with the command
 /// dart compile js -O4 packages/powersync/lib/src/web/powersync_db.worker.dart -o assets/db_worker.js
 /// The output should then be included in each project's `web` directory
 
-import 'package:powersync/src/open_factory/common_db_functions.dart';
-import 'package:sqlite_async/drift.dart';
-import 'package:sqlite_async/sqlite3_common.dart';
-import 'package:uuid/uuid.dart';
+library;
 
-void setupPowerSyncDatabase(CommonDatabase database) {
-  setupCommonDBFunctions(database);
-  setupCommonWorkerDB(database);
-  final uuid = Uuid();
+import 'dart:js_interop';
 
-  database.createFunction(
-    functionName: 'uuid',
-    argumentCount: const AllowedArgumentCount(0),
-    function: (args) {
-      return uuid.v4();
-    },
-  );
-  database.createFunction(
-    // Postgres compatibility
-    functionName: 'gen_random_uuid',
-    argumentCount: const AllowedArgumentCount(0),
-    function: (args) => uuid.v4(),
-  );
-  database.createFunction(
-    functionName: 'powersync_sleep',
-    argumentCount: const AllowedArgumentCount(1),
-    function: (args) {
-      // Can't perform synchronous sleep on web
-      final millis = args[0] as int;
-      return millis;
-    },
-  );
+import 'package:sqlite_async/sqlite3_web_worker.dart';
+import 'package:sqlite_async/sqlite3_web.dart';
+import 'package:sqlite_async/sqlite3_wasm.dart';
 
-  database.createFunction(
-    functionName: 'powersync_connection_name',
-    argumentCount: const AllowedArgumentCount(0),
-    function: (args) {
-      return 'N/A';
-    },
-  );
-}
+import 'worker_utils.dart';
 
 void main() {
-  WasmDatabase.workerMainForOpen(
-    setupAllDatabases: setupPowerSyncDatabase,
-  );
+  WebSqlite.workerEntrypoint(controller: PowerSyncAsyncSqliteController());
+}
+
+final class PowerSyncAsyncSqliteController extends AsyncSqliteController {
+  @override
+  Future<WorkerDatabase> openDatabase(
+      WasmSqlite3 sqlite3, String path, String vfs) async {
+    final db = sqlite3.open(path, vfs: vfs);
+    setupPowerSyncDatabase(db);
+
+    return AsyncSqliteDatabase(database: db);
+  }
+
+  @override
+  Future<JSAny?> handleCustomRequest(
+      ClientConnection connection, JSAny? request) {
+    throw UnimplementedError();
+  }
 }
