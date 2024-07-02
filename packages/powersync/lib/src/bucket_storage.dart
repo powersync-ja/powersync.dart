@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:collection/collection.dart';
 import 'package:sqlite_async/mutex.dart';
 import 'package:sqlite_async/sqlite3.dart' as sqlite;
+import 'package:sqlite_async/sqlite3_common.dart';
 
 import 'crud.dart';
 import 'database_utils.dart';
@@ -13,13 +14,13 @@ import 'sync_types.dart';
 const compactOperationInterval = 1000;
 
 class BucketStorage {
-  final sqlite.Database _internalDb;
+  final CommonDatabase _internalDb;
   final Mutex mutex;
   bool _hasCompletedSync = false;
   bool _pendingBucketDeletes = false;
   int _compactCounter = compactOperationInterval;
 
-  BucketStorage(sqlite.Database db, {required this.mutex}) : _internalDb = db {
+  BucketStorage(CommonDatabase db, {required this.mutex}) : _internalDb = db {
     _init();
   }
 
@@ -64,7 +65,7 @@ class BucketStorage {
     _compactCounter += count;
   }
 
-  void _updateBucket2(sqlite.Database db, String json) {
+  void _updateBucket2(CommonDatabase db, String json) {
     db.execute('INSERT INTO powersync_operations(op, data) VALUES(?, ?)',
         ['save', json]);
   }
@@ -301,7 +302,7 @@ class BucketStorage {
   /// is assumed that multiple functions on this instance won't be called
   /// concurrently.
   Future<T> writeTransaction<T>(
-      FutureOr<T> Function(sqlite.Database tx) callback,
+      FutureOr<T> Function(CommonDatabase tx) callback,
       {Duration? lockTimeout}) async {
     return mutex.lock(() async {
       final r = await asyncDirectTransaction(_internalDb, callback);

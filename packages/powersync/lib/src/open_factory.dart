@@ -7,6 +7,7 @@ import 'dart:math';
 import 'package:powersync/sqlite3.dart';
 import 'package:powersync/src/exceptions.dart';
 import 'package:sqlite_async/sqlite3.dart' as sqlite;
+import 'package:sqlite_async/sqlite3_common.dart';
 import 'package:sqlite_async/sqlite_async.dart';
 
 /// Advanced: Define custom setup for each SQLite connection.
@@ -37,7 +38,7 @@ class PowerSyncOpenFactory extends DefaultSqliteOpenFactory {
       : _sqliteSetup = sqliteSetup;
 
   @override
-  sqlite.Database open(SqliteOpenOptions options) {
+  CommonDatabase open(SqliteOpenOptions options) {
     // ignore: deprecated_member_use_from_same_package
     _sqliteSetup?.setup();
 
@@ -60,7 +61,7 @@ class PowerSyncOpenFactory extends DefaultSqliteOpenFactory {
   /// Usually a delay of 1-2ms is sufficient for the next try to succeed, but
   /// we increase the retry delay up to 16ms per retry, and a maximum of 500ms
   /// in total.
-  sqlite.Database _retriedOpen(SqliteOpenOptions options) {
+  CommonDatabase _retriedOpen(SqliteOpenOptions options) {
     final stopwatch = Stopwatch()..start();
     var retryDelay = 2;
     while (stopwatch.elapsedMilliseconds < 500) {
@@ -79,14 +80,23 @@ class PowerSyncOpenFactory extends DefaultSqliteOpenFactory {
   }
 
   void enableExtension() {
-    var powersyncLib = Platform.isIOS || Platform.isMacOS
-        ? DynamicLibrary.process()
-        : DynamicLibrary.open(getLibraryForPlatform());
+    var powersyncLib = _getDynamicLibraryForPlatform();
     sqlite.sqlite3.ensureExtensionLoaded(
         SqliteExtension.inLibrary(powersyncLib, 'sqlite3_powersync_init'));
   }
 
-  void setupFunctions(sqlite.Database db) {
+  /// Returns the dynamic library for the current platform.
+  DynamicLibrary _getDynamicLibraryForPlatform() {
+    /// When running tests, we need to load the library for all platforms.
+    if (Platform.environment.containsKey('FLUTTER_TEST')) {
+      return DynamicLibrary.open(getLibraryForPlatform());
+    }
+    return (Platform.isIOS || Platform.isMacOS)
+        ? DynamicLibrary.process()
+        : DynamicLibrary.open(getLibraryForPlatform());
+  }
+
+  void setupFunctions(CommonDatabase db) {
     db.createFunction(
       functionName: 'powersync_sleep',
       argumentCount: const sqlite.AllowedArgumentCount(1),

@@ -1,6 +1,11 @@
-## 0.4.2
+## 0.5.1
 
 - Allow `dynamic` return types for `uploadFile` and `deleteFile`
+
+## 0.5.0
+
+- Upgrade minimum Dart SDK constraint to `3.4.0`.
+- Upgrade `sqlite_async` to version 0.7.0.
 
 ## 0.4.1
 
@@ -34,7 +39,7 @@
 ## 0.2.0
 
 - Potentially BREAKING CHANGE for users who rely on multiple attachment queues.
-  Moved away from randomly generating queue table name in favour of  a user creating a queue and table using a name of their choosing.
+  Moved away from randomly generating queue table name in favour of a user creating a queue and table using a name of their choosing.
 
 ## 0.1.5
 
