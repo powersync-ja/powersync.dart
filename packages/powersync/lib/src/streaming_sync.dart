@@ -42,6 +42,8 @@ class StreamingSyncImplementation {
 
   AbortController? _abort;
 
+  bool _safeToClose = true;
+
   StreamingSyncImplementation(
       {required this.adapter,
       required this.credentialsCallback,
@@ -65,10 +67,17 @@ class StreamingSyncImplementation {
     // According to the documentation, the behavior is undefined when calling
     // close() while requests are pending. However, this is no other
     // known way to cancel open streams, and this appears to end the stream with
-    // a consistent ClientException.
-    _client.close();
+    // a consistent ClientException if a request is open.
+    // We avoid closing the client while opening a request, as that does cause
+    // unpredicable uncaught errors.
+    if (_safeToClose) {
+      _client.close();
+    }
     // wait for completeAbort() to be called
     await future;
+
+    // Now close the client in all cases not covered above
+    _client.close();
   }
 
   bool get aborted {
@@ -375,7 +384,18 @@ class StreamingSyncImplementation {
     request.headers['Authorization'] = "Token ${credentials.token}";
     request.body = convert.jsonEncode(data);
 
-    final res = await _client.send(request);
+    http.StreamedResponse res;
+    try {
+      // Do not close the client during the request phase - this causes uncaught errors.
+      _safeToClose = false;
+      res = await _client.send(request);
+    } finally {
+      _safeToClose = true;
+    }
+    if (aborted) {
+      return;
+    }
+
     if (res.statusCode == 401) {
       if (invalidCredentialsCallback != null) {
         await invalidCredentialsCallback!();
