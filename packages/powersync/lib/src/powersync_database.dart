@@ -331,7 +331,7 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
     if (status != currentStatus) {
       currentStatus = status.copyWith(
           hasSynced: status.hasSynced ?? status.lastSyncedAt != null);
-      _statusStreamController.add(status);
+      _statusStreamController.add(currentStatus);
     }
   }
 
