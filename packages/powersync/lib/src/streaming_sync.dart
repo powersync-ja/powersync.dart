@@ -3,6 +3,7 @@ import 'dart:convert' as convert;
 import 'dart:io';
 
 import 'package:http/http.dart' as http;
+import 'package:powersync/src/abort_controller.dart';
 import 'package:powersync/src/exceptions.dart';
 import 'package:powersync/src/log_internal.dart';
 
@@ -39,6 +40,8 @@ class StreamingSyncImplementation {
 
   SyncStatus lastStatus = const SyncStatus();
 
+  AbortController? _abort;
+
   StreamingSyncImplementation(
       {required this.adapter,
       required this.credentialsCallback,
@@ -50,34 +53,66 @@ class StreamingSyncImplementation {
     statusStream = _statusStreamController.stream;
   }
 
+  /// Close any active streams.
+  Future<void> abort() async {
+    // If streamingSync() hasn't been called yet, _abort will be null.
+    var future = _abort?.abort();
+    // This immediately triggers a new iteration in the merged stream, allowing us
+    // to break immediately.
+    // However, we still need to close the underlying stream explicitly, otherwise
+    // the break will wait for the next line of data received on the stream.
+    _localPingController.add(null);
+    // According to the documentation, the behavior is undefined when calling
+    // close() while requests are pending. However, this is no other
+    // known way to cancel open streams, and this appears to end the stream with
+    // a consistent ClientException.
+    _client.close();
+    // wait for completeAbort() to be called
+    await future;
+  }
+
+  bool get aborted {
+    return _abort?.aborted ?? false;
+  }
+
   Future<void> streamingSync() async {
-    crudLoop();
-    var invalidCredentials = false;
-    while (true) {
-      _updateStatus(connecting: true);
-      try {
-        if (invalidCredentials && invalidCredentialsCallback != null) {
-          // This may error. In that case it will be retried again on the next
-          // iteration.
-          await invalidCredentialsCallback!();
-          invalidCredentials = false;
+    try {
+      _abort = AbortController();
+      crudLoop();
+      var invalidCredentials = false;
+      while (!aborted) {
+        _updateStatus(connecting: true);
+        try {
+          if (invalidCredentials && invalidCredentialsCallback != null) {
+            // This may error. In that case it will be retried again on the next
+            // iteration.
+            await invalidCredentialsCallback!();
+            invalidCredentials = false;
+          }
+          await streamingSyncIteration();
+          // Continue immediately
+        } catch (e, stacktrace) {
+          if (aborted && e is http.ClientException) {
+            // Explicit abort requested - ignore. Example error:
+            // ClientException: Connection closed while receiving data, uri=http://localhost:8080/sync/stream
+            return;
+          }
+          final message = _syncErrorMessage(e);
+          isolateLogger.warning('Sync error: $message', e, stacktrace);
+          invalidCredentials = true;
+
+          _updateStatus(
+              connected: false,
+              connecting: true,
+              downloading: false,
+              downloadError: e);
+
+          // On error, wait a little before retrying
+          await Future.delayed(retryDelay);
         }
-        await streamingSyncIteration();
-        // Continue immediately
-      } catch (e, stacktrace) {
-        final message = _syncErrorMessage(e);
-        isolateLogger.warning('Sync error: $message', e, stacktrace);
-        invalidCredentials = true;
-
-        _updateStatus(
-            connected: false,
-            connecting: true,
-            downloading: false,
-            downloadError: e);
-
-        // On error, wait a little before retrying
-        await Future.delayed(retryDelay);
       }
+    } finally {
+      _abort!.completeAbort();
     }
   }
 
@@ -204,6 +239,10 @@ class StreamingSyncImplementation {
     bool haveInvalidated = false;
 
     await for (var line in merged) {
+      if (aborted) {
+        break;
+      }
+
       _updateStatus(connected: true, connecting: false);
       if (line is Checkpoint) {
         targetCheckpoint = line;
@@ -348,6 +387,9 @@ class StreamingSyncImplementation {
 
     // Note: The response stream is automatically closed when this loop errors
     await for (var line in ndjson(res.stream)) {
+      if (aborted) {
+        break;
+      }
       yield parseStreamingSyncLine(line as Map<String, dynamic>);
     }
   }

@@ -532,6 +532,7 @@ Future<void> _powerSyncDatabaseIsolate(
 
   CommonDatabase? db;
   final mutex = args.dbRef.mutex.open();
+  StreamingSyncImplementation? _sync;
 
   rPort.listen((message) async {
     if (message is List) {
@@ -546,6 +547,9 @@ Future<void> _powerSyncDatabaseIsolate(
         db = null;
         updateController.close();
         upstreamDbClient.close();
+        // Abort any open http requests, and wait for it to be closed properly
+        await _sync?.abort();
+        // No kill the Isolate
         Isolate.current.kill();
       }
     }
@@ -592,6 +596,7 @@ Future<void> _powerSyncDatabaseIsolate(
         uploadCrud: uploadCrud,
         updateStream: updateController.stream,
         retryDelay: args.retryDelay);
+    _sync = sync;
     sync.streamingSync();
     sync.statusStream.listen((event) {
       sPort.send(['status', event]);
