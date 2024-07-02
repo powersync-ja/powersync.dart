@@ -1,3 +1,7 @@
+## 0.4.2
+
+- Allow `dynamic` return types for `uploadFile` and `deleteFile`
+
 ## 0.4.1
 
 - Reduce version number of `path_provider` to `2.0.13`
