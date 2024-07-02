@@ -61,6 +61,28 @@ class SyncStatus {
         other.hasSynced == hasSynced);
   }
 
+  SyncStatus copyWith({
+    bool? connected,
+    bool? downloading,
+    bool? uploading,
+    bool? connecting,
+    Object? uploadError,
+    Object? downloadError,
+    DateTime? lastSyncedAt,
+    bool? hasSynced,
+  }) {
+    return SyncStatus(
+      connected: connected ?? this.connected,
+      downloading: downloading ?? this.downloading,
+      uploading: uploading ?? this.uploading,
+      connecting: connecting ?? this.connecting,
+      uploadError: uploadError ?? this.uploadError,
+      downloadError: downloadError ?? this.downloadError,
+      lastSyncedAt: lastSyncedAt ?? this.lastSyncedAt,
+      hasSynced: hasSynced ?? this.hasSynced,
+    );
+  }
+
   /// Get the current [downloadError] or [uploadError].
   Object? get anyError {
     return downloadError ?? uploadError;

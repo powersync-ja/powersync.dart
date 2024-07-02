@@ -234,7 +234,6 @@ class StreamingSyncImplementation {
           _updateStatus(
               downloading: false,
               downloadError: _noError,
-              hasSynced: true,
               lastSyncedAt: DateTime.now());
         }
 
@@ -296,7 +295,6 @@ class StreamingSyncImplementation {
           _updateStatus(
               downloading: false,
               downloadError: _noError,
-              hasSynced: true,
               lastSyncedAt: DateTime.now());
         } else if (validatedCheckpoint == targetCheckpoint) {
           final result = await adapter.syncLocalDatabase(targetCheckpoint!);
@@ -314,7 +312,6 @@ class StreamingSyncImplementation {
             _updateStatus(
                 downloading: false,
                 downloadError: _noError,
-                hasSynced: true,
                 lastSyncedAt: DateTime.now());
           }
         }
