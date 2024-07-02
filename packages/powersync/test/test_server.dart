@@ -11,7 +11,6 @@ import 'package:shelf_router/shelf_router.dart';
 class TestServer {
   late HttpServer server;
   Router app = Router();
-  int connectionCount = 0;
   int maxConnectionCount = 0;
   int tokenExpiresIn;
 
@@ -27,19 +26,22 @@ class TestServer {
     return 'http://${server.address.host}:${server.port}';
   }
 
+  int get connectionCount {
+    return server.connectionsInfo().total;
+  }
+
+  HttpConnectionsInfo connectionsInfo() {
+    return server.connectionsInfo();
+  }
+
   Future<Response> handleSyncStream(Request request) async {
-    connectionCount += 1;
     maxConnectionCount = max(connectionCount, maxConnectionCount);
 
     stream() async* {
-      try {
-        var blob = "*" * 5000;
-        for (var i = 0; i < 50; i++) {
-          yield {"token_expires_in": tokenExpiresIn, "blob": blob};
-          await Future.delayed(Duration(microseconds: 1));
-        }
-      } finally {
-        connectionCount -= 1;
+      var blob = "*" * 5000;
+      for (var i = 0; i < 50; i++) {
+        yield {"token_expires_in": tokenExpiresIn, "blob": blob};
+        await Future.delayed(Duration(microseconds: 1));
       }
     }
 

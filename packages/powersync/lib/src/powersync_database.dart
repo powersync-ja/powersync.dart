@@ -223,13 +223,24 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
       /// Throttle time between CRUD operations
       /// Defaults to 10 milliseconds.
       Duration crudThrottleTime = const Duration(milliseconds: 10)}) async {
-    _connectMutex.lock(() =>
-        _connect(connector: connector, crudThrottleTime: crudThrottleTime));
+    Zone current = Zone.current;
+
+    Future<void> reconnect() {
+      return _connectMutex.lock(() => _connect(
+          connector: connector,
+          crudThrottleTime: crudThrottleTime,
+          // The reconnect function needs to run in the original zone,
+          // to avoid recursive lock errors.
+          reconnect: current.bindCallback(reconnect)));
+    }
+
+    await reconnect();
   }
 
   Future<void> _connect(
       {required PowerSyncBackendConnector connector,
-      required Duration crudThrottleTime}) async {
+      required Duration crudThrottleTime,
+      required Future<void> Function() reconnect}) async {
     await initialize();
 
     // Disconnect if connected
@@ -298,7 +309,9 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
       logger.severe('Sync Isolate error', message);
 
       // Reconnect
-      connect(connector: connector);
+      // Use the param like this instead of directly calling connect(), to avoid recursive
+      // locks in some edge cases.
+      reconnect();
     });
 
     disconnected() {
@@ -565,6 +578,7 @@ Future<void> _powerSyncDatabaseIsolate(
 
   CommonDatabase? db;
   final mutex = args.dbRef.mutex.open();
+  StreamingSyncImplementation? openedStreamingSync;
 
   rPort.listen((message) async {
     if (message is List) {
@@ -579,6 +593,9 @@ Future<void> _powerSyncDatabaseIsolate(
         db = null;
         updateController.close();
         upstreamDbClient.close();
+        // Abort any open http requests, and wait for it to be closed properly
+        await openedStreamingSync?.abort();
+        // No kill the Isolate
         Isolate.current.kill();
       }
     }
@@ -625,6 +642,7 @@ Future<void> _powerSyncDatabaseIsolate(
         uploadCrud: uploadCrud,
         updateStream: updateController.stream,
         retryDelay: args.retryDelay);
+    openedStreamingSync = sync;
     sync.streamingSync();
     sync.statusStream.listen((event) {
       sPort.send(['status', event]);
