@@ -52,7 +52,9 @@ class ListsWidget extends StatefulWidget {
 
 class _ListsWidgetState extends State<ListsWidget> {
   List<TodoList> _data = [];
+  bool hasSynced = false;
   StreamSubscription? _subscription;
+  StreamSubscription? _syncStatusSubscription;
 
   _ListsWidgetState();
 
@@ -68,21 +70,32 @@ class _ListsWidgetState extends State<ListsWidget> {
         _data = data;
       });
     });
+    _syncStatusSubscription = TodoList.watchSyncStatus().listen((status) {
+      if (!context.mounted) {
+        return;
+      }
+      setState(() {
+        hasSynced = status.hasSynced ?? false;
+      });
+    });
   }
 
   @override
   void dispose() {
     super.dispose();
     _subscription?.cancel();
+    _syncStatusSubscription?.cancel();
   }
 
   @override
   Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      children: _data.map((list) {
-        return ListItemWidget(list: list);
-      }).toList(),
-    );
+    return !hasSynced
+        ? const Text("Busy with sync...")
+        : ListView(
+            padding: const EdgeInsets.symmetric(vertical: 8.0),
+            children: _data.map((list) {
+              return ListItemWidget(list: list);
+            }).toList(),
+          );
   }
 }

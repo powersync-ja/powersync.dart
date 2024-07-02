@@ -153,6 +153,7 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
     await database.initialize();
     await database.execute('SELECT powersync_init()');
     await updateSchema(schema);
+    await _updateHasSynced();
   }
 
   /// Replace the schema with a new version.
@@ -173,6 +174,37 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
   /// While initializing is automatic, this helps to catch and report initialization errors.
   Future<void> initialize() {
     return _initialized;
+  }
+
+  Future<void> _updateHasSynced() async {
+    const syncedSQL =
+        'SELECT 1 FROM ps_buckets WHERE last_applied_op > 0 LIMIT 1';
+
+    // Query the database to see if any data has been synced.
+    final result = await database.execute(syncedSQL);
+    final hasSynced = result.rows.isNotEmpty;
+
+    if (hasSynced != currentStatus.hasSynced) {
+      final status = SyncStatus(hasSynced: hasSynced);
+      _setStatus(status);
+    }
+  }
+
+  ///
+  /// returns a [Future] which will resolve once the first full sync has completed.
+  ///
+  Future<void> waitForFirstSync() async {
+    if (currentStatus.hasSynced ?? false) {
+      return;
+    }
+    final completer = Completer<void>();
+    statusStream.listen((result) {
+      if (result.hasSynced ?? false) {
+        completer.complete();
+      }
+    });
+
+    return completer.future;
   }
 
   @override
@@ -310,8 +342,9 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
 
   void _setStatus(SyncStatus status) {
     if (status != currentStatus) {
-      currentStatus = status;
-      _statusStreamController.add(status);
+      currentStatus = status.copyWith(
+          hasSynced: status.hasSynced ?? status.lastSyncedAt != null);
+      _statusStreamController.add(currentStatus);
     }
   }
 

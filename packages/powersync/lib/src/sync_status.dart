@@ -24,6 +24,10 @@ class SyncStatus {
   /// Currently this is reset to null after a restart.
   final DateTime? lastSyncedAt;
 
+  /// Indicates whether there has been at least one full sync, if any.
+  /// Is null when unknown, for example when state is still being loaded from the database.
+  final bool? hasSynced;
+
   /// Error during uploading.
   ///
   /// Cleared on the next successful upload.
@@ -38,6 +42,7 @@ class SyncStatus {
       {this.connected = false,
       this.connecting = false,
       this.lastSyncedAt,
+      this.hasSynced,
       this.downloading = false,
       this.uploading = false,
       this.downloadError,
@@ -52,7 +57,30 @@ class SyncStatus {
         other.connecting == connecting &&
         other.downloadError == downloadError &&
         other.uploadError == uploadError &&
-        other.lastSyncedAt == lastSyncedAt);
+        other.lastSyncedAt == lastSyncedAt &&
+        other.hasSynced == hasSynced);
+  }
+
+  SyncStatus copyWith({
+    bool? connected,
+    bool? downloading,
+    bool? uploading,
+    bool? connecting,
+    Object? uploadError,
+    Object? downloadError,
+    DateTime? lastSyncedAt,
+    bool? hasSynced,
+  }) {
+    return SyncStatus(
+      connected: connected ?? this.connected,
+      downloading: downloading ?? this.downloading,
+      uploading: uploading ?? this.uploading,
+      connecting: connecting ?? this.connecting,
+      uploadError: uploadError ?? this.uploadError,
+      downloadError: downloadError ?? this.downloadError,
+      lastSyncedAt: lastSyncedAt ?? this.lastSyncedAt,
+      hasSynced: hasSynced ?? this.hasSynced,
+    );
   }
 
   /// Get the current [downloadError] or [uploadError].
@@ -68,7 +96,7 @@ class SyncStatus {
 
   @override
   String toString() {
-    return "SyncStatus<connected: $connected connecting: $connecting downloading: $downloading uploading: $uploading lastSyncedAt: $lastSyncedAt error: $anyError>";
+    return "SyncStatus<connected: $connected connecting: $connecting downloading: $downloading uploading: $uploading lastSyncedAt: $lastSyncedAt, hasSynced: $hasSynced, error: $anyError>";
   }
 }
 

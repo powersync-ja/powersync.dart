@@ -1,3 +1,8 @@
+## 1.5.1
+
+- Adds a hasSynced flag to check if initial data has been synced.
+- Adds a waitForFirstSync method to check if the first full sync has completed.
+
 ## 1.5.0
 
 - Upgrade minimum Dart SDK constraint to `3.4.0`.
