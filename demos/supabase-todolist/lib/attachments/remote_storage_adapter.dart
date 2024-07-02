@@ -7,7 +7,7 @@ import 'package:image/image.dart' as img;
 
 class SupabaseStorageAdapter implements AbstractRemoteStorageAdapter {
   @override
-  Future<String?> uploadFile(String filename, File file,
+  Future<String> uploadFile(String filename, File file,
       {String mediaType = 'text/plain'}) async {
     _checkSupabaseBucketIsConfigured();
 
