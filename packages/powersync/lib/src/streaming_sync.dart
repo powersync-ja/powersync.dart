@@ -117,7 +117,8 @@ class StreamingSyncImplementation {
               downloadError: e);
 
           // On error, wait a little before retrying
-          await Future.delayed(retryDelay);
+          // When aborting, don't wait
+          await Future.any([Future.delayed(retryDelay), _abort!.onAbort]);
         }
       }
     } finally {
