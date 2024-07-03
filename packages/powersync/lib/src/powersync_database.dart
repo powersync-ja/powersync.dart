@@ -197,14 +197,11 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
     if (currentStatus.hasSynced ?? false) {
       return;
     }
-    final completer = Completer<void>();
-    statusStream.listen((result) {
+    await for (final result in statusStream) {
       if (result.hasSynced ?? false) {
-        completer.complete();
+        break;
       }
-    });
-
-    return completer.future;
+    }
   }
 
   @override

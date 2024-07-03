@@ -1,3 +1,8 @@
+## 1.5.2
+
+- Refactor `waitForFirstSync()` to iterate through the stream and remove the use of a `Future`.
+- Fix sync connection not immediately closed when calling `db.disconnect()` (#114).
+
 ## 1.5.1
 
 - Adds a hasSynced flag to check if initial data has been synced.
