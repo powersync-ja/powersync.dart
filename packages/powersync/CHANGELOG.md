@@ -1,3 +1,7 @@
+## 1.5.2
+
+- Fix `Bad state: Future already completed` error when calling `waitForFirstSync()`.
+
 ## 1.5.1
 
 - Adds a hasSynced flag to check if initial data has been synced.
