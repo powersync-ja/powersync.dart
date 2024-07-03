@@ -199,7 +199,7 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
     }
     final completer = Completer<void>();
     statusStream.listen((result) {
-      if (result.hasSynced ?? false) {
+      if ((result.hasSynced ?? false) && !completer.isCompleted) {
         completer.complete();
       }
     });
