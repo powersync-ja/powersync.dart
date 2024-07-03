@@ -1,6 +1,7 @@
 ## 1.5.2
 
 - Fix `Bad state: Future already completed` error when calling `waitForFirstSync()`.
+- Fix sync connection not immediately closed when calling `db.disconnect()` (#114).
 
 ## 1.5.1
 
