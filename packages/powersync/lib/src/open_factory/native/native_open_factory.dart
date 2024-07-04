@@ -1,5 +1,4 @@
-import 'dart:async';
-import 'dart:io';
+import 'package:universal_io/io.dart';
 import 'dart:isolate';
 import 'package:powersync/src/open_factory/abstract_powersync_open_factory.dart';
 import 'package:sqlite_async/sqlite3.dart' as sqlite;
@@ -59,10 +58,10 @@ class PowerSyncOpenFactory extends AbstractPowerSyncOpenFactory {
   }
 
   @override
-  FutureOr<CommonDatabase> open(SqliteOpenOptions options) async {
+  CommonDatabase open(SqliteOpenOptions options) {
     // ignore: deprecated_member_use_from_same_package
     _sqliteSetup?.setup();
-    var db = await super.open(options);
+    var db = super.open(options);
     db.execute('PRAGMA recursive_triggers = TRUE');
     return db;
   }

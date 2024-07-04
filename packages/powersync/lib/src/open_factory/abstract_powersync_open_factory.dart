@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:universal_io/io.dart';
 import 'dart:math';
 
 import 'package:powersync/sqlite_async.dart';
@@ -28,8 +29,8 @@ abstract class AbstractPowerSyncOpenFactory extends DefaultSqliteOpenFactory {
   }
 
   @override
-  FutureOr<CommonDatabase> open(SqliteOpenOptions options) async {
-    var db = await _retriedOpen(options);
+  CommonDatabase open(SqliteOpenOptions options) {
+    var db = _retriedOpen(options);
     for (final statement in pragmaStatements(options)) {
       db.select(statement);
     }
@@ -48,7 +49,7 @@ abstract class AbstractPowerSyncOpenFactory extends DefaultSqliteOpenFactory {
   /// Usually a delay of 1-2ms is sufficient for the next try to succeed, but
   /// we increase the retry delay up to 16ms per retry, and a maximum of 500ms
   /// in total.
-  FutureOr<CommonDatabase> _retriedOpen(SqliteOpenOptions options) async {
+  CommonDatabase _retriedOpen(SqliteOpenOptions options) {
     final stopwatch = Stopwatch()..start();
     var retryDelay = 2;
     while (stopwatch.elapsedMilliseconds < 500) {
@@ -56,7 +57,7 @@ abstract class AbstractPowerSyncOpenFactory extends DefaultSqliteOpenFactory {
         return super.open(options);
       } catch (e) {
         if (e is SqliteException && e.resultCode == 5) {
-          await Future.delayed(Duration(milliseconds: retryDelay));
+          sleep(Duration(milliseconds: retryDelay));
           retryDelay = min(retryDelay * 2, 16);
           continue;
         }

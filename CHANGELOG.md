@@ -3,6 +3,35 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 2024-07-04
+
+### Changes
+
+---
+
+Packages with breaking changes:
+
+ - There are no breaking changes in this release.
+
+Packages with other changes:
+
+ - [`powersync` - `v1.3.0-alpha.8`](#powersync---v130-alpha8)
+ - [`powersync_attachments_helper` - `v0.3.0-alpha.3`](#powersync_attachments_helper---v030-alpha3)
+
+Packages with dependency updates only:
+
+> Packages listed below depend on other packages in this workspace that have had changes. Their versions have been incremented to bump the minimum dependency versions of the packages they depend upon in this project.
+
+ - `powersync_attachments_helper` - `v0.3.0-alpha.3`
+
+---
+
+#### `powersync` - `v1.3.0-alpha.8`
+
+ - **FIX**(powersync-attachements-helper): pubspec file (#29).
+ - **DOCS**: update readme and getting started (#51).
+
+
 ## 2024-05-30
 
 ### Changes

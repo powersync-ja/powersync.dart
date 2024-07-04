@@ -536,10 +536,10 @@ packages:
     dependency: transitive
     description:
       name: sqlite_async
-      sha256: bf989697c50db97043702c625330895a8ebec4491548a8e46d315b9f60b7582e
+      sha256: "7c5a9bec86b6f5b7511b9ba30974fa7ea470aee2dc0d5b7021f6321a439a8d63"
       url: "https://pub.dev"
     source: hosted
-    version: "0.7.0-alpha.5"
+    version: "0.8.0"
   stack_trace:
     dependency: transitive
     description:
