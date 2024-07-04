@@ -1,3 +1,8 @@
+## 1.3.0-alpha.8
+
+ - **FIX**(powersync-attachements-helper): pubspec file (#29).
+ - **DOCS**: update readme and getting started (#51).
+
 ## 1.3.0-alpha.7
 
 - Updates and uses the latest `sqlite_async` alpha.
