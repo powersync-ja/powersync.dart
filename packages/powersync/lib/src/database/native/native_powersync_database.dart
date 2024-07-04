@@ -325,7 +325,7 @@ Future<void> _powerSyncDatabaseIsolate(
   }
 
   runZonedGuarded(() async {
-    db = await args.dbRef.openFactory
+    db = args.dbRef.openFactory
         .open(SqliteOpenOptions(primaryConnection: false, readOnly: false));
     final connection = SyncSqliteConnection(db!, mutex);
 
