@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:powersync/src/abort_controller.dart';
 import 'package:powersync/src/exceptions.dart';
 import 'package:powersync/src/log_internal.dart';
+import 'package:sqlite_async/mutex.dart';
 
 import 'bucket_storage.dart';
 import 'connector.dart';
@@ -37,6 +38,8 @@ class StreamingSyncImplementation {
 
   SyncStatus lastStatus = const SyncStatus();
 
+  final Mutex syncMutex, crudMutex;
+
   StreamingSyncImplementation(
       {required this.adapter,
       required this.credentialsCallback,
@@ -44,7 +47,13 @@ class StreamingSyncImplementation {
       required this.uploadCrud,
       required this.updateStream,
       required this.retryDelay,
-      required http.Client client}) {
+      required http.Client client,
+
+      /// A unique identifier for this streaming sync implementation
+      /// A good value is typically the DB file path which it will mutate when syncing.
+      String? identifier = "unknown"})
+      : syncMutex = Mutex(identifier: "sync-${identifier}"),
+        crudMutex = Mutex(identifier: "crud-${identifier}") {
     _client = client;
     statusStream = _statusStreamController.stream;
   }
@@ -65,8 +74,10 @@ class StreamingSyncImplementation {
           await invalidCredentialsCallback!();
           invalidCredentials = false;
         }
-        await streamingSyncIteration(abortController: abortController);
-        // Continue immediately
+        // Protect sync iterations with exclusivity (if a valid Mutex is provided)
+        await syncMutex.lock(
+            () => streamingSyncIteration(abortController: abortController),
+            timeout: retryDelay);
       } catch (e, stacktrace) {
         final message = _syncErrorMessage(e);
         isolateLogger.warning('Sync error: $message', e, stacktrace);
@@ -110,21 +121,23 @@ class StreamingSyncImplementation {
   }
 
   Future<bool> uploadCrudBatch() async {
-    if ((await adapter.hasCrud())) {
-      _updateStatus(uploading: true);
-      await uploadCrud();
-      return false;
-    } else {
-      // This isolate is the only one triggering
-      final updated = await adapter.updateLocalTarget(() async {
-        return getWriteCheckpoint();
-      });
-      if (updated) {
-        _localPingController.add(null);
-      }
+    return crudMutex.lock(() async {
+      if ((await adapter.hasCrud())) {
+        _updateStatus(uploading: true);
+        await uploadCrud();
+        return false;
+      } else {
+        // This isolate is the only one triggering
+        final updated = await adapter.updateLocalTarget(() async {
+          return getWriteCheckpoint();
+        });
+        if (updated) {
+          _localPingController.add(null);
+        }
 
-      return true;
-    }
+        return true;
+      }
+    }, timeout: retryDelay);
   }
 
   Future<String> getWriteCheckpoint() async {
