@@ -52,8 +52,8 @@ class StreamingSyncImplementation {
       /// A unique identifier for this streaming sync implementation
       /// A good value is typically the DB file path which it will mutate when syncing.
       String? identifier = "unknown"})
-      : syncMutex = Mutex(identifier: "sync-${identifier}"),
-        crudMutex = Mutex(identifier: "crud-${identifier}") {
+      : syncMutex = Mutex(identifier: "sync-$identifier"),
+        crudMutex = Mutex(identifier: "crud-$identifier") {
     _client = client;
     statusStream = _statusStreamController.stream;
   }
