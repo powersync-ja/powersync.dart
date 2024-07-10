@@ -77,6 +77,8 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
   /// Use [attachedLogger] to propagate logs to [Logger.root] for custom logging.
   late final Logger logger;
 
+  Map<String, dynamic>? clientParams;
+
   /// Open a [PowerSyncDatabase].
   ///
   /// Only a single [PowerSyncDatabase] per [path] should be opened at a time.
@@ -219,7 +221,8 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
 
       /// Throttle time between CRUD operations
       /// Defaults to 10 milliseconds.
-      Duration crudThrottleTime = const Duration(milliseconds: 10)}) async {
+      Duration crudThrottleTime = const Duration(milliseconds: 10),
+      Map<String, dynamic>? params}) async {
     Zone current = Zone.current;
 
     Future<void> reconnect() {
@@ -228,7 +231,8 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
           crudThrottleTime: crudThrottleTime,
           // The reconnect function needs to run in the original zone,
           // to avoid recursive lock errors.
-          reconnect: current.bindCallback(reconnect)));
+          reconnect: current.bindCallback(reconnect),
+          params: params));
     }
 
     await reconnect();
@@ -237,7 +241,9 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
   Future<void> _connect(
       {required PowerSyncBackendConnector connector,
       required Duration crudThrottleTime,
-      required Future<void> Function() reconnect}) async {
+      required Future<void> Function() reconnect,
+      Map<String, dynamic>? params}) async {
+    clientParams = params;
     await initialize();
 
     // Disconnect if connected
@@ -330,8 +336,10 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
       return;
     }
 
-    Isolate.spawn(_powerSyncDatabaseIsolate,
-        _PowerSyncDatabaseIsolateArgs(rPort.sendPort, dbref, retryDelay),
+    Isolate.spawn(
+        _powerSyncDatabaseIsolate,
+        _PowerSyncDatabaseIsolateArgs(
+            rPort.sendPort, dbref, retryDelay, clientParams),
         debugName: 'PowerSyncDatabase',
         onError: errorPort.sendPort,
         onExit: exitPort.sendPort);
@@ -562,8 +570,10 @@ class _PowerSyncDatabaseIsolateArgs {
   final SendPort sPort;
   final IsolateConnectionFactory dbRef;
   final Duration retryDelay;
+  final Map<String, dynamic>? parameters;
 
-  _PowerSyncDatabaseIsolateArgs(this.sPort, this.dbRef, this.retryDelay);
+  _PowerSyncDatabaseIsolateArgs(
+      this.sPort, this.dbRef, this.retryDelay, this.parameters);
 }
 
 Future<void> _powerSyncDatabaseIsolate(
@@ -638,7 +648,9 @@ Future<void> _powerSyncDatabaseIsolate(
         invalidCredentialsCallback: invalidateCredentials,
         uploadCrud: uploadCrud,
         updateStream: updateController.stream,
-        retryDelay: args.retryDelay);
+        retryDelay: args.retryDelay,
+        syncParameters: args.parameters);
+
     openedStreamingSync = sync;
     sync.streamingSync();
     sync.statusStream.listen((event) {

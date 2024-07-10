@@ -1,3 +1,7 @@
+## 1.5.3
+
+- Added support for client parameters when connecting.
+
 ## 1.5.2
 
 - Refactor `waitForFirstSync()` to iterate through the stream and remove the use of a `Future`.
