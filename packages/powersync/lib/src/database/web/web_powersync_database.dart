@@ -134,9 +134,8 @@ class PowerSyncDatabaseImpl
 
     await isInitialized;
 
-    // TODO multitab support
+    // TODO better multitab support
     final storage = BucketStorage(database);
-
     final sync = StreamingSyncImplementation(
         adapter: storage,
         credentialsCallback: connector.getCredentialsCached,
@@ -144,7 +143,10 @@ class PowerSyncDatabaseImpl
         uploadCrud: () => connector.uploadData(this),
         updateStream: updates,
         retryDelay: Duration(seconds: 3),
-        client: FetchClient(mode: RequestMode.cors));
+        client: FetchClient(mode: RequestMode.cors),
+        // Only allows 1 sync implementation to run at a time per database
+        // This should be global (across tabs) when using Navigator locks.
+        identifier: database.openFactory.path);
     sync.statusStream.listen((event) {
       setStatus(event);
     });
