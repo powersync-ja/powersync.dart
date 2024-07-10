@@ -590,12 +590,11 @@ packages:
   sqlite_async:
     dependency: "direct main"
     description:
-      path: "packages/sqlite_async"
-      ref: "feat/navigator-locks"
-      resolved-ref: "588d92f3dc98ab2629d2b420ad607639b835214b"
-      url: "https://github.com/powersync-ja/sqlite_async.dart.git"
-    source: git
-    version: "0.8.0"
+      name: sqlite_async
+      sha256: "79e636c857ed43f6cd5e5be72b36967a29f785daa63ff5b078bd34f74f44cb54"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.8.1"
   stack_trace:
     dependency: transitive
     description:

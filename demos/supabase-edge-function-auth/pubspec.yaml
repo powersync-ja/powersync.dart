@@ -16,11 +16,7 @@ dependencies:
   supabase_flutter: ^2.0.2
   path: ^1.8.3
   logging: ^1.2.0
-  sqlite_async:
-    git:
-      url: https://github.com/powersync-ja/sqlite_async.dart.git
-      ref: feat/navigator-locks
-      path: packages/sqlite_async
+  sqlite_async: ^0.8.1
   universal_io: ^2.2.2
 
 dev_dependencies:
