@@ -3,6 +3,7 @@ import 'package:powersync/src/bucket_storage.dart';
 import 'package:powersync/src/sync_types.dart';
 import 'package:sqlite_async/sqlite3.dart' as sqlite;
 import 'package:sqlite_async/mutex.dart';
+import 'package:sqlite_async/sqlite3_common.dart';
 import 'package:test/test.dart';
 
 import 'util.dart';
@@ -40,7 +41,7 @@ const removeAsset1_5 = OplogEntry(
 void main() {
   group('Bucket Storage Tests', () {
     late PowerSyncDatabase powersync;
-    late sqlite.Database db;
+    late CommonDatabase db;
     late BucketStorage bucketStorage;
     late String path;
 

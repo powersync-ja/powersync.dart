@@ -1,6 +1,21 @@
-## 1.4.3
+## 1.5.3
 
-- Added support for user parameters when connecting.
+- Added support for client parameters when connecting.
+
+## 1.5.2
+
+- Refactor `waitForFirstSync()` to iterate through the stream and remove the use of a `Future`.
+- Fix sync connection not immediately closed when calling `db.disconnect()` (#114).
+
+## 1.5.1
+
+- Adds a hasSynced flag to check if initial data has been synced.
+- Adds a waitForFirstSync method to check if the first full sync has completed.
+
+## 1.5.0
+
+- Upgrade minimum Dart SDK constraint to `3.4.0`.
+- Upgrade `sqlite_async` to version 0.7.0 which updates all Database types to use a `CommonDatabase` interface.
 
 ## 1.4.2
 

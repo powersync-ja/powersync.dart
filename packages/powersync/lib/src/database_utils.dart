@@ -1,9 +1,10 @@
 import 'dart:async';
 
 import 'package:sqlite_async/sqlite3.dart' as sqlite;
+import 'package:sqlite_async/sqlite3_common.dart';
 
-Future<T> asyncDirectTransaction<T>(sqlite.Database db,
-    FutureOr<T> Function(sqlite.Database db) callback) async {
+Future<T> asyncDirectTransaction<T>(
+    CommonDatabase db, FutureOr<T> Function(CommonDatabase db) callback) async {
   for (var i = 50; i >= 0; i--) {
     try {
       db.execute('BEGIN IMMEDIATE');

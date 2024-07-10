@@ -59,6 +59,15 @@ void main() {
 
         await pdb.close();
 
+        // Give some time for connections to close
+        final watch = Stopwatch()..start();
+        while (server.connectionCount != 0 && watch.elapsedMilliseconds < 100) {
+          await Future.delayed(Duration(milliseconds: random.nextInt(10)));
+        }
+
+        expect(server.connectionCount, equals(0));
+        expect(server.maxConnectionCount, lessThanOrEqualTo(1));
+
         server.close();
       }
     });

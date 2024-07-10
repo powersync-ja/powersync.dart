@@ -3,8 +3,7 @@ import 'dart:isolate';
 
 import 'package:logging/logging.dart';
 import 'package:powersync/src/log_internal.dart';
-import 'package:sqlite_async/mutex.dart';
-import 'package:sqlite_async/sqlite3.dart' as sqlite;
+import 'package:sqlite_async/sqlite3_common.dart';
 import 'package:sqlite_async/sqlite_async.dart';
 
 import 'abort_controller.dart';
@@ -156,6 +155,7 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
     await database.initialize();
     await database.execute('SELECT powersync_init()');
     await updateSchema(schema);
+    await _updateHasSynced();
   }
 
   /// Replace the schema with a new version.
@@ -178,6 +178,34 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
     return _initialized;
   }
 
+  Future<void> _updateHasSynced() async {
+    const syncedSQL =
+        'SELECT 1 FROM ps_buckets WHERE last_applied_op > 0 LIMIT 1';
+
+    // Query the database to see if any data has been synced.
+    final result = await database.execute(syncedSQL);
+    final hasSynced = result.rows.isNotEmpty;
+
+    if (hasSynced != currentStatus.hasSynced) {
+      final status = SyncStatus(hasSynced: hasSynced);
+      _setStatus(status);
+    }
+  }
+
+  ///
+  /// returns a [Future] which will resolve once the first full sync has completed.
+  ///
+  Future<void> waitForFirstSync() async {
+    if (currentStatus.hasSynced ?? false) {
+      return;
+    }
+    await for (final result in statusStream) {
+      if (result.hasSynced ?? false) {
+        break;
+      }
+    }
+  }
+
   @override
   bool get closed {
     return database.closed;
@@ -195,18 +223,27 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
       /// Defaults to 10 milliseconds.
       Duration crudThrottleTime = const Duration(milliseconds: 10),
       Map<String, dynamic>? params}) async {
-    _connectMutex.lock(() => _connect(
-        connector: connector,
-        crudThrottleTime: crudThrottleTime,
-        params: params));
+    Zone current = Zone.current;
+
+    Future<void> reconnect() {
+      return _connectMutex.lock(() => _connect(
+          connector: connector,
+          crudThrottleTime: crudThrottleTime,
+          // The reconnect function needs to run in the original zone,
+          // to avoid recursive lock errors.
+          reconnect: current.bindCallback(reconnect),
+          params: params));
+    }
+
+    await reconnect();
   }
 
   Future<void> _connect(
       {required PowerSyncBackendConnector connector,
       required Duration crudThrottleTime,
+      required Future<void> Function() reconnect,
       Map<String, dynamic>? params}) async {
     clientParams = params;
-
     await initialize();
 
     // Disconnect if connected
@@ -275,7 +312,9 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
       logger.severe('Sync Isolate error', message);
 
       // Reconnect
-      connect(connector: connector);
+      // Use the param like this instead of directly calling connect(), to avoid recursive
+      // locks in some edge cases.
+      reconnect();
     });
 
     disconnected() {
@@ -308,8 +347,9 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
 
   void _setStatus(SyncStatus status) {
     if (status != currentStatus) {
-      currentStatus = status;
-      _statusStreamController.add(status);
+      currentStatus = status.copyWith(
+          hasSynced: status.hasSynced ?? status.lastSyncedAt != null);
+      _statusStreamController.add(currentStatus);
     }
   }
 
@@ -543,8 +583,9 @@ Future<void> _powerSyncDatabaseIsolate(
   StreamController updateController = StreamController.broadcast();
   final upstreamDbClient = args.dbRef.upstreamPort.open();
 
-  sqlite.Database? db;
+  CommonDatabase? db;
   final mutex = args.dbRef.mutex.open();
+  StreamingSyncImplementation? openedStreamingSync;
 
   rPort.listen((message) async {
     if (message is List) {
@@ -559,6 +600,9 @@ Future<void> _powerSyncDatabaseIsolate(
         db = null;
         updateController.close();
         upstreamDbClient.close();
+        // Abort any open http requests, and wait for it to be closed properly
+        await openedStreamingSync?.abort();
+        // No kill the Isolate
         Isolate.current.kill();
       }
     }
@@ -594,7 +638,7 @@ Future<void> _powerSyncDatabaseIsolate(
   }
 
   runZonedGuarded(() async {
-    db = await args.dbRef.openFactory
+    db = args.dbRef.openFactory
         .open(SqliteOpenOptions(primaryConnection: false, readOnly: false));
 
     final storage = BucketStorage(db!, mutex: mutex);
@@ -606,6 +650,8 @@ Future<void> _powerSyncDatabaseIsolate(
         updateStream: updateController.stream,
         retryDelay: args.retryDelay,
         syncParameters: args.parameters);
+
+    openedStreamingSync = sync;
     sync.streamingSync();
     sync.statusStream.listen((event) {
       sPort.send(['status', event]);
