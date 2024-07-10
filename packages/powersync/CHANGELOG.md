@@ -1,3 +1,7 @@
+## 1.3.0-alpha.9
+
+ - Updated sqlite_async to use Navigator locks for limiting sync stream implementions in multiple tabs
+
 ## 1.3.0-alpha.8
 
 - **FIX**(powersync-attachements-helper): pubspec file (#29).
