@@ -3,7 +3,7 @@ import 'dart:html';
 
 import 'package:js/js.dart';
 import 'package:powersync/powersync.dart';
-import 'package:sqlite3/src/database.dart';
+import 'package:sqlite_async/sqlite3_common.dart';
 import 'package:sqlite_async/sqlite_async.dart';
 import 'package:test/test.dart';
 import 'abstract_test_utils.dart';

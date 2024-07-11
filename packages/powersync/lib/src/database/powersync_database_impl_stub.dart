@@ -113,7 +113,9 @@ class PowerSyncDatabaseImpl
   @internal
   Future<void> baseConnect(
       {required PowerSyncBackendConnector connector,
-      Duration crudThrottleTime = const Duration(milliseconds: 10)}) {
+      required Duration crudThrottleTime,
+      required Future<void> Function() reconnect,
+      Map<String, dynamic>? params}) {
     throw UnimplementedError();
   }
 }

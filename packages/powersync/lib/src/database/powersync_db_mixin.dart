@@ -7,10 +7,9 @@ import 'package:powersync/src/abort_controller.dart';
 import 'package:powersync/src/connector.dart';
 import 'package:powersync/src/crud.dart';
 import 'package:powersync/src/database_utils.dart';
-import 'package:powersync/src/migrations.dart';
 import 'package:powersync/src/powersync_update_notification.dart';
 import 'package:powersync/src/schema.dart';
-import 'package:powersync/src/schema_helpers.dart';
+import 'package:powersync/src/schema_logic.dart';
 import 'package:powersync/src/sync_status.dart';
 import 'package:sqlite_async/sqlite3_common.dart';
 
@@ -78,7 +77,6 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
         .cast<UpdateNotification>();
 
     await database.initialize();
-    await migrations.migrate(database);
     await updateSchema(schema);
   }
 
@@ -128,9 +126,21 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
 
       /// Throttle time between CRUD operations
       /// Defaults to 10 milliseconds.
-      Duration crudThrottleTime = const Duration(milliseconds: 10)}) async {
-    _connectMutex.lock(() =>
-        baseConnect(connector: connector, crudThrottleTime: crudThrottleTime));
+      Duration crudThrottleTime = const Duration(milliseconds: 10),
+      Map<String, dynamic>? params}) async {
+    Zone current = Zone.current;
+
+    Future<void> reconnect() {
+      return _connectMutex.lock(() => baseConnect(
+          connector: connector,
+          crudThrottleTime: crudThrottleTime,
+          // The reconnect function needs to run in the original zone,
+          // to avoid recursive lock errors.
+          reconnect: current.bindCallback(reconnect),
+          params: params));
+    }
+
+    await reconnect();
   }
 
   /// Abstract connection method to be implemented by platform specific
@@ -143,7 +153,9 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
 
       /// Throttle time between CRUD operations
       /// Defaults to 10 milliseconds.
-      Duration crudThrottleTime = const Duration(milliseconds: 10)});
+      required Duration crudThrottleTime,
+      required Future<void> Function() reconnect,
+      Map<String, dynamic>? params});
 
   /// Close the sync connection.
   ///
@@ -345,32 +357,6 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
   @override
   Future<T> writeLock<T>(Future<T> Function(SqliteWriteContext tx) callback,
       {String? debugContext, Duration? lockTimeout});
-
-  @override
-  Future<T> writeTransaction<T>(
-      Future<T> Function(SqliteWriteContext tx) callback,
-      {Duration? lockTimeout,
-      String? debugContext}) async {
-    return writeLock((ctx) async {
-      return await internalTrackedWriteTransaction(ctx, callback);
-    },
-        lockTimeout: lockTimeout,
-        debugContext: debugContext ?? 'writeTransaction()');
-  }
-
-  @override
-  Future<ResultSet> execute(String sql,
-      [List<Object?> parameters = const []]) async {
-    return writeLock((ctx) async {
-      try {
-        await ctx.execute(
-            'UPDATE ps_tx SET current_tx = next_tx, next_tx = next_tx + 1 WHERE id = 1');
-        return await ctx.execute(sql, parameters);
-      } finally {
-        await ctx.execute('UPDATE ps_tx SET current_tx = NULL WHERE id = 1');
-      }
-    }, debugContext: 'execute()');
-  }
 
   @override
   Future<bool> getAutoCommit() {

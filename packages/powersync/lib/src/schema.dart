@@ -1,4 +1,4 @@
-import './schema_helpers.dart';
+import 'schema_logic.dart';
 
 /// The schema used by the database.
 ///
@@ -9,6 +9,8 @@ class Schema {
   final List<Table> tables;
 
   const Schema(this.tables);
+
+  Map<String, dynamic> toJson() => {'tables': tables};
 }
 
 /// A single table in the schema.
@@ -130,6 +132,15 @@ class Table {
   String get viewName {
     return _viewNameOverride ?? name;
   }
+
+  Map<String, dynamic> toJson() => {
+        'name': name,
+        'view_name': _viewNameOverride,
+        'local_only': localOnly,
+        'insert_only': insertOnly,
+        'columns': columns,
+        'indexes': indexes.map((e) => e.toJson(this)).toList(growable: false)
+      };
 }
 
 class Index {
@@ -155,13 +166,10 @@ class Index {
     return "${table.internalName}__$name";
   }
 
-  /// Internal use only.
-  ///
-  /// Returns a SQL statement that creates this index.
-  String toSqlDefinition(Table table) {
-    var fields = columns.map((column) => column.toSql(table)).join(', ');
-    return 'CREATE INDEX "${fullName(table)}" ON "${table.internalName}"($fields)';
-  }
+  Map<String, dynamic> toJson(Table table) => {
+        'name': name,
+        'columns': columns.map((c) => c.toJson(table)).toList(growable: false)
+      };
 }
 
 /// Describes an indexed column.
@@ -176,14 +184,10 @@ class IndexedColumn {
   const IndexedColumn.ascending(this.column) : ascending = true;
   const IndexedColumn.descending(this.column) : ascending = false;
 
-  String toSql(Table table) {
-    final fullColumn = table[column]; // errors if not found
+  Map<String, dynamic> toJson(Table table) {
+    final t = table[column].type;
 
-    if (ascending) {
-      return mapColumn(fullColumn);
-    } else {
-      return "${mapColumn(fullColumn)} DESC";
-    }
+    return {'name': column, 'ascending': ascending, 'type': t.sqlite};
   }
 }
 
@@ -211,6 +215,8 @@ class Column {
 
   /// Create a REAL column.
   const Column.real(this.name) : type = ColumnType.real;
+
+  Map<String, dynamic> toJson() => {'name': name, 'type': type.sqlite};
 }
 
 /// Type of column.

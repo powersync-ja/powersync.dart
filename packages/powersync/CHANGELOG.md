@@ -1,3 +1,35 @@
+## 1.5.3
+
+- Added support for client parameters when connecting.
+
+## 1.5.2
+
+- Refactor `waitForFirstSync()` to iterate through the stream and remove the use of a `Future`.
+- Fix sync connection not immediately closed when calling `db.disconnect()` (#114).
+
+## 1.5.1
+
+- Adds a hasSynced flag to check if initial data has been synced.
+- Adds a waitForFirstSync method to check if the first full sync has completed.
+
+## 1.5.0
+
+- Upgrade minimum Dart SDK constraint to `3.4.0`.
+- Upgrade `sqlite_async` to version 0.7.0 which updates all Database types to use a `CommonDatabase` interface.
+
+## 1.4.2
+
+- Fix `Bad state: Future already completed` error when calling `disconnectAndClear()`.
+
+## 1.4.1
+
+- Upgrades dependency `powersync_flutter_libs` to version `0.1.0`.
+
+## 1.4.0
+
+- Introduces the use of the `powersync-sqlite-core` native extension. This is our common Rust core which means all PowerSync SDKs now use the same core logic for PowerSync functionality, improving maintainability and support.
+- Added a new package dependency on `powersync_flutter_libs` for loading the extension.
+
 ## 1.3.0-alpha.9
 
 - Updated sqlite_async to use Navigator locks for limiting sync stream implementations in multiple tabs

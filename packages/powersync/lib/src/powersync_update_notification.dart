@@ -1,5 +1,5 @@
 import 'package:sqlite_async/sqlite_async.dart';
-import 'schema_helpers.dart';
+import 'schema_logic.dart';
 
 class PowerSyncUpdateNotification extends UpdateNotification {
   PowerSyncUpdateNotification(super.tables);

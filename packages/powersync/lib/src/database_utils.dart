@@ -1,10 +1,10 @@
 import 'dart:async';
 
+import 'package:sqlite_async/sqlite3_common.dart';
 import 'package:sqlite_async/sqlite_async.dart';
-import 'package:sqlite_async/sqlite3_common.dart' as sqlite;
 
-Future<T> asyncDirectTransaction<T>(sqlite.CommonDatabase db,
-    FutureOr<T> Function(sqlite.CommonDatabase db) callback) async {
+Future<T> asyncDirectTransaction<T>(
+    CommonDatabase db, FutureOr<T> Function(CommonDatabase db) callback) async {
   for (var i = 50; i >= 0; i--) {
     try {
       db.execute('BEGIN IMMEDIATE');
@@ -23,7 +23,7 @@ Future<T> asyncDirectTransaction<T>(sqlite.CommonDatabase db,
 
       return result;
     } catch (e) {
-      if (e is sqlite.SqliteException) {
+      if (e is SqliteException) {
         if (e.resultCode == 5 && i != 0) {
           // SQLITE_BUSY
           await Future.delayed(const Duration(milliseconds: 50));

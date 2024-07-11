@@ -1,6 +1,6 @@
 import 'package:logging/logging.dart';
 import 'package:powersync/powersync.dart';
-import 'package:sqlite3/common.dart';
+import 'package:sqlite_async/sqlite3_common.dart';
 import 'package:sqlite_async/sqlite_async.dart';
 import 'package:test_api/src/backend/invoker.dart';
 

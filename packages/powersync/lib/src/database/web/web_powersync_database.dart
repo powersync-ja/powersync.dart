@@ -14,7 +14,7 @@ import 'package:powersync/src/open_factory/web/web_open_factory.dart';
 import 'package:powersync/src/schema.dart';
 import 'package:powersync/src/streaming_sync.dart';
 import 'package:sqlite_async/sqlite_async.dart';
-import 'package:powersync/src/schema_helpers.dart' as schema_helpers;
+import 'package:powersync/src/schema_logic.dart' as schema_logic;
 
 /// A PowerSync managed database.
 ///
@@ -125,7 +125,9 @@ class PowerSyncDatabaseImpl
 
       /// Throttle time between CRUD operations
       /// Defaults to 10 milliseconds.
-      Duration crudThrottleTime = const Duration(milliseconds: 10)}) async {
+      required Duration crudThrottleTime,
+      required Future<void> Function() reconnect,
+      Map<String, dynamic>? params}) async {
     await initialize();
 
     // Disconnect if connected
@@ -144,13 +146,14 @@ class PowerSyncDatabaseImpl
         updateStream: updates,
         retryDelay: Duration(seconds: 3),
         client: FetchClient(mode: RequestMode.cors),
+        syncParameters: params,
         // Only allows 1 sync implementation to run at a time per database
         // This should be global (across tabs) when using Navigator locks.
         identifier: database.openFactory.path);
     sync.statusStream.listen((event) {
       setStatus(event);
     });
-    sync.streamingSync(abortController: disconnecter);
+    sync.streamingSync();
   }
 
   /// Takes a read lock, without starting a transaction.
@@ -189,15 +192,15 @@ class PowerSyncDatabaseImpl
   /// Uses the database writeTransaction instead of the locally
   /// scoped writeLock. This is to allow the Database transaction
   /// tracking to be correctly configured.
-  Future<T> writeTransaction<T>(
-      Future<T> Function(SqliteWriteContext tx) callback,
-      {Duration? lockTimeout,
-      String? debugContext}) async {
-    await isInitialized;
-    return database.writeTransaction(
-        (context) => internalTrackedWrite(context, callback),
-        lockTimeout: lockTimeout);
-  }
+  // Future<T> writeTransaction<T>(
+  //     Future<T> Function(SqliteWriteContext tx) callback,
+  //     {Duration? lockTimeout,
+  //     String? debugContext}) async {
+  //   await isInitialized;
+  //   return database.writeTransaction(
+  //       (context) => internalTrackedWrite(context, callback),
+  //       lockTimeout: lockTimeout);
+  // }
 
   @override
   Future<void> updateSchema(Schema schema) {
@@ -205,6 +208,6 @@ class PowerSyncDatabaseImpl
       throw AssertionError('Cannot update schema while connected');
     }
     this.schema = schema;
-    return database.writeLock((tx) => schema_helpers.updateSchema(tx, schema));
+    return database.writeLock((tx) => schema_logic.updateSchema(tx, schema));
   }
 }
