@@ -12,6 +12,13 @@ Ensure you have [melos](https://melos.invertase.dev/~melos-latest/getting-starte
 4. Insert your Django URL and PowerSync project credentials into `lib/app_config.dart` (See instructions below)
 5. `flutter run`
 
+A test user with the following credentials will be available:
+
+```
+username: testuser
+password: testpassword
+```
+
 # Service Configuration
 
 This demo can be used with cloud or local services.
@@ -21,12 +28,7 @@ This demo can be used with cloud or local services.
 The [Self Hosting Demo](https://github.com/powersync-ja/self-host-demo) repository contains a Docker Compose Django backend demo which can be used with this client.
 See [instructions](https://github.com/powersync-ja/self-host-demo/blob/main/demos/django/README.md) for starting the backend locally.
 
-The backend demo should perform all the required setup automatically. A test user with the following credentials will be available:
-
-```
-username: testuser
-password: testpassword
-```
+The backend demo should perform all the required setup automatically.
 
 ### Android
 
