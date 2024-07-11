@@ -19,11 +19,6 @@ class _TodoItemDialogState extends State<TodoItemDialog> {
   _TodoItemDialogState();
 
   @override
-  void initState() {
-    super.initState();
-  }
-
-  @override
   void dispose() {
     super.dispose();
     _textFieldController.dispose();
