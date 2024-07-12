@@ -76,6 +76,7 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
 
     await database.initialize();
     await updateSchema(schema);
+    await _updateHasSynced();
   }
 
   /// Wait for initialization to complete.
@@ -83,6 +84,20 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
   /// While initializing is automatic, this helps to catch and report initialization errors.
   Future<void> initialize() {
     return isInitialized;
+  }
+
+  Future<void> _updateHasSynced() async {
+    const syncedSQL =
+        'SELECT 1 FROM ps_buckets WHERE last_applied_op > 0 LIMIT 1';
+
+    // Query the database to see if any data has been synced.
+    final result = await database.execute(syncedSQL);
+    final hasSynced = result.rows.isNotEmpty;
+
+    if (hasSynced != currentStatus.hasSynced) {
+      final status = SyncStatus(hasSynced: hasSynced);
+      setStatus(status);
+    }
   }
 
   @protected

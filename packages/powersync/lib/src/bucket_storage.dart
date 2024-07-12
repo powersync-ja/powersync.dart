@@ -104,7 +104,7 @@ class BucketStorage {
 
     if (!r.checkpointValid) {
       for (String b in r.checkpointFailures ?? []) {
-        deleteBucket(b);
+        await deleteBucket(b);
       }
       return r;
     }
@@ -289,13 +289,14 @@ class BucketStorage {
         haveMore: true,
         complete: ({String? writeCheckpoint}) async {
           await writeTransaction((tx) async {
-            tx.execute('DELETE FROM ps_crud WHERE id <= ?', [last.clientId]);
+            await tx
+                .execute('DELETE FROM ps_crud WHERE id <= ?', [last.clientId]);
             if (writeCheckpoint != null &&
                 (await tx.execute('SELECT 1 FROM ps_crud LIMIT 1')).isEmpty) {
-              tx.execute(
+              await tx.execute(
                   'UPDATE ps_buckets SET target_op = $writeCheckpoint WHERE name=\'\$local\'');
             } else {
-              tx.execute(
+              await tx.execute(
                   'UPDATE ps_buckets SET target_op = $maxOpId WHERE name=\'\$local\'');
             }
           });

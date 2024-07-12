@@ -7,6 +7,7 @@ import 'package:powersync/src/bucket_storage.dart';
 import 'package:powersync/src/connector.dart';
 import 'package:powersync/src/database/powersync_database.dart';
 import 'package:powersync/src/database/powersync_db_mixin.dart';
+import 'package:powersync/src/database_utils.dart';
 import 'package:powersync/src/log.dart';
 import 'package:powersync/src/open_factory/abstract_powersync_open_factory.dart';
 import 'package:powersync/src/open_factory/web/web_open_factory.dart';
@@ -191,15 +192,15 @@ class PowerSyncDatabaseImpl
   /// Uses the database writeTransaction instead of the locally
   /// scoped writeLock. This is to allow the Database transaction
   /// tracking to be correctly configured.
-  // Future<T> writeTransaction<T>(
-  //     Future<T> Function(SqliteWriteContext tx) callback,
-  //     {Duration? lockTimeout,
-  //     String? debugContext}) async {
-  //   await isInitialized;
-  //   return database.writeTransaction(
-  //       (context) => internalTrackedWrite(context, callback),
-  //       lockTimeout: lockTimeout);
-  // }
+  Future<T> writeTransaction<T>(
+      Future<T> Function(SqliteWriteContext tx) callback,
+      {Duration? lockTimeout,
+      String? debugContext}) async {
+    await isInitialized;
+    return database.writeTransaction(
+        (context) => internalTrackedWrite(context, callback),
+        lockTimeout: lockTimeout);
+  }
 
   @override
   Future<void> updateSchema(Schema schema) {
