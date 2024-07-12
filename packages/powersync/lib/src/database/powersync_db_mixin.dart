@@ -107,7 +107,7 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
     if (status != currentStatus) {
       currentStatus = status.copyWith(
           hasSynced: status.hasSynced ?? status.lastSyncedAt != null);
-      statusStreamController.add(status);
+      statusStreamController.add(currentStatus);
     }
   }
 
