@@ -77,6 +77,7 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
         .cast<UpdateNotification>();
 
     await database.initialize();
+    await database.execute('SELECT powersync_init()');
     await updateSchema(schema);
     await _updateHasSynced();
   }
