@@ -44,10 +44,5 @@ jobs:
         run: flutter pub global activate melos
       - name: Install dependencies
         run: melos prepare
-      - name: Download powersync binary
-        run: |
-          github="https://github.com/powersync-ja/powersync-sqlite-core/releases/download/v0.1.6"
-
-          curl "${github}/libpowersync_x64.so" -o packages/powersync/libpowersync.so --create-dirs -L -f
       - name: Run tests
         run: melos test
