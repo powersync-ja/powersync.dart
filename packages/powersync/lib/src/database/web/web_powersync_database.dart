@@ -154,6 +154,9 @@ class PowerSyncDatabaseImpl
       setStatus(event);
     });
     sync.streamingSync();
+    disconnecter?.onAbort.then((_) async {
+      await sync.abort();
+    }).ignore();
   }
 
   /// Takes a read lock, without starting a transaction.
