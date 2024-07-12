@@ -30,6 +30,8 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
   /// Use [attachedLogger] to propagate logs to [Logger.root] for custom logging.
   Logger get logger;
 
+  Map<String, dynamic>? clientParams;
+
   /// Current connection status.
   SyncStatus currentStatus =
       const SyncStatus(connected: false, lastSyncedAt: null);
@@ -142,6 +144,7 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
       /// Defaults to 10 milliseconds.
       Duration crudThrottleTime = const Duration(milliseconds: 10),
       Map<String, dynamic>? params}) async {
+    clientParams = params;
     Zone current = Zone.current;
 
     Future<void> reconnect() {

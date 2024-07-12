@@ -54,8 +54,6 @@ class PowerSyncDatabaseImpl
   /// Use [attachedLogger] to propagate logs to [Logger.root] for custom logging.
   late final Logger logger;
 
-  Map<String, dynamic>? clientParams;
-
   /// Open a [PowerSyncDatabase].
   ///
   /// Only a single [PowerSyncDatabase] per [path] should be opened at a time.
@@ -135,7 +133,6 @@ class PowerSyncDatabaseImpl
       required Duration crudThrottleTime,
       required Future<void> Function() reconnect,
       Map<String, dynamic>? params}) async {
-    clientParams = params;
     await initialize();
 
     // Disconnect if connected
