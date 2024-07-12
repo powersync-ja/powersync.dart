@@ -7,7 +7,6 @@ import 'package:powersync/src/bucket_storage.dart';
 import 'package:powersync/src/connector.dart';
 import 'package:powersync/src/database/powersync_database.dart';
 import 'package:powersync/src/database/powersync_db_mixin.dart';
-import 'package:powersync/src/database_utils.dart';
 import 'package:powersync/src/log.dart';
 import 'package:powersync/src/open_factory/abstract_powersync_open_factory.dart';
 import 'package:powersync/src/open_factory/web/web_open_factory.dart';
