@@ -565,7 +565,7 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
       {List<Object?> parameters = const [],
       Duration throttle = const Duration(milliseconds: 30),
       Iterable<String>? triggerOnTables}) {
-    if (triggerOnTables == null) {
+    if (triggerOnTables == null || triggerOnTables.isEmpty) {
       return super.watch(sql, parameters: parameters, throttle: throttle);
     }
     List<String> powersyncTables = [];
