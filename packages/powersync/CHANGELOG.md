@@ -1,6 +1,7 @@
 ## 1.5.4
 
 - Fix watch query parameter `triggerOnTables` to prepend powersync view names.
+- Upgrade dependency `sqlite_async` to version 0.8.1.
 
 ## 1.5.3
 
