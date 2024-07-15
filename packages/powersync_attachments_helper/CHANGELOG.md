@@ -1,3 +1,7 @@
+## 0.5.1
+
+- Upgrade `sqlite_async` to version 0.8.1.
+
 ## 0.5.0
 
 - Upgrade minimum Dart SDK constraint to `3.4.0`.
