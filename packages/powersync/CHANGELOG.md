@@ -1,3 +1,7 @@
+## 1.5.4
+
+- Fix watch query parameter `triggerOnTables` to prepend powersync view names.
+
 ## 1.5.3
 
 - Added support for client parameters when connecting.

@@ -561,8 +561,33 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
   }
 
   @override
+  Stream<ResultSet> watch(String sql,
+      {List<Object?> parameters = const [],
+      Duration throttle = const Duration(milliseconds: 30),
+      Iterable<String>? triggerOnTables}) {
+    if (triggerOnTables == null) {
+      return super.watch(sql, parameters: parameters, throttle: throttle);
+    }
+    List<String> powersyncTables = [];
+    for (String tableName in triggerOnTables) {
+      powersyncTables.add(tableName);
+      powersyncTables.add(_prefixTableNames(tableName, 'ps_data__'));
+      powersyncTables.add(_prefixTableNames(tableName, 'ps_data_local__'));
+    }
+    return super.watch(sql,
+        parameters: parameters,
+        throttle: throttle,
+        triggerOnTables: powersyncTables);
+  }
+
+  @override
   Future<bool> getAutoCommit() {
     return database.getAutoCommit();
+  }
+
+  String _prefixTableNames(String tableName, String prefix) {
+    String prefixedString = tableName.replaceRange(0, 0, prefix);
+    return prefixedString;
   }
 }
 
