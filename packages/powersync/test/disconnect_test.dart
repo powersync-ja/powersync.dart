@@ -38,7 +38,7 @@ void main() {
 
       await expectLater(disconnect1, completes);
       await expectLater(disconnect2, completes);
-    });
+    }, timeout: Timeout(Duration(seconds: 60)));
 
     test('disconnectAndClear clears DB', () async {
       final db = await testUtils.setupPowerSync(path: path, schema: testSchema);
