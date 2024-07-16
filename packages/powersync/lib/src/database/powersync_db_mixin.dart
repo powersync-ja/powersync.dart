@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:logging/logging.dart';
 import 'package:meta/meta.dart';
+import 'package:powersync/sqlite3_common.dart';
 import 'package:powersync/sqlite_async.dart';
 import 'package:powersync/src/abort_controller.dart';
 import 'package:powersync/src/connector.dart';
@@ -375,6 +376,32 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
   @override
   Future<T> writeLock<T>(Future<T> Function(SqliteWriteContext tx) callback,
       {String? debugContext, Duration? lockTimeout});
+
+  @override
+  Stream<ResultSet> watch(String sql,
+      {List<Object?> parameters = const [],
+      Duration throttle = const Duration(milliseconds: 30),
+      Iterable<String>? triggerOnTables}) {
+    if (triggerOnTables == null || triggerOnTables.isEmpty) {
+      return database.watch(sql, parameters: parameters, throttle: throttle);
+    }
+    List<String> powersyncTables = [];
+    for (String tableName in triggerOnTables) {
+      powersyncTables.add(tableName);
+      powersyncTables.add(_prefixTableNames(tableName, 'ps_data__'));
+      powersyncTables.add(_prefixTableNames(tableName, 'ps_data_local__'));
+    }
+    return database.watch(sql,
+        parameters: parameters,
+        throttle: throttle,
+        triggerOnTables: powersyncTables);
+  }
+
+  @protected
+  String _prefixTableNames(String tableName, String prefix) {
+    String prefixedString = tableName.replaceRange(0, 0, prefix);
+    return prefixedString;
+  }
 
   @override
   Future<bool> getAutoCommit() {
