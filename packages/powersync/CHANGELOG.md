@@ -1,3 +1,7 @@
+## 1.5.5
+
+ - Fix issue where `hasSynced` is cleared when offline.
+
 ## 1.5.4
 
 - Fix watch query parameter `triggerOnTables` to prepend powersync view names.
