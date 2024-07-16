@@ -46,7 +46,9 @@ scripts:
 
   test:
     description: Run tests in a specific package.
-    run: flutter test
+    run: |
+      flutter test
+      dart test -p chrome
     exec:
       concurrency: 1
     packageFilters:
