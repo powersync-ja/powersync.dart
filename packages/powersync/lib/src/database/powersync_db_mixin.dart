@@ -108,7 +108,12 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
   void setStatus(SyncStatus status) {
     if (status != currentStatus) {
       currentStatus = status.copyWith(
-          hasSynced: status.hasSynced ?? status.lastSyncedAt != null);
+          // Note that currently the streaming sync implementation will never set hasSynced.
+          // lastSyncedAt implies that syncing has completed at some point (hasSynced = true).
+          // The previous values of hasSynced should be preserved here.
+          hasSynced: status.lastSyncedAt != null
+              ? true
+              : status.hasSynced ?? currentStatus.hasSynced);
       statusStreamController.add(currentStatus);
     }
   }
