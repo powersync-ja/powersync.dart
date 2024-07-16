@@ -348,8 +348,8 @@ class PowerSyncDatabase with SqliteQueries implements SqliteConnection {
   void _setStatus(SyncStatus status) {
     if (status != currentStatus) {
       currentStatus = status.copyWith(
-          // Note that currently the streaming sync implementation will never set hasSynced
-          // lastSyncedAt implies that syncing has completed at some point hasSynced = true
+          // Note that currently the streaming sync implementation will never set hasSynced.
+          // lastSyncedAt implies that syncing has completed at some point (hasSynced = true).
           // The previous values of hasSynced should be preserved here.
           hasSynced: status.lastSyncedAt != null
               ? true
