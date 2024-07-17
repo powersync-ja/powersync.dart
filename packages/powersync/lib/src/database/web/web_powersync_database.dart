@@ -155,6 +155,7 @@ class PowerSyncDatabaseImpl
     sync.streamingSync();
     disconnecter?.onAbort.then((_) async {
       await sync.abort();
+      disconnecter?.completeAbort();
     }).ignore();
   }
 
