@@ -46,9 +46,7 @@ scripts:
 
   test:
     description: Run tests in a specific package.
-    run: |
-      flutter test
-      dart test -p chrome
+    run: flutter test
     exec:
       concurrency: 1
     packageFilters:
@@ -56,6 +54,17 @@ scripts:
         - test
     # This tells Melos tests to ignore env variables passed to tests from `melos run test`
     # as they could change the behaviour of how tests filter packages.
+    env:
+      MELOS_TEST: true
+
+  test:web:
+    description: Run web tests in a specific package.
+    run: dart test -p chrome
+    exec:
+      concurrency: 1
+    packageFilters:
+      dirExists:
+        - test
     env:
       MELOS_TEST: true
 

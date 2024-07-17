@@ -48,5 +48,7 @@ jobs:
         run: flutter pub global activate melos
       - name: Install dependencies and prepare project
         run: melos prepare
-      - name: Run tests
+      - name: Run flutter tests
         run: melos test
+      - name: Run dart tests
+        run: melos test:web
