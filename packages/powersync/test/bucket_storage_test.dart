@@ -1,7 +1,7 @@
 import 'package:powersync/powersync.dart';
 import 'package:powersync/src/bucket_storage.dart';
 import 'package:powersync/src/sync_types.dart';
-import 'package:sqlite3/common.dart';
+import 'package:sqlite_async/sqlite3_common.dart';
 import 'package:test/test.dart';
 
 import 'utils/abstract_test_utils.dart';
@@ -51,7 +51,6 @@ void main() {
 
       powersync = await testUtils.setupPowerSync(path: path);
       bucketStorage = BucketStorage(powersync);
-      await bucketStorage.initialized();
     });
 
     tearDown(() async {

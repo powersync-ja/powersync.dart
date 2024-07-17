@@ -1,10 +1,12 @@
+import 'dart:ffi';
+
+import 'package:powersync/powersync.dart';
 import 'package:universal_io/io.dart';
 import 'dart:isolate';
 import 'package:powersync/src/open_factory/abstract_powersync_open_factory.dart';
 import 'package:sqlite_async/sqlite3.dart' as sqlite;
 import 'package:sqlite_async/sqlite3_common.dart';
 import 'package:sqlite_async/sqlite_async.dart';
-import '../../uuid.dart';
 
 /// Native implementation for [AbstractPowerSyncOpenFactory]
 class PowerSyncOpenFactory extends AbstractPowerSyncOpenFactory {
@@ -20,24 +22,26 @@ class PowerSyncOpenFactory extends AbstractPowerSyncOpenFactory {
       : _sqliteSetup = sqliteSetup;
 
   @override
-  void enableExtension() {}
+  void enableExtension() {
+    var powersyncLib = _getDynamicLibraryForPlatform();
+    sqlite.sqlite3.ensureExtensionLoaded(sqlite.SqliteExtension.inLibrary(
+        powersyncLib, 'sqlite3_powersync_init'));
+  }
+
+  /// Returns the dynamic library for the current platform.
+  DynamicLibrary _getDynamicLibraryForPlatform() {
+    /// When running tests, we need to load the library for all platforms.
+    if (Platform.environment.containsKey('FLUTTER_TEST')) {
+      return DynamicLibrary.open(getLibraryForPlatform());
+    }
+    return (Platform.isIOS || Platform.isMacOS)
+        ? DynamicLibrary.process()
+        : DynamicLibrary.open(getLibraryForPlatform());
+  }
 
   @override
   setupFunctions(CommonDatabase db) {
     super.setupFunctions(db);
-    db.createFunction(
-      functionName: 'uuid',
-      argumentCount: const AllowedArgumentCount(0),
-      function: (args) {
-        return uuid.v4();
-      },
-    );
-    db.createFunction(
-      // Postgres compatibility
-      functionName: 'gen_random_uuid',
-      argumentCount: const AllowedArgumentCount(0),
-      function: (args) => uuid.v4(),
-    );
     db.createFunction(
       functionName: 'powersync_sleep',
       argumentCount: const sqlite.AllowedArgumentCount(1),
@@ -61,8 +65,40 @@ class PowerSyncOpenFactory extends AbstractPowerSyncOpenFactory {
   CommonDatabase open(SqliteOpenOptions options) {
     // ignore: deprecated_member_use_from_same_package
     _sqliteSetup?.setup();
+
+    enableExtension();
+
     var db = super.open(options);
     db.execute('PRAGMA recursive_triggers = TRUE');
     return db;
+  }
+
+  @override
+  String getLibraryForPlatform({String? path}) {
+    switch (Abi.current()) {
+      case Abi.androidArm:
+      case Abi.androidArm64:
+      case Abi.androidX64:
+        return 'libpowersync.so';
+      case Abi.macosArm64:
+      case Abi.macosX64:
+        return 'libpowersync.dylib';
+      case Abi.linuxX64:
+        return 'libpowersync.so';
+      case Abi.windowsArm64:
+      case Abi.windowsX64:
+        return 'powersync.dll';
+      case Abi.androidIA32:
+        throw PowersyncNotReadyException(
+          'Unsupported processor architecture. X86 Android emulators are not '
+          'supported. Please use an x86_64 emulator instead. All physical '
+          'Android devices are supported including 32bit ARM.',
+        );
+      default:
+        throw PowersyncNotReadyException(
+          'Unsupported processor architecture "${Abi.current()}". '
+          'Please open an issue on GitHub to request it.',
+        );
+    }
   }
 }

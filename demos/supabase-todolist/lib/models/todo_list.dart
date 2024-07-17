@@ -1,3 +1,4 @@
+import 'package:powersync/powersync.dart';
 import 'package:powersync/sqlite3_common.dart' as sqlite;
 
 import './todo_item.dart';
@@ -57,6 +58,10 @@ class TodoList {
     ''').map((results) {
       return results.map(TodoList.fromRow).toList(growable: false);
     });
+  }
+
+  static Stream<SyncStatus> watchSyncStatus() {
+    return db.statusStream;
   }
 
   /// Create a new list

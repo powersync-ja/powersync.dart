@@ -2,17 +2,15 @@ import 'dart:async';
 
 import 'package:logging/logging.dart';
 import 'package:meta/meta.dart';
+import 'package:powersync/sqlite3_common.dart';
 import 'package:powersync/sqlite_async.dart';
 import 'package:powersync/src/abort_controller.dart';
 import 'package:powersync/src/connector.dart';
 import 'package:powersync/src/crud.dart';
-import 'package:powersync/src/database_utils.dart';
-import 'package:powersync/src/migrations.dart';
 import 'package:powersync/src/powersync_update_notification.dart';
 import 'package:powersync/src/schema.dart';
-import 'package:powersync/src/schema_helpers.dart';
+import 'package:powersync/src/schema_logic.dart';
 import 'package:powersync/src/sync_status.dart';
-import 'package:sqlite_async/sqlite3_common.dart';
 
 mixin PowerSyncDatabaseMixin implements SqliteConnection {
   /// Schema used for the local database.
@@ -32,6 +30,8 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
   /// Use [debugLogger] to always log to the console.
   /// Use [attachedLogger] to propagate logs to [Logger.root] for custom logging.
   Logger get logger;
+
+  Map<String, dynamic>? clientParams;
 
   /// Current connection status.
   SyncStatus currentStatus =
@@ -78,8 +78,9 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
         .cast<UpdateNotification>();
 
     await database.initialize();
-    await migrations.migrate(database);
+    await database.execute('SELECT powersync_init()');
     await updateSchema(schema);
+    await _updateHasSynced();
   }
 
   /// Wait for initialization to complete.
@@ -89,11 +90,31 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
     return isInitialized;
   }
 
+  Future<void> _updateHasSynced() async {
+    const syncedSQL =
+        'SELECT 1 FROM ps_buckets WHERE last_applied_op > 0 LIMIT 1';
+
+    // Query the database to see if any data has been synced.
+    final result = await database.execute(syncedSQL);
+    final hasSynced = result.rows.isNotEmpty;
+
+    if (hasSynced != currentStatus.hasSynced) {
+      final status = SyncStatus(hasSynced: hasSynced);
+      setStatus(status);
+    }
+  }
+
   @protected
   void setStatus(SyncStatus status) {
     if (status != currentStatus) {
-      currentStatus = status;
-      statusStreamController.add(status);
+      currentStatus = status.copyWith(
+          // Note that currently the streaming sync implementation will never set hasSynced.
+          // lastSyncedAt implies that syncing has completed at some point (hasSynced = true).
+          // The previous values of hasSynced should be preserved here.
+          hasSynced: status.lastSyncedAt != null
+              ? true
+              : status.hasSynced ?? currentStatus.hasSynced);
+      statusStreamController.add(currentStatus);
     }
   }
 
@@ -128,9 +149,22 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
 
       /// Throttle time between CRUD operations
       /// Defaults to 10 milliseconds.
-      Duration crudThrottleTime = const Duration(milliseconds: 10)}) async {
-    _connectMutex.lock(() =>
-        baseConnect(connector: connector, crudThrottleTime: crudThrottleTime));
+      Duration crudThrottleTime = const Duration(milliseconds: 10),
+      Map<String, dynamic>? params}) async {
+    clientParams = params;
+    Zone current = Zone.current;
+
+    Future<void> reconnect() {
+      return _connectMutex.lock(() => baseConnect(
+          connector: connector,
+          crudThrottleTime: crudThrottleTime,
+          // The reconnect function needs to run in the original zone,
+          // to avoid recursive lock errors.
+          reconnect: current.bindCallback(reconnect),
+          params: params));
+    }
+
+    await reconnect();
   }
 
   /// Abstract connection method to be implemented by platform specific
@@ -143,7 +177,9 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
 
       /// Throttle time between CRUD operations
       /// Defaults to 10 milliseconds.
-      Duration crudThrottleTime = const Duration(milliseconds: 10)});
+      required Duration crudThrottleTime,
+      required Future<void> Function() reconnect,
+      Map<String, dynamic>? params});
 
   /// Close the sync connection.
   ///
@@ -347,29 +383,29 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
       {String? debugContext, Duration? lockTimeout});
 
   @override
-  Future<T> writeTransaction<T>(
-      Future<T> Function(SqliteWriteContext tx) callback,
-      {Duration? lockTimeout,
-      String? debugContext}) async {
-    return writeLock((ctx) async {
-      return await internalTrackedWriteTransaction(ctx, callback);
-    },
-        lockTimeout: lockTimeout,
-        debugContext: debugContext ?? 'writeTransaction()');
+  Stream<ResultSet> watch(String sql,
+      {List<Object?> parameters = const [],
+      Duration throttle = const Duration(milliseconds: 30),
+      Iterable<String>? triggerOnTables}) {
+    if (triggerOnTables == null || triggerOnTables.isEmpty) {
+      return database.watch(sql, parameters: parameters, throttle: throttle);
+    }
+    List<String> powersyncTables = [];
+    for (String tableName in triggerOnTables) {
+      powersyncTables.add(tableName);
+      powersyncTables.add(_prefixTableNames(tableName, 'ps_data__'));
+      powersyncTables.add(_prefixTableNames(tableName, 'ps_data_local__'));
+    }
+    return database.watch(sql,
+        parameters: parameters,
+        throttle: throttle,
+        triggerOnTables: powersyncTables);
   }
 
-  @override
-  Future<ResultSet> execute(String sql,
-      [List<Object?> parameters = const []]) async {
-    return writeLock((ctx) async {
-      try {
-        await ctx.execute(
-            'UPDATE ps_tx SET current_tx = next_tx, next_tx = next_tx + 1 WHERE id = 1');
-        return await ctx.execute(sql, parameters);
-      } finally {
-        await ctx.execute('UPDATE ps_tx SET current_tx = NULL WHERE id = 1');
-      }
-    }, debugContext: 'execute()');
+  @protected
+  String _prefixTableNames(String tableName, String prefix) {
+    String prefixedString = tableName.replaceRange(0, 0, prefix);
+    return prefixedString;
   }
 
   @override

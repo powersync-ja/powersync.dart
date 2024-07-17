@@ -66,6 +66,10 @@ abstract class AbstractPowerSyncOpenFactory extends DefaultSqliteOpenFactory {
     }
     throw AssertionError('Cannot reach this point');
   }
+
+  /// Returns the library name for the current platform.
+  /// [path] is optional and is used when the library is not in the default location.
+  String getLibraryForPlatform({String? path});
 }
 
 /// Advanced: Define custom setup for each SQLite connection.

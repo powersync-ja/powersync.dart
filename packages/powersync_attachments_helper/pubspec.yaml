@@ -1,18 +1,18 @@
 name: powersync_attachments_helper
 description: A helper library for handling attachments when using PowerSync.
-version: 0.3.0-alpha.4
+version: 0.5.1
 repository: https://github.com/powersync-ja/powersync.dart
 homepage: https://www.powersync.com/
 environment:
-  sdk: ">=3.3.0 <4.0.0"
+  sdk: ^3.4.0
 
 dependencies:
   flutter:
     sdk: flutter
 
-  powersync: 1.3.0-alpha.9
+  powersync: ^1.5.5
   logging: ^1.2.0
-  sqlite3: "^2.4.4"
+  sqlite_async: ^0.8.1
   path_provider: ^2.0.13
 
 dev_dependencies:

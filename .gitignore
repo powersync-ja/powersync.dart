@@ -16,3 +16,8 @@ assets
 # Web assets
 powersync_db.worker.js
 sqlite3.wasm
+
+#Core binaries
+*.dylib
+*.dll
+*.so

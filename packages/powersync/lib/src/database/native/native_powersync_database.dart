@@ -5,8 +5,8 @@ import 'package:meta/meta.dart';
 import 'package:http/http.dart' as http;
 import 'package:logging/logging.dart';
 import 'package:powersync/src/abort_controller.dart';
+import 'package:powersync/src/bucket_storage.dart';
 import 'package:powersync/src/connector.dart';
-import 'package:powersync/src/database/native/native_bucket_storage.dart';
 import 'package:powersync/src/database/powersync_database.dart';
 import 'package:powersync/src/database/powersync_db_mixin.dart';
 import 'package:powersync/src/isolate_completer.dart';
@@ -130,7 +130,9 @@ class PowerSyncDatabaseImpl
 
       /// Throttle time between CRUD operations
       /// Defaults to 10 milliseconds.
-      Duration crudThrottleTime = const Duration(milliseconds: 10)}) async {
+      required Duration crudThrottleTime,
+      required Future<void> Function() reconnect,
+      Map<String, dynamic>? params}) async {
     await initialize();
 
     // Disconnect if connected
@@ -199,7 +201,9 @@ class PowerSyncDatabaseImpl
       logger.severe('Sync Isolate error', message);
 
       // Reconnect
-      connect(connector: connector, crudThrottleTime: crudThrottleTime);
+      // Use the param like this instead of directly calling connect(), to avoid recursive
+      // locks in some edge cases.
+      reconnect();
     });
 
     disconnected() {
@@ -221,8 +225,10 @@ class PowerSyncDatabaseImpl
       return;
     }
 
-    Isolate.spawn(_powerSyncDatabaseIsolate,
-        _PowerSyncDatabaseIsolateArgs(rPort.sendPort, dbRef, retryDelay),
+    Isolate.spawn(
+        _powerSyncDatabaseIsolate,
+        _PowerSyncDatabaseIsolateArgs(
+            rPort.sendPort, dbRef, retryDelay, clientParams),
         debugName: 'PowerSyncDatabase',
         onError: errorPort.sendPort,
         onExit: exitPort.sendPort);
@@ -264,8 +270,10 @@ class _PowerSyncDatabaseIsolateArgs {
   final SendPort sPort;
   final IsolateConnectionFactory dbRef;
   final Duration retryDelay;
+  final Map<String, dynamic>? parameters;
 
-  _PowerSyncDatabaseIsolateArgs(this.sPort, this.dbRef, this.retryDelay);
+  _PowerSyncDatabaseIsolateArgs(
+      this.sPort, this.dbRef, this.retryDelay, this.parameters);
 }
 
 Future<void> _powerSyncDatabaseIsolate(
@@ -277,6 +285,8 @@ Future<void> _powerSyncDatabaseIsolate(
 
   CommonDatabase? db;
   final Mutex mutex = args.dbRef.mutex.open();
+  StreamingSyncImplementation? openedStreamingSync;
+
   rPort.listen((message) async {
     if (message is List) {
       String action = message[0];
@@ -290,6 +300,9 @@ Future<void> _powerSyncDatabaseIsolate(
         db?.dispose();
         updateController.close();
         upstreamDbClient.close();
+        // Abort any open http requests, and wait for it to be closed properly
+        await openedStreamingSync?.abort();
+        // No kill the Isolate
         Isolate.current.kill();
       }
     }
@@ -329,7 +342,7 @@ Future<void> _powerSyncDatabaseIsolate(
         .open(SqliteOpenOptions(primaryConnection: false, readOnly: false));
     final connection = SyncSqliteConnection(db!, mutex);
 
-    final storage = NativeBucketStorage(connection);
+    final storage = BucketStorage(connection);
     final sync = StreamingSyncImplementation(
         adapter: storage,
         credentialsCallback: loadCredentials,
@@ -337,7 +350,9 @@ Future<void> _powerSyncDatabaseIsolate(
         uploadCrud: uploadCrud,
         updateStream: updateController.stream,
         retryDelay: args.retryDelay,
-        client: http.Client());
+        client: http.Client(),
+        syncParameters: args.parameters);
+    openedStreamingSync = sync;
     sync.streamingSync();
     sync.statusStream.listen((event) {
       sPort.send(['status', event]);
