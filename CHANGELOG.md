@@ -16,7 +16,7 @@ Packages with breaking changes:
 Packages with other changes:
 
 - [`powersync` - `v1.6.0-alpha.1`](#powersync---v160-alpha1)
-- [`powersync_attachments_helper` - `v0.6.0-alpha.1`](#powersync_attachments_helper---v030-alpha5)
+- [`powersync_attachments_helper` - `v0.6.0-alpha.1`](#powersync_attachments_helper---v060-alpha1)
 
 Packages with dependency updates only:
 
