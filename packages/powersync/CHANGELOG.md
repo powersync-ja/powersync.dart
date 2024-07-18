@@ -1,6 +1,13 @@
+## 1.6.0-alpha.1
+
+- Added support for client parameters when connecting.
+- Fix watch query parameter `triggerOnTables` to prepend powersync view names.
+- Upgrade dependency `sqlite_async` to version 0.8.1.
+- Fix issue where `hasSynced` is cleared when offline.
+
 ## 1.5.5
 
- - Fix issue where `hasSynced` is cleared when offline.
+- Fix issue where `hasSynced` is cleared when offline.
 
 ## 1.5.4
 

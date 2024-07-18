@@ -1,3 +1,7 @@
+## 0.6.0-alpha.1
+
+- Update a dependency to the latest release.
+
 ## 0.5.1
 
 - Upgrade `sqlite_async` to version 0.8.1.
