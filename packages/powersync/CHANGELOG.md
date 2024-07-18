@@ -1,6 +1,6 @@
 ## 1.5.5
 
- - Fix issue where `hasSynced` is cleared when offline.
+- Fix issue where `hasSynced` is cleared when offline.
 
 ## 1.5.4
 
@@ -38,6 +38,13 @@
 
 - Introduces the use of the `powersync-sqlite-core` native extension. This is our common Rust core which means all PowerSync SDKs now use the same core logic for PowerSync functionality, improving maintainability and support.
 - Added a new package dependency on `powersync_flutter_libs` for loading the extension.
+
+## 1.3.0-alpha.10
+
+- Added support for client parameters when connecting.
+- Fix watch query parameter `triggerOnTables` to prepend powersync view names.
+- Upgrade dependency `sqlite_async` to version 0.8.1.
+- Fix issue where `hasSynced` is cleared when offline.
 
 ## 1.3.0-alpha.9
 
