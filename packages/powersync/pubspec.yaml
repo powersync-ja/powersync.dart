@@ -23,6 +23,7 @@ dependencies:
   collection: ^1.17.0
   fetch_client: ^1.1.2
   js: ^0.7.0
+  pubspec_parse: ^1.3.0
 dev_dependencies:
   dcli: ^4.0.0
   lints: ^3.0.0

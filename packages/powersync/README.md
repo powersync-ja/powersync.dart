@@ -49,13 +49,11 @@ The latest prerelease version can be found [here](https://pub.dev/packages/power
 
 ### Additional config
 
-Web support requires `sqlite3.wasm` and `powersync_db.worker.js` assets to be served from the web application. This is typically achieved by placing the files in the project `web` directory.
+Web support requires `sqlite3.wasm` and `powersync_db.worker.js` assets to be served from the web application. They can be downloaded to the `web` directory by running the following command in your applications root folder.
 
-- `sqlite3.wasm` can be found [here](https://github.com/powersync-ja/sqlite3.dart/releases/download/v0.1.0/sqlite3.wasm)
-- `powersync_db.worker.js` can be found in the repo's [releases](https://github.com/powersync-ja/powersync.dart/releases) page.
-
-Currently the Drift SQLite library is used under the hood for DB connections. See [here](https://drift.simonbinder.eu/web/#getting-started) for detailed compatibility
-and setup notes.
+```dart
+dart run powersync:setup_web
+```
 
 The same code is used for initializing native and web `PowerSyncDatabase` clients.
 
