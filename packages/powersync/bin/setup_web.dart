@@ -26,37 +26,21 @@ void main() async {
     exit(1);
   }
 
-  final powersyncPkg = getPackageFromConfig(packageConfig, 'powersync');
+  final powersyncPackageName = 'powersync';
 
-  final powersyncRoot =
-      packageConfigFile.uri.resolve(powersyncPkg['rootUri'] ?? '');
-  print('Using package:powersync from ${powersyncRoot.toFilePath()}');
+  final powersyncPkg =
+      getPackageFromConfig(packageConfig, powersyncPackageName);
 
-  String pubspec =
-      File('${powersyncRoot.toFilePath()}/pubspec.yaml').readAsStringSync();
-  Pubspec parsed = Pubspec.parse(pubspec);
-  final powersyncVersion = parsed.version?.toString();
-  if (powersyncVersion == null) {
-    print('Powersync version not found');
-    print('Run `flutter pub get` first.');
-    exit(1);
-  }
+  final powersyncVersion =
+      getPubspecVersion(packageConfigFile, powersyncPkg, powersyncPackageName);
+
+  final sqlitePackageName = 'sqlite3';
 
   //TODO: Get sqlite3.dart version from pubspec.yaml
-  final sqlite3Pkg = getPackageFromConfig(packageConfig, 'sqlite3');
+  final sqlite3Pkg = getPackageFromConfig(packageConfig, sqlitePackageName);
 
-  final sqlite3Root =
-      packageConfigFile.uri.resolve(sqlite3Pkg['rootUri'] ?? '');
-  print('Using package:sqlite3 from ${sqlite3Root.toFilePath()}');
-
-  pubspec = File('${sqlite3Root.toFilePath()}/pubspec.yaml').readAsStringSync();
-  parsed = Pubspec.parse(pubspec);
-  final sqlite3Version = parsed.version?.toString();
-  if (sqlite3Version == null) {
-    print('Sqlite3 version not found');
-    print('Run `flutter pub get` first.');
-    exit(1);
-  }
+  final sqlite3Version =
+      getPubspecVersion(packageConfigFile, sqlite3Pkg, sqlitePackageName);
 
   //TODO: Use `sqlite3Version` to get the correct sqlite3.wasm
   final sqliteUrl =
@@ -75,11 +59,30 @@ dynamic getPackageFromConfig(dynamic packageConfig, String packageName) {
     orElse: () => null,
   );
   if (pkg == null) {
-    print('dependency on package:powersync is required');
+    print('dependency on package:$packageName is required');
     exit(1);
   }
   return pkg;
 }
+
+String getPubspecVersion(
+    File packageConfigFile, dynamic package, String packageName) {
+  final rootUri = packageConfigFile.uri.resolve(package['rootUri'] ?? '');
+  print('Using package:$packageName from ${rootUri.toFilePath()}');
+
+  String pubspec =
+      File('${rootUri.toFilePath()}/pubspec.yaml').readAsStringSync();
+  Pubspec parsed = Pubspec.parse(pubspec);
+  final version = parsed.version?.toString();
+  if (version == null) {
+    print('${capitalize(packageName)} version not found');
+    print('Run `flutter pub get` first.');
+    exit(1);
+  }
+  return version;
+}
+
+String capitalize(String s) => s[0].toUpperCase() + s.substring(1);
 
 Future<void> downloadFile(String url, String savePath) async {
   print('Downloading: $url');
