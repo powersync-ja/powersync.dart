@@ -1,8 +1,17 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:pubspec_parse/pubspec_parse.dart';
+// import 'package:args/args.dart';
 
-void main() async {
+void main(List<String> arguments) async {
+  // Add a flag to enable/disable the download of worker
+  // Pass the no_worker argument to disable the download of the worker
+  // dart run powersync:setup_web no_worker
+  bool downloadWorker = true;
+  if (arguments.contains("no_worker")) {
+    downloadWorker = false;
+  }
+
   final root = Directory.current.uri;
   print('Project root: ${root.toFilePath()}');
 
@@ -36,21 +45,28 @@ void main() async {
 
   final sqlitePackageName = 'sqlite3';
 
-  //TODO: Get sqlite3.dart version from pubspec.yaml
   final sqlite3Pkg = getPackageFromConfig(packageConfig, sqlitePackageName);
 
-  final sqlite3Version =
-      getPubspecVersion(packageConfigFile, sqlite3Pkg, sqlitePackageName);
+  String sqlite3Version =
+      "v${getPubspecVersion(packageConfigFile, sqlite3Pkg, sqlitePackageName)}";
 
-  //TODO: Use `sqlite3Version` to get the correct sqlite3.wasm
+  final httpClient = HttpClient();
+
+  String latestTag = await getLatestTagFromRelease(httpClient);
+  String tagVersion = latestTag.split('-')[0];
+  if (tagVersion != sqlite3Version) {
+    print('Using latest version found on GitHub releases');
+    sqlite3Version = latestTag;
+  }
+
   final sqliteUrl =
-      'https://github.com/powersync-ja/sqlite3.dart/releases/download/v0.1.0/sqlite3.wasm';
+      'https://github.com/powersync-ja/sqlite3.dart/releases/download/$sqlite3Version/sqlite3.wasm';
 
   final workerUrl =
       'https://github.com/powersync-ja/powersync.dart/releases/download/v$powersyncVersion/powersync_db.worker.js';
 
-  await downloadFile(sqliteUrl, wasmPath);
-  await downloadFile(workerUrl, workerPath);
+  await downloadFile(httpClient, sqliteUrl, wasmPath);
+  if (downloadWorker) await downloadFile(httpClient, workerUrl, workerPath);
 }
 
 dynamic getPackageFromConfig(dynamic packageConfig, String packageName) {
@@ -84,9 +100,23 @@ String getPubspecVersion(
 
 String capitalize(String s) => s[0].toUpperCase() + s.substring(1);
 
-Future<void> downloadFile(String url, String savePath) async {
+Future<String> getLatestTagFromRelease(HttpClient httpClient) async {
+  var request = await httpClient.getUrl(Uri.parse(
+      "https://api.github.com/repos/powersync-ja/sqlite3.dart/releases"));
+  var response = await request.close();
+  if (response.statusCode == HttpStatus.ok) {
+    var res = await response.transform(utf8.decoder).join();
+    List<dynamic> jsonObj = json.decode(res);
+    return jsonObj[0]['tag_name'];
+  } else {
+    print('Failed to fetch GitHub releases');
+    exit(1);
+  }
+}
+
+Future<void> downloadFile(
+    HttpClient httpClient, String url, String savePath) async {
   print('Downloading: $url');
-  var httpClient = HttpClient();
   var request = await httpClient.getUrl(Uri.parse(url));
   var response = await request.close();
   if (response.statusCode == HttpStatus.ok) {
@@ -95,5 +125,6 @@ Future<void> downloadFile(String url, String savePath) async {
   } else {
     print(
         'Failed to download file: ${response.statusCode} ${response.reasonPhrase}');
+    exit(1);
   }
 }

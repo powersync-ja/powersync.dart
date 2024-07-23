@@ -9,7 +9,19 @@ ide:
   intellij: false
 
 scripts:
-  prepare: melos bootstrap && dart ./scripts/compile_webworker.dart && dart ./scripts/init_sqlite_wasm.dart && dart ./scripts/init_powersync_core_binary.dart
+  prepare:
+    description: Download SQLite3 WASM for demos
+    run: |
+      melos bootstrap && dart ./scripts/compile_webworker.dart && dart ./scripts/init_powersync_core_binary.dart
+      for dir2 in demos/*; do
+        if [ -d "$dir2" ]; then
+            cd "$dir2"
+            if [ -d "./web" ]; then
+              dart run powersync:setup_web no_worker
+            fi
+            cd -
+        fi
+      done
 
   analyze:demos:
     description: Analyze Dart code in demos.
