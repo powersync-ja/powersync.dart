@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:pubspec_parse/pubspec_parse.dart';
-// import 'package:args/args.dart';
 
 void main(List<String> arguments) async {
   // Add a flag to enable/disable the download of worker

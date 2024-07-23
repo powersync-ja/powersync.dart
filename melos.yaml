@@ -12,7 +12,7 @@ scripts:
   prepare:
     description: Download SQLite3 WASM for demos
     run: |
-      melos bootstrap && dart ./scripts/compile_webworker.dart && dart ./scripts/init_powersync_core_binary.dart
+      melos bootstrap && dart ./scripts/init_sqlite_wasm.dart && dart ./scripts/compile_webworker.dart && dart ./scripts/init_powersync_core_binary.dart
       for dir2 in demos/*; do
         if [ -d "$dir2" ]; then
             cd "$dir2"

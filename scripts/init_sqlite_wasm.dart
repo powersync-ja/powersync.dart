@@ -1,4 +1,4 @@
-/// Downloads sqlite3.wasm and copies it to all demo folders
+/// Downloads sqlite3.wasm into the assets directory for tests
 import 'dart:io';
 
 final sqliteUrl =
@@ -16,17 +16,6 @@ void main() async {
 
   // Download sqlite3.wasm
   await downloadFile(sqliteUrl, sqlitePath);
-
-  await for (var entity in Directory('demos').list()) {
-    if (entity is Directory) {
-      var demoDir = entity;
-      var webDir = Directory('${demoDir.path}/web');
-      if (await webDir.exists()) {
-        await File(sqlitePath).copy('${webDir.path}/$sqliteFilename');
-        print('Copied $sqlitePath to ${webDir.path}');
-      }
-    }
-  }
 }
 
 Future<void> downloadFile(String url, String savePath) async {
