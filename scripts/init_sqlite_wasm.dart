@@ -2,7 +2,7 @@
 import 'dart:io';
 
 final sqliteUrl =
-    'https://github.com/powersync-ja/sqlite3.dart/releases/download/v0.1.0/sqlite3.wasm';
+    'https://github.com/powersync-ja/sqlite3.dart/releases/download/v2.4.4-powersync.1/sqlite3.wasm';
 
 void main() async {
   // Create assets directory if it doesn't exist

@@ -48,14 +48,14 @@ void main(List<String> arguments) async {
 
   String sqlite3Version =
       "v${getPubspecVersion(packageConfigFile, sqlite3Pkg, sqlitePackageName)}";
-
   final httpClient = HttpClient();
 
   String latestTag = await getLatestTagFromRelease(httpClient);
   String tagVersion = latestTag.split('-')[0];
-  if (tagVersion != sqlite3Version) {
-    print('Using latest version found on GitHub releases');
+  if (tagVersion == sqlite3Version) {
     sqlite3Version = latestTag;
+  } else {
+    sqlite3Version = "$sqlite3Version-powersync.1";
   }
 
   final sqliteUrl =
