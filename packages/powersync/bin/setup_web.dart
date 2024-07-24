@@ -2,15 +2,21 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:collection/collection.dart';
 import 'package:pubspec_parse/pubspec_parse.dart';
+import 'package:args/args.dart';
 
 void main(List<String> arguments) async {
-  // Add a flag to enable/disable the download of worker
-  // Pass the --skip-worker argument to disable the download of the worker
-  // dart run powersync:setup_web --skip-worker
-  bool downloadWorker = true;
-  if (arguments.contains("--skip-worker")) {
-    downloadWorker = false;
-  }
+  var parser = ArgParser();
+  // Add a flag to enable/disable the download of worker (defaults to true)
+  // Pass the --no-worker argument to disable the download of the worker
+  // dart run powersync:setup_web --no-worker
+  parser.addFlag('worker', defaultsTo: true);
+  // Add a flag to enable/disable the download of the wasm file for tests (defaults to false)
+  // Pass the --setup-test-assets argument to enable the download of the wasm file for tests
+  // dart run powersync:setup_web --setup-test-assets
+  parser.addFlag('setup-test-assets', defaultsTo: false);
+  var results = parser.parse(arguments);
+  bool downloadWorker = results.flag('worker');
+  bool testAssets = results.flag('setup-test-assets');
 
   final root = Directory.current.uri;
   print('Project root: ${root.toFilePath()}');
@@ -20,7 +26,7 @@ void main(List<String> arguments) async {
     exit(1);
   }
 
-  final wasmPath = '${root.toFilePath()}web/sqlite3.wasm';
+  var wasmPath = '${root.toFilePath()}web/sqlite3.wasm';
 
   final workerPath = '${root.toFilePath()}web/powersync_db.worker.js';
 
@@ -73,6 +79,16 @@ void main(List<String> arguments) async {
     final workerUrl =
         'https://github.com/powersync-ja/powersync.dart/releases/download/v$powersyncVersion/powersync_db.worker.js';
 
+    if (testAssets) {
+      final powersyncPath = Directory.current.parent.parent.uri.toFilePath();
+      final assetsDir = Directory('$powersyncPath/assets');
+      if (!await assetsDir.exists()) {
+        await assetsDir.create();
+      }
+      await downloadFile(
+          httpClient, sqliteUrl, '${assetsDir.path}/sqlite3.wasm');
+      exit(0);
+    }
     await downloadFile(httpClient, sqliteUrl, wasmPath);
     if (downloadWorker) await downloadFile(httpClient, workerUrl, workerPath);
   } catch (e) {

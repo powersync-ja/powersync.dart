@@ -12,16 +12,25 @@ scripts:
   prepare:
     description: Download SQLite3 WASM for demos
     run: |
-      melos bootstrap && dart ./scripts/init_sqlite_wasm.dart && dart ./scripts/compile_webworker.dart && dart ./scripts/init_powersync_core_binary.dart
-      for dir2 in demos/*; do
-        if [ -d "$dir2" ]; then
-            cd "$dir2"
-            if [ -d "./web" ]; then
-              dart run powersync:setup_web --skip-worker
-            fi
-            cd -
-        fi
-      done
+      melos bootstrap && melos prepare:assets && dart ./scripts/compile_webworker.dart && dart ./scripts/init_powersync_core_binary.dart
+      melos prepare:demos
+
+  prepare:demos:
+    description: Prepare demos
+    run: dart run powersync:setup_web --no-worker
+    exec:
+      concurrency: 1
+    packageFilters:
+      private: true
+      dirExists: web
+
+  prepare:assets:
+    description: Download to Sqlite3 WASM for tests
+    run: dart run powersync:setup_web --no-worker --setup-test-assets
+    exec:
+      concurrency: 1
+    packageFilters:
+      scope: powersync_flutter_demo
 
   analyze:demos:
     description: Analyze Dart code in demos.
@@ -36,13 +45,6 @@ scripts:
     exec: flutter pub global run pana --no-warning --exit-code-threshold 10
     packageFilters:
       noPrivate: true
-
-  compile:webworker:
-    description: Compile Javascript web worker distributable
-    exec: dart run powersync_web_worker:compile_webworker
-    packageFilters:
-      scope:
-        - powersync_web_worker
 
   format:
     description: Format Dart code.
@@ -79,5 +81,3 @@ scripts:
         - test
     env:
       MELOS_TEST: true
-
-  update:wasm: dart run scripts/init_sqlite_wasm.dart
