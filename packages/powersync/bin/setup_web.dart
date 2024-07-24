@@ -5,8 +5,8 @@ import 'package:pubspec_parse/pubspec_parse.dart';
 
 void main(List<String> arguments) async {
   // Add a flag to enable/disable the download of worker
-  // Pass the no_worker argument to disable the download of the worker
-  // dart run powersync:setup_web no_worker
+  // Pass the --skip-worker argument to disable the download of the worker
+  // dart run powersync:setup_web --skip-worker
   bool downloadWorker = true;
   if (arguments.contains("--skip-worker")) {
     downloadWorker = false;
@@ -14,6 +14,11 @@ void main(List<String> arguments) async {
 
   final root = Directory.current.uri;
   print('Project root: ${root.toFilePath()}');
+
+  var webDir = Directory('${root.toFilePath()}/web');
+  if (!await webDir.exists()) {
+    exit(1);
+  }
 
   final wasmPath = '${root.toFilePath()}web/sqlite3.wasm';
 
