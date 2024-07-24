@@ -17,7 +17,7 @@ scripts:
         if [ -d "$dir2" ]; then
             cd "$dir2"
             if [ -d "./web" ]; then
-              dart run powersync:setup_web no_worker
+              dart run powersync:setup_web --skip-worker
             fi
             cd -
         fi
