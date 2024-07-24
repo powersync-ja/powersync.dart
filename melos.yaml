@@ -16,7 +16,7 @@ scripts:
       melos prepare:demos
 
   prepare:demos:
-    description: Prepare demos
+    description: Download SQLite3 wasm for demos
     run: dart run powersync:setup_web --no-worker
     exec:
       concurrency: 1
@@ -25,7 +25,7 @@ scripts:
       dirExists: web
 
   prepare:assets:
-    description: Download to Sqlite3 WASM for tests
+    description: Download Sqlite3 WASM for tests
     run: dart ./bin/setup_web.dart --no-worker --output-dir assets
     exec:
       concurrency: 1
