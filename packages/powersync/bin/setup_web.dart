@@ -10,25 +10,20 @@ void main(List<String> arguments) async {
   // Pass the --no-worker argument to disable the download of the worker
   // dart run powersync:setup_web --no-worker
   parser.addFlag('worker', defaultsTo: true);
-  // Add a flag to enable/disable the download of the wasm file for tests (defaults to false)
-  // Pass the --setup-test-assets argument to enable the download of the wasm file for tests
-  // dart run powersync:setup_web --setup-test-assets
-  parser.addFlag('setup-test-assets', defaultsTo: false);
+  // Add a option to specify the output directory (defaults to web)
+  // Pass the --output-dir argument to specify the output directory
+  // dart run powersync:setup_web --output-dir assets
+  parser.addOption('output-dir', abbr: 'o', defaultsTo: 'web');
   var results = parser.parse(arguments);
   bool downloadWorker = results.flag('worker');
-  bool testAssets = results.flag('setup-test-assets');
+  String outputDir = results.option('output-dir')!;
 
   final root = Directory.current.uri;
   print('Project root: ${root.toFilePath()}');
 
-  var webDir = Directory('${root.toFilePath()}/web');
-  if (!await webDir.exists()) {
-    exit(1);
-  }
+  final wasmPath = '${root.toFilePath()}$outputDir/sqlite3.wasm';
 
-  var wasmPath = '${root.toFilePath()}web/sqlite3.wasm';
-
-  final workerPath = '${root.toFilePath()}web/powersync_db.worker.js';
+  final workerPath = '${root.toFilePath()}$outputDir/powersync_db.worker.js';
 
   final packageConfigFile = File.fromUri(
     root.resolve('.dart_tool/package_config.json'),
@@ -46,13 +41,23 @@ void main(List<String> arguments) async {
     exit(1);
   }
 
-  final powersyncPackageName = 'powersync';
   try {
-    final powersyncPkg =
-        getPackageFromConfig(packageConfig, powersyncPackageName);
+    final httpClient = HttpClient();
 
-    final powersyncVersion = getPubspecVersion(
-        packageConfigFile, powersyncPkg, powersyncPackageName);
+    final powersyncPackageName = 'powersync';
+
+    if (downloadWorker) {
+      final powersyncPkg =
+          getPackageFromConfig(packageConfig, powersyncPackageName);
+
+      final powersyncVersion = getPubspecVersion(
+          packageConfigFile, powersyncPkg, powersyncPackageName);
+
+      final workerUrl =
+          'https://github.com/powersync-ja/powersync.dart/releases/download/v$powersyncVersion/powersync_db.worker.js';
+
+      await downloadFile(httpClient, workerUrl, workerPath);
+    }
 
     final sqlitePackageName = 'sqlite3';
 
@@ -60,8 +65,6 @@ void main(List<String> arguments) async {
 
     String sqlite3Version =
         "v${getPubspecVersion(packageConfigFile, sqlite3Pkg, sqlitePackageName)}";
-
-    final httpClient = HttpClient();
 
     // String latestTag = await getLatestTagFromRelease(httpClient);
     List<String> tags = await getLatestTagsFromRelease(httpClient);
@@ -76,18 +79,7 @@ void main(List<String> arguments) async {
     final sqliteUrl =
         'https://github.com/powersync-ja/sqlite3.dart/releases/download/$sqlite3Version/sqlite3.wasm';
 
-    final workerUrl =
-        'https://github.com/powersync-ja/powersync.dart/releases/download/v$powersyncVersion/powersync_db.worker.js';
-
-    if (testAssets) {
-      final powersyncPath = Directory.current.parent.parent.uri.toFilePath();
-      final assetsDir = Directory('$powersyncPath/assets');
-      await downloadFile(
-          httpClient, sqliteUrl, '${assetsDir.path}/sqlite3.wasm');
-      exit(0);
-    }
     await downloadFile(httpClient, sqliteUrl, wasmPath);
-    if (downloadWorker) await downloadFile(httpClient, workerUrl, workerPath);
   } catch (e) {
     print(e);
     exit(1);

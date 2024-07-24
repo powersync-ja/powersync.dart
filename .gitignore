@@ -18,6 +18,7 @@ assets/*
 
 # Web assets
 powersync_db.worker.js
+powersync_db.worker.js*
 sqlite3.wasm
 
 #Core binaries

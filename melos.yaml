@@ -26,11 +26,11 @@ scripts:
 
   prepare:assets:
     description: Download to Sqlite3 WASM for tests
-    run: dart run powersync:setup_web --no-worker --setup-test-assets
+    run: dart ./bin/setup_web.dart --no-worker --output-dir assets
     exec:
       concurrency: 1
     packageFilters:
-      scope: powersync_flutter_demo
+      scope: powersync
 
   analyze:demos:
     description: Analyze Dart code in demos.
