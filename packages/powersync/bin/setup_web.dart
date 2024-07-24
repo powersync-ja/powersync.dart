@@ -56,10 +56,10 @@ void main(List<String> arguments) async {
     List<String> tags = await getLatestTagsFromRelease(httpClient);
     String? matchTag =
         tags.firstWhereOrNull((element) => element.contains(sqlite3Version));
-    if (matchTag == null) {
-      sqlite3Version = tags[0];
-    } else {
+    if (matchTag != null) {
       sqlite3Version = matchTag;
+    } else {
+      sqlite3Version = tags[0];
     }
 
     final sqliteUrl =
