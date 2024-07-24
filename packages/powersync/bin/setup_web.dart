@@ -82,9 +82,6 @@ void main(List<String> arguments) async {
     if (testAssets) {
       final powersyncPath = Directory.current.parent.parent.uri.toFilePath();
       final assetsDir = Directory('$powersyncPath/assets');
-      if (!await assetsDir.exists()) {
-        await assetsDir.create();
-      }
       await downloadFile(
           httpClient, sqliteUrl, '${assetsDir.path}/sqlite3.wasm');
       exit(0);

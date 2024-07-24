@@ -11,7 +11,10 @@ pubspec_overrides.yaml
 build
 
 # Shared assets
-assets
+assets/*
+
+# exception to the rule
+!assets/.gitkeep
 
 # Web assets
 powersync_db.worker.js
