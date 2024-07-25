@@ -1,5 +1,9 @@
 ## 1.6.0-alpha.1
 
+- `powersync` web support is now in beta! We have moved out of alpha and are now providing beta support.
+
+## 1.6.0-alpha.1
+
 - Added support for client parameters when connecting.
 - Fix watch query parameter `triggerOnTables` to prepend powersync view names.
 - Upgrade dependency `sqlite_async` to version 0.8.1.

@@ -20,9 +20,9 @@ flutter pub add powersync
 
 Our [full SDK reference](https://docs.powersync.com/client-sdk-references/flutter) contains everything you need to know to get started implementing PowerSync in your project.
 
-## **_ Web support - Open alpha _**
+## **_ Web support - Open beta _**
 
-Web support is currently in an alpha release. This Readme has been updated to reflect updates that are currently only relevant to this alpha release.
+Web support is currently in an open beta. This Readme has been updated to reflect updates that are currently only relevant to this beta release.
 
 ### Demo app
 
@@ -39,23 +39,20 @@ The easiest way to test out the alpha is to run the [Supabase Todo-List](./demos
 
 ### Installing PowerSync in your own project
 
-Install the latest alpha version of the package, for example:
+Install the latest version of the package, for example:
 
 ```
-flutter pub add powersync:'^1.3.0-alpha.1'
+flutter pub add powersync:'^1.6.0'
 ```
 
-The latest prerelease version can be found [here](https://pub.dev/packages/powersync/versions).
+The latest version can be found [here](https://pub.dev/packages/powersync/versions).
 
 ### Additional config
 
 Web support requires `sqlite3.wasm` and `powersync_db.worker.js` assets to be served from the web application. This is typically achieved by placing the files in the project `web` directory.
 
-- `sqlite3.wasm` can be found [here](https://github.com/powersync-ja/sqlite3.dart/releases/download/v0.1.0/sqlite3.wasm)
+- `sqlite3.wasm` can be found [here](https://github.com/powersync-ja/sqlite3.dart/releases)
 - `powersync_db.worker.js` can be found in the repo's [releases](https://github.com/powersync-ja/powersync.dart/releases) page.
-
-Currently the Drift SQLite library is used under the hood for DB connections. See [here](https://drift.simonbinder.eu/web/#getting-started) for detailed compatibility
-and setup notes.
 
 The same code is used for initializing native and web `PowerSyncDatabase` clients.
 
@@ -85,8 +82,7 @@ In code which needs to run on the Web platform. Isolated native specific code ca
 
 #### Database connections
 
-Web DB connections do not support concurrency. A single DB connection is used. `readLock` and `writeLock` contexts do not
-implement checks for preventing writable queries in read connections and vice-versa.
+Web DB connections do not support concurrency. A single DB connection is used. `readLock` and `writeLock` contexts do not implement checks for preventing writable queries in read connections and vice-versa.
 
 Direct access to the synchronous `CommonDatabase` (`sqlite.Database` equivalent for web) connection is not available. `computeWithDatabase` is not available on web.
 
