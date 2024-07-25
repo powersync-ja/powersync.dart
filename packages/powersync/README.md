@@ -49,10 +49,11 @@ The latest version can be found [here](https://pub.dev/packages/powersync/versio
 
 ### Additional config
 
-Web support requires `sqlite3.wasm` and `powersync_db.worker.js` assets to be served from the web application. This is typically achieved by placing the files in the project `web` directory.
+Web support requires `sqlite3.wasm` and `powersync_db.worker.js` assets to be served from the web application. They can be downloaded to the `web` directory by running the following command in your application's root folder.
 
-- `sqlite3.wasm` can be found [here](https://github.com/powersync-ja/sqlite3.dart/releases)
-- `powersync_db.worker.js` can be found in the repo's [releases](https://github.com/powersync-ja/powersync.dart/releases) page.
+```dart
+dart run powersync:setup_web
+```
 
 The same code is used for initializing native and web `PowerSyncDatabase` clients.
 
