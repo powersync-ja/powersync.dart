@@ -1,6 +1,6 @@
 ## 1.6.0
 
-- Web support is now in beta! We have moved out of alpha and are now providing beta support.
+- Web support is now included in the standard release but remains in alpha. Web support may have some limitations or bugs.
 
 ## 1.6.0-alpha.1
 

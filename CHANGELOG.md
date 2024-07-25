@@ -28,7 +28,7 @@ Packages with dependency updates only:
 
 #### `powersync` - `v1.6.0`
 
-- `powersync` web support is now in beta! We have moved out of alpha and are now providing beta support.
+- `powersync` web support is now included in the standard release but remains in alpha. Web support may have some limitations or bugs.
 
 ## 2024-07-18
 

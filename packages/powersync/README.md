@@ -20,13 +20,13 @@ flutter pub add powersync
 
 Our [full SDK reference](https://docs.powersync.com/client-sdk-references/flutter) contains everything you need to know to get started implementing PowerSync in your project.
 
-## **_ Web support - Open beta _**
+## **_ Web support - Open alpha _**
 
-Web support is currently in an open beta. This Readme has been updated to reflect updates that are currently only relevant to this beta release.
+Web support in version 1.6.0 is currently in its alpha stage. This README has been updated to reflect changes relevant to this alpha release.
 
 ### Demo app
 
-The easiest way to test out the beta is to run the [Supabase Todo-List](./demos/supabase-todolist) demo app:
+The easiest way to test out the alpha is to run the [Supabase Todo-List](./demos/supabase-todolist) demo app:
 
 1. Checkout [this repo's](https://github.com/powersync-ja/powersync.dart/tree/master) `master` branch.
 
@@ -39,7 +39,7 @@ The easiest way to test out the beta is to run the [Supabase Todo-List](./demos/
 
 ### Installing PowerSync in your own project
 
-Install the latest beta version of the package, for example:
+Install the latest version of the package, for example:
 
 ```
 flutter pub add powersync:'^1.6.0'
