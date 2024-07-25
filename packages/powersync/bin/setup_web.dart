@@ -81,6 +81,7 @@ void main(List<String> arguments) async {
     if (matchTag != null) {
       sqlite3Version = matchTag;
     } else {
+      //TODO: Use a better message to inform the user about the incompatibility
       throw Exception(
           "No compatible powersync core version found for sqlite3 version $sqlite3Version, Please update your sqlite3 version");
     }
