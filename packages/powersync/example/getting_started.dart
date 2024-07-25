@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:powersync/powersync.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart';
@@ -25,8 +26,13 @@ class BackendConnector extends PowerSyncBackendConnector {
 }
 
 openDatabase() async {
-  final dir = await getApplicationSupportDirectory();
-  final path = join(dir.path, 'powersync-dart.db');
+  var path = 'powersync-demo.db';
+  // getApplicationSupportDirectory is not supported on Web
+  if (!kIsWeb) {
+    final dir = await getApplicationSupportDirectory();
+    path = join(dir.path, 'powersync-dart.db');
+  }
+
   // Setup the database.
   db = PowerSyncDatabase(schema: schema, path: path);
   await db.initialize();

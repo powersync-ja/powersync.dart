@@ -1,11 +1,10 @@
 import 'dart:async';
 import 'dart:convert' as convert;
-import 'dart:io';
-
 import 'package:http/http.dart' as http;
 import 'package:powersync/src/abort_controller.dart';
 import 'package:powersync/src/exceptions.dart';
 import 'package:powersync/src/log_internal.dart';
+import 'package:sqlite_async/mutex.dart';
 
 import 'bucket_storage.dart';
 import 'connector.dart';
@@ -25,13 +24,13 @@ class StreamingSyncImplementation {
 
   final Future<void> Function() uploadCrud;
 
-  late http.Client _client;
-
   final Stream updateStream;
 
   final StreamController<SyncStatus> _statusStreamController =
       StreamController<SyncStatus>.broadcast();
   late final Stream<SyncStatus> statusStream;
+
+  late final http.Client _client;
 
   final StreamController<String?> _localPingController =
       StreamController.broadcast();
@@ -46,6 +45,8 @@ class StreamingSyncImplementation {
 
   bool _safeToClose = true;
 
+  final Mutex syncMutex, crudMutex;
+
   StreamingSyncImplementation(
       {required this.adapter,
       required this.credentialsCallback,
@@ -53,8 +54,15 @@ class StreamingSyncImplementation {
       required this.uploadCrud,
       required this.updateStream,
       required this.retryDelay,
-      this.syncParameters}) {
-    _client = http.Client();
+      this.syncParameters,
+      required http.Client client,
+
+      /// A unique identifier for this streaming sync implementation
+      /// A good value is typically the DB file path which it will mutate when syncing.
+      String? identifier = "unknown"})
+      : syncMutex = Mutex(identifier: "sync-$identifier"),
+        crudMutex = Mutex(identifier: "crud-$identifier") {
+    _client = client;
     statusStream = _statusStreamController.stream;
   }
 
@@ -101,8 +109,10 @@ class StreamingSyncImplementation {
             await invalidCredentialsCallback!();
             invalidCredentials = false;
           }
-          await streamingSyncIteration();
-          // Continue immediately
+          // Protect sync iterations with exclusivity (if a valid Mutex is provided)
+          await syncMutex.lock(
+              () => streamingSyncIteration(abortController: _abort),
+              timeout: retryDelay);
         } catch (e, stacktrace) {
           if (aborted && e is http.ClientException) {
             // Explicit abort requested - ignore. Example error:
@@ -155,21 +165,23 @@ class StreamingSyncImplementation {
   }
 
   Future<bool> uploadCrudBatch() async {
-    if (adapter.hasCrud()) {
-      _updateStatus(uploading: true);
-      await uploadCrud();
-      return false;
-    } else {
-      // This isolate is the only one triggering
-      final updated = await adapter.updateLocalTarget(() async {
-        return getWriteCheckpoint();
-      });
-      if (updated) {
-        _localPingController.add(null);
-      }
+    return crudMutex.lock(() async {
+      if ((await adapter.hasCrud())) {
+        _updateStatus(uploading: true);
+        await uploadCrud();
+        return false;
+      } else {
+        // This isolate is the only one triggering
+        final updated = await adapter.updateLocalTarget(() async {
+          return getWriteCheckpoint();
+        });
+        if (updated) {
+          _localPingController.add(null);
+        }
 
-      return true;
-    }
+        return true;
+      }
+    }, timeout: retryDelay);
   }
 
   Future<String> getWriteCheckpoint() async {
@@ -181,7 +193,6 @@ class StreamingSyncImplementation {
 
     final response = await _client.get(uri, headers: {
       'Content-Type': 'application/json',
-      'User-Id': credentials.userId ?? '',
       'Authorization': "Token ${credentials.token}"
     });
     if (response.statusCode == 401) {
@@ -226,9 +237,10 @@ class StreamingSyncImplementation {
     _statusStreamController.add(newStatus);
   }
 
-  Future<bool> streamingSyncIteration() async {
+  Future<bool> streamingSyncIteration(
+      {AbortController? abortController}) async {
     adapter.startSession();
-    final bucketEntries = adapter.getBucketStates();
+    final bucketEntries = await adapter.getBucketStates();
 
     Map<String, String> initialBucketStates = {};
 
@@ -387,7 +399,6 @@ class StreamingSyncImplementation {
 
     final request = http.Request('POST', uri);
     request.headers['Content-Type'] = 'application/json';
-    request.headers['User-Id'] = credentials.userId ?? '';
     request.headers['Authorization'] = "Token ${credentials.token}";
     request.body = convert.jsonEncode(data);
 
@@ -427,7 +438,7 @@ class StreamingSyncImplementation {
 String _syncErrorMessage(Object? error) {
   if (error == null) {
     return 'Unknown';
-  } else if (error is HttpException) {
+  } else if (error is http.ClientException) {
     return 'Sync service error';
   } else if (error is SyncResponseException) {
     if (error.statusCode == 401) {
@@ -435,8 +446,6 @@ String _syncErrorMessage(Object? error) {
     } else {
       return 'Sync service error';
     }
-  } else if (error is SocketException) {
-    return 'Connection error';
   } else if (error is ArgumentError || error is FormatException) {
     return 'Configuration error';
   } else if (error is CredentialsException) {

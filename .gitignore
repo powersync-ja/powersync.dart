@@ -4,6 +4,20 @@
 .DS_Store
 pubspec_overrides.yaml
 .idea
+.vscode
 *.iml
 .flutter-plugins-dependencies
 .flutter-plugins
+build
+
+# Shared assets
+assets
+
+# Web assets
+powersync_db.worker.js
+sqlite3.wasm
+
+#Core binaries
+*.dylib
+*.dll
+*.so

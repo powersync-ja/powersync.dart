@@ -11,12 +11,13 @@ dependencies:
   flutter:
     sdk: flutter
 
-  powersync: ^1.5.5
+  powersync: ^1.6.0-alpha.1
   path_provider: ^2.1.1
   supabase_flutter: ^2.0.2
   path: ^1.8.3
   logging: ^1.2.0
   sqlite_async: ^0.8.1
+  universal_io: ^2.2.2
 
 dev_dependencies:
   flutter_test:
