@@ -155,7 +155,7 @@ void main() {
           equals([
             {
               'data':
-                  '{"op":"PUT","type":"logs","id":"$testId","data":{"content":"test log","level":"INFO"}}'
+                  '{"op":"PUT","type":"logs","id":"$testId","data":{"level":"INFO","content":"test log"}}'
             }
           ]));
 
@@ -231,7 +231,7 @@ void main() {
           equals([
             {
               'data':
-                  '{"op":"PATCH","type":"assets","id":"$testId","data":{"description":"updated","quantity":${bigNumber + 1}}}'
+                  '{"op":"PATCH","type":"assets","id":"$testId","data":{"quantity":${bigNumber + 1},"description":"updated"}}'
             }
           ]));
     });
