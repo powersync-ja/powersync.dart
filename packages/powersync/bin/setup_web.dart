@@ -67,17 +67,9 @@ void main(List<String> arguments) async {
     String sqlite3Version =
         "v${getPubspecVersion(packageConfigFile, sqlite3Pkg, sqlitePackageName)}";
 
-    //Sets the range of powersync core version that is compatible with the sqlite3 version
-    VersionRange sqliteCoreRange = VersionRange(
-      min: Version(0, 1, 0),
-      max: Version(0, 1, 9),
-      includeMin: true,
-      includeMax: true,
-    );
     List<String> tags = await getLatestTagsFromRelease(httpClient);
     String? matchTag = tags.firstWhereOrNull((element) =>
-        element.contains(sqlite3Version) &&
-        coreVersionIsInRange(element, sqliteCoreRange));
+        element.contains(sqlite3Version) && coreVersionIsInRange(element));
     if (matchTag != null) {
       sqlite3Version = matchTag;
     } else {
@@ -96,7 +88,14 @@ void main(List<String> arguments) async {
   }
 }
 
-bool coreVersionIsInRange(String tag, VersionRange range) {
+bool coreVersionIsInRange(String tag) {
+  //Sets the range of powersync core version that is compatible with the sqlite3 version
+  VersionRange range = VersionRange(
+    min: Version(0, 1, 0),
+    max: Version(0, 1, 9),
+    includeMin: true,
+    includeMax: true,
+  );
   if (!tag.contains("-powersync")) return false;
   List<String> parts = tag.split('-');
   String powersyncPart = parts[1];
