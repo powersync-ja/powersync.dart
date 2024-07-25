@@ -22,13 +22,13 @@ Our [full SDK reference](https://docs.powersync.com/client-sdk-references/flutte
 
 ## **_ Web support - Open alpha _**
 
-Web support is currently in an alpha release. This Readme has been updated to reflect updates that are currently only relevant to this alpha release.
+Web support in version 1.6.0 is currently in its alpha stage. This README has been updated to reflect changes relevant to this alpha release.
 
 ### Demo app
 
 The easiest way to test out the alpha is to run the [Supabase Todo-List](./demos/supabase-todolist) demo app:
 
-1. Checkout [this repo's](https://github.com/powersync-ja/powersync.dart/tree/alpha-release) `alpha_release` branch.
+1. Checkout [this repo's](https://github.com/powersync-ja/powersync.dart/tree/master) `master` branch.
 
 - Note: If you are an existing user updating to the latest code after a git pull, run `melos exec 'flutter pub upgrade'` in the repo's root and make sure it succeeds.
 
@@ -39,23 +39,20 @@ The easiest way to test out the alpha is to run the [Supabase Todo-List](./demos
 
 ### Installing PowerSync in your own project
 
-Install the latest alpha version of the package, for example:
+Install the latest version of the package, for example:
 
 ```
-flutter pub add powersync:'^1.3.0-alpha.1'
+flutter pub add powersync:'^1.6.0'
 ```
 
-The latest prerelease version can be found [here](https://pub.dev/packages/powersync/versions).
+The latest version can be found [here](https://pub.dev/packages/powersync/versions).
 
 ### Additional config
 
 Web support requires `sqlite3.wasm` and `powersync_db.worker.js` assets to be served from the web application. This is typically achieved by placing the files in the project `web` directory.
 
-- `sqlite3.wasm` can be found [here](https://github.com/powersync-ja/sqlite3.dart/releases/download/v0.1.0/sqlite3.wasm)
+- `sqlite3.wasm` can be found [here](https://github.com/powersync-ja/sqlite3.dart/releases)
 - `powersync_db.worker.js` can be found in the repo's [releases](https://github.com/powersync-ja/powersync.dart/releases) page.
-
-Currently the Drift SQLite library is used under the hood for DB connections. See [here](https://drift.simonbinder.eu/web/#getting-started) for detailed compatibility
-and setup notes.
 
 The same code is used for initializing native and web `PowerSyncDatabase` clients.
 
