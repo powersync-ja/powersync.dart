@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:collection/collection.dart';
+import 'package:pub_semver/pub_semver.dart';
 import 'package:pubspec_parse/pubspec_parse.dart';
 import 'package:args/args.dart';
 
@@ -66,14 +67,22 @@ void main(List<String> arguments) async {
     String sqlite3Version =
         "v${getPubspecVersion(packageConfigFile, sqlite3Pkg, sqlitePackageName)}";
 
-    // String latestTag = await getLatestTagFromRelease(httpClient);
+    //Sets the range of powersync core version that is compatible with the sqlite3 version
+    VersionRange sqliteCoreRange = VersionRange(
+      min: Version(0, 1, 0),
+      max: Version(0, 1, 9),
+      includeMin: true,
+      includeMax: true,
+    );
     List<String> tags = await getLatestTagsFromRelease(httpClient);
-    String? matchTag =
-        tags.firstWhereOrNull((element) => element.contains(sqlite3Version));
+    String? matchTag = tags.firstWhereOrNull((element) =>
+        element.contains(sqlite3Version) &&
+        coreVersionIsInRange(element, sqliteCoreRange));
     if (matchTag != null) {
       sqlite3Version = matchTag;
     } else {
-      sqlite3Version = tags[0];
+      throw Exception(
+          "No compatible powersync core version found for sqlite3 version $sqlite3Version, Please update your sqlite3 version");
     }
 
     final sqliteUrl =
@@ -84,6 +93,21 @@ void main(List<String> arguments) async {
     print(e);
     exit(1);
   }
+}
+
+bool coreVersionIsInRange(String tag, VersionRange range) {
+  if (!tag.contains("-powersync")) return false;
+  List<String> parts = tag.split('-');
+  String powersyncPart = parts[1];
+
+  List<String> versionParts = powersyncPart.split('.');
+  String extractedVersion =
+      versionParts.sublist(versionParts.length - 3).join('.');
+  final coreVersion = Version.parse(extractedVersion);
+  if (range.allows(coreVersion)) {
+    return true;
+  }
+  return false;
 }
 
 dynamic getPackageFromConfig(dynamic packageConfig, String packageName) {
