@@ -8,6 +8,11 @@ packages:
 ide:
   intellij: false
 
+command:
+  version:
+    packageFilters:
+      noPrivate: true
+
 scripts:
   prepare:
     description: Download SQLite3 WASM for demos

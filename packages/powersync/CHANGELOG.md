@@ -1,3 +1,7 @@
+## 1.6.1
+
+ - **FIX**: Reintroduce waitForFirstSync.
+
 ## 1.6.0
 
 - Web support is now included in the standard release but remains in alpha. Web support may have some limitations or bugs.

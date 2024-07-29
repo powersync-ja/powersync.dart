@@ -3,6 +3,32 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 2024-07-29
+
+### Changes
+
+---
+
+Packages with breaking changes:
+
+ - There are no breaking changes in this release.
+
+Packages with other changes:
+
+ - [`powersync` - `v1.6.1`](#powersync---v161)
+ - [`powersync_attachments_helper` - `v0.6.1`](#powersync_attachments_helper---v061)
+
+---
+
+#### `powersync` - `v1.6.1`
+
+ - **FIX**: Reintroduce waitForFirstSync.
+
+#### `powersync_attachments_helper` - `v0.6.1`
+
+ - Update a dependency to the latest release.
+
+
 ## 2024-07-25
 
 ### Changes
