@@ -8,6 +8,11 @@ packages:
 ide:
   intellij: false
 
+command:
+  version:
+    packageFilters:
+      noPrivate: true
+
 scripts:
   prepare: melos bootstrap && dart ./scripts/compile_webworker.dart && dart ./scripts/init_sqlite_wasm.dart && dart ./scripts/init_powersync_core_binary.dart
 

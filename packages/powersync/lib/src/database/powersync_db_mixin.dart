@@ -104,6 +104,18 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
     }
   }
 
+  /// Returns a [Future] which will resolve once the first full sync has completed.
+  Future<void> waitForFirstSync() async {
+    if (currentStatus.hasSynced ?? false) {
+      return;
+    }
+    await for (final result in statusStream) {
+      if (result.hasSynced ?? false) {
+        break;
+      }
+    }
+  }
+
   @protected
   void setStatus(SyncStatus status) {
     if (status != currentStatus) {
