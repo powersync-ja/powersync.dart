@@ -55,7 +55,7 @@ void main(List<String> arguments) async {
           packageConfigFile, powersyncPkg, powersyncPackageName);
 
       final workerUrl =
-          'https://github.com/powersync-ja/powersync.dart/releases/download/v$powersyncVersion/powersync_db.worker.js';
+          'https://github.com/powersync-ja/powersync.dart/releases/download/powersync-v$powersyncVersion/powersync_db.worker.js';
 
       await downloadFile(httpClient, workerUrl, workerPath);
     }
