@@ -73,9 +73,10 @@ void main(List<String> arguments) async {
     if (matchTag != null) {
       sqlite3Version = matchTag;
     } else {
-      //TODO: Use a better message to inform the user about the incompatibility
       throw Exception(
-          "No compatible powersync core version found for sqlite3 version $sqlite3Version, Please update your sqlite3 version");
+          """No compatible powersync core version found for sqlite3 version $sqlite3Version
+
+          Run `flutter pub upgrade powersync` to get the latest version of the powersync package.""");
     }
 
     final sqliteUrl =
@@ -90,12 +91,7 @@ void main(List<String> arguments) async {
 
 bool coreVersionIsInRange(String tag) {
   //Sets the range of powersync core version that is compatible with the sqlite3 version
-  VersionRange range = VersionRange(
-    min: Version(0, 1, 0),
-    max: Version(0, 1, 9),
-    includeMin: true,
-    includeMax: true,
-  );
+  VersionConstraint constraint = VersionConstraint.parse('>=0.1.0 <=0.1.9');
   if (!tag.contains("-powersync")) return false;
   List<String> parts = tag.split('-');
   String powersyncPart = parts[1];
@@ -104,7 +100,7 @@ bool coreVersionIsInRange(String tag) {
   String extractedVersion =
       versionParts.sublist(versionParts.length - 3).join('.');
   final coreVersion = Version.parse(extractedVersion);
-  if (range.allows(coreVersion)) {
+  if (constraint.allows(coreVersion)) {
     return true;
   }
   return false;
