@@ -32,6 +32,9 @@ jobs:
         run: melos prepare
 
       - name: Create Draft Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
         run: |
           tag="${{ github.ref_name }}"
           body="Release $tag"
