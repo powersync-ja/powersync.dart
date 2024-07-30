@@ -9,22 +9,22 @@ import 'package:stream_channel/stream_channel.dart';
 import 'asset_server.dart';
 
 Future<void> hybridMain(StreamChannel<Object?> channel) async {
-  final assetsDirectory = p.normalize(
-      p.join(DartScript.self.pathToScriptDirectory, '../../../../assets'));
+  final assetsDirectory = p
+      .normalize(p.join(DartScript.self.pathToScriptDirectory, '../../assets'));
 
   // Copy sqlite3.wasm file expected by the worker
   final sqliteOutputPath = p.join(assetsDirectory, 'sqlite3.wasm');
 
   if (!(await File(sqliteOutputPath).exists())) {
     throw AssertionError(
-        'sqlite3.wasm file should be present in the root assets folder');
+        'sqlite3.wasm file should be present in the powersync/assets folder');
   }
 
   final workerOutputPath = p.join(assetsDirectory, 'powersync_db.worker.js');
 
   if (!(await File(workerOutputPath).exists())) {
     throw AssertionError(
-        'powersync_db.worker.js file should be present in the ./assets folder');
+        'powersync_db.worker.js file should be present in the powersync/assets folder');
   }
 
   final server = await HttpServer.bind('localhost', 0);
