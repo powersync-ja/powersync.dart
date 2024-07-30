@@ -11,6 +11,7 @@ ide:
 
 command:
   version:
+    changelog: false
     packageFilters:
       noPrivate: true
 
