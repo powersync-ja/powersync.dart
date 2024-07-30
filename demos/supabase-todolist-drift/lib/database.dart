@@ -1,6 +1,5 @@
 import 'package:drift/drift.dart';
-import 'package:powersync/powersync.dart'
-    show PowerSyncDatabase, SyncStatus, uuid;
+import 'package:powersync/powersync.dart' show PowerSyncDatabase, uuid;
 import 'package:drift_sqlite_async/drift_sqlite_async.dart';
 import 'package:supabase_todolist_drift/powersync.dart';
 
