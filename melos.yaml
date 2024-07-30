@@ -1,4 +1,5 @@
 name: powersync_dart
+repository: https://github.com/powersync-ja/powersync.dart
 
 packages:
   - packages/*

@@ -75,8 +75,8 @@ void main(List<String> arguments) async {
     } else {
       throw Exception(
           """No compatible powersync core version found for sqlite3 version $sqlite3Version
-          Latest supported sqlite3 versions: ${tags.take(4).map((tag) => tag.split('-')[0]).join(', ')}.
-          Run `flutter pub upgrade powersync` to get the latest version of the powersync package.""");
+          Latest supported sqlite3 versions: ${tags.take(3).map((tag) => tag.split('-')[0]).join(', ')}.
+          You can view the full list of releases at https://github.com/powersync-ja/sqlite3.dart/releases""");
     }
 
     final sqliteUrl =
