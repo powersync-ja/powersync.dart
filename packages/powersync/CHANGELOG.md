@@ -1,8 +1,10 @@
 ## 1.6.2
 
+- **FEAT**: Introduces a custom script to download the sqlite3 wasm and powersync worker files. The command `dart run powersync:setup_web` must be run in the application's folder.
+
 ## 1.6.1
 
- - **FIX**: Reintroduce waitForFirstSync.
+- **FIX**: Reintroduce waitForFirstSync.
 
 ## 1.6.0
 
