@@ -11,21 +11,22 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 Packages with breaking changes:
 
- - There are no breaking changes in this release.
+- There are no breaking changes in this release.
 
 Packages with other changes:
 
- - [`powersync` - `v1.6.2`](#powersync---v162)
- - [`powersync_attachments_helper` - `v0.6.2`](#powersync_attachments_helper---v062)
+- [`powersync` - `v1.6.2`](#powersync---v162)
+- [`powersync_attachments_helper` - `v0.6.2`](#powersync_attachments_helper---v062)
 
 ---
 
 #### `powersync` - `v1.6.2`
 
+- **FEAT**: Introduces a custom script to download the sqlite3 wasm and powersync worker files. The command `dart run powersync:setup_web` must be run in the application's folder.
+
 #### `powersync_attachments_helper` - `v0.6.2`
 
- - Update a dependency to the latest release.
-
+- Update a dependency to the latest release.
 
 ## 2024-07-29
 
@@ -35,23 +36,22 @@ Packages with other changes:
 
 Packages with breaking changes:
 
- - There are no breaking changes in this release.
+- There are no breaking changes in this release.
 
 Packages with other changes:
 
- - [`powersync` - `v1.6.1`](#powersync---v161)
- - [`powersync_attachments_helper` - `v0.6.1`](#powersync_attachments_helper---v061)
+- [`powersync` - `v1.6.1`](#powersync---v161)
+- [`powersync_attachments_helper` - `v0.6.1`](#powersync_attachments_helper---v061)
 
 ---
 
 #### `powersync` - `v1.6.1`
 
- - **FIX**: Reintroduce waitForFirstSync.
+- **FIX**: Reintroduce waitForFirstSync.
 
 #### `powersync_attachments_helper` - `v0.6.1`
 
- - Update a dependency to the latest release.
-
+- Update a dependency to the latest release.
 
 ## 2024-07-25
 
