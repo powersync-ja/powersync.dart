@@ -11,23 +11,22 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 Packages with breaking changes:
 
- - There are no breaking changes in this release.
+- There are no breaking changes in this release.
 
 Packages with other changes:
 
- - [`powersync` - `v1.6.3`](#powersync---v163)
- - [`powersync_attachments_helper` - `v0.6.3`](#powersync_attachments_helper---v063)
+- [`powersync` - `v1.6.3`](#powersync---v163)
+- [`powersync_attachments_helper` - `v0.6.3`](#powersync_attachments_helper---v063)
 
 ---
 
 #### `powersync` - `v1.6.3`
 
- - **FIX**: Lower JS dependency to version range ">=0.6.7 <0.8.0"
+- **FIX**: Move JS to dev dependencies to lower version range ">=0.6.7 <0.8.0"
 
 #### `powersync_attachments_helper` - `v0.6.3`
 
- - Update a dependency to the latest release.
-
+- Update a dependency to the latest release.
 
 ## 2024-07-30
 
