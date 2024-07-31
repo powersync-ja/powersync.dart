@@ -3,6 +3,31 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 2024-07-31
+
+### Changes
+
+---
+
+Packages with breaking changes:
+
+- There are no breaking changes in this release.
+
+Packages with other changes:
+
+- [`powersync` - `v1.6.3`](#powersync---v163)
+- [`powersync_attachments_helper` - `v0.6.3`](#powersync_attachments_helper---v063)
+
+---
+
+#### `powersync` - `v1.6.3`
+
+- **FIX**: Move JS to dev dependencies and lower version range ">=0.6.7 <0.8.0"
+
+#### `powersync_attachments_helper` - `v0.6.3`
+
+- Update a dependency to the latest release.
+
 ## 2024-07-30
 
 ### Changes

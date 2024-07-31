@@ -1,3 +1,7 @@
+## 1.6.3
+
+- **FIX**: Move JS to dev dependencies and lower version range ">=0.6.7 <0.8.0"
+
 ## 1.6.2
 
 - **FEAT**: Introduces a custom script to download the sqlite3 wasm and powersync worker files. The command `dart run powersync:setup_web` must be run in the application's folder.
