@@ -22,7 +22,7 @@ Packages with other changes:
 
 #### `powersync` - `v1.6.3`
 
-- **FIX**: Move JS to dev dependencies to lower version range ">=0.6.7 <0.8.0"
+- **FIX**: Move JS to dev dependencies and lower version range ">=0.6.7 <0.8.0"
 
 #### `powersync_attachments_helper` - `v0.6.3`
 

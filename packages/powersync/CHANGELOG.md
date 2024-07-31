@@ -1,6 +1,6 @@
 ## 1.6.3
 
-- **FIX**: Move JS to dev dependencies to lower version range ">=0.6.7 <0.8.0"
+- **FIX**: Move JS to dev dependencies and lower version range ">=0.6.7 <0.8.0"
 
 ## 1.6.2
 
