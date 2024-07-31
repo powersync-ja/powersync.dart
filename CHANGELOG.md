@@ -22,6 +22,8 @@ Packages with other changes:
 
 #### `powersync` - `v1.6.3`
 
+ - **FIX**: Lower JS dependency to version range ">=0.6.7 <0.8.0"
+
 #### `powersync_attachments_helper` - `v0.6.3`
 
  - Update a dependency to the latest release.
