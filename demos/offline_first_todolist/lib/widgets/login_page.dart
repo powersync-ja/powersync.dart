@@ -32,9 +32,14 @@ class _LoginPageState extends State<LoginPage> {
       _error = null;
     });
     try {
-      await Supabase.instance.client.auth.signInWithPassword(
-          email: _usernameController.text, password: _passwordController.text);
-
+      try {
+        await Supabase.instance.client.auth.signInWithPassword(
+            email: _usernameController.text,
+            password: _passwordController.text);
+      } catch (e) {
+        print(e);
+        rethrow;
+      }
       if (context.mounted) {
         // We connect and upgrade the database schema here so that by the time the watch() calls are made in the
         // ListsPage, watch will track the new tables instead..
@@ -63,7 +68,7 @@ class _LoginPageState extends State<LoginPage> {
   Widget build(BuildContext context) {
     return Scaffold(
         appBar: AppBar(
-          title: const Text("PowerSync Flutter Demo"),
+          title: const Text("PowerSync Flutter Offline First Demo"),
         ),
         body: Center(
           child: SingleChildScrollView(

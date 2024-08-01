@@ -5,10 +5,10 @@
 // 'flutter create' template.
 
 // The application's name. By default this is also the title of the Flutter window.
-PRODUCT_NAME = offline_first_todolist
+PRODUCT_NAME = PowerSync Supabase Demo
 
 // The application's bundle identifier
-PRODUCT_BUNDLE_IDENTIFIER = co.powersync.offlineFirstTodolist
+PRODUCT_BUNDLE_IDENTIFIER = co.powersync.demotodolist
 
 // The copyright displayed in application information
-PRODUCT_COPYRIGHT = Copyright © 2024 co.powersync. All rights reserved.
+PRODUCT_COPYRIGHT = Copyright © 2023 Journey Mobile, Inc. All rights reserved.

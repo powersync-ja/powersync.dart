@@ -455,13 +455,6 @@ packages:
       relative: true
     source: path
     version: "1.6.0"
-  powersync_attachments_helper:
-    dependency: "direct overridden"
-    description:
-      path: "../../packages/powersync_attachments_helper"
-      relative: true
-    source: path
-    version: "0.6.0"
   powersync_flutter_libs:
     dependency: "direct overridden"
     description:
