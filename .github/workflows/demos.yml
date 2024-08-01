@@ -44,9 +44,9 @@ jobs:
         run: flutter pub global activate melos
       - name: Install dependencies
         run: melos prepare
-      - name: Set Powersync Core Version
-        run: echo "CORE_VERSION=0.1.8" >> $GITHUB_ENV
-      - name: Download Binaries
+      - name: Set powersync core version
+        run: echo "CORE_VERSION=v0.1.8" >> $GITHUB_ENV
+      - name: Download binaries
         run: sh tool/download_binaries.sh
       - name: Run flutter tests
         run: melos test
