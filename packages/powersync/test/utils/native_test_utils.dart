@@ -35,9 +35,8 @@ class TestOpenFactory extends PowerSyncOpenFactory {
       case Abi.macosX64:
         return '$path/libpowersync.dylib';
       case Abi.linuxX64:
-        return '$path/libpowersync_x64.so';
       case Abi.linuxArm64:
-        return '$path/libpowersync_aarch64.so';
+        return '$path/libpowersync.so';
       case Abi.windowsX64:
         return '$path/powersync.dll';
       case Abi.androidIA32:
