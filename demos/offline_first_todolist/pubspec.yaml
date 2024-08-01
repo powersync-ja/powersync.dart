@@ -1,0 +1,30 @@
+name: powersync_flutter_offline_first_demo
+description: PowerSync Flutter Offline First Demo
+publish_to: "none"
+
+version: 1.0.1
+
+environment:
+  sdk: ^3.4.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  powersync: ^1.6.0
+  path_provider: ^2.1.1
+  supabase_flutter: ^2.0.1
+  path: ^1.8.3
+  logging: ^1.2.0
+  camera: ^0.10.5+7
+  image: ^4.1.3
+  universal_io: ^2.2.2
+  sqlite_async: ^0.8.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  flutter_lints: ^3.0.1
+
+flutter:
+  uses-material-design: true
