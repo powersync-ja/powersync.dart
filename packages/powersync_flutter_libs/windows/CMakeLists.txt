@@ -24,23 +24,18 @@ target_include_directories(${PLUGIN_NAME} INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}
 target_link_libraries(${PLUGIN_NAME} PRIVATE flutter flutter_wrapper_plugin)
 
 # ----------------------------------------------------------------------
-# Download and add powersync prebuilt library.
-
-set(POWERSYNC_VERSION 0.1.6)
+# Add powersync prebuilt library.
 
 set(POWERSYNC_ARCH ${CMAKE_SYSTEM_PROCESSOR})
+set(CORE_FILE_NAME "powersync.dll")
+
 if (${POWERSYNC_ARCH} MATCHES "x86_64" OR ${POWERSYNC_ARCH} MATCHES "AMD64")
-    set(POWERSYNC_ARCH x64)
+  set(CORE_FILE_NAME "powersync.dll")
 elseif (${POWERSYNC_ARCH} MATCHES "^arm64" OR ${POWERSYNC_ARCH} MATCHES "^armv8")
-    set(POWERSYNC_ARCH aarch64)
+  message(FATAL_ERROR "Unsupported architecture: ${POWERSYNC_ARCH}, please file a GitHub issue to add support.")
 endif ()
 
 set(POWERSYNC_FILE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/powersync.dll")
-
-file(DOWNLOAD
-  "https://github.com/powersync-ja/powersync-sqlite-core/releases/download/v${POWERSYNC_VERSION}/powersync_${POWERSYNC_ARCH}.dll"
-  ${POWERSYNC_FILE_PATH}
-)
 
 # ----------------------------------------------------------------------
 
