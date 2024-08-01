@@ -1,5 +1,9 @@
 name: Publish packages
-on: workflow_dispatch
+on:
+  push:
+    tags:
+      - "powersync-v[0-9]+.[0-9]+.[0-9]+"
+  workflow_dispatch:
 
 jobs:
   publish-packages:
@@ -9,11 +13,27 @@ jobs:
       id-token: write # Required for authentication using OIDC
     runs-on: [ubuntu-latest]
     steps:
-      - uses: actions/checkout@v3
-      - uses: subosito/flutter-action@v2
+      - uses: actions/checkout@v4
+
+      - name: Install Flutter
+        uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.x'
-          channel: 'stable'
-      - uses: bluefireteam/melos-action@v3
-        with:
-          publish: true
+          flutter-version: "3.x"
+          channel: "stable"
+
+      - name: Set Powersync Core Version
+        run: echo "CORE_VERSION=0.1.8" >> $GITHUB_ENV
+      - name: Download Binaries
+        run: sh tool/download_binaries.sh
+      - name: Publish powersync
+        run: |
+          dart pub publish --force
+        working-directory: packages/powersync
+      - name: Publish powersync_attachments_helper
+        run: |
+          dart pub publish --force
+        working-directory: packages/powersync_attachments_helper
+      - name: Publish powersync_flutter_libs
+        run: |
+          dart pub publish --force
+        working-directory: packages/powersync_flutter_libs
