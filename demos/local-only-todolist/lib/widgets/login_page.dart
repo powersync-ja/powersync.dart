@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:powersync_flutter_offline_first_demo/powersync.dart';
+import 'package:powersync_flutter_local_only_demo/powersync.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../main.dart';
@@ -68,7 +68,7 @@ class _LoginPageState extends State<LoginPage> {
   Widget build(BuildContext context) {
     return Scaffold(
         appBar: AppBar(
-          title: const Text("PowerSync Flutter Offline First Demo"),
+          title: const Text("PowerSync Flutter Local Only Demo"),
         ),
         body: Center(
           child: SingleChildScrollView(

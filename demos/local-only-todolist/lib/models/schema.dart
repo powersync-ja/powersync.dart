@@ -1,11 +1,11 @@
 import 'package:powersync/powersync.dart';
-import 'package:powersync_flutter_offline_first_demo/models/sync_mode.dart';
+import 'package:powersync_flutter_local_only_demo/models/sync_mode.dart';
 
 /// The schema contains two copies of each table - a local-only one, and
 /// a online/synced one. Depending on the 'online' flag, one of those gets
 /// the main 'lists' / 'todos' view name.
 ///
-/// For offline, the views become:
+/// For local only, the views become:
 ///   online_todos
 ///   todos
 ///   online_lists
@@ -80,7 +80,7 @@ switchToOnlineSchema(PowerSyncDatabase db, String userId) async {
 
     await tx.execute('INSERT INTO $todosTable SELECT * FROM local_$todosTable');
 
-    // Delete the "offline-only" data.
+    // Delete the "local-only" data.
     await tx.execute('DELETE FROM local_$todosTable');
     await tx.execute('DELETE FROM local_$listsTable');
   });

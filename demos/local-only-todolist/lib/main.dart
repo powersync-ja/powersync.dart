@@ -1,8 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
-import 'package:powersync_flutter_offline_first_demo/models/schema.dart';
-import 'package:powersync_flutter_offline_first_demo/models/sync_mode.dart';
+import 'package:powersync_flutter_local_only_demo/models/schema.dart';
+import 'package:powersync_flutter_local_only_demo/models/sync_mode.dart';
 
 import './powersync.dart';
 import './widgets/lists_page.dart';
@@ -57,7 +57,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-        title: 'PowerSync Flutter Offline First Demo',
+        title: 'PowerSync Flutter Local Only Demo',
         theme: ThemeData(
           primarySwatch: Colors.blue,
         ),

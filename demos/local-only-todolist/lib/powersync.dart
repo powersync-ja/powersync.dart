@@ -4,7 +4,7 @@ import 'package:logging/logging.dart';
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:powersync/powersync.dart';
-import 'package:powersync_flutter_offline_first_demo/models/sync_mode.dart';
+import 'package:powersync_flutter_local_only_demo/models/sync_mode.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import './app_config.dart';
@@ -143,11 +143,11 @@ bool isLoggedIn() {
 /// id of the user currently logged in
 String getUserId() {
   return Supabase.instance.client.auth.currentSession?.user.id ??
-      '00000000-0000-0000-0000-000000000000'; // default ID supplied for offline mode
+      '00000000-0000-0000-0000-000000000000'; // default ID supplied for local only mode
 }
 
 Future<String> getDatabasePath() async {
-  const dbFilename = 'powersync-demo-offline.db';
+  const dbFilename = 'powersync-demo-local-only.db';
   // getApplicationSupportDirectory is not supported on Web
   if (kIsWeb) {
     return dbFilename;
