@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert' as convert;
+
 import 'package:http/http.dart' as http;
 import 'package:powersync/src/abort_controller.dart';
 import 'package:powersync/src/exceptions.dart';
@@ -143,6 +144,9 @@ class StreamingSyncImplementation {
     await uploadAllCrud();
 
     await for (var _ in updateStream) {
+      if (_abort?.aborted == true) {
+        break;
+      }
       await uploadAllCrud();
     }
   }
