@@ -32,19 +32,14 @@ class _LoginPageState extends State<LoginPage> {
       _error = null;
     });
     try {
-      try {
-        await Supabase.instance.client.auth.signInWithPassword(
-            email: _usernameController.text,
-            password: _passwordController.text);
-      } catch (e) {
-        print(e);
-        rethrow;
-      }
-      if (context.mounted) {
-        // We connect and upgrade the database schema here so that by the time the watch() calls are made in the
-        // ListsPage, watch will track the new tables instead..
-        await connectDatabase();
+      await Supabase.instance.client.auth.signInWithPassword(
+          email: _usernameController.text, password: _passwordController.text);
 
+      // We connect and upgrade the database schema here so that by the time the watch() calls are made in the
+      // ListsPage, watch will track the new tables instead..
+      await connectDatabase();
+
+      if (context.mounted) {
         Navigator.of(context).pushReplacement(MaterialPageRoute(
           builder: (context) => listsPage,
         ));

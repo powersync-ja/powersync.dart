@@ -35,12 +35,12 @@ class _SignupPageState extends State<SignupPage> {
       final response = await Supabase.instance.client.auth.signUp(
           email: _usernameController.text, password: _passwordController.text);
 
+      // We connect and upgrade the database schema here so that by the time the watch() calls are made in the
+      // ListsPage, watch will track the new tables instead..
+      await connectDatabase();
+
       if (context.mounted) {
         if (response.session != null) {
-          // We connect and upgrade the database schema here so that by the time the watch() calls are made in the
-          // ListsPage, watch will track the new tables instead..
-          await connectDatabase();
-
           Navigator.of(context).pushReplacement(MaterialPageRoute(
             builder: (context) => homePage,
           ));
