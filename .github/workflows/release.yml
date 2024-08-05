@@ -9,11 +9,13 @@ on:
       # This action is not compatible with tags such as `powersync-v1.1.1`
       # marvinpinto/action-automatic-releases struggles to generate changelogs
       # Be sure to manually tag the commit to trigger this action
-      - 'v*'
+      - "powersync-v[0-9]+.[0-9]+.[0-9]+"
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout Repository
@@ -22,8 +24,8 @@ jobs:
       - name: Install Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.x'
-          channel: 'stable'
+          flutter-version: "3.x"
+          channel: "stable"
 
       - name: Install Melos
         run: flutter pub global activate melos
@@ -32,10 +34,11 @@ jobs:
         run: melos prepare
 
       - name: Create Draft Release
-        uses: 'marvinpinto/action-automatic-releases@latest'
-        with:
-          repo_token: '${{ secrets.GITHUB_TOKEN }}'
-          prerelease: true # TODO update when out of alpha
-          draft: true
-          files: |
-            assets/powersync_db.worker.js
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          tag="${{ github.ref_name }}"
+          body="Release $tag"
+          gh release create --draft "$tag" --title "$tag" --notes "$body" --generate-notes --prerelease
+          gh release upload "${{ github.ref_name }}" packages/powersync/assets/powersync_db.worker.js

@@ -1,4 +1,5 @@
 name: powersync_dart
+repository: https://github.com/powersync-ja/powersync.dart
 
 packages:
   - packages/*
@@ -8,8 +9,35 @@ packages:
 ide:
   intellij: false
 
+command:
+  version:
+    changelog: false
+    packageFilters:
+      noPrivate: true
+
 scripts:
-  prepare: melos bootstrap && dart ./scripts/compile_webworker.dart && dart ./scripts/init_sqlite_wasm.dart && dart ./scripts/init_powersync_core_binary.dart
+  prepare:
+    description: Download SQLite3 WASM for demos
+    run: |
+      melos bootstrap && melos prepare:assets && dart ./scripts/compile_webworker.dart && dart ./scripts/init_powersync_core_binary.dart
+      melos prepare:demos
+
+  prepare:demos:
+    description: Download SQLite3 wasm for demos
+    run: dart run powersync:setup_web --no-worker
+    exec:
+      concurrency: 1
+    packageFilters:
+      private: true
+      dirExists: web
+
+  prepare:assets:
+    description: Download Sqlite3 WASM for tests
+    run: dart ./bin/setup_web.dart --no-worker --output-dir assets
+    exec:
+      concurrency: 1
+    packageFilters:
+      scope: powersync
 
   analyze:demos:
     description: Analyze Dart code in demos.
@@ -24,13 +52,6 @@ scripts:
     exec: flutter pub global run pana --no-warning --exit-code-threshold 10
     packageFilters:
       noPrivate: true
-
-  compile:webworker:
-    description: Compile Javascript web worker distributable
-    exec: dart run powersync_web_worker:compile_webworker
-    packageFilters:
-      scope:
-        - powersync_web_worker
 
   format:
     description: Format Dart code.
@@ -67,5 +88,3 @@ scripts:
         - test
     env:
       MELOS_TEST: true
-
-  update:wasm: dart run scripts/init_sqlite_wasm.dart
