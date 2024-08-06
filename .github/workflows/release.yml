@@ -4,11 +4,6 @@ name: Compile Assets and Create Draft Release
 on:
   push:
     tags:
-      # Trigger on tags beginning with 'v'
-      # Note that `melos version ...` adds the package name as a suffix
-      # This action is not compatible with tags such as `powersync-v1.1.1`
-      # marvinpinto/action-automatic-releases struggles to generate changelogs
-      # Be sure to manually tag the commit to trigger this action
       - "powersync-v[0-9]+.[0-9]+.[0-9]+"
 
 jobs:

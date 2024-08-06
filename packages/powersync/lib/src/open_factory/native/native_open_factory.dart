@@ -84,8 +84,9 @@ class PowerSyncOpenFactory extends AbstractPowerSyncOpenFactory {
       case Abi.macosX64:
         return 'libpowersync.dylib';
       case Abi.linuxX64:
-        return 'libpowersync.so';
-      case Abi.windowsArm64:
+        return 'libpowersync_x64.so';
+      case Abi.linuxArm64:
+        return 'libpowersync_aarch64.so';
       case Abi.windowsX64:
         return 'powersync.dll';
       case Abi.androidIA32:
