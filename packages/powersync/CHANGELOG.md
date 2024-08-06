@@ -1,3 +1,7 @@
+## 1.6.4
+
+ - **FIX**: should be reset after  has been called. ([5e12a079](https://github.com/powersync-ja/powersync.dart/commit/5e12a07918ca16d3dcf90f26a42c5a61c09fb978))
+
 ## 1.6.3
 
 - **FIX**: Move JS to dev dependencies and lower version range ">=0.6.7 <0.8.0"
