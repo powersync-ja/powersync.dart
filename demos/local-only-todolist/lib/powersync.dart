@@ -157,7 +157,7 @@ Future<String> getDatabasePath() async {
 }
 
 Future<void> openDatabase() async {
-  var isSyncMode = await getSyncMode();
+  var isSyncMode = await getSyncEnabled();
   db = PowerSyncDatabase(
       schema: makeSchema(online: isSyncMode),
       path: await getDatabasePath(),
@@ -177,7 +177,7 @@ Future<void> connectDatabase() async {
     log.severe("Can't connect database without being signed in");
   }
   SupabaseConnector? currentConnector;
-  var isSyncMode = await getSyncMode();
+  var isSyncMode = await getSyncEnabled();
 
   if (!isSyncMode) {
     await switchToOnlineSchema(db, getUserId());
@@ -206,6 +206,6 @@ Future<void> logout() async {
   await db.disconnectAndClear();
 
   // Resetting app so that no-sync mode works again
-  await await setSyncMode(false);
+  await await setSyncEnabled(false);
   await openDatabase();
 }

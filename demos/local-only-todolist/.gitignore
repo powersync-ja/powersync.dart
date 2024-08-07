@@ -45,6 +45,3 @@ app.*.map.json
 
 # asdf
 .tool-versions
-
-# secrets
-app_config.dart

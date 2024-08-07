@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
+import 'package:powersync_flutter_local_only_demo/app_config.dart';
 import 'package:powersync_flutter_local_only_demo/models/schema.dart';
 import 'package:powersync_flutter_local_only_demo/models/sync_mode.dart';
 
@@ -126,6 +127,10 @@ class MyHomePage extends StatelessWidget {
                   ));
                 }
               },
+              enabled: // disable login/signup if credentials aren't configured.
+                  !(AppConfig.supabaseUrl == "https://foo.supabase.co" ||
+                      AppConfig.powersyncUrl ==
+                          "https://foo.powersync.journeyapps.com"),
             ),
           ],
         ),

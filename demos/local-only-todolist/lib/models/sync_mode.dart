@@ -28,19 +28,19 @@ openSyncModeDatabase() async {
   await migrations.migrate(sqliteDb);
 }
 
-Future<bool> getSyncMode() async {
+Future<bool> getSyncEnabled() async {
   var rows = await sqliteDb
       .getAll('SELECT sync_enabled from local_system where id = 1');
 
   if (rows.isEmpty) {
-    await setSyncMode(false);
+    await setSyncEnabled(false);
     return false;
   }
 
   return rows[0]['sync_enabled'] == 'TRUE';
 }
 
-setSyncMode(bool enabled) async {
+setSyncEnabled(bool enabled) async {
   var enabledString = enabled ? "TRUE" : "FALSE";
   await sqliteDb.execute(
       'INSERT OR REPLACE INTO local_system(id, sync_enabled) VALUES (1, ?);',

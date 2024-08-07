@@ -2,15 +2,19 @@
 
 This demo app is an extension of the Flutter Todo List App that demonstrates how to use the PowerSync SDK for Flutter in an local only way. It allows the user to use the app offline without having to sign in. After signing in data that was kept locally is synced up. For a step-by-step guide, see [here](https://docs.powersync.com/integration-guides/supabase).
 
-# Running the app
+# Running the app with local-only
 
+Note that if Supabase and PowerSync credentials have not been been configured, a user will not be able to login or sign up. There is a hardcoded check in `main.dart` for this.
 Ensure you have [melos](https://melos.invertase.dev/~melos-latest/getting-started) installed.
 
 1. `cd demos/local-only-todolist`
 2. `melos prepare`
-3. `cp lib/app_config_template.dart lib/app_config.dart`
-4. Insert your Supabase and PowerSync project credentials into `lib/app_config.dart` (See instructions below)
-5. `flutter run`
+3. `flutter run`
+
+# Setting up sync functionality
+
+Insert your Supabase and PowerSync project credentials into `lib/app_config.dart` (See instructions below).
+A user should now be able to login or sign up, which enables the sync functionality.
 
 # Set up Supabase Project
 

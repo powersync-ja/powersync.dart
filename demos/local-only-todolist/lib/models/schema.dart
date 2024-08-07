@@ -1,21 +1,32 @@
 import 'package:powersync/powersync.dart';
 import 'package:powersync_flutter_local_only_demo/models/sync_mode.dart';
 
-/// The schema contains two copies of each table - a local-only one, and
-/// a online/synced one. Depending on the 'online' flag, one of those gets
-/// the main 'lists' / 'todos' view name.
+/// This schema design supports an online/local-only workflow by managing data
+/// across two versions of each table: one for local/offline use and one for
+/// online/synced use. This approach simplifies the handling of data in different
+/// connectivity states.
 ///
 /// For local only, the views become:
 ///   online_todos
 ///   todos
 ///   online_lists
 ///   lists
+///
+/// - 'todos' and 'lists' refer to the local-only data.
+/// - 'online_todos' and 'online_lists' refer to the data that will be synced
+///    once online, making it clear that these are not currently synchronized.
+///
 /// For online, we have these views:
 ///   todos
 ///   local_todos
 ///   lists
 ///   local_lists
 ///
+/// - 'todos' and 'lists' refer to the synced/online data.
+/// - local_todos' and 'local_lists' refer to the local-only data, allowing
+///   for temporary storage or operations before syncing.
+///
+///  For an offline-to-online transition [switchToOnlineSchema] copies data so that it ends up in the upload queue.
 
 const todosTable = 'todos';
 const listsTable = 'lists';
@@ -69,7 +80,7 @@ Schema makeSchema({online = bool}) {
 
 switchToOnlineSchema(PowerSyncDatabase db, String userId) async {
   await db.updateSchema(makeSchema(online: true));
-  await setSyncMode(true);
+  await setSyncEnabled(true);
 
   await db.writeTransaction((tx) async {
     // Copy local data to the "online" views.
