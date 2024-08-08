@@ -157,34 +157,42 @@ Future<String> getDatabasePath() async {
 }
 
 Future<void> openDatabase() async {
+  await _openDatabase();
+
+  await loadSupabase();
+  if (isLoggedIn()) {
+    // If the user is already logged in, connect immediately.
+    // Otherwise, connect once logged via login/signup view.
+    await connectDatabase();
+  }
+}
+
+Future<void> _openDatabase() async {
   var isSyncMode = await getSyncEnabled();
   db = PowerSyncDatabase(
       schema: makeSchema(synced: isSyncMode),
       path: await getDatabasePath(),
       logger: attachedLogger);
   await db.initialize();
-
-  await loadSupabase();
-  if (isLoggedIn()) {
-    // If the user is already logged in, connect immediately.
-    // Otherwise, connect once logged via login/signup view.
-    connectDatabase();
-  }
 }
 
 Future<void> connectDatabase() async {
-  if (isLoggedIn()) {
+  if (!isLoggedIn()) {
     log.severe("Can't connect database without being signed in");
   }
   SupabaseConnector? currentConnector;
   var isSyncMode = await getSyncEnabled();
 
   if (!isSyncMode) {
-    await switchToOnlineSchema(db, getUserId());
+    await switchToSyncedSchema(db, getUserId());
+    // Without closing and reopening the database the list pages breaks if there is no data in the tables when logging in/signing up.
+    await db.close();
+    await _openDatabase();
   }
 
   currentConnector = SupabaseConnector(db);
-  db.connect(connector: currentConnector);
+  await db.connect(connector: currentConnector);
+  // await Future.delayed(const Duration(seconds: 5));
 
   Supabase.instance.client.auth.onAuthStateChange.listen((data) async {
     final AuthChangeEvent event = data.event;

@@ -73,12 +73,12 @@ Schema makeSchema({synced = bool}) {
       Table(table.name, table.columns,
           indexes: table.indexes, viewName: onlineName(table.name)),
     for (var table in tables)
-      Table.localOnly('local_${table.name}', table.columns,
+      Table.localOnly('inactive_local_${table.name}', table.columns,
           indexes: table.indexes, viewName: localName(table.name))
   ]);
 }
 
-switchToOnlineSchema(PowerSyncDatabase db, String userId) async {
+switchToSyncedSchema(PowerSyncDatabase db, String userId) async {
   await db.updateSchema(makeSchema(synced: true));
   await setSyncEnabled(true);
 
