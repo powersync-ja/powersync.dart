@@ -1,6 +1,6 @@
 # PowerSync + Supabase Flutter Local-Only to Online Mode Demo: Todo List App
 
-This demo app is an extension of the Supabase Todo List App that demonstrates how to use the PowerSync SDK for Flutter in a local-only way without sync capabilities. It allows the user to use the app offline without having to sign in. After signing in data that was kept locally is synced up. For a step-by-step guide, see [here](https://docs.powersync.com/integration-guides/supabase).
+This demo app is an extension of the [Supabase Todo List App](../supabase-todolist/README.md) that demonstrates how to use the PowerSync SDK for Flutter in a local-only way without sync capabilities. It allows the user to use the app offline without having to sign in. After signing in data that was kept locally is synced up. For a step-by-step guide, see [here](https://docs.powersync.com/integration-guides/supabase).
 
 # Running the app with local-only
 
