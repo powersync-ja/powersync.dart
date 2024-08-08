@@ -67,7 +67,7 @@ class _SignupPageState extends State<SignupPage> {
   Widget build(BuildContext context) {
     return Scaffold(
         appBar: AppBar(
-          title: const Text("PowerSync Flutter Local Only Demo"),
+          title: const Text("PowerSync Flutter Local-Only Demo"),
         ),
         body: Center(
           child: SingleChildScrollView(

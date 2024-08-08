@@ -1,29 +1,29 @@
 import 'package:powersync/powersync.dart';
 import 'package:powersync_flutter_local_only_demo/models/sync_mode.dart';
 
-/// This schema design supports an online/local-only workflow by managing data
+/// This schema design supports a local-only to online workflow by managing data
 /// across two versions of each table: one for local/offline use and one for
 /// online/synced use. This approach simplifies the handling of data in different
 /// connectivity states.
 ///
-/// For local only, the views become:
-///   online_todos
+/// For local-only, the views become:
+///   inactive_synced_todos
 ///   todos
-///   online_lists
+///   inactive_synced_lists
 ///   lists
 ///
 /// - 'todos' and 'lists' refer to the local-only data.
-/// - 'online_todos' and 'online_lists' refer to the data that will be synced
-///    once online, making it clear that these are not currently synchronized.
+/// - 'inactive_synced_todos' and 'inactive_synced_lists' refer to the data that will be synced
+///    once online.
 ///
 /// For online, we have these views:
 ///   todos
-///   local_todos
+///   inactive_local_todos
 ///   lists
-///   local_lists
+///   inactive_local_lists
 ///
 /// - 'todos' and 'lists' refer to the synced/online data.
-/// - local_todos' and 'local_lists' refer to the local-only data, allowing
+/// - `inactive_local_todos' and 'inactive_local_lists' refer to the local-only data, allowing
 ///   for temporary storage or operations before syncing.
 ///
 ///  For an offline-to-online transition [switchToOnlineSchema] copies data so that it ends up in the upload queue.
@@ -31,18 +31,18 @@ import 'package:powersync_flutter_local_only_demo/models/sync_mode.dart';
 const todosTable = 'todos';
 const listsTable = 'lists';
 
-Schema makeSchema({online = bool}) {
+Schema makeSchema({synced = bool}) {
   String onlineName(String table) {
-    if (online) {
+    if (synced) {
       return table;
     } else {
-      return "online_$table";
+      return "inactive_synced_$table";
     }
   }
 
   String localName(String table) {
-    if (online) {
-      return "local_$table";
+    if (synced) {
+      return "inactive_local_$table";
     } else {
       return table;
     }
@@ -79,20 +79,21 @@ Schema makeSchema({online = bool}) {
 }
 
 switchToOnlineSchema(PowerSyncDatabase db, String userId) async {
-  await db.updateSchema(makeSchema(online: true));
+  await db.updateSchema(makeSchema(synced: true));
   await setSyncEnabled(true);
 
   await db.writeTransaction((tx) async {
-    // Copy local data to the "online" views.
+    // Copy local-only data to the "online" views.
     // This records each operation to the crud queue.
     await tx.execute(
-        'INSERT INTO lists(id, name, created_at, owner_id) SELECT id, name, created_at, ? FROM local_lists',
+        'INSERT INTO lists(id, name, created_at, owner_id) SELECT id, name, created_at, ? FROM inactive_local_lists',
         [userId]);
 
-    await tx.execute('INSERT INTO $todosTable SELECT * FROM local_$todosTable');
+    await tx.execute(
+        'INSERT INTO $todosTable SELECT * FROM inactive_local_$todosTable');
 
     // Delete the "local-only" data.
-    await tx.execute('DELETE FROM local_$todosTable');
-    await tx.execute('DELETE FROM local_$listsTable');
+    await tx.execute('DELETE FROM inactive_local_$todosTable');
+    await tx.execute('DELETE FROM inactive_local_$listsTable');
   });
 }

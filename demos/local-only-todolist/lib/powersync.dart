@@ -143,7 +143,7 @@ bool isLoggedIn() {
 /// id of the user currently logged in
 String getUserId() {
   return Supabase.instance.client.auth.currentSession?.user.id ??
-      '00000000-0000-0000-0000-000000000000'; // default ID supplied for local only mode
+      '00000000-0000-0000-0000-000000000000'; // default ID supplied for local-only mode
 }
 
 Future<String> getDatabasePath() async {
@@ -159,7 +159,7 @@ Future<String> getDatabasePath() async {
 Future<void> openDatabase() async {
   var isSyncMode = await getSyncEnabled();
   db = PowerSyncDatabase(
-      schema: makeSchema(online: isSyncMode),
+      schema: makeSchema(synced: isSyncMode),
       path: await getDatabasePath(),
       logger: attachedLogger);
   await db.initialize();
