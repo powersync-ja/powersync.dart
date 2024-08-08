@@ -1,6 +1,8 @@
 # PowerSync + Supabase + Drift Flutter Demo: Todo List App
 
-Demo app demonstrating use of the PowerSync SDK for Flutter together with Supabase. For a step-by-step guide, see [here](https://docs.powersync.com/integration-guides/supabase).
+This demo app is an extension of the [Supabase Todo List App](../supabase-todolist/README.md) and showcases how to set up and use the [drift_sqlite_async](https://pub.dev/packages/drift_sqlite_async) library (Drift ORM) with PowerSync.
+
+Notes about the Drift usage are [further below](#drift).
 
 # Running the app
 
@@ -13,6 +15,8 @@ Ensure you have [melos](https://melos.invertase.dev/~melos-latest/getting-starte
 5. `flutter run`
 
 # Set up Supabase Project
+
+Detailed instructions for integrating PowerSync with Supabase can be found in [the integration guide](https://docs.powersync.com/integration-guides/supabase). Below are the main steps required to get this demo running.
 
 Create a new Supabase project, and paste an run the contents of [database.sql](./database.sql) in the Supabase SQL editor.
 
