@@ -192,7 +192,6 @@ Future<void> connectDatabase() async {
 
   currentConnector = SupabaseConnector(db);
   await db.connect(connector: currentConnector);
-  // await Future.delayed(const Duration(seconds: 5));
 
   Supabase.instance.client.auth.onAuthStateChange.listen((data) async {
     final AuthChangeEvent event = data.event;
