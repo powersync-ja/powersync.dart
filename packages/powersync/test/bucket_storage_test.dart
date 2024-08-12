@@ -170,6 +170,50 @@ void main() {
       await expectNoAssets();
     });
 
+    test('put then remove', () async {
+      await bucketStorage.saveSyncData(SyncDataBatch([
+        SyncBucketData(bucket: 'bucket1', data: [putAsset1_3]),
+      ]));
+
+      await syncLocalChecked(Checkpoint(lastOpId: '3', checksums: [
+        BucketChecksum(bucket: 'bucket1', checksum: 3),
+      ]));
+
+      await expectAsset1_3();
+
+      await bucketStorage.saveSyncData(SyncDataBatch([
+        SyncBucketData(bucket: 'bucket1', data: [removeAsset1_5])
+      ]));
+
+      await syncLocalChecked(Checkpoint(lastOpId: '5', checksums: [
+        BucketChecksum(bucket: 'bucket1', checksum: 8),
+      ]));
+
+      await expectNoAssets();
+    });
+
+    test('blank remove', () async {
+      await bucketStorage.saveSyncData(SyncDataBatch([
+        SyncBucketData(bucket: 'bucket1', data: [putAsset1_3, removeAsset1_4]),
+      ]));
+
+      await syncLocalChecked(Checkpoint(lastOpId: '4', checksums: [
+        BucketChecksum(bucket: 'bucket1', checksum: 7),
+      ]));
+
+      await expectNoAssets();
+
+      await bucketStorage.saveSyncData(SyncDataBatch([
+        SyncBucketData(bucket: 'bucket1', data: [removeAsset1_5])
+      ]));
+
+      await syncLocalChecked(Checkpoint(lastOpId: '5', checksums: [
+        BucketChecksum(bucket: 'bucket1', checksum: 12),
+      ]));
+
+      await expectNoAssets();
+    });
+
     test('should use subkeys', () async {
       // subkeys cause this to be treated as a separate entity in the oplog,
       // but same entity in the local db.
