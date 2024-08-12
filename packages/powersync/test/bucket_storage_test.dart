@@ -521,7 +521,7 @@ void main() {
             BucketChecksum(bucket: 'bucket1', checksum: 2147483642)
           ]));
 
-      final stats = db.select(
+      final stats = await powersync.execute(
           'SELECT row_type as type, row_id as id, count(*) as count FROM ps_oplog GROUP BY row_type, row_id ORDER BY row_type, row_id');
       expect(
           stats,
@@ -562,7 +562,7 @@ void main() {
           writeCheckpoint: '4',
           checksums: [BucketChecksum(bucket: 'bucket1', checksum: -3)]));
 
-      final stats = db.select(
+      final stats = await powersync.execute(
           'SELECT row_type as type, row_id as id, count(*) as count FROM ps_oplog GROUP BY row_type, row_id ORDER BY row_type, row_id');
       expect(
           stats,
