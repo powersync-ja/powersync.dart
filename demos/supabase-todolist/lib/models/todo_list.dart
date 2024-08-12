@@ -1,5 +1,5 @@
 import 'package:powersync/powersync.dart';
-import 'package:powersync/sqlite3.dart' as sqlite;
+import 'package:powersync/sqlite3_common.dart' as sqlite;
 
 import './todo_item.dart';
 import '../powersync.dart';

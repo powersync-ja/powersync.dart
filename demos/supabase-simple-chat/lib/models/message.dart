@@ -1,5 +1,5 @@
 import '../powersync.dart';
-import 'package:powersync/sqlite3.dart' as sqlite;
+import 'package:powersync/sqlite3_common.dart' as sqlite;
 
 class Message {
   Message({

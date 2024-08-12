@@ -1,3 +1,27 @@
+## 0.6.3+1
+
+ - Update a dependency to the latest release.
+
+## 0.6.3
+
+ - Update a dependency to the latest release.
+
+## 0.6.2
+
+ - Update a dependency to the latest release.
+
+## 0.6.1
+
+ - Update a dependency to the latest release.
+
+## 0.6.0
+
+- Update a dependency to the latest release.
+
+## 0.6.0-alpha.1
+
+- Update a dependency to the latest release.
+
 ## 0.5.1
 
 - Upgrade `sqlite_async` to version 0.8.1.
@@ -6,6 +30,25 @@
 
 - Upgrade minimum Dart SDK constraint to `3.4.0`.
 - Upgrade `sqlite_async` to version 0.7.0.
+
+## 0.3.0-alpha.4
+
+- Update a dependency to the latest release.
+
+## 0.3.0-alpha.3
+
+- Update a dependency to the latest release.
+
+## 0.3.0-alpha.2
+
+> Note: This release has breaking changes.
+
+- **FIX**: reset isProcessing when exception is thrown during sync process. (#81).
+- **FIX**: attachment queue duplicating requests (#68).
+- **FIX**(powersync-attachements-helper): pubspec file (#29).
+- **FEAT**(attachments): add error handlers (#65).
+- **DOCS**: update readmes (#38).
+- **BREAKING** **FEAT**(attachments): cater for subdirectories in storage (#78).
 
 ## 0.4.1
 
@@ -30,6 +73,10 @@
 
 - BREAKING CHANGE: `reconcileId` has been removed in favour of `reconcileIds`. This will require a change to `watchIds` implementation which is shown in `example/getting_started.dart`
 - Improved queue so that uploads, downloads and deletes do not happen multiple times
+
+## 0.3.0-alpha.1
+
+- Added initial support for Web platforms
 
 ## 0.2.1
 

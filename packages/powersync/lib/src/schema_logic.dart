@@ -1,6 +1,5 @@
 import 'dart:convert';
 
-import 'package:sqlite_async/sqlite3_common.dart';
 import 'package:sqlite_async/sqlite_async.dart';
 
 import 'schema.dart';
@@ -10,14 +9,14 @@ const String maxOpId = '9223372036854775807';
 final invalidSqliteCharacters = RegExp(r'''["'%,\.#\s\[\]]''');
 
 /// Sync the schema to the local database.
-void updateSchema(CommonDatabase db, Schema schema) {
-  db.execute('SELECT powersync_replace_schema(?)', [jsonEncode(schema)]);
+Future<void> updateSchema(SqliteWriteContext tx, Schema schema) async {
+  await tx.execute('SELECT powersync_replace_schema(?)', [jsonEncode(schema)]);
 }
 
 Future<void> updateSchemaInIsolate(
     SqliteConnection database, Schema schema) async {
-  await database.computeWithDatabase((db) async {
-    updateSchema(db, schema);
+  await database.writeTransaction((tx) async {
+    await updateSchema(tx, schema);
   });
 }
 

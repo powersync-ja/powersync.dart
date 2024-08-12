@@ -1,6 +1,33 @@
+## 1.6.4
+
+- **FIX**: `hasSynced` status should be reset after `disconnectAndClear` has been called. ([5e12a079](https://github.com/powersync-ja/powersync.dart/commit/5e12a07918ca16d3dcf90f26a42c5a61c09fb978))
+
+## 1.6.3
+
+- **FIX**: Move JS to dev dependencies and lower version range ">=0.6.7 <0.8.0"
+
+## 1.6.2
+
+- **FEAT**: Introduces a custom script to download the sqlite3 wasm and powersync worker files. The command `dart run powersync:setup_web` must be run in the application's folder.
+
+## 1.6.1
+
+- **FIX**: Reintroduce waitForFirstSync.
+
+## 1.6.0
+
+- Web support is now included in the standard release but remains in alpha. Web support may have some limitations or bugs.
+
+## 1.6.0-alpha.1
+
+- Added support for client parameters when connecting.
+- Fix watch query parameter `triggerOnTables` to prepend powersync view names.
+- Upgrade dependency `sqlite_async` to version 0.8.1.
+- Fix issue where `hasSynced` is cleared when offline.
+
 ## 1.5.5
 
- - Fix issue where `hasSynced` is cleared when offline.
+- Fix issue where `hasSynced` is cleared when offline.
 
 ## 1.5.4
 
@@ -39,6 +66,24 @@
 - Introduces the use of the `powersync-sqlite-core` native extension. This is our common Rust core which means all PowerSync SDKs now use the same core logic for PowerSync functionality, improving maintainability and support.
 - Added a new package dependency on `powersync_flutter_libs` for loading the extension.
 
+## 1.3.0-alpha.9
+
+- Updated sqlite_async to use Navigator locks for limiting sync stream implementations in multiple tabs
+
+## 1.3.0-alpha.8
+
+- **FIX**(powersync-attachements-helper): pubspec file (#29).
+- **DOCS**: update readme and getting started (#51).
+- Updates and uses the latest `sqlite_async` package.
+
+## 1.3.0-alpha.7
+
+- Updates and uses the latest `sqlite_async` alpha.
+
+## 1.3.0-alpha.6
+
+- Fix `Bad state: Future already completed` error when calling `disconnectAndClear()`.
+
 ## 1.3.1
 
 - Fix "Checksum mismatch" issue when calling `PowerSyncDatabase.connect` multiple times.
@@ -46,6 +91,28 @@
 ## 1.3.0
 
 - Add `crudThrottleTime` option to arguments when running `PowerSyncDatabase.connect` to set throttle time for crud operations.
+
+## 1.3.0-alpha.5
+
+- Update `sqlite_async.dart` dependency
+- Fix issue where sync stream connection would fail to connect https://github.com/powersync-ja/powersync.dart/issues/11
+
+## 1.3.0-alpha.4
+
+- Merge master branch in and resolve conflicts
+
+## 1.3.0-alpha.3
+
+- Fixed issue where disconnectAndClear would prevent subsequent sync connection on native platforms and would fail to clear the database on web.
+
+## 1.3.0-alpha.2
+
+- **FIX**(powersync-attachements-helper): pubspec file (#29).
+- **DOCS**: update readme and getting started (#51).
+
+## 1.3.0-alpha.1
+
+- Added initial support for Web platform.
 
 ## 1.2.2
 

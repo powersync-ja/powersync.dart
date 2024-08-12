@@ -18,6 +18,8 @@ This monorepo uses [melos](https://melos.invertase.dev/) to handle command and p
 
 For detailed usage, check out the inner [powersync](https://github.com/powersync-ja/powersync.dart/tree/master/packages/powersync) and [attachments helper](https://github.com/powersync-ja/powersync.dart/tree/master/packages/powersync_attachments_helper) packages.
 
+To configure the monorepo for development run `melos prepare` after cloning
+
 #### Blog posts
 
 - [Flutter Tutorial: building an offline-first chat app with Supabase and PowerSync](https://www.powersync.com/blog/flutter-tutorial-building-an-offline-first-chat-app-with-supabase-and-powersync)

@@ -1,9 +1,10 @@
 import 'package:powersync/powersync.dart';
-import 'package:sqlite_async/sqlite3.dart' as sqlite;
+import 'package:sqlite_async/sqlite3_common.dart';
 import 'package:test/test.dart';
 
-import 'util.dart';
+import 'utils/test_utils_impl.dart';
 
+final testUtils = TestUtils();
 const testId = "2290de4f-0488-4e50-abed-f8e8eb1d0b42";
 
 void main() {
@@ -12,10 +13,10 @@ void main() {
     late String path;
 
     setUp(() async {
-      path = dbPath();
-      await cleanDb(path: path);
+      path = testUtils.dbPath();
+      await testUtils.cleanDb(path: path);
 
-      powersync = await setupPowerSync(path: path);
+      powersync = await testUtils.setupPowerSync(path: path);
     });
 
     test('INSERT', () async {
@@ -72,7 +73,7 @@ void main() {
             [testId, 'test3']);
       },
           throwsA((e) =>
-              e is sqlite.SqliteException &&
+              e is SqliteException &&
               e.message.contains('UNIQUE constraint failed')));
     });
 
@@ -132,13 +133,13 @@ void main() {
             [testId, 'test2', 'test3']);
       },
           throwsA((e) =>
-              e is sqlite.SqliteException &&
+              e is SqliteException &&
               e.message.contains('cannot UPSERT a view')));
     });
 
     test('INSERT-only tables', () async {
       await powersync.disconnectAndClear();
-      powersync = await setupPowerSync(
+      powersync = await testUtils.setupPowerSync(
           path: path,
           schema: const Schema([
             Table.insertOnly(
@@ -154,7 +155,7 @@ void main() {
           equals([
             {
               'data':
-                  '{"op":"PUT","type":"logs","id":"$testId","data":{"content":"test log","level":"INFO"}}'
+                  '{"op":"PUT","type":"logs","id":"$testId","data":{"level":"INFO","content":"test log"}}'
             }
           ]));
 
@@ -230,7 +231,7 @@ void main() {
           equals([
             {
               'data':
-                  '{"op":"PATCH","type":"assets","id":"$testId","data":{"description":"updated","quantity":${bigNumber + 1}}}'
+                  '{"op":"PATCH","type":"assets","id":"$testId","data":{"quantity":${bigNumber + 1},"description":"updated"}}'
             }
           ]));
     });
@@ -250,6 +251,7 @@ void main() {
       });
 
       var tx1 = (await powersync.getNextCrudTransaction())!;
+
       expect(tx1.transactionId, equals(1));
       expect(
           tx1.crud,
