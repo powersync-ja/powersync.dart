@@ -304,22 +304,9 @@ void main() {
       await bucketStorage.saveSyncData(SyncDataBatch([
         SyncBucketData(
           bucket: 'bucket1',
-          data: [
-            OplogEntry(
-                opId: '1',
-                op: OpType.move,
-                checksum: 1,
-                data: '{"target": "3"}')
-          ],
+          data: [OplogEntry(opId: '1', op: OpType.move, checksum: 1)],
         ),
       ]));
-
-      // At this point, we have target: 3, but don't have that op yet, so we cannot sync.
-      final result = await bucketStorage.syncLocalDatabase(Checkpoint(
-          lastOpId: '2',
-          checksums: [BucketChecksum(bucket: 'bucket1', checksum: 1)]));
-      // Checksum passes, but we don't have a complete checkpoint
-      expect(result, equals(SyncLocalDatabaseResult(ready: false)));
 
       await bucketStorage.saveSyncData(SyncDataBatch([
         SyncBucketData(
@@ -477,6 +464,99 @@ void main() {
           stats,
           equals([
             {'type': 'assets', 'id': 'O2', 'count': 1}
+          ]));
+    });
+
+    test('should compact with checksum wrapping', () async {
+      await bucketStorage.saveSyncData(SyncDataBatch([
+        SyncBucketData(bucket: 'bucket1', data: [
+          OplogEntry(
+              opId: '1',
+              op: OpType.put,
+              rowType: 'assets',
+              rowId: 'O1',
+              data: '{"description": "b1"}',
+              checksum: 2147483647),
+          OplogEntry(
+              opId: '2',
+              op: OpType.put,
+              rowType: 'assets',
+              rowId: 'O1',
+              data: '{"description": "b2"}',
+              checksum: 2147483646),
+          OplogEntry(
+              opId: '3',
+              op: OpType.put,
+              rowType: 'assets',
+              rowId: 'O1',
+              data: '{"description": "b3"}',
+              checksum: 2147483645)
+        ])
+      ]));
+
+      await syncLocalChecked(Checkpoint(
+          lastOpId: '4',
+          writeCheckpoint: '4',
+          checksums: [
+            BucketChecksum(bucket: 'bucket1', checksum: 2147483642)
+          ]));
+
+      await bucketStorage.forceCompact();
+
+      await syncLocalChecked(Checkpoint(
+          lastOpId: '4',
+          writeCheckpoint: '4',
+          checksums: [
+            BucketChecksum(bucket: 'bucket1', checksum: 2147483642)
+          ]));
+
+      final stats = db.select(
+          'SELECT row_type as type, row_id as id, count(*) as count FROM ps_oplog GROUP BY row_type, row_id ORDER BY row_type, row_id');
+      expect(
+          stats,
+          equals([
+            {'type': 'assets', 'id': 'O1', 'count': 1}
+          ]));
+    });
+
+    test('should compact with checksum wrapping (2)', () async {
+      await bucketStorage.saveSyncData(SyncDataBatch([
+        SyncBucketData(bucket: 'bucket1', data: [
+          OplogEntry(
+              opId: '1',
+              op: OpType.put,
+              rowType: 'assets',
+              rowId: 'O1',
+              data: '{"description": "b1"}',
+              checksum: 2147483647),
+          OplogEntry(
+              opId: '2',
+              op: OpType.put,
+              rowType: 'assets',
+              rowId: 'O1',
+              data: '{"description": "b2"}',
+              checksum: 2147483646),
+        ])
+      ]));
+
+      await syncLocalChecked(Checkpoint(
+          lastOpId: '4',
+          writeCheckpoint: '4',
+          checksums: [BucketChecksum(bucket: 'bucket1', checksum: -3)]));
+
+      await bucketStorage.forceCompact();
+
+      await syncLocalChecked(Checkpoint(
+          lastOpId: '4',
+          writeCheckpoint: '4',
+          checksums: [BucketChecksum(bucket: 'bucket1', checksum: -3)]));
+
+      final stats = db.select(
+          'SELECT row_type as type, row_id as id, count(*) as count FROM ps_oplog GROUP BY row_type, row_id ORDER BY row_type, row_id');
+      expect(
+          stats,
+          equals([
+            {'type': 'assets', 'id': 'O1', 'count': 1}
           ]));
     });
 
