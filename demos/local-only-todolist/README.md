@@ -71,4 +71,4 @@ graph TD
 ## Limitations
 
 `updateSchema` cannot be called inside a transaction, and it's recommended to perform the schema update when the database isn't connected.
-Additionally, the current implementation of the PowerSync SDK's `watch` method may not correctly track tables that are altered by `updateSchema`. As a result, you will likely need to refresh your `watch` calls after the schema update is complete. In this demo, the `watch` calls are refreshed by navigating to the login and signup pages after the user successfully logs in and the schema update is finished.
+Additionally, the current implementation of the PowerSync SDK's `watch` method may not correctly track tables that are altered by `updateSchema`. Note that `refreshSchema` can be executed after updating the schema to resolve this (the demo uses it in `switchToSyncedSchema` which can be viewed [here](./lib/models/schema.dart)).

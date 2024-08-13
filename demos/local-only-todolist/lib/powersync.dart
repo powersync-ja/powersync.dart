@@ -185,9 +185,6 @@ Future<void> connectDatabase() async {
 
   if (!isSyncMode) {
     await switchToSyncedSchema(db, getUserId());
-    // Without closing and reopening the database the list pages breaks if there is no data in the tables when logging in/signing up.
-    await db.close();
-    await _openDatabase();
   }
 
   currentConnector = SupabaseConnector(db);

@@ -73,13 +73,16 @@ Schema makeSchema({synced = bool}) {
       Table(table.name, table.columns,
           indexes: table.indexes, viewName: onlineName(table.name)),
     for (var table in tables)
-      Table.localOnly('inactive_local_${table.name}', table.columns,
+      Table.localOnly('local_${table.name}', table.columns,
           indexes: table.indexes, viewName: localName(table.name))
   ]);
 }
 
 switchToSyncedSchema(PowerSyncDatabase db, String userId) async {
   await db.updateSchema(makeSchema(synced: true));
+
+  // needed to ensure that watches/queries are aware of the updated schema
+  await db.refreshSchema();
   await setSyncEnabled(true);
 
   await db.writeTransaction((tx) async {
