@@ -19,10 +19,13 @@ jobs:
 
       - uses: dart-lang/setup-dart@v1 # Creates and configures token for publishing
 
+      - name: Install melos
+        run: dart pub global activate melos
+
       - name: Publish packages dry run
         run: |
           melos publish
 
-      - name: Publish packages
-        run: |
-          melos publish --no-dry-run
+      # - name: Publish packages
+      #   run: |
+      #     melos publish --no-dry-run
