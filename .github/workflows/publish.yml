@@ -27,8 +27,8 @@ jobs:
 
       - name: Publish packages dry run
         run: |
-          melos publish
+          melos publish --yes
 
       - name: Publish packages
         run: |
-          melos publish --no-dry-run
+          melos publish --no-dry-run --yes
