@@ -18,11 +18,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: "3.x"
-          channel: "stable"
+      - uses: dart-lang/setup-dart@v1 # Creates and configures token for publishing
 
       - name: Publish powersync
         run: |
@@ -39,11 +35,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: "3.x"
-          channel: "stable"
+      - uses: dart-lang/setup-dart@v1 # Creates and configures token for publishing
 
       - name: Publish powersync_attachments_helper
         run: |
@@ -60,11 +52,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: "3.x"
-          channel: "stable"
+      - uses: dart-lang/setup-dart@v1 # Creates and configures token for publishing
 
       - name: Set powersync core version
         run: echo "CORE_VERSION=v0.1.8" >> $GITHUB_ENV
