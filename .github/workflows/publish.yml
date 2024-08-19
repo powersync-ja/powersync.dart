@@ -3,8 +3,8 @@ on:
   push:
     tags:
       - "powersync-v[0-9]+.[0-9]+.[0-9]+"
-      - "powersync_attachments_helper-v[0-9]+.[0-9]+.[0-9]+"
-      - "powersync_flutter_libs-v[0-9]+.[0-9]+.[0-9]+"
+      - "powersync_attachments_helper-v[0-9]+.[0-9]+.[0-9]+*"
+      - "powersync_flutter_libs-v[0-9]+.[0-9]+.[0-9]+*"
   workflow_dispatch:
 
 jobs:
