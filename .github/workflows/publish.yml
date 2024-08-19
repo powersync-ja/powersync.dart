@@ -8,58 +8,21 @@ on:
   workflow_dispatch:
 
 jobs:
-  publish-powersync:
-    name: Publish powersync
+  publish-packages:
+    name: Publish packages
     permissions:
       contents: write
       id-token: write # Required for authentication using OIDC
     runs-on: [ubuntu-latest]
-    if: contains(github.ref_name, 'powersync-v')
     steps:
       - uses: actions/checkout@v4
 
       - uses: dart-lang/setup-dart@v1 # Creates and configures token for publishing
 
-      - name: Publish powersync
+      - name: Publish packages dry run
         run: |
-          dart pub publish --force
-        working-directory: packages/powersync
+          melos publish
 
-  publish-powersync_attachments_helper:
-    name: Publish powersync_attachments_helper
-    permissions:
-      contents: write
-      id-token: write # Required for authentication using OIDC
-    runs-on: [ubuntu-latest]
-    if: contains(github.ref_name, 'powersync_attachments_helper-v')
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: dart-lang/setup-dart@v1 # Creates and configures token for publishing
-
-      - name: Publish powersync_attachments_helper
+      - name: Publish packages
         run: |
-          dart pub publish --force
-        working-directory: packages/powersync_attachments_helper
-
-  publish-powersync_flutter_libs:
-    name: Publish powersync_flutter_libs
-    permissions:
-      contents: write
-      id-token: write # Required for authentication using OIDC
-    runs-on: [ubuntu-latest]
-    if: contains(github.ref_name, 'powersync_flutter_libs-v')
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: dart-lang/setup-dart@v1 # Creates and configures token for publishing
-
-      - name: Set powersync core version
-        run: echo "CORE_VERSION=v0.1.8" >> $GITHUB_ENV
-      - name: Download binaries
-        run: sh tool/download_binaries.sh
-
-      - name: Publish powersync_flutter_libs
-        run: |
-          dart pub publish --force
-        working-directory: packages/powersync_flutter_libs
+          melos publish --no-dry-run
