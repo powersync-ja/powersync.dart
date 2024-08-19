@@ -3,15 +3,60 @@ on:
   push:
     tags:
       - "powersync-v[0-9]+.[0-9]+.[0-9]+"
+      - "powersync_attachments_helper-v[0-9]+.[0-9]+.[0-9]+"
+      - "powersync_flutter_libs-v[0-9]+.[0-9]+.[0-9]+"
   workflow_dispatch:
 
 jobs:
-  publish-packages:
-    name: Publish packages
+  publish-powersync:
+    name: Publish powersync
     permissions:
       contents: write
       id-token: write # Required for authentication using OIDC
     runs-on: [ubuntu-latest]
+    if: contains(github.ref_name, 'powersync-v')
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.x"
+          channel: "stable"
+
+      - name: Publish powersync
+        run: |
+          dart pub publish --force
+        working-directory: packages/powersync
+
+  publish-powersync_attachments_helper:
+    name: Publish powersync_attachments_helper
+    permissions:
+      contents: write
+      id-token: write # Required for authentication using OIDC
+    runs-on: [ubuntu-latest]
+    if: contains(github.ref_name, 'powersync_attachments_helper-v')
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.x"
+          channel: "stable"
+
+      - name: Publish powersync_attachments_helper
+        run: |
+          dart pub publish --force
+        working-directory: packages/powersync_attachments_helper
+
+  publish-powersync_flutter_libs:
+    name: Publish powersync_flutter_libs
+    permissions:
+      contents: write
+      id-token: write # Required for authentication using OIDC
+    runs-on: [ubuntu-latest]
+    if: contains(github.ref_name, 'powersync_attachments_helper-v')
     steps:
       - uses: actions/checkout@v4
 
@@ -25,14 +70,7 @@ jobs:
         run: echo "CORE_VERSION=v0.1.8" >> $GITHUB_ENV
       - name: Download binaries
         run: sh tool/download_binaries.sh
-      - name: Publish powersync
-        run: |
-          dart pub publish --force
-        working-directory: packages/powersync
-      - name: Publish powersync_attachments_helper
-        run: |
-          dart pub publish --force
-        working-directory: packages/powersync_attachments_helper
+
       - name: Publish powersync_flutter_libs
         run: |
           dart pub publish --force
