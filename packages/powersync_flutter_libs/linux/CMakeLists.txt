@@ -23,23 +23,19 @@ target_include_directories(${PLUGIN_NAME} INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}
 target_link_libraries(${PLUGIN_NAME} PRIVATE flutter)
 
 # ----------------------------------------------------------------------
-# Download and add powersync prebuilt library.
+# Add powersync prebuilt library.
 
 set(POWERSYNC_VERSION 0.1.6)
+set(CORE_FILE_NAME "libpowersync.so")
 
 set(POWERSYNC_ARCH ${CMAKE_SYSTEM_PROCESSOR})
 if (${POWERSYNC_ARCH} MATCHES "x86_64" OR ${POWERSYNC_ARCH} MATCHES "AMD64")
-    set(POWERSYNC_ARCH x64)
+  set(CORE_FILE_NAME "libpowersync_x64.so")
 elseif (${POWERSYNC_ARCH} MATCHES "^arm64" OR ${POWERSYNC_ARCH} MATCHES "^armv8")
-    set(POWERSYNC_ARCH aarch64)
+  set(CORE_FILE_NAME "libpowersync_aarch64.so")
 endif ()
 
-set(POWERSYNC_FILE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/libpowersync.so")
-
-file(DOWNLOAD
-  "https://github.com/powersync-ja/powersync-sqlite-core/releases/download/v${POWERSYNC_VERSION}/libpowersync_${POWERSYNC_ARCH}.so"
-  ${POWERSYNC_FILE_PATH}
-)
+set(POWERSYNC_FILE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/${CORE_FILE_NAME}")
 
 # ----------------------------------------------------------------------
 
