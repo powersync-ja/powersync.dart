@@ -28,6 +28,9 @@ jobs:
       - name: Install melos
         run: flutter pub global activate melos
 
+      - name: Install dependencies
+        run: melos bootstrap
+
       - name: Set powersync core version
         run: echo "CORE_VERSION=v0.1.8" >> $GITHUB_ENV
 
