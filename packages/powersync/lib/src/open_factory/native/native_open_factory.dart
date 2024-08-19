@@ -88,7 +88,7 @@ class PowerSyncOpenFactory extends AbstractPowerSyncOpenFactory {
       case Abi.linuxArm64:
         return 'libpowersync_aarch64.so';
       case Abi.windowsX64:
-        return 'powersync.dll';
+        return 'powersync_x64.dll';
       case Abi.androidIA32:
         throw PowersyncNotReadyException(
           'Unsupported processor architecture. X86 Android emulators are not '

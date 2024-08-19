@@ -30,12 +30,12 @@ set(POWERSYNC_ARCH ${CMAKE_SYSTEM_PROCESSOR})
 set(CORE_FILE_NAME "powersync.dll")
 
 if (${POWERSYNC_ARCH} MATCHES "x86_64" OR ${POWERSYNC_ARCH} MATCHES "AMD64")
-  set(CORE_FILE_NAME "powersync.dll")
+  set(CORE_FILE_NAME "powersync_x64.dll")
 elseif (${POWERSYNC_ARCH} MATCHES "^arm64" OR ${POWERSYNC_ARCH} MATCHES "^armv8")
-  message(FATAL_ERROR "Unsupported architecture: ${POWERSYNC_ARCH}, please file a GitHub issue to add support.")
+  message(FATAL_ERROR "Unsupported architecture: ${POWERSYNC_ARCH}, we are working on adding support for windows arm.")
 endif ()
 
-set(POWERSYNC_FILE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/powersync.dll")
+set(POWERSYNC_FILE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/powersync_x64.dll")
 
 # ----------------------------------------------------------------------
 
