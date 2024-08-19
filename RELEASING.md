@@ -25,4 +25,4 @@ e.g powersync-v1.6.4, powersync_attachments_helper-v0.6.3+1, etc.
 git push --follow-tags
 ```
 
-The pushed tags will also create a draft github release for the powersync web worker. The worker needs to be manually published in the GitHub [releases](https://github.com/powersync-ja/powersync.dart/releases).
+A version bump and tag push for `powersync` will also create a draft github release for the powersync web worker. The worker needs to be manually published in the GitHub [releases](https://github.com/powersync-ja/powersync.dart/releases).
