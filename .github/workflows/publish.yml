@@ -22,6 +22,9 @@ jobs:
       - name: Install melos
         run: dart pub global activate melos
 
+      - name: Set powersync core version
+        run: echo "CORE_VERSION=v0.1.8" >> $GITHUB_ENV
+
       - name: Publish packages dry run
         run: |
           melos publish
