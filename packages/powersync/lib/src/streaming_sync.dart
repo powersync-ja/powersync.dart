@@ -50,6 +50,7 @@ class StreamingSyncImplementation {
   final Mutex syncMutex, crudMutex;
 
   late final String? userAgent;
+  String? clientId;
 
   StreamingSyncImplementation(
       {required this.adapter,
@@ -103,6 +104,7 @@ class StreamingSyncImplementation {
   Future<void> streamingSync() async {
     try {
       _abort = AbortController();
+      clientId = await adapter.getClientId();
       crudLoop();
       var invalidCredentials = false;
       while (!aborted) {
@@ -201,7 +203,8 @@ class StreamingSyncImplementation {
 
     Map<String, String> headers = {
       'Content-Type': 'application/json',
-      'Authorization': "Token ${credentials.token}"
+      'Authorization': "Token ${credentials.token}",
+      'Client-ID': clientId!
     };
     if (userAgent != null) {
       headers['User-Agent'] = userAgent!;
@@ -254,7 +257,6 @@ class StreamingSyncImplementation {
       {AbortController? abortController}) async {
     adapter.startSession();
     final bucketEntries = await adapter.getBucketStates();
-    final clientId = await adapter.getClientId();
 
     Map<String, String> initialBucketStates = {};
 
@@ -273,7 +275,7 @@ class StreamingSyncImplementation {
     var bucketSet = Set<String>.from(initialBucketStates.keys);
 
     var requestStream = streamingSyncRequest(
-        StreamingSyncRequest(buckets, syncParameters, clientId));
+        StreamingSyncRequest(buckets, syncParameters, clientId!));
 
     var merged = addBroadcast(requestStream, _localPingController.stream);
 
@@ -414,6 +416,7 @@ class StreamingSyncImplementation {
     final request = http.Request('POST', uri);
     request.headers['Content-Type'] = 'application/json';
     request.headers['Authorization'] = "Token ${credentials.token}";
+    request.headers['Client-ID'] = clientId!;
     if (userAgent != null) {
       request.headers['User-Agent'] = userAgent!;
     }
