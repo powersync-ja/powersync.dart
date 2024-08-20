@@ -40,6 +40,11 @@ class BucketStorage {
     ];
   }
 
+  Future<String> getClientId() async {
+    final rows = await select('SELECT powersync_client_id() as client_id');
+    return rows.first['client_id'] as String;
+  }
+
   Future<void> streamOp(String op) async {
     await writeTransaction((tx) async {
       await tx.execute(

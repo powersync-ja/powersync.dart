@@ -245,6 +245,7 @@ class StreamingSyncImplementation {
       {AbortController? abortController}) async {
     adapter.startSession();
     final bucketEntries = await adapter.getBucketStates();
+    final clientId = await adapter.getClientId();
 
     Map<String, String> initialBucketStates = {};
 
@@ -262,8 +263,8 @@ class StreamingSyncImplementation {
     Checkpoint? appliedCheckpoint;
     var bucketSet = Set<String>.from(initialBucketStates.keys);
 
-    var requestStream =
-        streamingSyncRequest(StreamingSyncRequest(buckets, syncParameters));
+    var requestStream = streamingSyncRequest(
+        StreamingSyncRequest(buckets, syncParameters, clientId));
 
     var merged = addBroadcast(requestStream, _localPingController.stream);
 
