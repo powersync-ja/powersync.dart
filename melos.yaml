@@ -15,8 +15,6 @@ command:
     packageFilters:
       noPrivate: true
   publish:
-    hooks:
-      pre: sh tool/download_binaries.sh
     packageFilters:
       noPrivate: true
 

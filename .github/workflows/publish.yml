@@ -7,41 +7,59 @@ on:
       - "powersync_flutter_libs-v[0-9]+.[0-9]+.[0-9]+*"
   workflow_dispatch:
 
-concurrency:
-  group: ${{ github.workflow }}
-  cancel-in-progress: false
-
 jobs:
   publish-packages:
-    name: Publish packages
+    name: Publish powersync
     permissions:
       contents: write
       id-token: write # Required for authentication using OIDC
     runs-on: [ubuntu-latest]
+    if: contains(github.ref_name, 'powersync-v')
     steps:
       - uses: actions/checkout@v4
 
       - uses: dart-lang/setup-dart@v1 # Creates and configures token for publishing
 
-      - name: Install Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: "3.x"
-          channel: "stable"
+      - name: Publish powersync
+        run: |
+          dart pub publish --force
+        working-directory: packages/powersync
 
-      - name: Install melos
-        run: flutter pub global activate melos
+  publish-powersync_attachments_helper:
+    name: Publish powersync_attachments_helper
+    permissions:
+      contents: write
+      id-token: write # Required for authentication using OIDC
+    runs-on: [ubuntu-latest]
+    if: contains(github.ref_name, 'powersync_attachments_helper-v')
+    steps:
+      - uses: actions/checkout@v4
 
-      - name: Install dependencies
-        run: melos bootstrap
+      - uses: dart-lang/setup-dart@v1 # Creates and configures token for publishing
+
+      - name: Publish powersync_attachments_helper
+        run: |
+          dart pub publish --force
+        working-directory: packages/powersync_attachments_helper
+
+  publish-powersync_flutter_libs:
+    name: Publish powersync_flutter_libs
+    permissions:
+      contents: write
+      id-token: write # Required for authentication using OIDC
+    runs-on: [ubuntu-latest]
+    if: contains(github.ref_name, 'powersync_flutter_libs-v')
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dart-lang/setup-dart@v1 # Creates and configures token for publishing
 
       - name: Set powersync core version
         run: echo "CORE_VERSION=v0.1.8" >> $GITHUB_ENV
+      - name: Download binaries
+        run: sh tool/download_binaries.sh
 
-      - name: Publish packages dry run
+      - name: Publish powersync_flutter_libs
         run: |
-          melos publish --yes
-
-      - name: Publish packages
-        run: |
-          melos publish --no-dry-run --yes
+          dart pub publish --force
+        working-directory: packages/powersync_flutter_libs
