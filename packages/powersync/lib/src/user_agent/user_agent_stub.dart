@@ -1,0 +1,3 @@
+String? powerSyncUserAgent() {
+  return null;
+}

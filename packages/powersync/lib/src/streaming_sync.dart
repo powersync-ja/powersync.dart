@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:powersync/src/abort_controller.dart';
 import 'package:powersync/src/exceptions.dart';
 import 'package:powersync/src/log_internal.dart';
+import 'package:powersync/src/user_agent/user_agent.dart';
 import 'package:sqlite_async/mutex.dart';
 
 import 'bucket_storage.dart';
@@ -48,6 +49,8 @@ class StreamingSyncImplementation {
 
   final Mutex syncMutex, crudMutex;
 
+  late final String? userAgent;
+
   StreamingSyncImplementation(
       {required this.adapter,
       required this.credentialsCallback,
@@ -65,6 +68,7 @@ class StreamingSyncImplementation {
         crudMutex = Mutex(identifier: "crud-$identifier") {
     _client = client;
     statusStream = _statusStreamController.stream;
+    userAgent = powerSyncUserAgent();
   }
 
   /// Close any active streams.
@@ -195,10 +199,15 @@ class StreamingSyncImplementation {
     }
     final uri = credentials.endpointUri('write-checkpoint2.json');
 
-    final response = await _client.get(uri, headers: {
+    Map<String, String> headers = {
       'Content-Type': 'application/json',
       'Authorization': "Token ${credentials.token}"
-    });
+    };
+    if (userAgent != null) {
+      headers['User-Agent'] = userAgent!;
+    }
+
+    final response = await _client.get(uri, headers: headers);
     if (response.statusCode == 401) {
       if (invalidCredentialsCallback != null) {
         await invalidCredentialsCallback!();
@@ -405,6 +414,9 @@ class StreamingSyncImplementation {
     final request = http.Request('POST', uri);
     request.headers['Content-Type'] = 'application/json';
     request.headers['Authorization'] = "Token ${credentials.token}";
+    if (userAgent != null) {
+      request.headers['User-Agent'] = userAgent!;
+    }
     request.body = convert.jsonEncode(data);
 
     http.StreamedResponse res;
