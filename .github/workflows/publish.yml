@@ -20,6 +20,13 @@ jobs:
 
       - uses: dart-lang/setup-dart@v1 # Creates and configures token for publishing
 
+      - name: Setup melos
+        uses: ./.github/actions/setup-melos
+
+      - name: Dry run
+        run: dart pub publish --dry-run
+        working-directory: packages/powersync
+
       - name: Publish powersync
         run: |
           dart pub publish --force
@@ -36,6 +43,13 @@ jobs:
       - uses: actions/checkout@v4
 
       - uses: dart-lang/setup-dart@v1 # Creates and configures token for publishing
+
+      - name: Setup melos
+        uses: ./.github/actions/setup-melos
+
+      - name: Dry run
+        run: dart pub publish --dry-run
+        working-directory: packages/powersync_attachments_helper
 
       - name: Publish powersync_attachments_helper
         run: |
@@ -54,10 +68,17 @@ jobs:
 
       - uses: dart-lang/setup-dart@v1 # Creates and configures token for publishing
 
+      - name: Setup melos
+        uses: ./.github/actions/setup-melos
+
       - name: Set powersync core version
         run: echo "CORE_VERSION=v0.1.8" >> $GITHUB_ENV
       - name: Download binaries
         run: sh tool/download_binaries.sh
+
+      - name: Dry run
+        run: dart pub publish --dry-run
+        working-directory: packages/powersync_flutter_libs
 
       - name: Publish powersync_flutter_libs
         run: |
