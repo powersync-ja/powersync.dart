@@ -7,6 +7,10 @@ on:
       - "powersync_flutter_libs-v[0-9]+.[0-9]+.[0-9]+*"
   workflow_dispatch:
 
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
 jobs:
   publish-packages:
     name: Publish packages
@@ -27,6 +31,9 @@ jobs:
 
       - name: Install melos
         run: flutter pub global activate melos
+
+      - name: Install dependencies
+        run: melos bootstrap
 
       - name: Set powersync core version
         run: echo "CORE_VERSION=v0.1.8" >> $GITHUB_ENV
