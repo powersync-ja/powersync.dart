@@ -9,78 +9,40 @@ on:
 
 jobs:
   publish-packages:
-    name: Publish powersync
+    name: Publish packages
     permissions:
       contents: write
       id-token: write # Required for authentication using OIDC
     runs-on: [ubuntu-latest]
-    if: contains(github.ref_name, 'powersync-v')
     steps:
       - uses: actions/checkout@v4
 
       - uses: dart-lang/setup-dart@v1 # Creates and configures token for publishing
 
-      - name: Setup melos
-        uses: ./.github/actions/setup-melos
+      - name: Install Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.x"
+          channel: "stable"
 
-      - name: Dry run
-        run: dart pub publish --dry-run
-        working-directory: packages/powersync
+      - name: Install melos
+        run: flutter pub global activate melos
 
-      - name: Publish powersync
+      - name: Install dependencies
+        run: melos bootstrap
+
+      - name: Get package name from tag
+        env:
+          GITHUBREF: ${{ github.ref }}
         run: |
-          dart pub publish --force
-        working-directory: packages/powersync
+          PACKAGE_NAME=$(sed -E 's/refs\/tags\/([a-z0-9_]+)-v([0-9]+\.[0-9]+\.[0-9]+)/\1/' <<< $GITHUBREF) && \
+          echo "PACKAGE_NAME=$PACKAGE_NAME" >> $GITHUB_ENV
+          echo "Package name: $PACKAGE_NAME"
 
-  publish-powersync_attachments_helper:
-    name: Publish powersync_attachments_helper
-    permissions:
-      contents: write
-      id-token: write # Required for authentication using OIDC
-    runs-on: [ubuntu-latest]
-    if: contains(github.ref_name, 'powersync_attachments_helper-v')
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: dart-lang/setup-dart@v1 # Creates and configures token for publishing
-
-      - name: Setup melos
-        uses: ./.github/actions/setup-melos
-
-      - name: Dry run
-        run: dart pub publish --dry-run
-        working-directory: packages/powersync_attachments_helper
-
-      - name: Publish powersync_attachments_helper
+      - name: Publish packages dry run
         run: |
-          dart pub publish --force
-        working-directory: packages/powersync_attachments_helper
+          melos publish --yes --scope=$PACKAGE_NAME
 
-  publish-powersync_flutter_libs:
-    name: Publish powersync_flutter_libs
-    permissions:
-      contents: write
-      id-token: write # Required for authentication using OIDC
-    runs-on: [ubuntu-latest]
-    if: contains(github.ref_name, 'powersync_flutter_libs-v')
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: dart-lang/setup-dart@v1 # Creates and configures token for publishing
-
-      - name: Setup melos
-        uses: ./.github/actions/setup-melos
-
-      - name: Set powersync core version
-        run: echo "CORE_VERSION=v0.1.8" >> $GITHUB_ENV
-      - name: Download binaries
-        run: sh tool/download_binaries.sh
-
-      - name: Dry run
-        run: dart pub publish --dry-run
-        working-directory: packages/powersync_flutter_libs
-
-      - name: Publish powersync_flutter_libs
+      - name: Publish packages
         run: |
-          dart pub publish --force
-        working-directory: packages/powersync_flutter_libs
+          melos publish --no-dry-run --yes --scope=$PACKAGE_NAME

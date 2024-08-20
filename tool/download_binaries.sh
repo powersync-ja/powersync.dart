@@ -1,11 +1,11 @@
 #!/bin/bash
 
-if [ -z "$CORE_VERSION" ]; then
-    echo "CORE_VERSION is not set";
+if [ -z "$1" ]; then
+    echo "Core version is not set";
     exit 2;
 fi
 
-github="https://github.com/powersync-ja/powersync-sqlite-core/releases/download/$CORE_VERSION"
+github="https://github.com/powersync-ja/powersync-sqlite-core/releases/download/$1"
 
 curl "${github}/libpowersync_aarch64.so" -o packages/powersync_flutter_libs/linux/libpowersync_aarch64.so --create-dirs -L -f
 curl "${github}/libpowersync_x64.so" -o packages/powersync_flutter_libs/linux/libpowersync_x64.so --create-dirs -L -f
