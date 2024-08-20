@@ -55,6 +55,9 @@ void main() {
 
       final finalCustomers = await db.getAll(getCustomersQuery);
       expect(finalCustomers.length, equals(0));
+
+      expect(db.currentStatus.lastSyncedAt, equals(null));
+      expect(db.currentStatus.hasSynced, equals(false));
     });
   });
 }

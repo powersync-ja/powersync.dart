@@ -89,9 +89,10 @@ class BucketStorage {
     if (_hasCompletedSync) {
       return true;
     }
-    final rs = await select(
-        "SELECT name, last_applied_op FROM ps_buckets WHERE last_applied_op > 0 LIMIT 1");
-    if (rs.isNotEmpty) {
+    final rs = await select("SELECT powersync_last_synced_at() as synced_at");
+    final value = rs.first['synced_at'] as String?;
+
+    if (value != null) {
       _hasCompletedSync = true;
       return true;
     }

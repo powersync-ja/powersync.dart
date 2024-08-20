@@ -86,6 +86,7 @@ void main() {
 
     test('Basic Setup', () async {
       expect(await bucketStorage.getBucketStates(), equals([]));
+      expect(await bucketStorage.hasCompletedSync(), equals(false));
 
       await bucketStorage.saveSyncData(SyncDataBatch([
         SyncBucketData(
@@ -103,6 +104,18 @@ void main() {
           checksums: [BucketChecksum(bucket: 'bucket1', checksum: 6)]));
 
       await expectAsset1_3();
+
+      expect(await bucketStorage.hasCompletedSync(), equals(true));
+    });
+
+    test('empty sync', () async {
+      expect(await bucketStorage.getBucketStates(), equals([]));
+      expect(await bucketStorage.hasCompletedSync(), equals(false));
+
+      await syncLocalChecked(Checkpoint(lastOpId: '3', checksums: []));
+
+      expect(await bucketStorage.getBucketStates(), equals([]));
+      expect(await bucketStorage.hasCompletedSync(), equals(true));
     });
 
     test('should get an object from multiple buckets', () async {

@@ -91,15 +91,16 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
   }
 
   Future<void> _updateHasSynced() async {
-    const syncedSQL =
-        'SELECT 1 FROM ps_buckets WHERE last_applied_op > 0 LIMIT 1';
-
     // Query the database to see if any data has been synced.
-    final result = await database.execute(syncedSQL);
-    final hasSynced = result.rows.isNotEmpty;
+    final result =
+        await database.get('SELECT powersync_last_synced_at() as synced_at');
+    final timestamp = result['synced_at'] as String?;
+    final hasSynced = timestamp != null;
 
     if (hasSynced != currentStatus.hasSynced) {
-      final status = SyncStatus(hasSynced: hasSynced);
+      final lastSyncedAt = timestamp == null ? null : DateTime.parse(timestamp);
+      final status =
+          SyncStatus(hasSynced: hasSynced, lastSyncedAt: lastSyncedAt);
       setStatus(status);
     }
   }
@@ -225,19 +226,7 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
     await disconnect();
 
     await writeTransaction((tx) async {
-      await tx.execute('DELETE FROM ps_oplog');
-      await tx.execute('DELETE FROM ps_crud');
-      await tx.execute('DELETE FROM ps_buckets');
-      await tx.execute('DELETE FROM ps_untyped');
-
-      final tableGlob = clearLocal ? 'ps_data_*' : 'ps_data__*';
-      final existingTableRows = await tx.getAll(
-          "SELECT name FROM sqlite_master WHERE type='table' AND name GLOB ?",
-          [tableGlob]);
-
-      for (var row in existingTableRows) {
-        await tx.execute('DELETE FROM ${quoteIdentifier(row['name'])}');
-      }
+      await tx.execute('select powersync_clear(?)', [clearLocal ? 1 : 0]);
     });
     // The data has been deleted - reset these
     setStatus(SyncStatus(lastSyncedAt: null, hasSynced: false));
