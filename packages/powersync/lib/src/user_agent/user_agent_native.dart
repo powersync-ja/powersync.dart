@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:powersync/src/version.dart';
 
-String? powerSyncUserAgent() {
+String powerSyncUserAgent() {
   var dartVersion = RegExp(r'[\w.]+').stringMatch(Platform.version);
   var dart = 'Dart';
   if (dartVersion != null) {
@@ -11,4 +11,8 @@ String? powerSyncUserAgent() {
   // Ideally we'd get an OS version as well, but that's a little complex.
   // Platform.operatingSystemVersion is very verbose.
   return 'powersync-dart/$libraryVersion ($dart; ${Platform.operatingSystem})';
+}
+
+Map<String, String> userAgentHeaders() {
+  return {'User-Agent': powerSyncUserAgent()};
 }

@@ -1,3 +1,7 @@
-String? powerSyncUserAgent() {
-  return null;
+String powerSyncUserAgent() {
+  return '';
+}
+
+Map<String, String> userAgentHeaders() {
+  return {};
 }

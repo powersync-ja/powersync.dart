@@ -49,7 +49,8 @@ class StreamingSyncImplementation {
 
   final Mutex syncMutex, crudMutex;
 
-  late final String? userAgent;
+  final Map<String, String> _userAgentHeaders;
+
   String? clientId;
 
   StreamingSyncImplementation(
@@ -66,10 +67,10 @@ class StreamingSyncImplementation {
       /// A good value is typically the DB file path which it will mutate when syncing.
       String? identifier = "unknown"})
       : syncMutex = Mutex(identifier: "sync-$identifier"),
-        crudMutex = Mutex(identifier: "crud-$identifier") {
+        crudMutex = Mutex(identifier: "crud-$identifier"),
+        _userAgentHeaders = userAgentHeaders() {
     _client = client;
     statusStream = _statusStreamController.stream;
-    userAgent = powerSyncUserAgent();
   }
 
   /// Close any active streams.
@@ -204,11 +205,9 @@ class StreamingSyncImplementation {
     Map<String, String> headers = {
       'Content-Type': 'application/json',
       'Authorization': "Token ${credentials.token}",
-      'Client-ID': clientId!
+      'Client-ID': clientId!,
+      ..._userAgentHeaders
     };
-    if (userAgent != null) {
-      headers['User-Agent'] = userAgent!;
-    }
 
     final response = await _client.get(uri, headers: headers);
     if (response.statusCode == 401) {
@@ -417,9 +416,8 @@ class StreamingSyncImplementation {
     request.headers['Content-Type'] = 'application/json';
     request.headers['Authorization'] = "Token ${credentials.token}";
     request.headers['Client-ID'] = clientId!;
-    if (userAgent != null) {
-      request.headers['User-Agent'] = userAgent!;
-    }
+    request.headers.addAll(_userAgentHeaders);
+
     request.body = convert.jsonEncode(data);
 
     http.StreamedResponse res;
