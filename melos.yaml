@@ -21,7 +21,7 @@ command:
         git add packages/powersync/lib/src/version.dart
   publish:
     hooks:
-      pre: sh tool/download_binaries.sh v0.1.8 # Download latest core binaries when publishing
+      pre: sh tool/download_binaries.sh v0.2.0 # Download latest core binaries when publishing
     packageFilters:
       noPrivate: true
 

@@ -21,7 +21,7 @@ A new Flutter FFI plugin project.
   s.source_files     = 'Classes/**/*'
   s.dependency 'FlutterMacOS'
 
-  s.dependency "powersync-sqlite-core", "~> 0.1.6"
+  s.dependency "powersync-sqlite-core", "~> 0.2.0"
 
   s.platform = :osx, '10.11'
   s.pod_target_xcconfig = { 'DEFINES_MODULE' => 'YES' }
