@@ -310,7 +310,8 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
             if (writeCheckpoint != null &&
                 await db.getOptional('SELECT 1 FROM ps_crud LIMIT 1') == null) {
               await db.execute(
-                  'UPDATE ps_buckets SET target_op = $writeCheckpoint WHERE name=\'\$local\'');
+                  'UPDATE ps_buckets SET target_op = CAST(? as INTEGER) WHERE name=\'\$local\'',
+                  [writeCheckpoint]);
             } else {
               await db.execute(
                   'UPDATE ps_buckets SET target_op = $maxOpId WHERE name=\'\$local\'');
@@ -361,7 +362,8 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
                   await db.getOptional('SELECT 1 FROM ps_crud LIMIT 1') ==
                       null) {
                 await db.execute(
-                    'UPDATE ps_buckets SET target_op = $writeCheckpoint WHERE name=\'\$local\'');
+                    'UPDATE ps_buckets SET target_op = CAST(? as INTEGER) WHERE name=\'\$local\'',
+                    [writeCheckpoint]);
               } else {
                 await db.execute(
                     'UPDATE ps_buckets SET target_op = $maxOpId WHERE name=\'\$local\'');

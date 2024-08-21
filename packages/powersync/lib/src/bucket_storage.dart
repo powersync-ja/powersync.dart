@@ -263,7 +263,8 @@ class BucketStorage {
       }
 
       await tx.execute(
-          "UPDATE ps_buckets SET target_op = ? WHERE name='\$local'", [opId]);
+          "UPDATE ps_buckets SET target_op = CAST(? as INTEGER) WHERE name='\$local'",
+          [opId]);
 
       return true;
     });
@@ -300,7 +301,8 @@ class BucketStorage {
             if (writeCheckpoint != null &&
                 (await tx.execute('SELECT 1 FROM ps_crud LIMIT 1')).isEmpty) {
               await tx.execute(
-                  'UPDATE ps_buckets SET target_op = $writeCheckpoint WHERE name=\'\$local\'');
+                  'UPDATE ps_buckets SET target_op = CAST(? as INTEGER) WHERE name=\'\$local\'',
+                  [writeCheckpoint]);
             } else {
               await tx.execute(
                   'UPDATE ps_buckets SET target_op = $maxOpId WHERE name=\'\$local\'');
