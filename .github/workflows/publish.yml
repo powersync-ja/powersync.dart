@@ -7,10 +7,6 @@ on:
       - "powersync_flutter_libs-v[0-9]+.[0-9]+.[0-9]+*"
   workflow_dispatch:
 
-concurrency:
-  group: ${{ github.workflow }}
-  cancel-in-progress: false
-
 jobs:
   publish-packages:
     name: Publish packages
@@ -35,13 +31,18 @@ jobs:
       - name: Install dependencies
         run: melos bootstrap
 
-      - name: Set powersync core version
-        run: echo "CORE_VERSION=v0.1.8" >> $GITHUB_ENV
+      - name: Get package name from tag
+        env:
+          GITHUBREF: ${{ github.ref }}
+        run: |
+          PACKAGE_NAME=$(sed -E 's/refs\/tags\/([a-z0-9_]+)-v([0-9]+\.[0-9]+\.[0-9]+)/\1/' <<< $GITHUBREF) && \
+          echo "PACKAGE_NAME=$PACKAGE_NAME" >> $GITHUB_ENV
+          echo "Package name: $PACKAGE_NAME"
 
       - name: Publish packages dry run
         run: |
-          melos publish --yes
+          melos publish --yes --scope=$PACKAGE_NAME
 
       - name: Publish packages
         run: |
-          melos publish --no-dry-run --yes
+          melos publish --no-dry-run --yes --scope=$PACKAGE_NAME
