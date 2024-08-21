@@ -200,12 +200,12 @@ class StreamingSyncImplementation {
     if (credentials == null) {
       throw CredentialsException("Not logged in");
     }
-    final uri = credentials.endpointUri('write-checkpoint2.json');
+    final uri =
+        credentials.endpointUri('write-checkpoint2.json?client_id=$clientId');
 
     Map<String, String> headers = {
       'Content-Type': 'application/json',
       'Authorization': "Token ${credentials.token}",
-      'Client-ID': clientId!,
       ..._userAgentHeaders
     };
 
@@ -415,7 +415,6 @@ class StreamingSyncImplementation {
     final request = http.Request('POST', uri);
     request.headers['Content-Type'] = 'application/json';
     request.headers['Authorization'] = "Token ${credentials.token}";
-    request.headers['Client-ID'] = clientId!;
     request.headers.addAll(_userAgentHeaders);
 
     request.body = convert.jsonEncode(data);
