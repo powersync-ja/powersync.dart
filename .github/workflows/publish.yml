@@ -41,7 +41,7 @@ jobs:
 
       - name: Update gitignore
         run: |
-          sed -i '' -e 's/*.so/!*.so/g; s/*.dll/!*.dll/g; s/*.dylib/!*.dylib/g' packages/powersync_flutter_libs/.gitignore
+          sed -i -e 's/*.so/!*.so/g; s/*.dll/!*.dll/g; s/*.dylib/!*.dylib/g' packages/powersync_flutter_libs/.gitignore
 
       - name: Publish packages dry run
         run: |
