@@ -239,6 +239,8 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
         await tx.execute('DELETE FROM ${quoteIdentifier(row['name'])}');
       }
     });
+    // The data has been deleted - reset these
+    setStatus(SyncStatus(lastSyncedAt: null, hasSynced: false));
   }
 
   @Deprecated('Use [disconnectAndClear] instead.')
