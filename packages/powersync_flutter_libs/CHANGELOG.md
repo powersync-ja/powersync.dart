@@ -1,3 +1,11 @@
+## 0.2.2
+
+ - **FIX**: Prebundling downloaded core binaries.
+
+## 0.2.1
+
+ - **FIX**: Prebundling downloaded core binaries
+
 ## 0.2.0
 
  - **FEAT**: Prebundle downloaded core binaries

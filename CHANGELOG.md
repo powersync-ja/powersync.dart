@@ -3,6 +3,68 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 2024-08-21
+
+### Changes
+
+---
+
+Packages with breaking changes:
+
+ - There are no breaking changes in this release.
+
+Packages with other changes:
+
+ - [`powersync` - `v1.6.7`](#powersync---v167)
+ - [`powersync_attachments_helper` - `v0.6.5`](#powersync_attachments_helper---v065)
+ - [`powersync_flutter_libs` - `v0.2.2`](#powersync_flutter_libs---v022)
+
+---
+
+#### `powersync` - `v1.6.7`
+
+ - **CHORE**: Update dependency powersync_flutter_libs
+
+#### `powersync_attachments_helper` - `v0.6.5`
+
+ - Update a dependency to the latest release.
+
+#### `powersync_flutter_libs` - `v0.2.2`
+
+ - **FIX**: Prebundling downloaded core binaries.
+
+
+## 2024-08-21
+
+### Changes
+
+---
+
+Packages with breaking changes:
+
+ - There are no breaking changes in this release.
+
+Packages with other changes:
+
+ - [`powersync` - `v1.6.6`](#powersync---v166)
+ - [`powersync_attachments_helper` - `v0.6.4`](#powersync_attachments_helper---v064)
+ - [`powersync_flutter_libs` - `v0.2.1`](#powersync_flutter_libs---v021)
+
+---
+
+#### `powersync` - `v1.6.6`
+
+ - **CHORE**: Update dependency powersync_flutter_libs
+
+#### `powersync_attachments_helper` - `v0.6.4`
+
+ - Update a dependency to the latest release.
+
+#### `powersync_flutter_libs` - `v0.2.1`
+
+ - **FIX**: Prebundling downloaded core binaries
+
+
 ## 2024-08-19
 
 ### Changes

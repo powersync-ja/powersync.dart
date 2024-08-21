@@ -1,3 +1,11 @@
+## 1.6.7
+
+ - **CHORE**: Update dependency powersync_flutter_libs
+
+## 1.6.6
+
+ - **CHORE**: Update dependency powersync_flutter_libs
+
 ## 1.6.5
 
  - **CHORE**: Update dependency `powersync_flutter_libs`

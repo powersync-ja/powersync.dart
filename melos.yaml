@@ -21,7 +21,7 @@ command:
         git add packages/powersync/lib/src/version.dart
   publish:
     hooks:
-      pre: sh tool/download_binaries.sh v0.2.0 # Download latest core binaries when publishing
+      pre: dart ./scripts/download_core_binary_demos.dart # Download latest core binaries when publishing
     packageFilters:
       noPrivate: true
 
@@ -30,7 +30,7 @@ scripts:
     description: Download SQLite3 WASM for demos
     run: |
       melos bootstrap && melos prepare:assets && dart ./scripts/compile_webworker.dart && dart ./scripts/init_powersync_core_binary.dart
-      melos prepare:demos
+      dart ./scripts/download_core_binary_demos.dart && melos prepare:demos
 
   prepare:demos:
     description: Download SQLite3 wasm for demos
