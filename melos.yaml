@@ -16,7 +16,7 @@ command:
       noPrivate: true
   publish:
     hooks:
-      pre: sh tool/download_binaries.sh
+      pre: sh tool/download_binaries.sh v0.1.8 # Download latest core binaries when publishing
     packageFilters:
       noPrivate: true
 
