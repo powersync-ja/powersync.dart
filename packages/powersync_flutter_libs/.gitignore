@@ -28,7 +28,7 @@ migrate_working_dir/
 .dart_tool/
 build/
 
-!*.so
+*.so
 *.a
-!*.dylib
-!*.dll
+*.dylib
+*.dll
