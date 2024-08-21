@@ -14,6 +14,11 @@ command:
     changelog: false
     packageFilters:
       noPrivate: true
+    hooks:
+      # Automatically update libraryVersion:
+      preCommit: |
+        dart run tool/update_version.dart
+        git add packages/powersync/lib/src/version.dart
   publish:
     hooks:
       pre: sh tool/download_binaries.sh
