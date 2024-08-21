@@ -8,7 +8,7 @@ String? powerSyncUserAgent() {
   if (dartVersion != null) {
     dart = "Dart/$dartVersion";
   }
-  // Ideally we'd get an OS version, but that's quite complex.
+  // Ideally we'd get an OS version as well, but that's a little complex.
   // Platform.operatingSystemVersion is very verbose.
-  return 'PowerSync/$libraryVersion ($dart; ${Platform.operatingSystem})';
+  return 'powersync-dart/$libraryVersion ($dart; ${Platform.operatingSystem})';
 }
