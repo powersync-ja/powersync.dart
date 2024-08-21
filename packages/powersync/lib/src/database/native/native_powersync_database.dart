@@ -264,11 +264,6 @@ class PowerSyncDatabaseImpl
     this.schema = schema;
     return updateSchemaInIsolate(database, schema);
   }
-
-  @override
-  Future<void> refreshSchema() async {
-    await database.refreshSchema();
-  }
 }
 
 class _PowerSyncDatabaseIsolateArgs {

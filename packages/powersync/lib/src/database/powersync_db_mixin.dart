@@ -424,4 +424,9 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
   Future<bool> getAutoCommit() {
     return database.getAutoCommit();
   }
+
+  @override
+  Future<void> refreshSchema() async {
+    await database.refreshSchema();
+  }
 }

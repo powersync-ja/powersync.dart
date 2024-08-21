@@ -142,6 +142,8 @@ bool isLoggedIn() {
 
 /// id of the user currently logged in
 String getUserId() {
+  // Consider options like https://dev.fingerprint.com/docs/identification-vs-fingerprintjs
+  // for  generating a local-only identity.
   return Supabase.instance.client.auth.currentSession?.user.id ??
       '00000000-0000-0000-0000-000000000000'; // default ID supplied for local-only mode
 }

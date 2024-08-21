@@ -210,9 +210,4 @@ class PowerSyncDatabaseImpl
     this.schema = schema;
     return database.writeLock((tx) => schema_logic.updateSchema(tx, schema));
   }
-
-  @override
-  Future<void> refreshSchema() {
-    return database.refreshSchema();
-  }
 }

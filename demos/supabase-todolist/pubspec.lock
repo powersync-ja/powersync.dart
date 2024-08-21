@@ -630,10 +630,10 @@ packages:
     dependency: "direct main"
     description:
       name: sqlite_async
-      sha256: "79e636c857ed43f6cd5e5be72b36967a29f785daa63ff5b078bd34f74f44cb54"
+      sha256: a01b49a32f01d65ff1604ac8515fa9e8113d4fa0058e08fac64138be7c788ffd
       url: "https://pub.dev"
     source: hosted
-    version: "0.8.1"
+    version: "0.8.2"
   stack_trace:
     dependency: transitive
     description:
