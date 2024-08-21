@@ -37,7 +37,7 @@ Then deploy the following sync rules:
 bucket_definitions:
   user_lists:
     # Separate bucket per todo list
-    parameters: select id as list_id from lists where owner_id = token_parameters.user_id
+    parameters: select id as list_id from lists where owner_id = request.user_id()
     data:
       - select * from lists where id = bucket.list_id
       - select * from todos where list_id = bucket.list_id
@@ -58,11 +58,11 @@ After this point, being signed in no longer determines which schema should be us
 ```mermaid
 graph TD
     K[Start] --> A[App is empty and local-only]
-    A --> B[User can create 0 or more todos that are stored local-only]
+    A --> B[User creates todos that are stored local-only]
     A --> C[User can login/register]
     B -->
     C --> D[Local-only data gets synced to PowerSync service]
-    D --> E[User can create 0 or more todos that will get synced]
+    D --> E[User creates todos that will get synced]
     D --> F
     E --> F[User can logout explicitly]
     F --> A
