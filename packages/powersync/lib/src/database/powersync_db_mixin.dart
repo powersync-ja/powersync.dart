@@ -78,9 +78,40 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
         .cast<UpdateNotification>();
 
     await database.initialize();
+    await _checkVersion();
     await database.execute('SELECT powersync_init()');
     await updateSchema(schema);
     await _updateHasSynced();
+  }
+
+  /// Check that a supported version of the powersync extension is loaded.
+  Future<void> _checkVersion() async {
+    // Get version
+    String version;
+    try {
+      final row =
+          await database.get('SELECT powersync_rs_version() as version');
+      version = row['version'];
+    } catch (e) {
+      throw SqliteException(
+          1, 'The powersync extension is not loaded correctly. Details: $e');
+    }
+
+    // Parse version
+    List<int> versionInts;
+    try {
+      versionInts =
+          version.split(RegExp(r'[./]')).take(3).map(int.parse).toList();
+    } catch (e) {
+      throw SqliteException(1,
+          'Unsupported powersync extension version. Need ^0.2.0, got: $version. Details: $e');
+    }
+
+    // Validate ^0.2.0
+    if (versionInts[0] != 0 || versionInts[1] != 2 || versionInts[2] < 0) {
+      throw SqliteException(1,
+          'Unsupported powersync extension version. Need ^0.2.0, got: $version');
+    }
   }
 
   /// Wait for initialization to complete.
