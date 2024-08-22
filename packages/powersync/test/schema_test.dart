@@ -143,4 +143,153 @@ void main() {
       expect(results2[0]['detail'], contains('SCAN'));
     });
   });
+
+  group('Table', () {
+    test('Create a synced table', () {
+      final table = Table('users', [
+        Column('name', ColumnType.text),
+        Column('age', ColumnType.integer),
+      ]);
+
+      expect(table.name, equals('users'));
+      expect(table.columns.length, equals(2));
+      expect(table.localOnly, isFalse);
+      expect(table.insertOnly, isFalse);
+      expect(table.internalName, equals('ps_data__users'));
+      expect(table.viewName, equals('users'));
+    });
+
+    test('Create a local-only table', () {
+      final table = Table.localOnly('local_users', [
+        Column('name', ColumnType.text),
+      ], viewName: 'local_user_view');
+
+      expect(table.name, equals('local_users'));
+      expect(table.localOnly, isTrue);
+      expect(table.insertOnly, isFalse);
+      expect(table.internalName, equals('ps_data_local__local_users'));
+      expect(table.viewName, equals('local_user_view'));
+    });
+
+    test('Create an insert-only table', () {
+      final table = Table.insertOnly('logs', [
+        Column('message', ColumnType.text),
+        Column('timestamp', ColumnType.integer),
+      ]);
+
+      expect(table.name, equals('logs'));
+      expect(table.localOnly, isFalse);
+      expect(table.insertOnly, isTrue);
+      expect(table.internalName, equals('ps_data__logs'));
+      expect(table.indexes, isEmpty);
+    });
+
+    test('Access column by name', () {
+      final table = Table('products', [
+        Column('name', ColumnType.text),
+        Column('price', ColumnType.real),
+      ]);
+
+      expect(table['name'].type, equals(ColumnType.text));
+      expect(table['price'].type, equals(ColumnType.real));
+      expect(() => table['nonexistent'], throwsStateError);
+    });
+
+    test('Validate table name', () {
+      final invalidTableName = Table('#invalid_table_name', [
+        Column('name', ColumnType.text)
+      ]);
+
+      expect(
+        () => invalidTableName.validate(),
+        throwsA(
+          isA<AssertionError>().having(
+            (e) => e.message,
+            'message',
+            'Invalid characters in table name: #invalid_table_name',
+          ),
+        ),
+      );
+    });
+
+    test('Validate view name', () {
+      final invalidTableName = Table('valid_table_name', [
+        Column('name', ColumnType.text)
+      ], viewName: '#invalid_view_name');
+
+      expect(
+        () => invalidTableName.validate(),
+        throwsA(
+          isA<AssertionError>().having(
+            (e) => e.message,
+            'message',
+            'Invalid characters in view name: #invalid_view_name',
+          ),
+        ),
+      );
+    });
+
+    test('Validate table definition', () {
+      final validTable = Table('valid_table', [
+        Column('name', ColumnType.text),
+        Column('age', ColumnType.integer),
+      ]);
+
+      expect(() => validTable.validate(), returnsNormally);
+    });
+
+    test('Table with id column', () {
+      final invalidTable = Table('invalid_table', [
+        Column('id', ColumnType.integer), // Duplicate 'id' column
+        Column('name', ColumnType.text),
+      ]);
+
+      expect(
+        () => invalidTable.validate(),
+        throwsA(
+          isA<AssertionError>().having(
+            (e) => e.message,
+            'message',
+            'invalid_table: id column is automatically added, custom id columns are not supported',
+          ),
+        ),
+      );
+    });
+
+    test('Table with too many columns', () {
+      final List<Column> manyColumns = List.generate(
+        64, // Exceeds MAX_NUMBER_OF_COLUMNS
+        (index) => Column('col$index', ColumnType.text),
+      );
+
+      final tableTooManyColumns = Table('too_many_columns', manyColumns);
+
+      expect(
+        () => tableTooManyColumns.validate(),
+        throwsA(
+          isA<AssertionError>().having(
+            (e) => e.message,
+            'message',
+            'Table too_many_columns has more than 63 columns, which is not supported',
+          ),
+        ),
+      );
+    });
+
+    test('toJson method', () {
+      final table = Table('users', [
+        Column('name', ColumnType.text),
+        Column('age', ColumnType.integer),
+      ], indexes: [Index('name_index', [IndexedColumn('name')])]);
+
+      final json = table.toJson();
+
+      expect(json['name'], equals('users'));
+      expect(json['view_name'], isNull);
+      expect(json['local_only'], isFalse);
+      expect(json['insert_only'], isFalse);
+      expect(json['columns'].length, equals(2));
+      expect(json['indexes'].length, equals(1));
+    });
+  });
 }
