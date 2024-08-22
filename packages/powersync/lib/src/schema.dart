@@ -88,8 +88,9 @@ class Table {
 
   /// Check that there are no issues in the table definition.
   void validate() {
-    if(columns.length > MAX_NUMBER_OF_COLUMNS) {
-      throw AssertionError("Table $name has more than $MAX_NUMBER_OF_COLUMNS columns, which is not supported");
+    if (columns.length > MAX_NUMBER_OF_COLUMNS) {
+      throw AssertionError(
+          "Table $name has more than $MAX_NUMBER_OF_COLUMNS columns, which is not supported");
     }
 
     if (invalidSqliteCharacters.hasMatch(name)) {

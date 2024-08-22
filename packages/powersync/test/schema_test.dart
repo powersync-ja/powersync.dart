@@ -160,9 +160,12 @@ void main() {
     });
 
     test('Create a local-only table', () {
-      final table = Table.localOnly('local_users', [
-        Column('name', ColumnType.text),
-      ], viewName: 'local_user_view');
+      final table = Table.localOnly(
+          'local_users',
+          [
+            Column('name', ColumnType.text),
+          ],
+          viewName: 'local_user_view');
 
       expect(table.name, equals('local_users'));
       expect(table.localOnly, isTrue);
@@ -196,9 +199,8 @@ void main() {
     });
 
     test('Validate table name', () {
-      final invalidTableName = Table('#invalid_table_name', [
-        Column('name', ColumnType.text)
-      ]);
+      final invalidTableName =
+          Table('#invalid_table_name', [Column('name', ColumnType.text)]);
 
       expect(
         () => invalidTableName.validate(),
@@ -213,9 +215,9 @@ void main() {
     });
 
     test('Validate view name', () {
-      final invalidTableName = Table('valid_table_name', [
-        Column('name', ColumnType.text)
-      ], viewName: '#invalid_view_name');
+      final invalidTableName = Table(
+          'valid_table_name', [Column('name', ColumnType.text)],
+          viewName: '#invalid_view_name');
 
       expect(
         () => invalidTableName.validate(),
@@ -280,7 +282,9 @@ void main() {
       final table = Table('users', [
         Column('name', ColumnType.text),
         Column('age', ColumnType.integer),
-      ], indexes: [Index('name_index', [IndexedColumn('name')])]);
+      ], indexes: [
+        Index('name_index', [IndexedColumn('name')])
+      ]);
 
       final json = table.toJson();
 
