@@ -35,7 +35,7 @@ class Table {
 
   /// There is maximum of 127 arguments for any function in SQLite. Currently we use json_object which uses 1 arg per key (column name)
   /// and one per value, which limits it to 63 arguments.
-  final int MAX_NUMBER_OF_COLUMNS = 63;
+  final int maxNumberOfColumns = 63;
 
   /// Internal use only.
   ///
@@ -88,9 +88,9 @@ class Table {
 
   /// Check that there are no issues in the table definition.
   void validate() {
-    if (columns.length > MAX_NUMBER_OF_COLUMNS) {
+    if (columns.length > maxNumberOfColumns) {
       throw AssertionError(
-          "Table $name has more than $MAX_NUMBER_OF_COLUMNS columns, which is not supported");
+          "Table $name has more than $maxNumberOfColumns columns, which is not supported");
     }
 
     if (invalidSqliteCharacters.hasMatch(name)) {
