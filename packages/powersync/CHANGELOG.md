@@ -1,7 +1,7 @@
 ## 1.7.0
 
- - **CHORE**: Include schema validation check
- - **CHORE**: Include new table check for maximum number of columns allowed
+ - **FEAT**: Include schema validation check
+ - **FEAT**: Include new table check for maximum number of columns allowed
 
 ## 1.6.7
 
