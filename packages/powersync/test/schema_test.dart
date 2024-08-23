@@ -1,5 +1,7 @@
+import 'package:flutter/foundation.dart';
 import 'package:powersync/powersync.dart';
 import 'package:test/test.dart';
+import 'dart:developer';
 
 import 'utils/test_utils_impl.dart';
 
@@ -143,9 +145,26 @@ void main() {
       expect(results2[0]['detail'], contains('SCAN'));
     });
 
-    test('Validation runs on update', () async {
+    test('Validation runs on setup', () async {
       final schema = Schema([
         Table('#assets', [
+          Column.text('name'),
+        ]),
+      ]);
+
+      try {
+        await testUtils.setupPowerSync(path: path, schema: schema);
+      } catch (e) {
+        expect(
+            e,
+            isA<AssertionError>().having((e) => e.message, 'message',
+                'Invalid characters in table name: #assets'));
+      }
+    });
+
+    test('Validation runs on update', () async {
+      final schema = Schema([
+        Table('works', [
           Column.text('name'),
         ]),
       ]);
@@ -153,16 +172,20 @@ void main() {
       final powersync =
           await testUtils.setupPowerSync(path: path, schema: schema);
 
-      expect(
-        () async => await powersync.updateSchema(schema),
-        throwsA(
-          isA<AssertionError>().having(
-            (e) => e.message,
-            'message',
-            'Invalid characters in table name: #assets'
-          ),
-        ),
-      );
+      final schema2 = Schema([
+        Table('#notworking', [
+          Column.text('created_at'),
+        ]),
+      ]);
+
+      try {
+        powersync.updateSchema(schema2);
+      } catch (e) {
+        expect(
+            e,
+            isA<AssertionError>().having((e) => e.message, 'message',
+                'Invalid characters in table name: #notworking'));
+      }
     });
   });
 
