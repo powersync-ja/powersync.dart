@@ -142,6 +142,28 @@ void main() {
 
       expect(results2[0]['detail'], contains('SCAN'));
     });
+
+    test('Validation runs on update', () async {
+      final schema = Schema([
+        Table('#assets', [
+          Column.text('name'),
+        ]),
+      ]);
+
+      final powersync =
+          await testUtils.setupPowerSync(path: path, schema: schema);
+
+      expect(
+        () async => await powersync.updateSchema(schema),
+        throwsA(
+          isA<AssertionError>().having(
+            (e) => e.message,
+            'message',
+            'Invalid characters in table name: #assets'
+          ),
+        ),
+      );
+    });
   });
 
   group('Table', () {

@@ -11,6 +11,12 @@ class Schema {
   const Schema(this.tables);
 
   Map<String, dynamic> toJson() => {'tables': tables};
+
+  void validate() {
+    for (var table in tables) {
+      table.validate();
+    }
+  }
 }
 
 /// A single table in the schema.
