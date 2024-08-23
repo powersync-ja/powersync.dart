@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:powersync/powersync.dart';
 import 'package:test/test.dart';
 
