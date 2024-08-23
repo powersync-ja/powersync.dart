@@ -207,6 +207,7 @@ class PowerSyncDatabaseImpl
     if (disconnecter != null) {
       throw AssertionError('Cannot update schema while connected');
     }
+    schema.validate();
     this.schema = schema;
     return database.writeLock((tx) => schema_logic.updateSchema(tx, schema));
   }
