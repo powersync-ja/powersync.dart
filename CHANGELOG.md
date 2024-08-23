@@ -3,6 +3,35 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 2024-08-23
+
+### Changes
+
+---
+
+Packages with breaking changes:
+
+ - There are no breaking changes in this release.
+
+Packages with other changes:
+
+ - [`powersync` - `v1.7.0`](#powersync---v170)
+ - [`powersync_attachments_helper` - `v0.6.5+1`](#powersync_attachments_helper---v0651)
+
+Packages with dependency updates only:
+
+> Packages listed below depend on other packages in this workspace that have had changes. Their versions have been incremented to bump the minimum dependency versions of the packages they depend upon in this project.
+
+ - `powersync_attachments_helper` - `v0.6.5+1`
+
+---
+
+#### `powersync` - `v1.7.0`
+
+ - **CHORE**: Include schema validation check
+ - **CHORE**: Include new table check for maximum number of columns allowed
+
+
 ## 2024-08-21
 
 ### Changes
