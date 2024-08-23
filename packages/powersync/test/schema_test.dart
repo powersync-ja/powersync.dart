@@ -1,7 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:powersync/powersync.dart';
 import 'package:test/test.dart';
-import 'dart:developer';
 
 import 'utils/test_utils_impl.dart';
 
