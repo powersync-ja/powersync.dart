@@ -22,7 +22,7 @@ command:
 
 scripts:
   prepare:
-    description: Download SQLite3 WASM for demos
+    description: Download and prepare assets for demos
     run: |
       melos bootstrap && melos prepare:assets && dart ./scripts/compile_webworker.dart && dart ./scripts/init_powersync_core_binary.dart && dart ./scripts/download_core_binary_demos.dart && melos prepare:demos
 
