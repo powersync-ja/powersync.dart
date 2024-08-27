@@ -49,9 +49,12 @@ Insert the credentials of your new Supabase and PowerSync projects into `lib/app
 
 # Explanation
 
-The demo implements local-only and synced modes by using two sets of schema definitions, which can be viewed [here](./lib/models/schema.dart). The app initially starts in local-only mode with the offline schema. When the user signs in, the database schema is updated to the online schema, and the data is migrated to enable synchronization.
+The demo implements local-only and synced modes by using two sets of schema definitions, which can be viewed [here](./lib/models/schema.dart).
 
-After this point, being signed in no longer determines which schema should be used, as the user's session expiring and explicitly signing out trigger different behaviors. If the session expires, the user can continue interacting with their data. However, if the user explicitly logs out, all data is cleared, effectively resetting the app. To manage this, an additional local storage mechanism is used to track which schema is currently in use, as seen [here](./lib/models/sync_mode.dart.dart). Note that any other local storage solution would work as long as it's not using the PowerSync database (chicken and egg problem).
+The first set doesn't record changes in an upload queue, this is achieved by using the localOnly table definition.
+When the user registers and sync must start, copy the data in the first schema over to a second set of regular / synced schema
+
+At this point, being signed in no longer determines which schema should be used, as the user's session expiring and explicitly signing out trigger different behaviors. If the session expires, the user can continue interacting with their data. However, if the user explicitly logs out, all data is cleared, effectively resetting the app. To manage this, an additional local storage mechanism is used to track which schema is currently in use, as seen [here](./lib/models/sync_mode.dart). Note that any other local storage solution would work as long as it's not using the PowerSync database (chicken and egg problem).
 
 ## Flow chart
 
