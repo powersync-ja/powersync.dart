@@ -1,3 +1,8 @@
+## 1.7.0
+
+ - **FEAT**: Include schema validation check
+ - **FEAT**: Include new table check for maximum number of columns allowed
+
 ## 1.6.7
 
  - **CHORE**: Update dependency powersync_flutter_libs
