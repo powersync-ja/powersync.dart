@@ -13,7 +13,7 @@ dependencies:
   sqlite_async: ^0.8.1
   # We only use sqlite3 as a transitive dependency,
   # but right now we need a minimum of v2.4.5.
-  sqlite3: ">=2.4.5"
+  sqlite3: ^2.4.5
   universal_io: ^2.0.0
   sqlite3_flutter_libs: ^0.5.23
   powersync_flutter_libs: ^0.2.2
