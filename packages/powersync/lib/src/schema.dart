@@ -11,6 +11,12 @@ class Schema {
   const Schema(this.tables);
 
   Map<String, dynamic> toJson() => {'tables': tables};
+
+  void validate() {
+    for (var table in tables) {
+      table.validate();
+    }
+  }
 }
 
 /// A single table in the schema.
@@ -32,6 +38,10 @@ class Table {
 
   /// Override the name for the view
   final String? _viewNameOverride;
+
+  /// There is maximum of 127 arguments for any function in SQLite. Currently we use json_object which uses 1 arg per key (column name)
+  /// and one per value, which limits it to 63 arguments.
+  final int maxNumberOfColumns = 63;
 
   /// Internal use only.
   ///
@@ -84,9 +94,16 @@ class Table {
 
   /// Check that there are no issues in the table definition.
   void validate() {
+    if (columns.length > maxNumberOfColumns) {
+      throw AssertionError(
+          "Table $name has more than $maxNumberOfColumns columns, which is not supported");
+    }
+
     if (invalidSqliteCharacters.hasMatch(name)) {
       throw AssertionError("Invalid characters in table name: $name");
-    } else if (_viewNameOverride != null &&
+    }
+
+    if (_viewNameOverride != null &&
         invalidSqliteCharacters.hasMatch(_viewNameOverride)) {
       throw AssertionError(
           "Invalid characters in view name: $_viewNameOverride");
