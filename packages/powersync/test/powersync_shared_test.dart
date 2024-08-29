@@ -1,7 +1,7 @@
 import 'package:sqlite_async/mutex.dart';
 import 'package:test/test.dart';
 import 'package:uuid/parsing.dart';
-import 'package:uuid/v4.dart';
+
 import 'utils/test_utils_impl.dart';
 
 final testUtils = TestUtils();
@@ -87,7 +87,7 @@ void main() {
 
       final id = await db.getClientId();
       // Check that it is a valid uuid
-      final _uuid = UuidParsing.parseAsByteList(id);
+      UuidParsing.parseAsByteList(id);
     });
   });
 }
