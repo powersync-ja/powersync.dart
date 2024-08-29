@@ -24,7 +24,12 @@ openSyncModeDatabase() async {
     path = join(dir.path, dbFilename);
   }
 
-  sqliteDb = SqliteDatabase(path: path);
+  sqliteDb = SqliteDatabase(
+    path: path,
+    options: const SqliteOptions(
+      webSqliteOptions: WebSqliteOptions(workerUri: 'powersync_db.worker.js'),
+    ),
+  );
   await migrations.migrate(sqliteDb);
 }
 
