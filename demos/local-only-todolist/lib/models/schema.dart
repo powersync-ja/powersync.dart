@@ -26,7 +26,7 @@ import 'package:powersync_flutter_local_only_demo/models/sync_mode.dart';
 /// - `inactive_local_todos' and 'inactive_local_lists' refer to the local-only data, allowing
 ///   for temporary storage or operations before syncing.
 ///
-///  For an offline-to-online transition [switchToOnlineSchema] copies data so that it ends up in the upload queue.
+///  For an offline-to-online transition [switchToSyncedSchema] copies data so that it ends up in the upload queue.
 
 const todosTable = 'todos';
 const listsTable = 'lists';
