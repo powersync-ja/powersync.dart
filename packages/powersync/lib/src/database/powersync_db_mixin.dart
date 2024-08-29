@@ -287,6 +287,13 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
     return database.isolateConnectionFactory();
   }
 
+  /// Get an unique id for this client.
+  /// This id is only reset when the database is deleted.
+  Future<String> getClientId() async {
+    final row = await get('SELECT powersync_client_id() as client_id');
+    return row['client_id'] as String;
+  }
+
   /// Get upload queue size estimate and count.
   Future<UploadQueueStats> getUploadQueueStats(
       {bool includeSize = false}) async {
