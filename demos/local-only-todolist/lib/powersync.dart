@@ -212,6 +212,6 @@ Future<void> logout() async {
   await db.disconnectAndClear();
 
   // Resetting app so that no-sync mode works again
-  await await setSyncEnabled(false);
+  await setSyncEnabled(false);
   await openDatabase();
 }
