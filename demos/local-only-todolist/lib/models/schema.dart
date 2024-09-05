@@ -1,7 +1,7 @@
 import 'package:powersync/powersync.dart';
 import 'package:powersync_flutter_local_only_demo/models/sync_mode.dart';
 
-/// This schema design supports a local-only to sync workflow by managing data
+/// This schema design supports a local-only to sync-enabled workflow by managing data
 /// across two versions of each table: one for local-only use without syncing before a user registers, 
 /// the other for sync-enabled use after the user registers/signs in.
 ///
@@ -77,7 +77,7 @@ switchToSyncedSchema(PowerSyncDatabase db, String userId) async {
     await tx.execute(
         'INSERT INTO $todosTable SELECT * FROM inactive_local_$todosTable');
 
-    // Delete the "local-only" data.
+    // Delete the local-only data.
     await tx.execute('DELETE FROM inactive_local_$todosTable');
     await tx.execute('DELETE FROM inactive_local_$listsTable');
   });
