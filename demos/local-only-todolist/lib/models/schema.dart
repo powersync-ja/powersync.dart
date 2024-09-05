@@ -4,6 +4,9 @@ import 'package:powersync_flutter_local_only_demo/models/sync_mode.dart';
 /// This schema design supports a local-only to sync-enabled workflow by managing data
 /// across two versions of each table: one for local-only use without syncing before a user registers, 
 /// the other for sync-enabled use after the user registers/signs in.
+/// 
+/// This is done by utilizing the viewName property to override the default view name
+/// of a table.
 ///
 /// See the README for details.
 ///
@@ -16,16 +19,22 @@ const listsTable = 'lists';
 Schema makeSchema({synced = bool}) {
   String syncedName(String table) {
     if (synced) {
+      // results in lists, todos
       return table;
     } else {
+      // in the local-only mode of the demo
+      // these tables are not used
       return "inactive_synced_$table";
     }
   }
 
   String localName(String table) {
     if (synced) {
+      // in the sync-enabled mode of the demo
+      // these tables are not used
       return "inactive_local_$table";
     } else {
+      // results in lists, todos
       return table;
     }
   }
@@ -68,10 +77,10 @@ switchToSyncedSchema(PowerSyncDatabase db, String userId) async {
   await setSyncEnabled(true);
 
   await db.writeTransaction((tx) async {
-    // Copy local-only data to the sync-enabled tables/views.
+    // Copy local-only data to the sync-enabled views.
     // This records each operation in the upload queue.
     await tx.execute(
-        'INSERT INTO lists(id, name, created_at, owner_id) SELECT id, name, created_at, ? FROM inactive_local_lists',
+        'INSERT INTO $listsTable(id, name, created_at, owner_id) SELECT id, name, created_at, ? FROM inactive_local_$listsTable',
         [userId]);
 
     await tx.execute(

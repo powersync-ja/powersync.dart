@@ -40,7 +40,7 @@ It does the following:
 
 ## Configure your PowerSync Instance
 
-Create a new PowerSync instance, connecting to the database of the Supabase project.
+Create a new PowerSync instance, connecting to the database of the Supabase project. See instructions [here](https://docs.powersync.com/integration-guides/supabase-+-powersync#connect-powersync-to-your-supabase).
 
 Then deploy the following sync rules:
 
@@ -60,7 +60,7 @@ Insert the credentials of your Supabase and PowerSync projects into `lib/app_con
 
 ## Sign in to the app
 
-Reload the app and sign up or sign in. Once successfully signed in, existing and new data should seamlessly sync with Supabase.
+Restart the app and sign up or sign in. Once successfully signed in, existing and new data should seamlessly sync with Supabase.
 
 
 # How this works
@@ -79,25 +79,23 @@ The downside to this approach is that app queries would need to continuously dif
 
 ## Recommended implementation
 
-To keep app queries consistent between the two states, we utilize the [viewName](https://pub.dev/documentation/powersync/latest/powersync/Table/viewName.html) property, which allows overriding the default name of the view that is used in queries. 
+To keep app queries consistent between the two states, we utilize the [viewName](https://pub.dev/documentation/powersync/latest/powersync/Table/viewName.html) property, which allows overriding the default name of schema views (each table automatically has a corresponding view, defaulting to the table name, which is used in queries). 
 
 This looks as follows in the local-only state:
 
 ![diagram-1](./assets/local-only-readme-1.png)
 
-The local-only tables (`local_lists` and `local_todos`) have their view names overriden to `listsAlias` and `todosAlias`, and these names are used in queries (e.g. `PowerSync.getAll("SELECT * FROM listsAlias");`). The `lists` and `todos` tables are not used in this state, but will become relevant in the next step.
+The local-only tables (`local_lists` and `local_todos`) have their view names overriden to `lists` and `todos`, and these names are used in queries (e.g. `PowerSync.getAll("SELECT * FROM lists");`). The `lists` and `todos` tables, which are the sync-enabled tables without the `localOnly` flag, are not used at this stage, as indicated by their `inactive_synced_` view names.
 
 When the user registers / signs in:
 
 ![diagram-2](./assets/local-only-readme-2.png)
 
-The _synced_ tables (`lists` and `todos`) now have their view names overriden to `listsAlias` and `todosAlias`. Note that `updateSchema` must be run to update the view name. See the [schema](./lib/models/schema.dart) for details about this. The app query `PowerSync.getAll("SELECT * FROM listsAlias")` now reads data from the `lists` table. 
+The _synced_ tables (`lists` and `todos`) now have their view names set to `lists` and `todos`. Note that `updateSchema` must be run to update the view name. See the [schema](./lib/models/schema.dart) for details about this. The app query `PowerSync.getAll("SELECT * FROM lists")` now reads data from the `lists` table. 
 
 Finally, copy data from the local-only tables to the synced tables, and delete data from the local-only tables to reduce database size:
 
 ![diagram-3](./assets/local-only-readme-3.png)
-
-
 
 At this point, being signed in no longer determines which schema should be used, as the user's session expiring and explicitly signing out trigger different behaviors. If the session expires, the user can continue interacting with their data. However, if the user explicitly logs out, all data is cleared, effectively resetting the app. To manage this, an additional local storage mechanism is used to track which schema is currently in use, as seen [here](./lib/models/sync_mode.dart). Note that any other local storage solution would work as long as it's not using the PowerSync database (chicken and egg problem).
 

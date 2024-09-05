@@ -1,3 +1,5 @@
+import 'package:powersync_flutter_local_only_demo/models/schema.dart';
+
 import 'package:powersync/powersync.dart';
 import 'package:powersync/sqlite3_common.dart' as sqlite;
 
@@ -39,7 +41,7 @@ class TodoList {
   static Stream<List<TodoList>> watchLists() {
     // This query is automatically re-run when data in "lists" or "todos" is modified.
     return db
-        .watch('SELECT * FROM lists ORDER BY created_at, id')
+        .watch('SELECT * FROM $listsTable ORDER BY created_at, id')
         .map((results) {
       return results.map(TodoList.fromRow).toList(growable: false);
     });
@@ -51,8 +53,8 @@ class TodoList {
     return db.watch('''
       SELECT
         *,
-        (SELECT count() FROM todos WHERE list_id = lists.id AND completed = TRUE) as completed_count,
-        (SELECT count() FROM todos WHERE list_id = lists.id AND completed = FALSE) as pending_count
+        (SELECT count() FROM $todosTable WHERE list_id = lists.id AND completed = TRUE) as completed_count,
+        (SELECT count() FROM $todosTable WHERE list_id = lists.id AND completed = FALSE) as pending_count
       FROM lists
       ORDER BY created_at
     ''').map((results) {
@@ -68,7 +70,7 @@ class TodoList {
   static Future<TodoList> create(String name) async {
     final results = await db.execute('''
       INSERT INTO
-        lists(id, created_at, name, owner_id)
+        $listsTable(id, created_at, name, owner_id)
         VALUES(uuid(), datetime(), ?, ?)
       RETURNING *
       ''', [name, getUserId()]);
@@ -78,7 +80,7 @@ class TodoList {
   /// Watch items within this list.
   Stream<List<TodoItem>> watchItems() {
     return db.watch(
-        'SELECT * FROM todos WHERE list_id = ? ORDER BY created_at DESC, id',
+        'SELECT * FROM $todosTable WHERE list_id = ? ORDER BY created_at DESC, id',
         parameters: [id]).map((event) {
       return event.map(TodoItem.fromRow).toList(growable: false);
     });
@@ -86,12 +88,12 @@ class TodoList {
 
   /// Delete this list.
   Future<void> delete() async {
-    await db.execute('DELETE FROM lists WHERE id = ?', [id]);
+    await db.execute('DELETE FROM $listsTable WHERE id = ?', [id]);
   }
 
   /// Find list item.
   static Future<TodoList> find(id) async {
-    final results = await db.get('SELECT * FROM lists WHERE id = ?', [id]);
+    final results = await db.get('SELECT * FROM $listsTable WHERE id = ?', [id]);
     return TodoList.fromRow(results);
   }
 
@@ -99,7 +101,7 @@ class TodoList {
   Future<TodoItem> add(String description) async {
     final results = await db.execute('''
       INSERT INTO
-        todos(id, created_at, completed, list_id, description, created_by)
+        $todosTable(id, created_at, completed, list_id, description, created_by)
         VALUES(uuid(), datetime(), FALSE, ?, ?, ?)
       RETURNING *
     ''', [id, description, getUserId()]);
