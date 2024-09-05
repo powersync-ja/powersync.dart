@@ -2,19 +2,19 @@ import 'package:powersync/powersync.dart';
 import 'package:powersync_flutter_local_only_demo/models/sync_mode.dart';
 
 /// This schema design supports a local-only to sync workflow by managing data
-/// across two versions of each table: one for local/offline use and one for
-/// online/synced use. This approach simplifies the handling of data in different
-/// connectivity states.
+/// across two versions of each table: one for local-only use without syncing before a user registers, 
+/// the other for sync-enabled use after the user registers/signs in.
 ///
 /// See the README for details.
 ///
-///  For an offline-to-online transition [switchToSyncedSchema] copies data so that it ends up in the upload queue.
+/// [switchToSyncedSchema] copies data from the local-only tables to the sync-enabled tables
+/// so that it ends up in the upload queue.
 
 const todosTable = 'todos';
 const listsTable = 'lists';
 
 Schema makeSchema({synced = bool}) {
-  String onlineName(String table) {
+  String syncedName(String table) {
     if (synced) {
       return table;
     } else {
@@ -53,7 +53,7 @@ Schema makeSchema({synced = bool}) {
   return Schema([
     for (var table in tables)
       Table(table.name, table.columns,
-          indexes: table.indexes, viewName: onlineName(table.name)),
+          indexes: table.indexes, viewName: syncedName(table.name)),
     for (var table in tables)
       Table.localOnly('local_${table.name}', table.columns,
           indexes: table.indexes, viewName: localName(table.name))
@@ -68,8 +68,8 @@ switchToSyncedSchema(PowerSyncDatabase db, String userId) async {
   await setSyncEnabled(true);
 
   await db.writeTransaction((tx) async {
-    // Copy local-only data to the "online" views.
-    // This records each operation to the crud queue.
+    // Copy local-only data to the sync-enabled tables/views.
+    // This records each operation in the upload queue.
     await tx.execute(
         'INSERT INTO lists(id, name, created_at, owner_id) SELECT id, name, created_at, ? FROM inactive_local_lists',
         [userId]);
