@@ -129,7 +129,8 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
     final hasSynced = timestamp != null;
 
     if (hasSynced != currentStatus.hasSynced) {
-      final lastSyncedAt = timestamp == null ? null : DateTime.parse(timestamp);
+      final lastSyncedAt =
+          timestamp == null ? null : DateTime.parse('${timestamp}Z').toLocal();
       final status =
           SyncStatus(hasSynced: hasSynced, lastSyncedAt: lastSyncedAt);
       setStatus(status);
@@ -157,7 +158,8 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
           // The previous values of hasSynced should be preserved here.
           hasSynced: status.lastSyncedAt != null
               ? true
-              : status.hasSynced ?? currentStatus.hasSynced);
+              : status.hasSynced ?? currentStatus.hasSynced,
+          lastSyncedAt: status.lastSyncedAt ?? currentStatus.lastSyncedAt);
       statusStreamController.add(currentStatus);
     }
   }
@@ -260,7 +262,8 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
       await tx.execute('select powersync_clear(?)', [clearLocal ? 1 : 0]);
     });
     // The data has been deleted - reset these
-    setStatus(SyncStatus(lastSyncedAt: null, hasSynced: false));
+    currentStatus = SyncStatus(lastSyncedAt: null, hasSynced: false);
+    statusStreamController.add(currentStatus);
   }
 
   @Deprecated('Use [disconnectAndClear] instead.')
