@@ -35,6 +35,7 @@ abstract class PowerSyncDatabase
   factory PowerSyncDatabase(
       {required Schema schema,
       required String path,
+      String? encryptionKey,
       Logger? logger,
       @Deprecated("Use [PowerSyncDatabase.withFactory] instead.")
       // ignore: deprecated_member_use_from_same_package
@@ -43,6 +44,7 @@ abstract class PowerSyncDatabase
         schema: schema,
         path: path,
         logger: logger,
+        encryptionKey: encryptionKey,
         // ignore: deprecated_member_use_from_same_package
         sqliteSetup: sqliteSetup);
   }

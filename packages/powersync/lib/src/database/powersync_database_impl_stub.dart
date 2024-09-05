@@ -47,6 +47,7 @@ class PowerSyncDatabaseImpl
   factory PowerSyncDatabaseImpl(
       {required Schema schema,
       required String path,
+      String? encryptionKey,
       int maxReaders = SqliteDatabase.defaultMaxReaders,
       Logger? logger,
       @Deprecated("Use [PowerSyncDatabase.withFactory] instead.")

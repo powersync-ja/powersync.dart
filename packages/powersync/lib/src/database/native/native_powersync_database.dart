@@ -13,6 +13,7 @@ import 'package:powersync/src/isolate_completer.dart';
 import 'package:powersync/src/log.dart';
 import 'package:powersync/src/log_internal.dart';
 import 'package:powersync/src/open_factory/abstract_powersync_open_factory.dart';
+import 'package:powersync/src/open_factory/native/native_cipher_open_factory.dart';
 import 'package:powersync/src/open_factory/native/native_open_factory.dart';
 import 'package:powersync/src/schema.dart';
 import 'package:powersync/src/schema_logic.dart';
@@ -71,6 +72,7 @@ class PowerSyncDatabaseImpl
   factory PowerSyncDatabaseImpl(
       {required Schema schema,
       required String path,
+      String? encryptionKey,
       int maxReaders = SqliteDatabase.defaultMaxReaders,
       Logger? logger,
       @Deprecated("Use [PowerSyncDatabase.withFactory] instead.")
@@ -80,6 +82,9 @@ class PowerSyncDatabaseImpl
     DefaultSqliteOpenFactory factory =
         // ignore: deprecated_member_use_from_same_package
         PowerSyncOpenFactory(path: path, sqliteSetup: sqliteSetup);
+    if (encryptionKey != null) {
+      factory = PowerSyncSqlcipherOpenFactory(path: path, key: encryptionKey);
+    }
     return PowerSyncDatabaseImpl.withFactory(factory,
         schema: schema, logger: logger);
   }

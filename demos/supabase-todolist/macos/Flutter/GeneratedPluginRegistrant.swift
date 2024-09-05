@@ -9,7 +9,7 @@ import app_links
 import path_provider_foundation
 import powersync_flutter_libs
 import shared_preferences_foundation
-import sqlite3_flutter_libs
+import sqlcipher_flutter_libs
 import url_launcher_macos
 
 func RegisterGeneratedPlugins(registry: FlutterPluginRegistry) {

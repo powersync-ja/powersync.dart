@@ -10,9 +10,9 @@ dependencies:
   flutter:
     sdk: flutter
 
-  sqlite_async: ^0.8.1
+  sqlite_async: ^0.9.0
   universal_io: ^2.0.0
-  sqlite3_flutter_libs: ^0.5.23
+  sqlcipher_flutter_libs: ^0.6.4
   powersync_flutter_libs: ^0.2.2
   meta: ^1.0.0
   http: ^1.1.0
