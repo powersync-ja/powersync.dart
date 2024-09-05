@@ -1,30 +1,12 @@
 import 'package:powersync/powersync.dart';
 import 'package:powersync_flutter_local_only_demo/models/sync_mode.dart';
 
-/// This schema design supports a local-only to online workflow by managing data
+/// This schema design supports a local-only to sync workflow by managing data
 /// across two versions of each table: one for local/offline use and one for
 /// online/synced use. This approach simplifies the handling of data in different
 /// connectivity states.
 ///
-/// For local-only, the views become:
-///   inactive_synced_todos
-///   todos
-///   inactive_synced_lists
-///   lists
-///
-/// - 'todos' and 'lists' refer to the local-only data.
-/// - 'inactive_synced_todos' and 'inactive_synced_lists' refer to the data that will be synced
-///    once online.
-///
-/// For online, we have these views:
-///   todos
-///   inactive_local_todos
-///   lists
-///   inactive_local_lists
-///
-/// - 'todos' and 'lists' refer to the synced/online data.
-/// - `inactive_local_todos' and 'inactive_local_lists' refer to the local-only data, allowing
-///   for temporary storage or operations before syncing.
+/// See the README for details.
 ///
 ///  For an offline-to-online transition [switchToSyncedSchema] copies data so that it ends up in the upload queue.
 
