@@ -8,13 +8,8 @@ environment:
   sdk: ">=3.4.3 <4.0.0"
 
 dependencies:
-  flutter:
-    sdk: flutter
-
   sqlite_async: ^0.8.1
   universal_io: ^2.0.0
-  sqlite3_flutter_libs: ^0.5.23
-  powersync_flutter_libs: ^0.2.2
   meta: ^1.0.0
   http: ^1.1.0
   uuid: ^4.2.0
