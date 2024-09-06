@@ -82,6 +82,7 @@ scripts:
     packageFilters:
       dirExists:
         - test
+      scope: powersync_core
     # This tells Melos tests to ignore env variables passed to tests from `melos run test`
     # as they could change the behaviour of how tests filter packages.
     env:
@@ -95,5 +96,6 @@ scripts:
     packageFilters:
       dirExists:
         - test
+      scope: powersync_core
     env:
       MELOS_TEST: true
