@@ -8,6 +8,7 @@ environment:
   sdk: ">=3.4.3 <4.0.0"
 
 dependencies:
+  sqlite3: ^2.4.5
   sqlite_async: ^0.8.1
   universal_io: ^2.0.0
   meta: ^1.0.0
@@ -30,7 +31,6 @@ dev_dependencies:
   test: ^1.25.0
   test_api: ^0.7.0
   path_provider: ^2.0.13
-  sqlite3: "^2.4.4"
   shelf: ^1.4.1
   shelf_router: ^1.1.4
   shelf_static: ^1.1.2

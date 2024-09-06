@@ -10,6 +10,7 @@ dependencies:
   flutter:
     sdk: flutter
 
+  powersync_core: ^0.0.1
   sqlite_async: ^0.8.1
   # We only use sqlite3 as a transitive dependency,
   # but right now we need a minimum of v2.4.5.
