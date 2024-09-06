@@ -78,9 +78,40 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
         .cast<UpdateNotification>();
 
     await database.initialize();
+    await _checkVersion();
     await database.execute('SELECT powersync_init()');
     await updateSchema(schema);
     await _updateHasSynced();
+  }
+
+  /// Check that a supported version of the powersync extension is loaded.
+  Future<void> _checkVersion() async {
+    // Get version
+    String version;
+    try {
+      final row =
+          await database.get('SELECT powersync_rs_version() as version');
+      version = row['version'];
+    } catch (e) {
+      throw SqliteException(
+          1, 'The powersync extension is not loaded correctly. Details: $e');
+    }
+
+    // Parse version
+    List<int> versionInts;
+    try {
+      versionInts =
+          version.split(RegExp(r'[./]')).take(3).map(int.parse).toList();
+    } catch (e) {
+      throw SqliteException(1,
+          'Unsupported powersync extension version. Need ^0.2.0, got: $version. Details: $e');
+    }
+
+    // Validate ^0.2.0
+    if (versionInts[0] != 0 || versionInts[1] != 2 || versionInts[2] < 0) {
+      throw SqliteException(1,
+          'Unsupported powersync extension version. Need ^0.2.0, got: $version');
+    }
   }
 
   /// Wait for initialization to complete.
@@ -91,15 +122,17 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
   }
 
   Future<void> _updateHasSynced() async {
-    const syncedSQL =
-        'SELECT 1 FROM ps_buckets WHERE last_applied_op > 0 LIMIT 1';
-
     // Query the database to see if any data has been synced.
-    final result = await database.execute(syncedSQL);
-    final hasSynced = result.rows.isNotEmpty;
+    final result =
+        await database.get('SELECT powersync_last_synced_at() as synced_at');
+    final timestamp = result['synced_at'] as String?;
+    final hasSynced = timestamp != null;
 
     if (hasSynced != currentStatus.hasSynced) {
-      final status = SyncStatus(hasSynced: hasSynced);
+      final lastSyncedAt =
+          timestamp == null ? null : DateTime.parse('${timestamp}Z').toLocal();
+      final status =
+          SyncStatus(hasSynced: hasSynced, lastSyncedAt: lastSyncedAt);
       setStatus(status);
     }
   }
@@ -125,7 +158,8 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
           // The previous values of hasSynced should be preserved here.
           hasSynced: status.lastSyncedAt != null
               ? true
-              : status.hasSynced ?? currentStatus.hasSynced);
+              : status.hasSynced ?? currentStatus.hasSynced,
+          lastSyncedAt: status.lastSyncedAt ?? currentStatus.lastSyncedAt);
       statusStreamController.add(currentStatus);
     }
   }
@@ -225,22 +259,11 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
     await disconnect();
 
     await writeTransaction((tx) async {
-      await tx.execute('DELETE FROM ps_oplog');
-      await tx.execute('DELETE FROM ps_crud');
-      await tx.execute('DELETE FROM ps_buckets');
-      await tx.execute('DELETE FROM ps_untyped');
-
-      final tableGlob = clearLocal ? 'ps_data_*' : 'ps_data__*';
-      final existingTableRows = await tx.getAll(
-          "SELECT name FROM sqlite_master WHERE type='table' AND name GLOB ?",
-          [tableGlob]);
-
-      for (var row in existingTableRows) {
-        await tx.execute('DELETE FROM ${quoteIdentifier(row['name'])}');
-      }
+      await tx.execute('select powersync_clear(?)', [clearLocal ? 1 : 0]);
     });
     // The data has been deleted - reset these
-    setStatus(SyncStatus(lastSyncedAt: null, hasSynced: false));
+    currentStatus = SyncStatus(lastSyncedAt: null, hasSynced: false);
+    statusStreamController.add(currentStatus);
   }
 
   @Deprecated('Use [disconnectAndClear] instead.')
@@ -265,6 +288,13 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
   /// Use this to access the database in background isolates.
   isolateConnectionFactory() {
     return database.isolateConnectionFactory();
+  }
+
+  /// Get an unique id for this client.
+  /// This id is only reset when the database is deleted.
+  Future<String> getClientId() async {
+    final row = await get('SELECT powersync_client_id() as client_id');
+    return row['client_id'] as String;
   }
 
   /// Get upload queue size estimate and count.
@@ -321,7 +351,8 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
             if (writeCheckpoint != null &&
                 await db.getOptional('SELECT 1 FROM ps_crud LIMIT 1') == null) {
               await db.execute(
-                  'UPDATE ps_buckets SET target_op = $writeCheckpoint WHERE name=\'\$local\'');
+                  'UPDATE ps_buckets SET target_op = CAST(? as INTEGER) WHERE name=\'\$local\'',
+                  [writeCheckpoint]);
             } else {
               await db.execute(
                   'UPDATE ps_buckets SET target_op = $maxOpId WHERE name=\'\$local\'');
@@ -372,7 +403,8 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
                   await db.getOptional('SELECT 1 FROM ps_crud LIMIT 1') ==
                       null) {
                 await db.execute(
-                    'UPDATE ps_buckets SET target_op = $writeCheckpoint WHERE name=\'\$local\'');
+                    'UPDATE ps_buckets SET target_op = CAST(? as INTEGER) WHERE name=\'\$local\'',
+                    [writeCheckpoint]);
               } else {
                 await db.execute(
                     'UPDATE ps_buckets SET target_op = $maxOpId WHERE name=\'\$local\'');

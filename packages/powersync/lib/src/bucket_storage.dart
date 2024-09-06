@@ -40,6 +40,11 @@ class BucketStorage {
     ];
   }
 
+  Future<String> getClientId() async {
+    final rows = await select('SELECT powersync_client_id() as client_id');
+    return rows.first['client_id'] as String;
+  }
+
   Future<void> streamOp(String op) async {
     await writeTransaction((tx) async {
       await tx.execute(
@@ -89,9 +94,10 @@ class BucketStorage {
     if (_hasCompletedSync) {
       return true;
     }
-    final rs = await select(
-        "SELECT name, last_applied_op FROM ps_buckets WHERE last_applied_op > 0 LIMIT 1");
-    if (rs.isNotEmpty) {
+    final rs = await select("SELECT powersync_last_synced_at() as synced_at");
+    final value = rs.first['synced_at'] as String?;
+
+    if (value != null) {
       _hasCompletedSync = true;
       return true;
     }
@@ -257,7 +263,8 @@ class BucketStorage {
       }
 
       await tx.execute(
-          "UPDATE ps_buckets SET target_op = ? WHERE name='\$local'", [opId]);
+          "UPDATE ps_buckets SET target_op = CAST(? as INTEGER) WHERE name='\$local'",
+          [opId]);
 
       return true;
     });
@@ -294,7 +301,8 @@ class BucketStorage {
             if (writeCheckpoint != null &&
                 (await tx.execute('SELECT 1 FROM ps_crud LIMIT 1')).isEmpty) {
               await tx.execute(
-                  'UPDATE ps_buckets SET target_op = $writeCheckpoint WHERE name=\'\$local\'');
+                  'UPDATE ps_buckets SET target_op = CAST(? as INTEGER) WHERE name=\'\$local\'',
+                  [writeCheckpoint]);
             } else {
               await tx.execute(
                   'UPDATE ps_buckets SET target_op = $maxOpId WHERE name=\'\$local\'');

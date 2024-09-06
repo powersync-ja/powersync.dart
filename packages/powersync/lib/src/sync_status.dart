@@ -21,7 +21,7 @@ class SyncStatus {
 
   /// Time that a last sync has fully completed, if any.
   ///
-  /// Currently this is reset to null after a restart.
+  /// This is null while loading the database.
   final DateTime? lastSyncedAt;
 
   /// Indicates whether there has been at least one full sync, if any.
