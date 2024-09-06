@@ -1,3 +1,15 @@
+## 1.8.0
+
+ - Use powersync-sqlite-core v0.2.1
+ - Customize `User-Agent` header
+ - Add `client_id` parameter to sync requests
+ - Persist `lastSyncedAt`
+ - Emit update notifications on `disconnectAndClear()`
+ - Validate that the `powersync-sqlite-core` version number is in a compatible range of `^0.2.0`
+ - Always cast `target_op` (write checkpoints) to ensure it's an integer
+ - Sync optimizations for MOVE and REMOVE operations
+
+
 ## 1.7.0
 
  - **FEAT**: Include schema validation check
