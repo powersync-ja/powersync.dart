@@ -3,6 +3,35 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 2024-09-06
+
+### Changes
+
+---
+
+Packages with breaking changes:
+
+ - There are no breaking changes in this release.
+
+Packages with other changes:
+
+ - [`powersync` - `v1.8.0`](#powersync---v180)
+
+---
+
+#### `powersync` - `v1.8.0`
+
+ - Requires `journeyapps/powersync-service` v0.5.0 or later when self-hosting
+ - Use powersync-sqlite-core v0.2.1
+ - Customize `User-Agent` header
+ - Add `client_id` parameter to sync requests
+ - Persist `lastSyncedAt`
+ - Emit update notifications for watch queries on `disconnectAndClear()`
+ - Validate that the `powersync-sqlite-core` version number is in a compatible range of `^0.2.0`
+ - Always cast `target_op` (write checkpoints) to ensure it's an integer
+ - Sync optimizations for MOVE and REMOVE operations
+
+
 ## 2024-08-23
 
 ### Changes
