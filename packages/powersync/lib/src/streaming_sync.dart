@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:powersync/src/abort_controller.dart';
 import 'package:powersync/src/exceptions.dart';
 import 'package:powersync/src/log_internal.dart';
+import 'package:powersync/src/user_agent/user_agent.dart';
 import 'package:sqlite_async/mutex.dart';
 
 import 'bucket_storage.dart';
@@ -48,6 +49,10 @@ class StreamingSyncImplementation {
 
   final Mutex syncMutex, crudMutex;
 
+  final Map<String, String> _userAgentHeaders;
+
+  String? clientId;
+
   StreamingSyncImplementation(
       {required this.adapter,
       required this.credentialsCallback,
@@ -62,7 +67,8 @@ class StreamingSyncImplementation {
       /// A good value is typically the DB file path which it will mutate when syncing.
       String? identifier = "unknown"})
       : syncMutex = Mutex(identifier: "sync-$identifier"),
-        crudMutex = Mutex(identifier: "crud-$identifier") {
+        crudMutex = Mutex(identifier: "crud-$identifier"),
+        _userAgentHeaders = userAgentHeaders() {
     _client = client;
     statusStream = _statusStreamController.stream;
   }
@@ -99,6 +105,7 @@ class StreamingSyncImplementation {
   Future<void> streamingSync() async {
     try {
       _abort = AbortController();
+      clientId = await adapter.getClientId();
       crudLoop();
       var invalidCredentials = false;
       while (!aborted) {
@@ -193,12 +200,16 @@ class StreamingSyncImplementation {
     if (credentials == null) {
       throw CredentialsException("Not logged in");
     }
-    final uri = credentials.endpointUri('write-checkpoint2.json');
+    final uri =
+        credentials.endpointUri('write-checkpoint2.json?client_id=$clientId');
 
-    final response = await _client.get(uri, headers: {
+    Map<String, String> headers = {
       'Content-Type': 'application/json',
-      'Authorization': "Token ${credentials.token}"
-    });
+      'Authorization': "Token ${credentials.token}",
+      ..._userAgentHeaders
+    };
+
+    final response = await _client.get(uri, headers: headers);
     if (response.statusCode == 401) {
       if (invalidCredentialsCallback != null) {
         await invalidCredentialsCallback!();
@@ -262,8 +273,8 @@ class StreamingSyncImplementation {
     Checkpoint? appliedCheckpoint;
     var bucketSet = Set<String>.from(initialBucketStates.keys);
 
-    var requestStream =
-        streamingSyncRequest(StreamingSyncRequest(buckets, syncParameters));
+    var requestStream = streamingSyncRequest(
+        StreamingSyncRequest(buckets, syncParameters, clientId!));
 
     var merged = addBroadcast(requestStream, _localPingController.stream);
 
@@ -404,6 +415,8 @@ class StreamingSyncImplementation {
     final request = http.Request('POST', uri);
     request.headers['Content-Type'] = 'application/json';
     request.headers['Authorization'] = "Token ${credentials.token}";
+    request.headers.addAll(_userAgentHeaders);
+
     request.body = convert.jsonEncode(data);
 
     http.StreamedResponse res;

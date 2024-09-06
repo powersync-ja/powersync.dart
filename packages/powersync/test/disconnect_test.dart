@@ -1,4 +1,5 @@
 import 'package:powersync/powersync.dart';
+import 'package:powersync/sqlite_async.dart';
 import 'package:test/test.dart';
 import 'streaming_sync_test.dart';
 import 'utils/test_utils_impl.dart';
@@ -51,10 +52,21 @@ void main() {
       final initialCustomers = await db.getAll(getCustomersQuery);
       expect(initialCustomers.length, equals(1));
 
+      final changesFuture = db
+          .onChange({'customers'}, triggerImmediately: false)
+          .take(1)
+          .toList();
+
       await db.disconnectAndClear();
 
       final finalCustomers = await db.getAll(getCustomersQuery);
       expect(finalCustomers.length, equals(0));
+
+      expect(db.currentStatus.lastSyncedAt, equals(null));
+      expect(db.currentStatus.hasSynced, equals(false));
+
+      final changes = await changesFuture;
+      expect(changes.first, equals(UpdateNotification({'customers'})));
     });
   });
 }
