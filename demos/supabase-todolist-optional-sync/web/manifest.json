@@ -1,6 +1,6 @@
 {
-  "name": "local_only_todolist",
-  "short_name": "local_only_todolist",
+  "name": "supabase_todolist_optional_sync",
+  "short_name": "supabase_todolist_optional_sync",
   "start_url": ".",
   "display": "standalone",
   "background_color": "#0175C2",

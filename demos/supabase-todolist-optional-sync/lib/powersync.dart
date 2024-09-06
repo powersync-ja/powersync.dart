@@ -4,7 +4,7 @@ import 'package:logging/logging.dart';
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:powersync/powersync.dart';
-import 'package:powersync_flutter_local_only_demo/models/sync_mode.dart';
+import 'package:powersync_flutter_supabase_todolist_optional_sync_demo/models/sync_mode.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import './app_config.dart';

@@ -1,8 +1,9 @@
-# PowerSync + Supabase Flutter Todo List App: Local-Only to Sync Mode Demo
+# PowerSync + Supabase Flutter Todo List App: Optional Sync Demo
 
 This demo app is an extension of the [Supabase Todo List App](../supabase-todolist/README.md) and demonstrates using the PowerSync Flutter client SDK to persist data locally without syncing. This lets users use the app without having to register or sign in. It then demonstrates syncing this data to Supabase once the user registers at a later stage.
 
 The recommended flow through this demo is:
+
 1. Run the app in local-only mode and create data. Notice how data persists even when closing and reopening the app.
 2. Enable user registration and sign in to the app.
 3. Notice how previously created data now seamlessly syncs with Supabase.
@@ -13,7 +14,7 @@ For an overview of the mechanics behind this, see [the explanation further below
 
 Ensure you have [melos](https://melos.invertase.dev/~melos-latest/getting-started) installed.
 
-1. `cd demos/local-only-todolist`
+1. `cd demos/supabase-todolist-optional-sync`
 2. `melos prepare`
 3. `flutter run`
 
@@ -62,7 +63,6 @@ Insert the credentials of your Supabase and PowerSync projects into `lib/app_con
 
 Restart the app and sign up or sign in. Once successfully signed in, existing and new data should seamlessly sync with Supabase.
 
-
 # How this works
 
 This app uses [local-only](https://pub.dev/documentation/powersync/latest/powersync/Table/Table.localOnly.html) tables to persist data until the user has registered or signed in. Local-only tables do not log updates in the upload queue, avoiding any overhead or growth in database size.
@@ -79,7 +79,7 @@ The downside to this approach is that app queries would need to continuously dif
 
 ## Recommended implementation
 
-To keep app queries consistent between the two states, we utilize the [viewName](https://pub.dev/documentation/powersync/latest/powersync/Table/viewName.html) property (table definitions in the PowerSync client schema actually create views and this property lets us override the view name - see the [client architecture docs](https://docs.powersync.com/architecture/client-architecture)). 
+To keep app queries consistent between the two states, we utilize the [viewName](https://pub.dev/documentation/powersync/latest/powersync/Table/viewName.html) property (table definitions in the PowerSync client schema actually create views and this property lets us override the view name - see the [client architecture docs](https://docs.powersync.com/architecture/client-architecture)).
 
 This looks as follows in the local-only state:
 
@@ -91,7 +91,7 @@ When the user registers / signs in:
 
 ![diagram-2](./assets/local-only-readme-2.png)
 
-The _synced_ tables (`lists` and `todos`) now have their view names set to `lists` and `todos`. Note that `updateSchema` must be run to update the view name. See the [schema](./lib/models/schema.dart) for details about this. The app query `PowerSync.getAll("SELECT * FROM lists")` now reads data from the `lists` table. 
+The _synced_ tables (`lists` and `todos`) now have their view names set to `lists` and `todos`. Note that `updateSchema` must be run to update the view name. See the [schema](./lib/models/schema.dart) for details about this. The app query `PowerSync.getAll("SELECT * FROM lists")` now reads data from the `lists` table.
 
 Finally, copy data from the local-only tables to the synced tables, and delete data from the local-only tables to reduce database size:
 
@@ -99,7 +99,6 @@ Finally, copy data from the local-only tables to the synced tables, and delete d
 
 Note:
 If the user now signs out, all data is cleared, effectively resetting the app to the initial local-only state. To manage this, an additional local storage mechanism is used to track which schema is currently in use, as seen [here](./lib/models/sync_mode.dart).
-
 
 # Limitations
 

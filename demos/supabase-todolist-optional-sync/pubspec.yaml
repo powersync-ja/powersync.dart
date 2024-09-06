@@ -1,5 +1,5 @@
-name: powersync_flutter_local_only_demo
-description: PowerSync Flutter Local-Only Demo
+name: powersync_flutter_supabase_todolist_optional_sync_demo
+description: PowerSync Flutter Supabase Todolist Optional Sync Demo
 publish_to: "none"
 
 version: 1.0.1

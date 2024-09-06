@@ -1,10 +1,10 @@
 import 'package:powersync/powersync.dart';
-import 'package:powersync_flutter_local_only_demo/models/sync_mode.dart';
+import 'package:powersync_flutter_supabase_todolist_optional_sync_demo/models/sync_mode.dart';
 
 /// This schema design supports a local-only to sync-enabled workflow by managing data
-/// across two versions of each table: one for local-only use without syncing before a user registers, 
+/// across two versions of each table: one for local-only use without syncing before a user registers,
 /// the other for sync-enabled use after the user registers/signs in.
-/// 
+///
 /// This is done by utilizing the viewName property to override the default view name
 /// of a table.
 ///

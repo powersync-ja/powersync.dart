@@ -1,4 +1,4 @@
-import 'package:powersync_flutter_local_only_demo/models/schema.dart';
+import 'package:powersync_flutter_supabase_todolist_optional_sync_demo/models/schema.dart';
 
 import '../powersync.dart';
 import 'package:powersync/sqlite3_common.dart' as sqlite;

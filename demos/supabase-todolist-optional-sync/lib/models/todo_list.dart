@@ -1,4 +1,4 @@
-import 'package:powersync_flutter_local_only_demo/models/schema.dart';
+import 'package:powersync_flutter_supabase_todolist_optional_sync_demo/models/schema.dart';
 
 import 'package:powersync/powersync.dart';
 import 'package:powersync/sqlite3_common.dart' as sqlite;
@@ -93,7 +93,8 @@ class TodoList {
 
   /// Find list item.
   static Future<TodoList> find(id) async {
-    final results = await db.get('SELECT * FROM $listsTable WHERE id = ?', [id]);
+    final results =
+        await db.get('SELECT * FROM $listsTable WHERE id = ?', [id]);
     return TodoList.fromRow(results);
   }
 

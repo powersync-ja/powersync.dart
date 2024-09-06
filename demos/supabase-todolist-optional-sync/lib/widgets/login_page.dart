@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
-import 'package:powersync_flutter_local_only_demo/powersync.dart';
+import 'package:powersync_flutter_supabase_todolist_optional_sync_demo/powersync.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../main.dart';
 
-class SignupPage extends StatefulWidget {
-  const SignupPage({super.key});
+class LoginPage extends StatefulWidget {
+  const LoginPage({super.key});
 
   @override
-  State<SignupPage> createState() => _SignupPageState();
+  State<LoginPage> createState() => _LoginPageState();
 }
 
-class _SignupPageState extends State<SignupPage> {
+class _LoginPageState extends State<LoginPage> {
   late TextEditingController _passwordController;
   late TextEditingController _usernameController;
   String? _error;
@@ -26,13 +26,13 @@ class _SignupPageState extends State<SignupPage> {
     _usernameController = TextEditingController(text: '');
   }
 
-  void _signup(BuildContext context) async {
+  void _login(BuildContext context) async {
     setState(() {
       _busy = true;
       _error = null;
     });
     try {
-      final response = await Supabase.instance.client.auth.signUp(
+      await Supabase.instance.client.auth.signInWithPassword(
           email: _usernameController.text, password: _passwordController.text);
 
       // We connect and upgrade the database schema here so that by the time the watch() calls are made in the
@@ -40,13 +40,9 @@ class _SignupPageState extends State<SignupPage> {
       await connectDatabase();
 
       if (context.mounted) {
-        if (response.session != null) {
-          Navigator.of(context).pushReplacement(MaterialPageRoute(
-            builder: (context) => homePage,
-          ));
-        } else {
-          Navigator.of(context).pop();
-        }
+        Navigator.of(context).pushReplacement(MaterialPageRoute(
+          builder: (context) => listsPage,
+        ));
       }
     } on AuthException catch (e) {
       setState(() {
@@ -67,7 +63,8 @@ class _SignupPageState extends State<SignupPage> {
   Widget build(BuildContext context) {
     return Scaffold(
         appBar: AppBar(
-          title: const Text("PowerSync Flutter Local-Only Demo"),
+          title: const Text(
+              "PowerSync Flutter Supabase Todolist Optional Sync Demo"),
         ),
         body: Center(
           child: SingleChildScrollView(
@@ -80,7 +77,7 @@ class _SignupPageState extends State<SignupPage> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      const Text('Sign Up'),
+                      const Text('Supabase Login'),
                       const SizedBox(height: 35),
                       TextFormField(
                         controller: _usernameController,
@@ -89,7 +86,7 @@ class _SignupPageState extends State<SignupPage> {
                         onFieldSubmitted: _busy
                             ? null
                             : (String value) {
-                                _signup(context);
+                                _login(context);
                               },
                       ),
                       const SizedBox(height: 20),
@@ -102,7 +99,7 @@ class _SignupPageState extends State<SignupPage> {
                         onFieldSubmitted: _busy
                             ? null
                             : (String value) {
-                                _signup(context);
+                                _login(context);
                               },
                       ),
                       const SizedBox(height: 25),
@@ -110,7 +107,17 @@ class _SignupPageState extends State<SignupPage> {
                         onPressed: _busy
                             ? null
                             : () {
-                                _signup(context);
+                                _login(context);
+                              },
+                        child: const Text('Login'),
+                      ),
+                      TextButton(
+                        onPressed: _busy
+                            ? null
+                            : () {
+                                Navigator.of(context).push(MaterialPageRoute(
+                                  builder: (context) => signupPage,
+                                ));
                               },
                         child: const Text('Sign Up'),
                       ),

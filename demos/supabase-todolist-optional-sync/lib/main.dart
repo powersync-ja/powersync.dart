@@ -1,9 +1,9 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
-import 'package:powersync_flutter_local_only_demo/app_config.dart';
-import 'package:powersync_flutter_local_only_demo/models/schema.dart';
-import 'package:powersync_flutter_local_only_demo/models/sync_mode.dart';
+import 'package:powersync_flutter_supabase_todolist_optional_sync_demo/app_config.dart';
+import 'package:powersync_flutter_supabase_todolist_optional_sync_demo/models/schema.dart';
+import 'package:powersync_flutter_supabase_todolist_optional_sync_demo/models/sync_mode.dart';
 
 import './powersync.dart';
 import './widgets/lists_page.dart';
@@ -58,7 +58,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-        title: 'PowerSync Flutter Local-Only Demo',
+        title: 'PowerSync Flutter Supabase Todolist Optional Sync Demo',
         theme: ThemeData(
           primarySwatch: Colors.blue,
         ),
