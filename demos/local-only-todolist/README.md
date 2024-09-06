@@ -1,6 +1,6 @@
 # PowerSync + Supabase Flutter Todo List App: Local-Only to Sync Mode Demo
 
-This demo app is an extension of the [Supabase Todo List App](../supabase-todolist/README.md) and demonstrates using the PowerSync Flutter client SDK to persist data locally without syncing, for users to use the app without having to register or sign in. It then demonstrates syncing this data to Supabase once the user registers at a later stage.
+This demo app is an extension of the [Supabase Todo List App](../supabase-todolist/README.md) and demonstrates using the PowerSync Flutter client SDK to persist data locally without syncing. This lets users use the app without having to register or sign in. It then demonstrates syncing this data to Supabase once the user registers at a later stage.
 
 The recommended flow through this demo is:
 1. Run the app in local-only mode and create data. Notice how data persists even when closing and reopening the app.
@@ -65,13 +65,13 @@ Restart the app and sign up or sign in. Once successfully signed in, existing an
 
 # How this works
 
-This app uses [local-only](https://pub.dev/documentation/powersync/latest/powersync/Table/Table.localOnly.html) tables to persist data until the user has registered or signed in. Local-only tables do not log updates in an upload queue, avoiding any overhead or growth in database size.
+This app uses [local-only](https://pub.dev/documentation/powersync/latest/powersync/Table/Table.localOnly.html) tables to persist data until the user has registered or signed in. Local-only tables do not log updates in the upload queue, avoiding any overhead or growth in database size.
 
-Once the user registers, the data is moved over to synced tables, at which point the data would be placed in the upload queue and will start syncing.
+Once the user registers, the data is moved over to synced tables. The move operation also places the data in the upload queue.
 
 ## Naive implementation
 
-A barebones way to achieve the above is to store and query data from local-only tables before registration, copy this data to each corresponding synced table after registration and then store and query from the synced tables. This would look as follows:
+A barebones way to achieve the above is to store and query data from local-only tables before user registration, copy this data to each corresponding synced table after registration and then store and query from the synced tables. This would look as follows:
 
 ![diagram-0](./assets/local-only-readme-0.png)
 
@@ -79,7 +79,7 @@ The downside to this approach is that app queries would need to continuously dif
 
 ## Recommended implementation
 
-To keep app queries consistent between the two states, we utilize the [viewName](https://pub.dev/documentation/powersync/latest/powersync/Table/viewName.html) property, which allows overriding the default name of schema views (each table automatically has a corresponding view, defaulting to the table name, which is used in queries). 
+To keep app queries consistent between the two states, we utilize the [viewName](https://pub.dev/documentation/powersync/latest/powersync/Table/viewName.html) property (table definitions in the PowerSync client schema actually create views and this property lets us override the view name - see the [client architecture docs](https://docs.powersync.com/architecture/client-architecture)). 
 
 This looks as follows in the local-only state:
 
@@ -97,7 +97,8 @@ Finally, copy data from the local-only tables to the synced tables, and delete d
 
 ![diagram-3](./assets/local-only-readme-3.png)
 
-At this point, being signed in no longer determines which schema should be used, as the user's session expiring and explicitly signing out trigger different behaviors. If the session expires, the user can continue interacting with their data. However, if the user explicitly logs out, all data is cleared, effectively resetting the app. To manage this, an additional local storage mechanism is used to track which schema is currently in use, as seen [here](./lib/models/sync_mode.dart). Note that any other local storage solution would work as long as it's not using the PowerSync database (chicken and egg problem).
+Note:
+If the user now signs out, all data is cleared, effectively resetting the app to the initial local-only state. To manage this, an additional local storage mechanism is used to track which schema is currently in use, as seen [here](./lib/models/sync_mode.dart).
 
 
 # Limitations
