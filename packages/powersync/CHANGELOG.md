@@ -5,7 +5,7 @@
  - Customize `User-Agent` header
  - Add `client_id` parameter to sync requests
  - Persist `lastSyncedAt`
- - Emit update notifications on `disconnectAndClear()`
+ - Emit update notifications for watch queries on `disconnectAndClear()`
  - Validate that the `powersync-sqlite-core` version number is in a compatible range of `^0.2.0`
  - Always cast `target_op` (write checkpoints) to ensure it's an integer
  - Sync optimizations for MOVE and REMOVE operations
