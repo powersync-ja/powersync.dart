@@ -21,6 +21,7 @@ Packages with other changes:
 
 #### `powersync` - `v1.8.0`
 
+ - Requires `journeyapps/powersync-service` v0.5.0 or later when self-hosting
  - Use powersync-sqlite-core v0.2.1
  - Customize `User-Agent` header
  - Add `client_id` parameter to sync requests
