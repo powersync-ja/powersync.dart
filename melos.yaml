@@ -46,7 +46,7 @@ scripts:
     exec:
       concurrency: 1
     packageFilters:
-      scope: powersync
+      scope: powersync_core
 
   analyze:demos:
     description: Analyze Dart code in demos.
