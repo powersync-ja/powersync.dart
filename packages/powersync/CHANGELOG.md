@@ -1,3 +1,7 @@
+## 1.8.1
+
+ - Added `refreshSchema()`, allowing queries and watch calls to work against updated schemas.
+
 ## 1.8.0
 
  - Requires `journeyapps/powersync-service` v0.5.0 or later when self-hosting
