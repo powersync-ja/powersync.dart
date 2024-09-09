@@ -1,7 +1,7 @@
 import 'package:powersync/src/version.dart';
 
 String powerSyncUserAgent() {
-  return 'powersync-dart/$libraryVersion (flutter-web)';
+  return 'powersync-dart/$libraryVersion Dart (flutter-web)';
 }
 
 Map<String, String> userAgentHeaders() {
