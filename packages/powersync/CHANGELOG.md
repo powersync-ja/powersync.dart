@@ -1,3 +1,7 @@
+## 1.8.1
+
+ - Fix powersync_flutter_libs dependency
+
 ## 1.8.0
 
 - Requires `journeyapps/powersync-service` v0.5.0 or later when self-hosting

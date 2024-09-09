@@ -3,6 +3,48 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 2024-09-09
+
+### Changes
+
+---
+
+Packages with breaking changes:
+
+ - There are no breaking changes in this release.
+
+Packages with other changes:
+
+ - [`powersync_flutter_libs` - `v0.3.0`](#powersync_flutter_libs---v023)
+
+---
+
+#### `powersync_flutter_libs` - `v0.3.0`
+
+ - powersync-sqlite-core v0.2.1
+
+
+## 2024-09-09
+
+### Changes
+
+---
+
+Packages with breaking changes:
+
+ - There are no breaking changes in this release.
+
+Packages with other changes:
+
+ - [`powersync` - `v1.8.1`](#powersync---v181)
+
+---
+
+#### `powersync` - `v1.8.1`
+
+ - Fix powersync_flutter_libs dependency
+
+
 ## 2024-09-06
 
 ### Changes

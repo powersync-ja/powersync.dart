@@ -16,7 +16,7 @@ dependencies:
   sqlite3: ^2.4.5
   universal_io: ^2.0.0
   sqlite3_flutter_libs: ^0.5.23
-  powersync_flutter_libs: ^0.2.2
+  powersync_flutter_libs: ^0.3.0
   meta: ^1.0.0
   http: ^1.1.0
   uuid: ^4.2.0
