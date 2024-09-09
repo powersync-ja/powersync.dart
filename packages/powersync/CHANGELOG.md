@@ -1,36 +1,39 @@
+## 1.8.2
+
+ - Added `refreshSchema()`, allowing queries and watch calls to work against updated schemas.
+
 ## 1.8.1
 
  - Fix powersync_flutter_libs dependency
 
 ## 1.8.0
 
- - Requires `journeyapps/powersync-service` v0.5.0 or later when self-hosting
- - Use powersync-sqlite-core v0.2.1
- - Customize `User-Agent` header
- - Add `client_id` parameter to sync requests
- - Persist `lastSyncedAt`
- - Emit update notifications for watch queries on `disconnectAndClear()`
- - Validate that the `powersync-sqlite-core` version number is in a compatible range of `^0.2.0`
- - Always cast `target_op` (write checkpoints) to ensure it's an integer
- - Sync optimizations for MOVE and REMOVE operations
-
+- Requires `journeyapps/powersync-service` v0.5.0 or later when self-hosting
+- Use powersync-sqlite-core v0.2.1
+- Customize `User-Agent` header
+- Add `client_id` parameter to sync requests
+- Persist `lastSyncedAt`
+- Emit update notifications for watch queries on `disconnectAndClear()`
+- Validate that the `powersync-sqlite-core` version number is in a compatible range of `^0.2.0`
+- Always cast `target_op` (write checkpoints) to ensure it's an integer
+- Sync optimizations for MOVE and REMOVE operations
 
 ## 1.7.0
 
- - **FEAT**: Include schema validation check
- - **FEAT**: Include new table check for maximum number of columns allowed
+- **FEAT**: Include schema validation check
+- **FEAT**: Include new table check for maximum number of columns allowed
 
 ## 1.6.7
 
- - **CHORE**: Update dependency powersync_flutter_libs
+- **CHORE**: Update dependency powersync_flutter_libs
 
 ## 1.6.6
 
- - **CHORE**: Update dependency powersync_flutter_libs
+- **CHORE**: Update dependency powersync_flutter_libs
 
 ## 1.6.5
 
- - **CHORE**: Update dependency `powersync_flutter_libs`
+- **CHORE**: Update dependency `powersync_flutter_libs`
 
 ## 1.6.4
 

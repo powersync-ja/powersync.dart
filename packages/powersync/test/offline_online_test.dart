@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:powersync/powersync.dart';
+import 'package:sqlite_async/src/utils/shared_utils.dart';
 import 'package:test/test.dart';
 
 import 'utils/test_utils_impl.dart';
@@ -139,6 +140,26 @@ void main() {
               }
             }
           ]));
+    });
+
+    test('Watch correct table after switching schema', () async {
+      // Start with "offline-only" schema.
+      // This does not record any operations to the crud queue.
+      var db =
+          await testUtils.setupPowerSync(path: path, schema: makeSchema(false));
+
+      final customerWatchTables =
+          await getSourceTables(db, 'SELECT * FROM customers');
+
+      expect(
+          customerWatchTables.contains('ps_data_local__local_customers'), true);
+      await db.updateSchema(makeSchema(true));
+      await db.refreshSchema();
+
+      final onlineCustomerWatchTables =
+          await getSourceTables(db, 'SELECT * FROM customers');
+
+      expect(onlineCustomerWatchTables.contains('ps_data__customers'), true);
     });
   });
 }
