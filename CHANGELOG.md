@@ -15,6 +15,34 @@ Packages with breaking changes:
 
 Packages with other changes:
 
+ - [`powersync` - `v1.8.2`](#powersync---v182)
+ - [`powersync_attachments_helper` - `v0.6.5+3`](#powersync_attachments_helper---v0653)
+
+Packages with dependency updates only:
+
+> Packages listed below depend on other packages in this workspace that have had changes. Their versions have been incremented to bump the minimum dependency versions of the packages they depend upon in this project.
+
+ - `powersync_attachments_helper` - `v0.6.5+3`
+
+---
+
+#### `powersync` - `v1.8.2`
+
+ - Added `refreshSchema()`, allowing queries and watch calls to work against updated schemas.
+
+
+## 2024-09-09
+
+### Changes
+
+---
+
+Packages with breaking changes:
+
+ - There are no breaking changes in this release.
+
+Packages with other changes:
+
  - [`powersync_flutter_libs` - `v0.3.0`](#powersync_flutter_libs---v023)
 
 ---

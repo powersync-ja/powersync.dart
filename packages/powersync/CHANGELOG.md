@@ -1,3 +1,7 @@
+## 1.8.2
+
+ - Added `refreshSchema()`, allowing queries and watch calls to work against updated schemas.
+
 ## 1.8.1
 
  - Fix powersync_flutter_libs dependency
