@@ -1,38 +1,34 @@
-## 0.6.5+2
-
- - Update a dependency to the latest release.
-
 ## 0.6.5+1
 
- - Update a dependency to the latest release.
+- Update a dependency to the latest release.
 
 ## 0.6.5
 
- - Update a dependency to the latest release.
+- Update a dependency to the latest release.
 
 ## 0.6.4
 
- - Update a dependency to the latest release.
+- Update a dependency to the latest release.
 
 ## 0.6.3+2
 
- - Update a dependency to the latest release.
+- Update a dependency to the latest release.
 
 ## 0.6.3+1
 
- - Update a dependency to the latest release.
+- Update a dependency to the latest release.
 
 ## 0.6.3
 
- - Update a dependency to the latest release.
+- Update a dependency to the latest release.
 
 ## 0.6.2
 
- - Update a dependency to the latest release.
+- Update a dependency to the latest release.
 
 ## 0.6.1
 
- - Update a dependency to the latest release.
+- Update a dependency to the latest release.
 
 ## 0.6.0
 
