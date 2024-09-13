@@ -3,6 +3,25 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 2024-09-13
+
+### Changes
+
+---
+
+Packages with breaking changes:
+
+ - There are no breaking changes in this release.
+
+Packages with other changes:
+
+ - [`powersync_attachments_helper` - `v0.6.6`](#powersync_attachments_helper---v066)
+
+---
+
+#### `powersync_attachments_helper` - `v0.6.6`
+
+
 ## 2024-09-09
 
 ### Changes
