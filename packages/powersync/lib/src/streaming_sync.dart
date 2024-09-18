@@ -19,7 +19,16 @@ import 'sync_types.dart';
 /// a different value to indicate "no error".
 const _noError = Object();
 
-class StreamingSyncImplementation {
+abstract interface class StreamingSync {
+  Stream<SyncStatus> get statusStream;
+
+  Future<void> streamingSync();
+
+  /// Close any active streams.
+  Future<void> abort();
+}
+
+class StreamingSyncImplementation implements StreamingSync {
   BucketStorage adapter;
 
   final Future<PowerSyncCredentials?> Function() credentialsCallback;
@@ -31,6 +40,8 @@ class StreamingSyncImplementation {
 
   final StreamController<SyncStatus> _statusStreamController =
       StreamController<SyncStatus>.broadcast();
+
+  @override
   late final Stream<SyncStatus> statusStream;
 
   late final http.Client _client;
@@ -74,7 +85,7 @@ class StreamingSyncImplementation {
     statusStream = _statusStreamController.stream;
   }
 
-  /// Close any active streams.
+  @override
   Future<void> abort() async {
     // If streamingSync() hasn't been called yet, _abort will be null.
     var future = _abort?.abort();
@@ -107,6 +118,7 @@ class StreamingSyncImplementation {
     return lastStatus.connected;
   }
 
+  @override
   Future<void> streamingSync() async {
     try {
       _abort = AbortController();
