@@ -19,6 +19,13 @@ username: testuser
 password: testpassword
 ```
 
+## WEB NOTes
+
+```
+flutter run -d web-server
+google-chrome --disable-web-security --user-data-dir='.dart_tool/.chrome'
+```
+
 # Service Configuration
 
 This demo can be used with cloud or local services.
