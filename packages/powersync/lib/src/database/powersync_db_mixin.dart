@@ -71,11 +71,7 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
   @protected
   Future<void> baseInit() async {
     statusStream = statusStreamController.stream;
-    updates = database.updates
-        .map((update) =>
-            PowerSyncUpdateNotification.fromUpdateNotification(update))
-        .where((update) => update.isNotEmpty)
-        .cast<UpdateNotification>();
+    updates = powerSyncUpdateNotifications(database.updates);
 
     await database.initialize();
     await database.execute('SELECT powersync_init()');
@@ -412,4 +408,13 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
   Future<bool> getAutoCommit() {
     return database.getAutoCommit();
   }
+}
+
+Stream<UpdateNotification> powerSyncUpdateNotifications(
+    Stream<UpdateNotification> inner) {
+  return inner
+      .map((update) =>
+          PowerSyncUpdateNotification.fromUpdateNotification(update))
+      .where((update) => update.isNotEmpty)
+      .cast<UpdateNotification>();
 }
