@@ -1,4 +1,5 @@
 // This file performs setup of the PowerSync database
+import 'package:flutter/foundation.dart';
 import 'package:logging/logging.dart';
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
@@ -101,8 +102,14 @@ Future<bool> isLoggedIn() async {
 }
 
 Future<String> getDatabasePath() async {
+  const dbFilename = 'powersync-demo.db';
+  // getApplicationSupportDirectory is not supported on Web
+  if (kIsWeb) {
+    return dbFilename;
+  }
+
   final dir = await getApplicationSupportDirectory();
-  return join(dir.path, 'powersync-demo.db');
+  return join(dir.path, dbFilename);
 }
 
 Future<void> openDatabase() async {
