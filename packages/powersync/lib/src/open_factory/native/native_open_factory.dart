@@ -71,6 +71,7 @@ class PowerSyncOpenFactory extends AbstractPowerSyncOpenFactory {
       enableExtension();
     } on PowersyncNotReadyException catch (e) {
       autoLogger.severe(e.message);
+      rethrow;
     }
 
     var db = super.open(options);
