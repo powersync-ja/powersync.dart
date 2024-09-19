@@ -2,11 +2,11 @@ import 'dart:async';
 
 import 'package:logging/logging.dart';
 import 'package:meta/meta.dart';
-import 'package:powersync/src/connector.dart';
-import 'package:powersync/src/crud.dart';
 import 'package:powersync/sqlite3_common.dart';
 import 'package:powersync/sqlite_async.dart';
 import 'package:powersync/src/abort_controller.dart';
+import 'package:powersync/src/connector.dart';
+import 'package:powersync/src/crud.dart';
 import 'package:powersync/src/powersync_update_notification.dart';
 import 'package:powersync/src/schema.dart';
 import 'package:powersync/src/schema_logic.dart';
