@@ -24,9 +24,11 @@ const defaultSchema = schema;
 
 final testLogger = _makeTestLogger();
 
-Logger _makeTestLogger() {
+final testWarningLogger = _makeTestLogger(level: Level.WARNING);
+
+Logger _makeTestLogger({Level level = Level.ALL}) {
   final logger = Logger.detached('PowerSync Tests');
-  logger.level = Level.ALL;
+  logger.level = level;
   logger.onRecord.listen((record) {
     print(
         '[${record.loggerName}] ${record.level.name}: ${record.time}: ${record.message}');
@@ -70,9 +72,9 @@ abstract class AbstractTestUtils {
 
   /// Creates a SqliteDatabaseConnection
   Future<PowerSyncDatabase> setupPowerSync(
-      {String? path, Schema? schema}) async {
+      {String? path, Schema? schema, Logger? logger}) async {
     final db = PowerSyncDatabase.withFactory(await testFactory(path: path),
-        schema: schema ?? defaultSchema, logger: testLogger);
+        schema: schema ?? defaultSchema, logger: logger ?? testLogger);
     await db.initialize();
     return db;
   }
