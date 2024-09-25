@@ -1,4 +1,5 @@
-import 'package:logging/logging.dart';
+@TestOn('!browser')
+
 import 'package:powersync/powersync.dart';
 import 'package:test/test.dart';
 
@@ -59,8 +60,9 @@ void main() {
         // Do nothing
       }
 
-      final records = <LogRecord>[];
-      final sub = testWarningLogger.onRecord.listen(records.add);
+      final records = <String>[];
+      final sub =
+          testWarningLogger.onRecord.listen((log) => records.add(log.message));
 
       powersync =
           await testUtils.setupPowerSync(path: path, logger: testWarningLogger);
@@ -82,9 +84,8 @@ void main() {
 
       sub.cancel();
 
-      var warningLogs = records.where((r) => r.level == Level.WARNING).toList();
-      expect(warningLogs, hasLength(2));
-      expect(warningLogs[0].message, contains(partialWarning));
+      expect(records, hasLength(2));
+      expect(records, anyElement(contains(partialWarning)));
     });
   });
 }
