@@ -25,9 +25,7 @@ final List<RegExp> fatalResponseCodes = [
 ];
 
 class DjangoConnector extends PowerSyncBackendConnector {
-  PowerSyncDatabase db;
-
-  DjangoConnector(this.db);
+  DjangoConnector();
 
   final ApiClient apiClient = ApiClient(AppConfig.djangoUrl);
 
@@ -123,8 +121,8 @@ Future<void> openDatabase() async {
 
   if (await isLoggedIn()) {
     // If the user is already logged in, connect immediately.
-    // Otherwise, the LoginPage will connect once logged in.
-    currentConnector = DjangoConnector(db);
+    // Otherwise, connect once logged in.
+    currentConnector = DjangoConnector();
     db.connect(connector: currentConnector);
   }
 }
