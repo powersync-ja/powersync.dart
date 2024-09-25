@@ -164,49 +164,52 @@ class StreamingSyncImplementation {
   }
 
   Future<void> uploadAllCrud() async {
-    // Keep track of the first item in the CRUD queue for the last `uploadCrud` iteration.
-    CrudEntry? checkedCrudItem;
+    return crudMutex.lock(() async {
+      // Keep track of the first item in the CRUD queue for the last `uploadCrud` iteration.
+      CrudEntry? checkedCrudItem;
 
-    while (true) {
-      try {
-        // This is the first item in the FIFO CRUD queue.
-        CrudEntry? nextCrudItem = await adapter.nextCrudItem();
-        if (nextCrudItem != null) {
-          if (nextCrudItem.clientId == checkedCrudItem?.clientId) {
-            // This will force a higher log level than exceptions which are caught here.
-            isolateLogger.warning(
-                """Potentially previously uploaded CRUD entries are still present in the upload queue. 
+      while (true) {
+        _updateStatus(uploading: true);
+        try {
+          // This is the first item in the FIFO CRUD queue.
+          CrudEntry? nextCrudItem = await adapter.nextCrudItem();
+          if (nextCrudItem != null) {
+            if (nextCrudItem.clientId == checkedCrudItem?.clientId) {
+              // This will force a higher log level than exceptions which are caught here.
+              isolateLogger.warning(
+                  """Potentially previously uploaded CRUD entries are still present in the upload queue. 
                 Make sure to handle uploads and complete CRUD transactions or batches by calling and awaiting their [.complete()] method.
                 The next upload iteration will be delayed.""");
-            throw Exception(
-                'Delaying due to previously encountered CRUD item.');
-          }
+              throw Exception(
+                  'Delaying due to previously encountered CRUD item.');
+            }
 
-          checkedCrudItem = nextCrudItem;
-          await uploadCrud();
-          _updateStatus(uploadError: _noError);
-        } else {
-          // Uploading is completed
-          await adapter.updateLocalTarget(() => getWriteCheckpoint());
-          break;
+            checkedCrudItem = nextCrudItem;
+            await uploadCrud();
+            _updateStatus(uploadError: _noError);
+          } else {
+            // Uploading is completed
+            await adapter.updateLocalTarget(() => getWriteCheckpoint());
+            break;
+          }
+        } catch (e, stacktrace) {
+          checkedCrudItem = null;
+          isolateLogger.warning('Data upload error', e, stacktrace);
+          _updateStatus(uploading: false, uploadError: e);
+          await Future.delayed(retryDelay);
+          if (!isConnected) {
+            // Exit the upload loop if the sync stream is no longer connected
+            break;
+          }
+          isolateLogger.warning(
+              "Caught exception when uploading. Upload will retry after a delay",
+              e,
+              stacktrace);
+        } finally {
+          _updateStatus(uploading: false);
         }
-      } catch (e, stacktrace) {
-        checkedCrudItem = null;
-        isolateLogger.warning('Data upload error', e, stacktrace);
-        _updateStatus(uploading: false, uploadError: e);
-        await Future.delayed(retryDelay);
-        if (!isConnected) {
-          // Exit the upload loop if the sync stream is no longer connected
-          break;
-        }
-        isolateLogger.warning(
-            "Caught exception when uploading. Upload will retry after a delay",
-            e,
-            stacktrace);
-      } finally {
-        _updateStatus(uploading: false);
       }
-    }
+    });
   }
 
   Future<String> getWriteCheckpoint() async {
