@@ -13,13 +13,14 @@ class PowerSyncOpenFactory extends AbstractPowerSyncOpenFactory {
   @Deprecated('Override PowerSyncOpenFactory instead.')
   final SqliteConnectionSetup? _sqliteSetup;
 
-  PowerSyncOpenFactory(
-      {required super.path,
-      super.sqliteOptions,
-      @Deprecated('Override PowerSyncOpenFactory instead.')
-      SqliteConnectionSetup? sqliteSetup})
-      // ignore: deprecated_member_use_from_same_package
-      : _sqliteSetup = sqliteSetup;
+  PowerSyncOpenFactory({
+    required super.path,
+    super.sqliteOptions,
+    @Deprecated('Override PowerSyncOpenFactory instead.')
+    SqliteConnectionSetup? sqliteSetup,
+  })
+  // ignore: deprecated_member_use_from_same_package
+  : _sqliteSetup = sqliteSetup;
 
   @override
   void enableExtension() {
@@ -66,7 +67,12 @@ class PowerSyncOpenFactory extends AbstractPowerSyncOpenFactory {
     // ignore: deprecated_member_use_from_same_package
     _sqliteSetup?.setup();
 
-    enableExtension();
+    try {
+      enableExtension();
+    } on PowersyncNotReadyException catch (e) {
+      autoLogger.severe(e.message);
+      rethrow;
+    }
 
     var db = super.open(options);
     db.execute('PRAGMA recursive_triggers = TRUE');

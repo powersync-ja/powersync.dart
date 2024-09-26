@@ -32,8 +32,7 @@ class DjangoConnector extends PowerSyncBackendConnector {
   /// Get a token to authenticate against the PowerSync instance.
   @override
   Future<PowerSyncCredentials?> fetchCredentials() async {
-    final prefs = await SharedPreferences.getInstance();
-    final userId = prefs.getString('id');
+    final userId = await getUserId();
     if (userId == null) {
       throw Exception('User does not have session');
     }
@@ -88,14 +87,15 @@ late final PowerSyncDatabase db;
 // Hacky flag to ensure the database is only initialized once, better to do this with listeners
 bool _dbInitialized = false;
 
+/// id of the user currently logged in
+Future<String?> getUserId() async {
+  final prefs = await SharedPreferences.getInstance();
+  return prefs.getString('id');
+}
+
 Future<bool> isLoggedIn() async {
-  final prefs =
-      await SharedPreferences.getInstance(); // Initialize SharedPreferences
-  final userId = prefs.getString('id');
-  if (userId != null) {
-    return true;
-  }
-  return false;
+  final userId = await getUserId();
+  return userId != null;
 }
 
 Future<String> getDatabasePath() async {
@@ -103,6 +103,7 @@ Future<String> getDatabasePath() async {
   return join(dir.path, 'powersync-demo.db');
 }
 
+// opens the database and connects if logged in
 Future<void> openDatabase() async {
   // Open the local database
   if (!_dbInitialized) {
@@ -129,10 +130,4 @@ Future<void> openDatabase() async {
 /// Explicit sign out - clear database and log out.
 Future<void> logout() async {
   await db.disconnectAndClear();
-}
-
-/// id of the user currently logged in
-Future<String?> getUserId() async {
-  final prefs = await SharedPreferences.getInstance();
-  return prefs.getString('id');
 }
