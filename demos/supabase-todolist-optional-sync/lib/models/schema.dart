@@ -84,7 +84,8 @@ switchToSyncedSchema(PowerSyncDatabase db, String userId) async {
         [userId]);
 
     await tx.execute(
-        'INSERT INTO $todosTable SELECT * FROM inactive_local_$todosTable');
+        'INSERT INTO $todosTable(id, list_id, created_at, completed_at, description, completed, created_by) SELECT id, list_id, created_at, completed_at, description, completed, ? FROM inactive_local_$todosTable',
+        [userId]);
 
     // Delete the local-only data.
     await tx.execute('DELETE FROM inactive_local_$todosTable');
