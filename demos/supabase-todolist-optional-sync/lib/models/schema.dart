@@ -79,10 +79,12 @@ switchToSyncedSchema(PowerSyncDatabase db, String userId) async {
   await db.writeTransaction((tx) async {
     // Copy local-only data to the sync-enabled views.
     // This records each operation in the upload queue.
+    // Overwrites the local-only owner_id value with the logged-in user's id.
     await tx.execute(
         'INSERT INTO $listsTable(id, name, created_at, owner_id) SELECT id, name, created_at, ? FROM inactive_local_$listsTable',
         [userId]);
 
+    // Overwrites the local-only created_by value with the logged-in user's id.
     await tx.execute(
         'INSERT INTO $todosTable(id, list_id, created_at, completed_at, description, completed, created_by) SELECT id, list_id, created_at, completed_at, description, completed, ? FROM inactive_local_$todosTable',
         [userId]);
