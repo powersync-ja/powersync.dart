@@ -1,8 +1,5 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:logging/logging.dart';
-
-final log = Logger('powersync-django-todolist');
 
 class ApiClient {
   final String baseUrl;
