@@ -53,7 +53,6 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    log.info('YOWDY');
     return MaterialApp(
         title: 'PowerSync Django Todolist Demo',
         theme: ThemeData(
