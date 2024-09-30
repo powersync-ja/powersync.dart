@@ -11,6 +11,7 @@ import './app_config.dart';
 import './models/schema.dart';
 
 final log = Logger('powersync-django');
+final prefs = SharedPreferencesAsync();
 
 /// Postgres Response codes that we cannot recover from by retrying.
 final List<RegExp> fatalResponseCodes = [
@@ -89,8 +90,7 @@ bool _dbInitialized = false;
 
 /// id of the user currently logged in
 Future<String?> getUserId() async {
-  final prefs = await SharedPreferences.getInstance();
-  return prefs.getString('id');
+  return await prefs.getString('id');
 }
 
 Future<bool> isLoggedIn() async {
@@ -129,5 +129,6 @@ Future<void> openDatabase() async {
 
 /// Explicit sign out - clear database and log out.
 Future<void> logout() async {
+  await prefs.remove('id');
   await db.disconnectAndClear();
 }
