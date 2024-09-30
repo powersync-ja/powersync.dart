@@ -81,7 +81,7 @@ class PowerSyncDatabaseImpl
         // ignore: deprecated_member_use_from_same_package
         PowerSyncOpenFactory(path: path, sqliteSetup: sqliteSetup);
     return PowerSyncDatabaseImpl.withFactory(factory,
-        schema: schema, logger: logger);
+        schema: schema, maxReaders: maxReaders, logger: logger);
   }
 
   /// Open a [PowerSyncDatabase] with a [PowerSyncOpenFactory].

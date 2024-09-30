@@ -60,7 +60,7 @@ abstract class PowerSyncDatabase
       int maxReaders = SqliteDatabase.defaultMaxReaders,
       Logger? logger}) {
     return PowerSyncDatabaseImpl.withFactory(openFactory,
-        schema: schema, logger: logger);
+        schema: schema, maxReaders: maxReaders, logger: logger);
   }
 
   /// Open a PowerSyncDatabase on an existing [SqliteDatabase].
