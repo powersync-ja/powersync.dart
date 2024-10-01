@@ -1,6 +1,10 @@
+## 1.8.4
+
+- **FEAT**: Added a warning if connector `uploadData` functions don't process CRUD items completely.
+
 ## 1.8.3
 
-- **FIX**: Pass maxReaders parameter to `PowerSyncDatabase.withFactory()`
+- **FIX**: Pass maxReaders parameter to `PowerSyncDatabase.withFactory()`.
 
 ## 1.8.2
 
