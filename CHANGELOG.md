@@ -3,6 +3,32 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 2024-09-30
+
+### Changes
+
+---
+
+Packages with breaking changes:
+
+ - There are no breaking changes in this release.
+
+Packages with other changes:
+
+ - [`powersync` - `v1.8.3`](#powersync---v183)
+ - [`powersync_attachments_helper` - `v0.6.7`](#powersync_attachments_helper---v067)
+
+---
+
+#### `powersync` - `v1.8.3`
+
+ - **FIX**: Pass maxReaders parameter to `PowerSyncDatabase.withFactory()`
+
+#### `powersync_attachments_helper` - `v0.6.7`
+
+ - Update a dependency to the latest release.
+
+
 ## 2024-09-13
 
 ### Changes
