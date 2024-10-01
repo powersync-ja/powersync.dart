@@ -209,7 +209,7 @@ class StreamingSyncImplementation {
           _updateStatus(uploading: false);
         }
       }
-    });
+    }, timeout: retryDelay);
   }
 
   Future<String> getWriteCheckpoint() async {
