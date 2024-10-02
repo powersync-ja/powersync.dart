@@ -3,6 +3,32 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 2024-10-01
+
+### Changes
+
+---
+
+Packages with breaking changes:
+
+ - There are no breaking changes in this release.
+
+Packages with other changes:
+
+ - [`powersync` - `v1.8.4`](#powersync---v184)
+ - [`powersync_attachments_helper` - `v0.6.8`](#powersync_attachments_helper---v068)
+
+---
+
+#### `powersync` - `v1.8.4`
+
+ - **FEAT**: Added a warning if connector `uploadData` functions don't process CRUD items completely.
+
+#### `powersync_attachments_helper` - `v0.6.8`
+
+ - Update a dependency to the latest release.
+
+
 ## 2024-09-30
 
 ### Changes
@@ -22,7 +48,7 @@ Packages with other changes:
 
 #### `powersync` - `v1.8.3`
 
- - **FIX**: Pass maxReaders parameter to `PowerSyncDatabase.withFactory()`
+ - **FIX**: Pass maxReaders parameter to `PowerSyncDatabase.withFactory()`.
 
 #### `powersync_attachments_helper` - `v0.6.7`
 

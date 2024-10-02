@@ -270,6 +270,12 @@ class BucketStorage {
     });
   }
 
+  Future<CrudEntry?> nextCrudItem() async {
+    var next = await _internalDb
+        .getOptional('SELECT * FROM ps_crud ORDER BY id ASC LIMIT 1');
+    return next == null ? null : CrudEntry.fromRow(next);
+  }
+
   Future<bool> hasCrud() async {
     final anyData = await select('SELECT 1 FROM ps_crud LIMIT 1');
     return anyData.isNotEmpty;

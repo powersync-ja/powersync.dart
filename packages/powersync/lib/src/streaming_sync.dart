@@ -10,6 +10,7 @@ import 'package:sqlite_async/mutex.dart';
 
 import 'bucket_storage.dart';
 import 'connector.dart';
+import 'crud.dart';
 import 'stream_utils.dart';
 import 'sync_status.dart';
 import 'sync_types.dart';
@@ -102,6 +103,10 @@ class StreamingSyncImplementation {
     return _abort?.aborted ?? false;
   }
 
+  bool get isConnected {
+    return lastStatus.connected;
+  }
+
   Future<void> streamingSync() async {
     try {
       _abort = AbortController();
@@ -159,38 +164,50 @@ class StreamingSyncImplementation {
   }
 
   Future<void> uploadAllCrud() async {
-    while (true) {
-      try {
-        bool done = await uploadCrudBatch();
-        _updateStatus(uploadError: _noError);
-        if (done) {
-          break;
-        }
-      } catch (e, stacktrace) {
-        isolateLogger.warning('Data upload error', e, stacktrace);
-        _updateStatus(uploading: false, uploadError: e);
-        await Future.delayed(retryDelay);
-      }
-    }
-    _updateStatus(uploading: false);
-  }
-
-  Future<bool> uploadCrudBatch() async {
     return crudMutex.lock(() async {
-      if ((await adapter.hasCrud())) {
-        _updateStatus(uploading: true);
-        await uploadCrud();
-        return false;
-      } else {
-        // This isolate is the only one triggering
-        final updated = await adapter.updateLocalTarget(() async {
-          return getWriteCheckpoint();
-        });
-        if (updated) {
-          _localPingController.add(null);
-        }
+      // Keep track of the first item in the CRUD queue for the last `uploadCrud` iteration.
+      CrudEntry? checkedCrudItem;
 
-        return true;
+      while (true) {
+        _updateStatus(uploading: true);
+        try {
+          // This is the first item in the FIFO CRUD queue.
+          CrudEntry? nextCrudItem = await adapter.nextCrudItem();
+          if (nextCrudItem != null) {
+            if (nextCrudItem.clientId == checkedCrudItem?.clientId) {
+              // This will force a higher log level than exceptions which are caught here.
+              isolateLogger.warning(
+                  """Potentially previously uploaded CRUD entries are still present in the upload queue. 
+                Make sure to handle uploads and complete CRUD transactions or batches by calling and awaiting their [.complete()] method.
+                The next upload iteration will be delayed.""");
+              throw Exception(
+                  'Delaying due to previously encountered CRUD item.');
+            }
+
+            checkedCrudItem = nextCrudItem;
+            await uploadCrud();
+            _updateStatus(uploadError: _noError);
+          } else {
+            // Uploading is completed
+            await adapter.updateLocalTarget(() => getWriteCheckpoint());
+            break;
+          }
+        } catch (e, stacktrace) {
+          checkedCrudItem = null;
+          isolateLogger.warning('Data upload error', e, stacktrace);
+          _updateStatus(uploading: false, uploadError: e);
+          await Future.delayed(retryDelay);
+          if (!isConnected) {
+            // Exit the upload loop if the sync stream is no longer connected
+            break;
+          }
+          isolateLogger.warning(
+              "Caught exception when uploading. Upload will retry after a delay",
+              e,
+              stacktrace);
+        } finally {
+          _updateStatus(uploading: false);
+        }
       }
     }, timeout: retryDelay);
   }
