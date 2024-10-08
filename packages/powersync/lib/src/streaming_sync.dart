@@ -5,10 +5,12 @@ import 'package:http/http.dart' as http;
 import 'package:powersync/src/abort_controller.dart';
 import 'package:powersync/src/exceptions.dart';
 import 'package:powersync/src/log_internal.dart';
+import 'package:powersync/src/user_agent/user_agent.dart';
 import 'package:sqlite_async/mutex.dart';
 
 import 'bucket_storage.dart';
 import 'connector.dart';
+import 'crud.dart';
 import 'stream_utils.dart';
 import 'sync_status.dart';
 import 'sync_types.dart';
@@ -48,6 +50,10 @@ class StreamingSyncImplementation {
 
   final Mutex syncMutex, crudMutex;
 
+  final Map<String, String> _userAgentHeaders;
+
+  String? clientId;
+
   StreamingSyncImplementation(
       {required this.adapter,
       required this.credentialsCallback,
@@ -62,7 +68,8 @@ class StreamingSyncImplementation {
       /// A good value is typically the DB file path which it will mutate when syncing.
       String? identifier = "unknown"})
       : syncMutex = Mutex(identifier: "sync-$identifier"),
-        crudMutex = Mutex(identifier: "crud-$identifier") {
+        crudMutex = Mutex(identifier: "crud-$identifier"),
+        _userAgentHeaders = userAgentHeaders() {
     _client = client;
     statusStream = _statusStreamController.stream;
   }
@@ -96,9 +103,14 @@ class StreamingSyncImplementation {
     return _abort?.aborted ?? false;
   }
 
+  bool get isConnected {
+    return lastStatus.connected;
+  }
+
   Future<void> streamingSync() async {
     try {
       _abort = AbortController();
+      clientId = await adapter.getClientId();
       crudLoop();
       var invalidCredentials = false;
       while (!aborted) {
@@ -152,38 +164,50 @@ class StreamingSyncImplementation {
   }
 
   Future<void> uploadAllCrud() async {
-    while (true) {
-      try {
-        bool done = await uploadCrudBatch();
-        _updateStatus(uploadError: _noError);
-        if (done) {
-          break;
-        }
-      } catch (e, stacktrace) {
-        isolateLogger.warning('Data upload error', e, stacktrace);
-        _updateStatus(uploading: false, uploadError: e);
-        await Future.delayed(retryDelay);
-      }
-    }
-    _updateStatus(uploading: false);
-  }
-
-  Future<bool> uploadCrudBatch() async {
     return crudMutex.lock(() async {
-      if ((await adapter.hasCrud())) {
-        _updateStatus(uploading: true);
-        await uploadCrud();
-        return false;
-      } else {
-        // This isolate is the only one triggering
-        final updated = await adapter.updateLocalTarget(() async {
-          return getWriteCheckpoint();
-        });
-        if (updated) {
-          _localPingController.add(null);
-        }
+      // Keep track of the first item in the CRUD queue for the last `uploadCrud` iteration.
+      CrudEntry? checkedCrudItem;
 
-        return true;
+      while (true) {
+        _updateStatus(uploading: true);
+        try {
+          // This is the first item in the FIFO CRUD queue.
+          CrudEntry? nextCrudItem = await adapter.nextCrudItem();
+          if (nextCrudItem != null) {
+            if (nextCrudItem.clientId == checkedCrudItem?.clientId) {
+              // This will force a higher log level than exceptions which are caught here.
+              isolateLogger.warning(
+                  """Potentially previously uploaded CRUD entries are still present in the upload queue. 
+                Make sure to handle uploads and complete CRUD transactions or batches by calling and awaiting their [.complete()] method.
+                The next upload iteration will be delayed.""");
+              throw Exception(
+                  'Delaying due to previously encountered CRUD item.');
+            }
+
+            checkedCrudItem = nextCrudItem;
+            await uploadCrud();
+            _updateStatus(uploadError: _noError);
+          } else {
+            // Uploading is completed
+            await adapter.updateLocalTarget(() => getWriteCheckpoint());
+            break;
+          }
+        } catch (e, stacktrace) {
+          checkedCrudItem = null;
+          isolateLogger.warning('Data upload error', e, stacktrace);
+          _updateStatus(uploading: false, uploadError: e);
+          await Future.delayed(retryDelay);
+          if (!isConnected) {
+            // Exit the upload loop if the sync stream is no longer connected
+            break;
+          }
+          isolateLogger.warning(
+              "Caught exception when uploading. Upload will retry after a delay",
+              e,
+              stacktrace);
+        } finally {
+          _updateStatus(uploading: false);
+        }
       }
     }, timeout: retryDelay);
   }
@@ -193,12 +217,16 @@ class StreamingSyncImplementation {
     if (credentials == null) {
       throw CredentialsException("Not logged in");
     }
-    final uri = credentials.endpointUri('write-checkpoint2.json');
+    final uri =
+        credentials.endpointUri('write-checkpoint2.json?client_id=$clientId');
 
-    final response = await _client.get(uri, headers: {
+    Map<String, String> headers = {
       'Content-Type': 'application/json',
-      'Authorization': "Token ${credentials.token}"
-    });
+      'Authorization': "Token ${credentials.token}",
+      ..._userAgentHeaders
+    };
+
+    final response = await _client.get(uri, headers: headers);
     if (response.statusCode == 401) {
       if (invalidCredentialsCallback != null) {
         await invalidCredentialsCallback!();
@@ -262,8 +290,8 @@ class StreamingSyncImplementation {
     Checkpoint? appliedCheckpoint;
     var bucketSet = Set<String>.from(initialBucketStates.keys);
 
-    var requestStream =
-        streamingSyncRequest(StreamingSyncRequest(buckets, syncParameters));
+    var requestStream = streamingSyncRequest(
+        StreamingSyncRequest(buckets, syncParameters, clientId!));
 
     var merged = addBroadcast(requestStream, _localPingController.stream);
 
@@ -404,6 +432,8 @@ class StreamingSyncImplementation {
     final request = http.Request('POST', uri);
     request.headers['Content-Type'] = 'application/json';
     request.headers['Authorization'] = "Token ${credentials.token}";
+    request.headers.addAll(_userAgentHeaders);
+
     request.body = convert.jsonEncode(data);
 
     http.StreamedResponse res;

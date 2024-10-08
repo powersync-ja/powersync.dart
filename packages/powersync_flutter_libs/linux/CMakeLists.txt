@@ -25,7 +25,6 @@ target_link_libraries(${PLUGIN_NAME} PRIVATE flutter)
 # ----------------------------------------------------------------------
 # Add powersync prebuilt library.
 
-set(POWERSYNC_VERSION 0.1.6)
 set(CORE_FILE_NAME "libpowersync.so")
 
 set(POWERSYNC_ARCH ${CMAKE_SYSTEM_PROCESSOR})

@@ -1,3 +1,7 @@
+## 0.3.0
+
+ - powersync-sqlite-core v0.2.1
+
 ## 0.2.2
 
  - **FIX**: Prebundling downloaded core binaries.

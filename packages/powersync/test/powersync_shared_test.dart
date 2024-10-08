@@ -1,5 +1,7 @@
 import 'package:sqlite_async/mutex.dart';
 import 'package:test/test.dart';
+import 'package:uuid/parsing.dart';
+
 import 'utils/test_utils_impl.dart';
 
 final testUtils = TestUtils();
@@ -78,6 +80,14 @@ void main() {
       // Not allowed in transactions, but does work as a direct statement.
       await db.execute('PRAGMA wal_checkpoint(TRUNCATE)');
       await db.execute('VACUUM');
+    });
+
+    test('should have a client id', () async {
+      final db = await testUtils.setupPowerSync(path: path);
+
+      final id = await db.getClientId();
+      // Check that it is a valid uuid
+      UuidParsing.parseAsByteList(id);
     });
   });
 }

@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:powersync_django_todolist_demo/api_client.dart';
 import 'package:powersync_django_todolist_demo/app_config.dart';
 import 'package:powersync_django_todolist_demo/powersync.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../main.dart';
 
@@ -42,7 +41,6 @@ class _LoginPageState extends State<LoginPage> {
 
       final payload = _parseJwt(session['access_token']);
       if (payload.containsKey('sub')) {
-        final prefs = await SharedPreferences.getInstance();
         await prefs.setString('id', payload['sub'].toString());
 
         //re-init PowerSync manually for first time sign in

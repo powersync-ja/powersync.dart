@@ -27,12 +27,10 @@ final List<RegExp> fatalResponseCodes = [
 
 /// Use Supabase for authentication and data upload.
 class SupabaseConnector extends PowerSyncBackendConnector {
-  PowerSyncDatabase db;
-
   // ignore: unused_field
   Future<void>? _refreshFuture;
 
-  SupabaseConnector(this.db);
+  SupabaseConnector();
 
   /// Get a Supabase token to authenticate against the PowerSync instance.
   @override
@@ -152,5 +150,5 @@ Future<void> openDatabase() async {
 
   await loadSupabase();
 
-  db.connect(connector: SupabaseConnector(db));
+  db.connect(connector: SupabaseConnector());
 }

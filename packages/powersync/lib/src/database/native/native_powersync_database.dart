@@ -86,7 +86,7 @@ class PowerSyncDatabaseImpl
       factory = PowerSyncSqlcipherOpenFactory(path: path, key: encryptionKey);
     }
     return PowerSyncDatabaseImpl.withFactory(factory,
-        schema: schema, logger: logger);
+        schema: schema, maxReaders: maxReaders, logger: logger);
   }
 
   /// Open a [PowerSyncDatabase] with a [PowerSyncOpenFactory].

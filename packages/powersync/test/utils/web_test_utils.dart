@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:html';
 
 import 'package:js/js.dart';
+import 'package:logging/logging.dart';
 import 'package:powersync/powersync.dart';
 import 'package:sqlite_async/sqlite3_common.dart';
 import 'package:sqlite_async/sqlite_async.dart';
@@ -51,7 +52,7 @@ class TestUtils extends AbstractTestUtils {
 
   @override
   Future<PowerSyncDatabase> setupPowerSync(
-      {String? path, Schema? schema}) async {
+      {String? path, Schema? schema, Logger? logger}) async {
     await _isInitialized;
     return super.setupPowerSync(path: path, schema: schema);
   }

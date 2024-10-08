@@ -119,4 +119,9 @@ class PowerSyncDatabaseImpl
       Map<String, dynamic>? params}) {
     throw UnimplementedError();
   }
+
+  @override
+  Future<void> refreshSchema() {
+    throw UnimplementedError();
+  }
 }

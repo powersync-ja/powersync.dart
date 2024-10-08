@@ -47,14 +47,14 @@ Future<void> openDatabase() async {
   SupabaseConnector? currentConnector;
 
   if (isLoggedIn()) {
-    currentConnector = SupabaseConnector(db);
+    currentConnector = SupabaseConnector();
     db.connect(connector: currentConnector);
   }
 
   Supabase.instance.client.auth.onAuthStateChange.listen((data) async {
     final AuthChangeEvent event = data.event;
     if (event == AuthChangeEvent.signedIn) {
-      currentConnector = SupabaseConnector(db);
+      currentConnector = SupabaseConnector();
       db.connect(connector: currentConnector!);
     } else if (event == AuthChangeEvent.signedOut) {
       currentConnector = null;
@@ -66,8 +66,7 @@ Future<void> openDatabase() async {
 }
 
 class SupabaseConnector extends PowerSyncBackendConnector {
-  PowerSyncDatabase db;
-  SupabaseConnector(this.db);
+  SupabaseConnector();
 
   @override
   Future<void> uploadData(PowerSyncDatabase database) async {
