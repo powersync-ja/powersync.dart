@@ -5,7 +5,6 @@
 list(APPEND FLUTTER_PLUGIN_LIST
   gtk
   powersync_flutter_libs
-  sqlcipher_flutter_libs
   url_launcher_linux
 )
 
