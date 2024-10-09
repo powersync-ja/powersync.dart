@@ -155,6 +155,15 @@ class ListItem extends DataClass implements Insertable<ListItem> {
         name: name ?? this.name,
         ownerId: ownerId.present ? ownerId.value : this.ownerId,
       );
+  ListItem copyWithCompanion(ListItemsCompanion data) {
+    return ListItem(
+      id: data.id.present ? data.id.value : this.id,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      name: data.name.present ? data.name.value : this.name,
+      ownerId: data.ownerId.present ? data.ownerId.value : this.ownerId,
+    );
+  }
+
   @override
   String toString() {
     return (StringBuffer('ListItem(')
@@ -557,6 +566,23 @@ class TodoItem extends DataClass implements Insertable<TodoItem> {
         createdBy: createdBy.present ? createdBy.value : this.createdBy,
         completedBy: completedBy.present ? completedBy.value : this.completedBy,
       );
+  TodoItem copyWithCompanion(TodoItemsCompanion data) {
+    return TodoItem(
+      id: data.id.present ? data.id.value : this.id,
+      listId: data.listId.present ? data.listId.value : this.listId,
+      photoId: data.photoId.present ? data.photoId.value : this.photoId,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      completedAt:
+          data.completedAt.present ? data.completedAt.value : this.completedAt,
+      completed: data.completed.present ? data.completed.value : this.completed,
+      description:
+          data.description.present ? data.description.value : this.description,
+      createdBy: data.createdBy.present ? data.createdBy.value : this.createdBy,
+      completedBy:
+          data.completedBy.present ? data.completedBy.value : this.completedBy,
+    );
+  }
+
   @override
   String toString() {
     return (StringBuffer('TodoItem(')
@@ -734,7 +760,7 @@ class TodoItemsCompanion extends UpdateCompanion<TodoItem> {
 
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
-  _$AppDatabaseManager get managers => _$AppDatabaseManager(this);
+  $AppDatabaseManager get managers => $AppDatabaseManager(this);
   late final $ListItemsTable listItems = $ListItemsTable(this);
   late final $TodoItemsTable todoItems = $TodoItemsTable(this);
   Selectable<ListItemWithStats> listsWithStats() {
@@ -761,7 +787,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       const DriftDatabaseOptions(storeDateTimeAsText: true);
 }
 
-typedef $$ListItemsTableInsertCompanionBuilder = ListItemsCompanion Function({
+typedef $$ListItemsTableCreateCompanionBuilder = ListItemsCompanion Function({
   Value<String> id,
   Value<DateTime> createdAt,
   required String name,
@@ -776,66 +802,24 @@ typedef $$ListItemsTableUpdateCompanionBuilder = ListItemsCompanion Function({
   Value<int> rowid,
 });
 
-class $$ListItemsTableTableManager extends RootTableManager<
-    _$AppDatabase,
-    $ListItemsTable,
-    ListItem,
-    $$ListItemsTableFilterComposer,
-    $$ListItemsTableOrderingComposer,
-    $$ListItemsTableProcessedTableManager,
-    $$ListItemsTableInsertCompanionBuilder,
-    $$ListItemsTableUpdateCompanionBuilder> {
-  $$ListItemsTableTableManager(_$AppDatabase db, $ListItemsTable table)
-      : super(TableManagerState(
-          db: db,
-          table: table,
-          filteringComposer:
-              $$ListItemsTableFilterComposer(ComposerState(db, table)),
-          orderingComposer:
-              $$ListItemsTableOrderingComposer(ComposerState(db, table)),
-          getChildManagerBuilder: (p) =>
-              $$ListItemsTableProcessedTableManager(p),
-          getUpdateCompanionBuilder: ({
-            Value<String> id = const Value.absent(),
-            Value<DateTime> createdAt = const Value.absent(),
-            Value<String> name = const Value.absent(),
-            Value<String?> ownerId = const Value.absent(),
-            Value<int> rowid = const Value.absent(),
-          }) =>
-              ListItemsCompanion(
-            id: id,
-            createdAt: createdAt,
-            name: name,
-            ownerId: ownerId,
-            rowid: rowid,
-          ),
-          getInsertCompanionBuilder: ({
-            Value<String> id = const Value.absent(),
-            Value<DateTime> createdAt = const Value.absent(),
-            required String name,
-            Value<String?> ownerId = const Value.absent(),
-            Value<int> rowid = const Value.absent(),
-          }) =>
-              ListItemsCompanion.insert(
-            id: id,
-            createdAt: createdAt,
-            name: name,
-            ownerId: ownerId,
-            rowid: rowid,
-          ),
-        ));
-}
+final class $$ListItemsTableReferences
+    extends BaseReferences<_$AppDatabase, $ListItemsTable, ListItem> {
+  $$ListItemsTableReferences(super.$_db, super.$_table, super.$_typedResult);
 
-class $$ListItemsTableProcessedTableManager extends ProcessedTableManager<
-    _$AppDatabase,
-    $ListItemsTable,
-    ListItem,
-    $$ListItemsTableFilterComposer,
-    $$ListItemsTableOrderingComposer,
-    $$ListItemsTableProcessedTableManager,
-    $$ListItemsTableInsertCompanionBuilder,
-    $$ListItemsTableUpdateCompanionBuilder> {
-  $$ListItemsTableProcessedTableManager(super.$state);
+  static MultiTypedResultKey<$TodoItemsTable, List<TodoItem>>
+      _todoItemsRefsTable(_$AppDatabase db) =>
+          MultiTypedResultKey.fromTable(db.todoItems,
+              aliasName:
+                  $_aliasNameGenerator(db.listItems.id, db.todoItems.listId));
+
+  $$TodoItemsTableProcessedTableManager get todoItemsRefs {
+    final manager = $$TodoItemsTableTableManager($_db, $_db.todoItems)
+        .filter((f) => f.listId.id($_item.id));
+
+    final cache = $_typedResult.readTableOrNull(_todoItemsRefsTable($_db));
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: cache));
+  }
 }
 
 class $$ListItemsTableFilterComposer
@@ -899,7 +883,97 @@ class $$ListItemsTableOrderingComposer
           ColumnOrderings(column, joinBuilders: joinBuilders));
 }
 
-typedef $$TodoItemsTableInsertCompanionBuilder = TodoItemsCompanion Function({
+class $$ListItemsTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $ListItemsTable,
+    ListItem,
+    $$ListItemsTableFilterComposer,
+    $$ListItemsTableOrderingComposer,
+    $$ListItemsTableCreateCompanionBuilder,
+    $$ListItemsTableUpdateCompanionBuilder,
+    (ListItem, $$ListItemsTableReferences),
+    ListItem,
+    PrefetchHooks Function({bool todoItemsRefs})> {
+  $$ListItemsTableTableManager(_$AppDatabase db, $ListItemsTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          filteringComposer:
+              $$ListItemsTableFilterComposer(ComposerState(db, table)),
+          orderingComposer:
+              $$ListItemsTableOrderingComposer(ComposerState(db, table)),
+          updateCompanionCallback: ({
+            Value<String> id = const Value.absent(),
+            Value<DateTime> createdAt = const Value.absent(),
+            Value<String> name = const Value.absent(),
+            Value<String?> ownerId = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              ListItemsCompanion(
+            id: id,
+            createdAt: createdAt,
+            name: name,
+            ownerId: ownerId,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            Value<String> id = const Value.absent(),
+            Value<DateTime> createdAt = const Value.absent(),
+            required String name,
+            Value<String?> ownerId = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              ListItemsCompanion.insert(
+            id: id,
+            createdAt: createdAt,
+            name: name,
+            ownerId: ownerId,
+            rowid: rowid,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (
+                    e.readTable(table),
+                    $$ListItemsTableReferences(db, table, e)
+                  ))
+              .toList(),
+          prefetchHooksCallback: ({todoItemsRefs = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [if (todoItemsRefs) db.todoItems],
+              addJoins: null,
+              getPrefetchedDataCallback: (items) async {
+                return [
+                  if (todoItemsRefs)
+                    await $_getPrefetchedData(
+                        currentTable: table,
+                        referencedTable:
+                            $$ListItemsTableReferences._todoItemsRefsTable(db),
+                        managerFromTypedResult: (p0) =>
+                            $$ListItemsTableReferences(db, table, p0)
+                                .todoItemsRefs,
+                        referencedItemsForCurrentItem: (item,
+                                referencedItems) =>
+                            referencedItems.where((e) => e.listId == item.id),
+                        typedResults: items)
+                ];
+              },
+            );
+          },
+        ));
+}
+
+typedef $$ListItemsTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $ListItemsTable,
+    ListItem,
+    $$ListItemsTableFilterComposer,
+    $$ListItemsTableOrderingComposer,
+    $$ListItemsTableCreateCompanionBuilder,
+    $$ListItemsTableUpdateCompanionBuilder,
+    (ListItem, $$ListItemsTableReferences),
+    ListItem,
+    PrefetchHooks Function({bool todoItemsRefs})>;
+typedef $$TodoItemsTableCreateCompanionBuilder = TodoItemsCompanion Function({
   Value<String> id,
   required String listId,
   Value<String?> photoId,
@@ -924,86 +998,22 @@ typedef $$TodoItemsTableUpdateCompanionBuilder = TodoItemsCompanion Function({
   Value<int> rowid,
 });
 
-class $$TodoItemsTableTableManager extends RootTableManager<
-    _$AppDatabase,
-    $TodoItemsTable,
-    TodoItem,
-    $$TodoItemsTableFilterComposer,
-    $$TodoItemsTableOrderingComposer,
-    $$TodoItemsTableProcessedTableManager,
-    $$TodoItemsTableInsertCompanionBuilder,
-    $$TodoItemsTableUpdateCompanionBuilder> {
-  $$TodoItemsTableTableManager(_$AppDatabase db, $TodoItemsTable table)
-      : super(TableManagerState(
-          db: db,
-          table: table,
-          filteringComposer:
-              $$TodoItemsTableFilterComposer(ComposerState(db, table)),
-          orderingComposer:
-              $$TodoItemsTableOrderingComposer(ComposerState(db, table)),
-          getChildManagerBuilder: (p) =>
-              $$TodoItemsTableProcessedTableManager(p),
-          getUpdateCompanionBuilder: ({
-            Value<String> id = const Value.absent(),
-            Value<String> listId = const Value.absent(),
-            Value<String?> photoId = const Value.absent(),
-            Value<DateTime?> createdAt = const Value.absent(),
-            Value<DateTime?> completedAt = const Value.absent(),
-            Value<bool?> completed = const Value.absent(),
-            Value<String> description = const Value.absent(),
-            Value<String?> createdBy = const Value.absent(),
-            Value<String?> completedBy = const Value.absent(),
-            Value<int> rowid = const Value.absent(),
-          }) =>
-              TodoItemsCompanion(
-            id: id,
-            listId: listId,
-            photoId: photoId,
-            createdAt: createdAt,
-            completedAt: completedAt,
-            completed: completed,
-            description: description,
-            createdBy: createdBy,
-            completedBy: completedBy,
-            rowid: rowid,
-          ),
-          getInsertCompanionBuilder: ({
-            Value<String> id = const Value.absent(),
-            required String listId,
-            Value<String?> photoId = const Value.absent(),
-            Value<DateTime?> createdAt = const Value.absent(),
-            Value<DateTime?> completedAt = const Value.absent(),
-            Value<bool?> completed = const Value.absent(),
-            required String description,
-            Value<String?> createdBy = const Value.absent(),
-            Value<String?> completedBy = const Value.absent(),
-            Value<int> rowid = const Value.absent(),
-          }) =>
-              TodoItemsCompanion.insert(
-            id: id,
-            listId: listId,
-            photoId: photoId,
-            createdAt: createdAt,
-            completedAt: completedAt,
-            completed: completed,
-            description: description,
-            createdBy: createdBy,
-            completedBy: completedBy,
-            rowid: rowid,
-          ),
-        ));
-}
+final class $$TodoItemsTableReferences
+    extends BaseReferences<_$AppDatabase, $TodoItemsTable, TodoItem> {
+  $$TodoItemsTableReferences(super.$_db, super.$_table, super.$_typedResult);
 
-class $$TodoItemsTableProcessedTableManager extends ProcessedTableManager<
-    _$AppDatabase,
-    $TodoItemsTable,
-    TodoItem,
-    $$TodoItemsTableFilterComposer,
-    $$TodoItemsTableOrderingComposer,
-    $$TodoItemsTableProcessedTableManager,
-    $$TodoItemsTableInsertCompanionBuilder,
-    $$TodoItemsTableUpdateCompanionBuilder> {
-  $$TodoItemsTableProcessedTableManager(super.$state);
+  static $ListItemsTable _listIdTable(_$AppDatabase db) => db.listItems
+      .createAlias($_aliasNameGenerator(db.todoItems.listId, db.listItems.id));
+
+  $$ListItemsTableProcessedTableManager? get listId {
+    if ($_item.listId == null) return null;
+    final manager = $$ListItemsTableTableManager($_db, $_db.listItems)
+        .filter((f) => f.id($_item.listId!));
+    final item = $_typedResult.readTableOrNull(_listIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: [item]));
+  }
 }
 
 class $$TodoItemsTableFilterComposer
@@ -1118,9 +1128,131 @@ class $$TodoItemsTableOrderingComposer
   }
 }
 
-class _$AppDatabaseManager {
+class $$TodoItemsTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $TodoItemsTable,
+    TodoItem,
+    $$TodoItemsTableFilterComposer,
+    $$TodoItemsTableOrderingComposer,
+    $$TodoItemsTableCreateCompanionBuilder,
+    $$TodoItemsTableUpdateCompanionBuilder,
+    (TodoItem, $$TodoItemsTableReferences),
+    TodoItem,
+    PrefetchHooks Function({bool listId})> {
+  $$TodoItemsTableTableManager(_$AppDatabase db, $TodoItemsTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          filteringComposer:
+              $$TodoItemsTableFilterComposer(ComposerState(db, table)),
+          orderingComposer:
+              $$TodoItemsTableOrderingComposer(ComposerState(db, table)),
+          updateCompanionCallback: ({
+            Value<String> id = const Value.absent(),
+            Value<String> listId = const Value.absent(),
+            Value<String?> photoId = const Value.absent(),
+            Value<DateTime?> createdAt = const Value.absent(),
+            Value<DateTime?> completedAt = const Value.absent(),
+            Value<bool?> completed = const Value.absent(),
+            Value<String> description = const Value.absent(),
+            Value<String?> createdBy = const Value.absent(),
+            Value<String?> completedBy = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              TodoItemsCompanion(
+            id: id,
+            listId: listId,
+            photoId: photoId,
+            createdAt: createdAt,
+            completedAt: completedAt,
+            completed: completed,
+            description: description,
+            createdBy: createdBy,
+            completedBy: completedBy,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            Value<String> id = const Value.absent(),
+            required String listId,
+            Value<String?> photoId = const Value.absent(),
+            Value<DateTime?> createdAt = const Value.absent(),
+            Value<DateTime?> completedAt = const Value.absent(),
+            Value<bool?> completed = const Value.absent(),
+            required String description,
+            Value<String?> createdBy = const Value.absent(),
+            Value<String?> completedBy = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              TodoItemsCompanion.insert(
+            id: id,
+            listId: listId,
+            photoId: photoId,
+            createdAt: createdAt,
+            completedAt: completedAt,
+            completed: completed,
+            description: description,
+            createdBy: createdBy,
+            completedBy: completedBy,
+            rowid: rowid,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (
+                    e.readTable(table),
+                    $$TodoItemsTableReferences(db, table, e)
+                  ))
+              .toList(),
+          prefetchHooksCallback: ({listId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins: <
+                  T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic>>(state) {
+                if (listId) {
+                  state = state.withJoin(
+                    currentTable: table,
+                    currentColumn: table.listId,
+                    referencedTable:
+                        $$TodoItemsTableReferences._listIdTable(db),
+                    referencedColumn:
+                        $$TodoItemsTableReferences._listIdTable(db).id,
+                  ) as T;
+                }
+
+                return state;
+              },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ));
+}
+
+typedef $$TodoItemsTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $TodoItemsTable,
+    TodoItem,
+    $$TodoItemsTableFilterComposer,
+    $$TodoItemsTableOrderingComposer,
+    $$TodoItemsTableCreateCompanionBuilder,
+    $$TodoItemsTableUpdateCompanionBuilder,
+    (TodoItem, $$TodoItemsTableReferences),
+    TodoItem,
+    PrefetchHooks Function({bool listId})>;
+
+class $AppDatabaseManager {
   final _$AppDatabase _db;
-  _$AppDatabaseManager(this._db);
+  $AppDatabaseManager(this._db);
   $$ListItemsTableTableManager get listItems =>
       $$ListItemsTableTableManager(_db, _db.listItems);
   $$TodoItemsTableTableManager get todoItems =>
