@@ -301,10 +301,10 @@ packages:
     dependency: "direct main"
     description:
       name: drift_sqlite_async
-      sha256: bbee2a2fc8eac6b85765d566f1b0e94252061c92289a3a5dcf75b3b8cb3533dc
+      sha256: cf5cba587b29e3cebaf5abefaa3f61be7e2232d9a0d9bcc0ba64341f3e77ac88
       url: "https://pub.dev"
     source: hosted
-    version: "0.1.0-alpha.4"
+    version: "0.2.0-alpha.1"
   fake_async:
     dependency: transitive
     description:
