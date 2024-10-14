@@ -390,7 +390,7 @@ packages:
       path: "../../packages/powersync"
       relative: true
     source: path
-    version: "1.8.2"
+    version: "1.8.4"
   powersync_flutter_libs:
     dependency: "direct overridden"
     description:
