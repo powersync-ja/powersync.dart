@@ -15,6 +15,32 @@ Packages with breaking changes:
 
 Packages with other changes:
 
+ - [`powersync` - `v1.8.6`](#powersync---v186)
+ - [`powersync_attachments_helper` - `v0.6.10`](#powersync_attachments_helper---v0610)
+
+---
+
+#### `powersync` - `v1.8.6`
+
+ - Update dependency `sqlite_async` to v0.9.0
+
+#### `powersync_attachments_helper` - `v0.6.10`
+
+ - Update a dependency to the latest release.
+
+
+## 2024-10-14
+
+### Changes
+
+---
+
+Packages with breaking changes:
+
+ - There are no breaking changes in this release.
+
+Packages with other changes:
+
  - [`powersync` - `v1.8.5`](#powersync---v185)
  - [`powersync_attachments_helper` - `v0.6.9`](#powersync_attachments_helper---v069)
  - [`powersync_flutter_libs` - `v0.4.0`](#powersync_flutter_libs---v040)

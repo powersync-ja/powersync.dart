@@ -1,3 +1,7 @@
+## 1.8.6
+
+- Update dependency `sqlite_async` to v0.9.0
+
 ## 1.8.5
 
 - Update dependency `powersync_flutter_libs`
