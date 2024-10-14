@@ -1,3 +1,11 @@
+## 1.8.6
+
+- Update dependency `sqlite_async` to v0.9.0
+
+## 1.8.5
+
+- Update dependency `powersync_flutter_libs`
+
 ## 1.8.4
 
 - **FEAT**: Added a warning if connector `uploadData` functions don't process CRUD items completely.

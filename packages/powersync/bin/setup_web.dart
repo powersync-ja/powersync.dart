@@ -90,8 +90,10 @@ void main(List<String> arguments) async {
 }
 
 bool coreVersionIsInRange(String tag) {
-  //Sets the range of powersync core version that is compatible with the sqlite3 version
-  VersionConstraint constraint = VersionConstraint.parse('>=0.2.0 <0.3.0');
+  // Sets the range of powersync core version that is compatible with the sqlite3 version
+  // We're a little more selective in the versions chosen here than the range
+  // we're compatible with.
+  VersionConstraint constraint = VersionConstraint.parse('>=0.3.0 <0.4.0');
   List<String> parts = tag.split('-');
   String powersyncPart = parts[1];
 
