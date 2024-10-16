@@ -16,6 +16,7 @@ dependencies:
   logging: ^1.2.0
   universal_io: ^2.2.2
   sqlite_async: ^0.9.0
+  http: ^1.2.2
 
 dev_dependencies:
   flutter_test:
