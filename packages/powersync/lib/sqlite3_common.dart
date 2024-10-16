@@ -2,4 +2,4 @@
 /// adding it as a direct dependency.
 library;
 
-export 'package:sqlite_async/sqlite3_common.dart';
+export 'package:powersync_core/sqlite3_common.dart';
