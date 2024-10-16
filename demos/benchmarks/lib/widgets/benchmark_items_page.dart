@@ -101,6 +101,13 @@ class _BenchmarkItemsWidgetState extends State<BenchmarkItemsWidget> {
               "Busy with sync... ${syncDuration.inMilliseconds}ms / $count operations"));
     }
 
+    final latencies =
+        _data.map((e) => e.latency).where((e) => e != null).toList();
+    final totalLatency = latencies.fold(0, (a, b) => a + b!.inMicroseconds);
+    final averageLatencyMicros =
+        latencies.isNotEmpty ? totalLatency / latencies.length : 0;
+    final latencyString = (averageLatencyMicros / 1000.0).toStringAsFixed(1);
+
     final clearButton = TextButton.icon(
         label: const Text('Delete all'),
         onPressed: () {
@@ -157,7 +164,7 @@ class _BenchmarkItemsWidgetState extends State<BenchmarkItemsWidget> {
         overflowSpacing: 8.0,
         children: <Widget>[
           Text(
-              'First sync duration: ${syncDuration.inMilliseconds}ms / $count operations'),
+              'First sync duration: ${syncDuration.inMilliseconds}ms / $count operations / ${latencyString}ms latency'),
           create100,
           create1000,
           resyncButton,
