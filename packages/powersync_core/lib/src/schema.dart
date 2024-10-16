@@ -13,8 +13,15 @@ class Schema {
   Map<String, dynamic> toJson() => {'tables': tables};
 
   void validate() {
+    Set<String> tableNames = {};
     for (var table in tables) {
       table.validate();
+
+      if (tableNames.contains(table.name)) {
+        throw AssertionError("Duplicate table name: ${table.name}");
+      }
+
+      tableNames.add(table.name);
     }
   }
 }

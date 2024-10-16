@@ -321,6 +321,41 @@ void main() {
       );
     });
 
+    test('Schema without duplicate table names', () {
+      final schema = Schema([
+        Table('duplicate', [
+          Column.text('name'),
+        ]),
+        Table('not_duplicate', [
+          Column.text('name'),
+        ]),
+      ]);
+
+      expect(() => schema.validate(), returnsNormally);
+    });
+
+    test('Schema with duplicate table names', () {
+      final schema = Schema([
+        Table('clone', [
+          Column.text('name'),
+        ]),
+        Table('clone', [
+          Column.text('name'),
+        ]),
+      ]);
+
+      expect(
+        () => schema.validate(),
+        throwsA(
+          isA<AssertionError>().having(
+            (e) => e.message,
+            'message',
+            'Duplicate table name: clone',
+          ),
+        ),
+      );
+    });
+
     test('toJson method', () {
       final table = Table('users', [
         Column('name', ColumnType.text),
