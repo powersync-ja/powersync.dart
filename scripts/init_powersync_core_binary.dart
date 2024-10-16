@@ -10,7 +10,7 @@ final sqliteUrl =
 
 void main() async {
   final sqliteCoreFilename = getLibraryForPlatform();
-  final powersyncPath = "packages/powersync";
+  final powersyncPath = "packages/powersync_core";
   final sqliteCorePath = '$powersyncPath/$sqliteCoreFilename';
 
   // Download dynamic library

@@ -10,10 +10,10 @@ Future<void> main() async {
   /// The monorepo root assets directory
   final workerFilename = 'powersync_db.worker.js';
   final outputPath =
-      path.join(repoRoot, 'packages/powersync/assets/$workerFilename');
+      path.join(repoRoot, 'packages/powersync_core/assets/$workerFilename');
 
-  final workerSourcePath = path.join(
-      repoRoot, './packages/powersync/lib/src/web/powersync_db.worker.dart');
+  final workerSourcePath = path.join(repoRoot,
+      './packages/powersync_core/lib/src/web/powersync_db.worker.dart');
 
   // And compile worker code
   final process = await Process.run(
