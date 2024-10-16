@@ -67,7 +67,7 @@ class MyHomePage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: StatusAppBar(title: title),
-      body: Center(child: content),
+      body: content,
       floatingActionButton: floatingActionButton,
       drawer: Drawer(
         // Add a ListView to the drawer. This ensures the user can scroll

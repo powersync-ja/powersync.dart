@@ -22,32 +22,17 @@ class ListItemWidget extends StatelessWidget {
         ? '${item.uploadLatency!.inMilliseconds}ms'
         : '';
 
-    String subtitle =
-        '$latency / $uploadLatency / ${item.serverCreatedAt?.toIso8601String() ?? ''}';
+    String subtitle = item.latency == null
+        ? 'Syncing...'
+        : 'Sync latency: $latency / upload: $uploadLatency';
     return Card(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[
           ListTile(
-            leading: const Icon(Icons.list),
+            leading: const Icon(Icons.timer),
             title: Text(item.description),
             subtitle: Text(subtitle),
-          ),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: <Widget>[
-              IconButton(
-                iconSize: 30,
-                icon: const Icon(
-                  Icons.delete,
-                  color: Colors.red,
-                ),
-                tooltip: 'Delete Item',
-                alignment: Alignment.centerRight,
-                onPressed: delete,
-              ),
-              const SizedBox(width: 8),
-            ],
           ),
         ],
       ),

@@ -1,15 +1,14 @@
 // This file performs setup of the PowerSync database
 import 'dart:convert';
-import 'dart:io';
-
-import 'package:http/http.dart' as http;
 
 import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
 import 'package:logging/logging.dart';
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:powersync/powersync.dart';
 import 'package:powersync_benchmarks/models/benchmark_item.dart';
+import 'package:powersync_benchmarks/sync_timer.dart';
 
 import './app_config.dart';
 import './models/schema.dart';
@@ -75,6 +74,7 @@ class BackendConnector extends PowerSyncBackendConnector {
 
 /// Global reference to the database
 late final PowerSyncDatabase db;
+SyncTimer timer = SyncTimer();
 
 Future<String> getDatabasePath() async {
   const dbFilename = 'powersync-benchmarks.db';
@@ -86,6 +86,16 @@ Future<String> getDatabasePath() async {
   return join(dir.path, dbFilename);
 }
 
+var currentConnector = BackendConnector();
+
+Future<void> resync() async {
+  await db.disconnectAndClear();
+  timer.start(db);
+  db.connect(
+      connector: currentConnector,
+      crudThrottleTime: const Duration(milliseconds: 1));
+}
+
 Future<void> openDatabase() async {
   // Open the local database
   db = PowerSyncDatabase(
@@ -94,8 +104,7 @@ Future<void> openDatabase() async {
 
   BenchmarkItem.updateItemBenchmarks();
 
-  var currentConnector = BackendConnector();
-
+  timer.start(db);
   db.connect(
       connector: currentConnector,
       crudThrottleTime: const Duration(milliseconds: 1));

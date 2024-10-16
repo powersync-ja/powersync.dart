@@ -64,6 +64,12 @@ class BenchmarkItem {
     return BenchmarkItem.fromRow(results);
   }
 
+  static Future<void> deleteAll() async {
+    await db.execute(
+      'DELETE FROM benchmark_items',
+    );
+  }
+
   /// Delete this item.
   Future<void> delete() async {
     await db.execute('DELETE FROM benchmark_items WHERE id = ?', [id]);

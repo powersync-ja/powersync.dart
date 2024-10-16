@@ -7,6 +7,8 @@ import '../main.dart';
 import '../models/benchmark_item.dart';
 import '../powersync.dart';
 
+var itemIndex = 1;
+
 class BenchmarkItemsPage extends StatelessWidget {
   const BenchmarkItemsPage({super.key});
 
@@ -14,9 +16,9 @@ class BenchmarkItemsPage extends StatelessWidget {
   Widget build(BuildContext context) {
     const content = BenchmarkItemsWidget();
 
-    final button = FloatingActionButton(
+    final addButton = FloatingActionButton(
       onPressed: () {
-        BenchmarkItem.create('Benchmarks');
+        BenchmarkItem.create('Latency test ${itemIndex++}');
       },
       tooltip: 'Create Item',
       child: const Icon(Icons.add),
@@ -25,7 +27,7 @@ class BenchmarkItemsPage extends StatelessWidget {
     final page = MyHomePage(
       title: 'Benchmarks',
       content: content,
-      floatingActionButton: button,
+      floatingActionButton: addButton,
     );
     return page;
   }
@@ -44,7 +46,9 @@ class _BenchmarkItemsWidgetState extends State<BenchmarkItemsWidget> {
   List<BenchmarkItem> _data = [];
   bool hasSynced = false;
   StreamSubscription? _subscription;
+  StreamSubscription? _countSubscription;
   StreamSubscription? _syncStatusSubscription;
+  int? count;
 
   _BenchmarkItemsWidgetState();
 
@@ -58,6 +62,15 @@ class _BenchmarkItemsWidgetState extends State<BenchmarkItemsWidget> {
       }
       setState(() {
         _data = data;
+      });
+    });
+    _countSubscription =
+        db.watch('select count() as count from ps_oplog').listen((data) {
+      if (!context.mounted) {
+        return;
+      }
+      setState(() {
+        count = data.first['count'];
       });
     });
     _syncStatusSubscription = db.statusStream.listen((status) {
@@ -75,17 +88,55 @@ class _BenchmarkItemsWidgetState extends State<BenchmarkItemsWidget> {
     super.dispose();
     _subscription?.cancel();
     _syncStatusSubscription?.cancel();
+    _countSubscription?.cancel();
   }
 
   @override
   Widget build(BuildContext context) {
-    return !hasSynced
-        ? const Text("Busy with sync...")
-        : ListView(
+    Duration? syncDuration = timer.syncTime ?? timer.elapsed;
+    if (!hasSynced) {
+      return Center(
+          child: Text(
+              "Busy with sync... ${syncDuration.inMilliseconds}ms / $count operations"));
+    }
+
+    final clearButton = TextButton.icon(
+        label: const Text('Delete all'),
+        onPressed: () {
+          BenchmarkItem.deleteAll();
+        },
+        icon: const Icon(Icons.delete));
+
+    final resyncButton = TextButton.icon(
+        label: const Text('Resync'),
+        onPressed: () async {
+          await resync();
+        },
+        icon: const Icon(Icons.sync));
+
+    var buttons = Padding(
+      padding: const EdgeInsets.all(8.0),
+      child: OverflowBar(
+        alignment: MainAxisAlignment.end,
+        spacing: 8.0,
+        overflowSpacing: 8.0,
+        children: <Widget>[
+          Text(
+              'First sync duration: ${syncDuration.inMilliseconds}ms / $count operations'),
+          resyncButton,
+          clearButton,
+        ],
+      ),
+    );
+    return Column(children: [
+      buttons,
+      Expanded(
+        child: ListView(
             padding: const EdgeInsets.symmetric(vertical: 8.0),
             children: _data.map((list) {
               return ListItemWidget(item: list);
-            }).toList(),
-          );
+            }).toList()),
+      )
+    ]);
   }
 }
