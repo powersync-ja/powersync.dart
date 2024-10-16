@@ -1,4 +1,4 @@
-/// PowerSync Dart SDK.
+/// PowerSync Flutter SDK.
 ///
 /// Use [PowerSyncDatabase] to open a database.
 library;

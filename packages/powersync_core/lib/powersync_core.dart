@@ -1,6 +1,6 @@
-/// Support for doing something awesome.
+/// PowerSync Dart SDK.
 ///
-/// More dartdocs go here.
+/// Use [PowerSyncDatabase] to open a database.
 library;
 
 export 'src/connector.dart';
@@ -13,3 +13,4 @@ export 'src/powersync_database.dart';
 export 'src/schema.dart';
 export 'src/sync_status.dart';
 export 'src/uuid.dart';
+export 'src/open_factory/abstract_powersync_open_factory.dart';
