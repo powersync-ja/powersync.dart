@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 
@@ -114,6 +115,40 @@ class _BenchmarkItemsWidgetState extends State<BenchmarkItemsWidget> {
         },
         icon: const Icon(Icons.sync));
 
+    final create100 = TextButton.icon(
+        label: const Text('Create 100'),
+        onPressed: () async {
+          var items = <String>[];
+          for (var i = 1; i <= 100; i++) {
+            items.add('Batch Test $itemIndex/$i');
+          }
+          itemIndex += 1;
+          await db.execute('''
+      INSERT INTO
+        benchmark_items(id, description, client_created_at)
+      SELECT uuid(), e.value, datetime('now', 'subsecond') || 'Z'
+      FROM json_each(?) e
+      ''', [jsonEncode(items)]);
+        },
+        icon: const Icon(Icons.create));
+
+    final create1000 = TextButton.icon(
+        label: const Text('Create 1000'),
+        onPressed: () async {
+          var items = <String>[];
+          for (var i = 1; i <= 1000; i++) {
+            items.add('Batch Test $itemIndex/$i');
+          }
+          itemIndex += 1;
+          await db.execute('''
+      INSERT INTO
+        benchmark_items(id, description, client_created_at)
+      SELECT uuid(), e.value, datetime('now', 'subsecond') || 'Z'
+      FROM json_each(?) e
+      ''', [jsonEncode(items)]);
+        },
+        icon: const Icon(Icons.create));
+
     var buttons = Padding(
       padding: const EdgeInsets.all(8.0),
       child: OverflowBar(
@@ -123,6 +158,8 @@ class _BenchmarkItemsWidgetState extends State<BenchmarkItemsWidget> {
         children: <Widget>[
           Text(
               'First sync duration: ${syncDuration.inMilliseconds}ms / $count operations'),
+          create100,
+          create1000,
           resyncButton,
           clearButton,
         ],
