@@ -11,6 +11,7 @@ final sqliteUrl =
 void main() async {
   final sqliteCoreFilename = getLibraryForPlatform();
   final powersyncPath = "packages/powersync_core";
+  final powersyncCipherPath = "packages/powersync_sqlcipher";
   final sqliteCorePath = '$powersyncPath/$sqliteCoreFilename';
 
   // Download dynamic library
@@ -23,9 +24,12 @@ void main() async {
     if (await originalFile.exists()) {
       try {
         // Rename the original file to the new file name
-        await originalFile.rename("$powersyncPath/$newFileName");
+        final renamedFile =
+            await originalFile.rename("$powersyncPath/$newFileName");
         print(
             'File renamed successfully from $sqliteCoreFilename to $newFileName');
+        await renamedFile.copy("$powersyncCipherPath/$newFileName");
+        print('$newFileName copied to $powersyncCipherPath');
       } catch (e) {
         throw IOException('Error renaming file: $e');
       }
