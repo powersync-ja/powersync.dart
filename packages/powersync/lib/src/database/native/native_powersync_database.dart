@@ -143,7 +143,7 @@ class PowerSyncDatabaseImpl
     await isInitialized;
     final dbRef = database.isolateConnectionFactory();
     ReceivePort rPort = ReceivePort();
-    StreamSubscription? updateSubscription;
+    StreamSubscription? crudUpdateSubscription;
     rPort.listen((data) async {
       if (data is List) {
         String action = data[0];
@@ -160,9 +160,9 @@ class PowerSyncDatabaseImpl
           });
         } else if (action == 'init') {
           SendPort port = data[1];
-          var throttled =
-              UpdateNotification.throttleStream(updates, crudThrottleTime);
-          updateSubscription = throttled.listen((event) {
+          var crudStream =
+              database.onChange(['ps_crud'], throttle: crudThrottleTime);
+          crudUpdateSubscription = crudStream.listen((event) {
             port.send(['update']);
           });
           disconnector.onAbort.then((_) {
@@ -179,7 +179,7 @@ class PowerSyncDatabaseImpl
           // Clear status apart from lastSyncedAt
           setStatus(SyncStatus(lastSyncedAt: currentStatus.lastSyncedAt));
           rPort.close();
-          updateSubscription?.cancel();
+          crudUpdateSubscription?.cancel();
         } else if (action == 'log') {
           LogRecord record = data[1];
           logger.log(
@@ -281,7 +281,7 @@ Future<void> _powerSyncDatabaseIsolate(
     _PowerSyncDatabaseIsolateArgs args) async {
   final sPort = args.sPort;
   ReceivePort rPort = ReceivePort();
-  StreamController updateController = StreamController.broadcast();
+  StreamController<String> crudUpdateController = StreamController.broadcast();
   final upstreamDbClient = args.dbRef.upstreamPort.open();
 
   CommonDatabase? db;
@@ -292,14 +292,14 @@ Future<void> _powerSyncDatabaseIsolate(
     if (message is List) {
       String action = message[0];
       if (action == 'update') {
-        updateController.add('update');
+        crudUpdateController.add('update');
       } else if (action == 'close') {
         // The SyncSqliteConnection uses this mutex
         // It needs to be closed before killing the isolate
         // in order to free the mutex for other operations.
         await mutex.close();
         db?.dispose();
-        updateController.close();
+        crudUpdateController.close();
         upstreamDbClient.close();
         // Abort any open http requests, and wait for it to be closed properly
         await openedStreamingSync?.abort();
@@ -349,7 +349,7 @@ Future<void> _powerSyncDatabaseIsolate(
         credentialsCallback: loadCredentials,
         invalidCredentialsCallback: invalidateCredentials,
         uploadCrud: uploadCrud,
-        updateStream: updateController.stream,
+        crudUpdateTriggerStream: crudUpdateController.stream,
         retryDelay: args.retryDelay,
         client: http.Client(),
         syncParameters: args.parameters);

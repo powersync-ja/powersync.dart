@@ -135,6 +135,9 @@ class PowerSyncDatabaseImpl
 
     await isInitialized;
 
+    final crudStream =
+        database.onChange(['ps_crud'], throttle: crudThrottleTime);
+
     // TODO better multitab support
     final storage = BucketStorage(database);
     final sync = StreamingSyncImplementation(
@@ -142,7 +145,7 @@ class PowerSyncDatabaseImpl
         credentialsCallback: connector.getCredentialsCached,
         invalidCredentialsCallback: connector.fetchCredentials,
         uploadCrud: () => connector.uploadData(this),
-        updateStream: updates,
+        crudUpdateTriggerStream: crudStream,
         retryDelay: Duration(seconds: 3),
         client: FetchClient(mode: RequestMode.cors),
         syncParameters: params,
