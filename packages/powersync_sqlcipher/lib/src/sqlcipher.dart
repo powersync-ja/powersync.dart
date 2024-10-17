@@ -31,11 +31,8 @@ class PowerSyncSQLCipherOpenFactory extends PowerSyncOpenFactory {
     var db = super.open(options);
     final versionRows = db.select('PRAGMA cipher_version');
     if (versionRows.isEmpty) {
-      throw AssertionError(
+      throw StateError(
           "SQLCipher was not initialized correctly. 'PRAGMA cipher_version' returned no rows.");
-    } else {
-      //TODO: Remove before publishing
-      print("RUNNING with cipher ${versionRows.rows.first}");
     }
     return db;
   }
