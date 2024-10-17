@@ -363,7 +363,8 @@ Future<void> _powerSyncDatabaseIsolate(
     Set<String> updatedTables = {};
 
     void maybeFireUpdates() {
-      if (updatedTables.isNotEmpty) {
+      // Only fire updates when we're not in a transaction
+      if (updatedTables.isNotEmpty && db?.autocommit == true) {
         upstreamDbClient.fire(UpdateNotification(updatedTables));
         updatedTables.clear();
         updateDebouncer?.cancel();
@@ -375,7 +376,7 @@ Future<void> _powerSyncDatabaseIsolate(
       updatedTables.add(event.tableName);
 
       updateDebouncer ??=
-          Timer(const Duration(milliseconds: 10), maybeFireUpdates);
+          Timer(const Duration(milliseconds: 1), maybeFireUpdates);
     });
   }, (error, stack) {
     // Properly dispose the database if an uncaught error occurs.
