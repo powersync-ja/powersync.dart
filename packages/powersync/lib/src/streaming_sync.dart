@@ -27,7 +27,7 @@ class StreamingSyncImplementation {
 
   final Future<void> Function() uploadCrud;
 
-  final Stream updateStream;
+  final Stream crudUpdateTriggerStream;
 
   final StreamController<SyncStatus> _statusStreamController =
       StreamController<SyncStatus>.broadcast();
@@ -59,7 +59,7 @@ class StreamingSyncImplementation {
       required this.credentialsCallback,
       this.invalidCredentialsCallback,
       required this.uploadCrud,
-      required this.updateStream,
+      required this.crudUpdateTriggerStream,
       required this.retryDelay,
       this.syncParameters,
       required http.Client client,
@@ -155,7 +155,7 @@ class StreamingSyncImplementation {
   Future<void> crudLoop() async {
     await uploadAllCrud();
 
-    await for (var _ in updateStream) {
+    await for (var _ in crudUpdateTriggerStream) {
       if (_abort?.aborted == true) {
         break;
       }
@@ -169,11 +169,11 @@ class StreamingSyncImplementation {
       CrudEntry? checkedCrudItem;
 
       while (true) {
-        _updateStatus(uploading: true);
         try {
           // This is the first item in the FIFO CRUD queue.
           CrudEntry? nextCrudItem = await adapter.nextCrudItem();
           if (nextCrudItem != null) {
+            _updateStatus(uploading: true);
             if (nextCrudItem.clientId == checkedCrudItem?.clientId) {
               // This will force a higher log level than exceptions which are caught here.
               isolateLogger.warning(
