@@ -366,7 +366,7 @@ packages:
       path: "../../packages/powersync"
       relative: true
     source: path
-    version: "1.8.6"
+    version: "1.8.7"
   powersync_core:
     dependency: "direct overridden"
     description:
