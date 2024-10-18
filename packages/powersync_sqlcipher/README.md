@@ -39,7 +39,7 @@ db = PowerSyncDatabase.withFactory(cipherFactory, schema: schema);
 Install the latest version of the package, for example:
 
 ```
-flutter pub add powersync_sqlcipher: ^0.1.0
+flutter pub add powersync_sqlcipher
 ```
 
 The latest version can be found [here](https://pub.dev/packages/powersync_sqlcipher/versions).
