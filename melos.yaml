@@ -33,7 +33,7 @@ scripts:
 
   prepare:demos:
     description: Download SQLite3 wasm for demos
-    run: dart run powersync_core:setup_web --no-worker
+    run: dart run powersync:setup_web --no-worker
     exec:
       concurrency: 1
     packageFilters:
@@ -46,7 +46,7 @@ scripts:
     exec:
       concurrency: 1
     packageFilters:
-      scope: powersync_core
+      scope: powersync
 
   analyze:demos:
     description: Analyze Dart code in demos.

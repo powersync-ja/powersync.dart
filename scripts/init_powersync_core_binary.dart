@@ -1,5 +1,5 @@
-/// Downloads the powersync dynamic library and copies it to the powersync package directory
-/// This is only necessary for running unit tests in the powersync package
+/// Downloads the powersync dynamic library and copies it to the powersync_core package directory
+/// This is only necessary for running unit tests in the powersync_core package
 import 'dart:ffi';
 import 'dart:io';
 
@@ -24,12 +24,9 @@ void main() async {
     if (await originalFile.exists()) {
       try {
         // Rename the original file to the new file name
-        final renamedFile =
-            await originalFile.rename("$powersyncPath/$newFileName");
+        await originalFile.rename("$powersyncPath/$newFileName");
         print(
             'File renamed successfully from $sqliteCoreFilename to $newFileName');
-        await renamedFile.copy("$powersyncCipherPath/$newFileName");
-        print('$newFileName copied to $powersyncCipherPath');
       } catch (e) {
         throw IOException('Error renaming file: $e');
       }
