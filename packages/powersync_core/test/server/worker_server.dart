@@ -24,7 +24,7 @@ Future<void> hybridMain(StreamChannel<Object?> channel) async {
 
   if (!(await File(workerOutputPath).exists())) {
     throw AssertionError(
-        'powersync_db.worker.js file should be present in the powersync/assets folder');
+        'powersync_db.worker.js file should be present in the powersync_core/assets folder');
   }
 
   final server = await HttpServer.bind('localhost', 0);
