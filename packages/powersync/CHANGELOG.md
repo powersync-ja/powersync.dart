@@ -1,3 +1,7 @@
+## 1.8.7
+
+- **FIX**: Validate duplicate table names. ([47f71888](https://github.com/powersync-ja/powersync.dart/commit/47f71888e9adcdcec08c8ee59cb46ac52bd46640))
+
 ## 1.8.6
 
 - Update dependency `sqlite_async` to v0.9.0
