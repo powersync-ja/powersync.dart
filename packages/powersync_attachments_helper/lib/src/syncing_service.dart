@@ -4,7 +4,7 @@ import 'dart:typed_data';
 import './attachments_queue.dart';
 import './local_storage_adapter.dart';
 import './remote_storage_adapter.dart';
-import 'package:powersync/powersync.dart';
+import 'package:powersync_core/powersync_core.dart';
 import 'attachments_queue_table.dart';
 import 'attachments_service.dart';
 
