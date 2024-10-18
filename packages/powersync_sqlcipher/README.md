@@ -2,7 +2,7 @@
   <a href="https://www.powersync.com" target="_blank"><img src="https://github.com/powersync-ja/.github/assets/7372448/d2538c43-c1a0-4c47-9a76-41462dba484f"/></a>
 </p>
 
-# PowerSync with SQLCipher SDK for Dart/Flutter
+# PowerSync with SQLCipher SDK for Flutter
 
 _[PowerSync](https://www.powersync.com) is a sync engine for building local-first apps with instantly-responsive UI/UX and simplified state transfer. Syncs between SQLite on the client-side and Postgres or MongoDB on the server-side (MySQL coming soon)._
 
@@ -18,28 +18,7 @@ flutter pub add powersync_sqlcipher
 
 Our [full SDK reference](https://docs.powersync.com/client-sdk-references/flutter) contains everything you need to know to get started implementing PowerSync in your project.
 
-### Demo app
-
-The easiest way to test out the alpha is to run the [Supabase Todo-List](./demos/supabase-todolist) demo app:
-
-1. Checkout [this repo's](https://github.com/powersync-ja/powersync.dart/tree/master) `master` branch.
-
-- Note: If you are an existing user updating to the latest code after a git pull, run `melos exec 'flutter pub upgrade'` in the repo's root and make sure it succeeds.
-
-2. Run `melos prepare` in the repo's root
-3. cd into the `demos/supabase-todolist` folder
-4. If you haven’t yet: `cp lib/app_config_template.dart lib/app_config.dart` (optionally update this config with your own Supabase and PowerSync project details).
-5. Run `flutter run -d chrome`
-
-### Installing PowerSync in your own project
-
-Install the latest version of the package, for example:
-
-```
-flutter pub add powersync_sqlcipher:'^0.1.0'
-```
-
-The latest version can be found [here](https://pub.dev/packages/powersync_sqlcipher/versions).
+This SDK requires a slightly different setup in order to encrypt the local database.
 
 ### Usage
 
@@ -50,10 +29,33 @@ import 'package/powersync_sqlcipher/powersync.dart';
 late final PowerSyncDatabase db;
 
 final cipherFactory = PowerSyncSQLCipherOpenFactory(
-      path: await getDatabasePath(), key: "fkdjskjnfds");
+      path: path, key: "sqlcipher-encryption-key");
 
 db = PowerSyncDatabase.withFactory(cipherFactory, schema: schema);
 ```
+
+### Installing PowerSync in your own project
+
+Install the latest version of the package, for example:
+
+```
+flutter pub add powersync_sqlcipher: ^0.1.0
+```
+
+The latest version can be found [here](https://pub.dev/packages/powersync_sqlcipher/versions).
+
+### Demo app
+
+The easiest way to test out the powersync is to run the [Supabase Todo-List](./demos/supabase-todolist) demo app:
+
+1. Checkout [this repo's](https://github.com/powersync-ja/powersync.dart/tree/master) `master` branch.
+
+- Note: If you are an existing user updating to the latest code after a git pull, run `melos exec 'flutter pub upgrade'` in the repo's root and make sure it succeeds.
+
+2. Run `melos prepare` in the repo's root
+3. cd into the `demos/supabase-todolist` folder
+4. If you haven’t yet: `cp lib/app_config_template.dart lib/app_config.dart` (optionally update this config with your own Supabase and PowerSync project details).
+5. Run `flutter run -d chrome`
 
 [comment]: # "The sections below need to be updated"
 
