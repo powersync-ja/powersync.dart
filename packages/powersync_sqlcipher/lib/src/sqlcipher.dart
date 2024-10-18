@@ -17,7 +17,7 @@ class PowerSyncSQLCipherOpenFactory extends PowerSyncOpenFactory {
     final basePragmaStatements = super.pragmaStatements(options);
     return [
       // Set the encryption key as the first statement
-      "PRAGMA KEY = '$key'",
+      "PRAGMA KEY = ${quoteString(key)}",
       // Include the default statements afterwards
       for (var statement in basePragmaStatements) statement
     ];

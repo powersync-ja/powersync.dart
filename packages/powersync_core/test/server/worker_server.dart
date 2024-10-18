@@ -17,7 +17,7 @@ Future<void> hybridMain(StreamChannel<Object?> channel) async {
 
   if (!(await File(sqliteOutputPath).exists())) {
     throw AssertionError(
-        'sqlite3.wasm file should be present in the powersync/assets folder');
+        'sqlite3.wasm file should be present in the powersync_core/assets folder');
   }
 
   final workerOutputPath = p.join(assetsDirectory, 'powersync_db.worker.js');

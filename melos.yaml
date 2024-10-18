@@ -42,7 +42,7 @@ scripts:
 
   prepare:assets:
     description: Download Sqlite3 WASM for tests
-    run: dart ./bin/setup_web.dart --no-worker --output-dir assets
+    run: dart ./bin/setup_web.dart --no-worker --output-dir ../powersync_core/assets
     exec:
       concurrency: 1
     packageFilters:
