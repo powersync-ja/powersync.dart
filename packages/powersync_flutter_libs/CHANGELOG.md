@@ -1,3 +1,7 @@
+## 0.4.1
+
+ - powersync-sqlite-core v0.3.4
+
 ## 0.4.0
 
  - powersync-sqlite-core v0.3.0
