@@ -470,14 +470,14 @@ packages:
       path: "../../packages/powersync"
       relative: true
     source: path
-    version: "1.8.6"
+    version: "1.8.7"
   powersync_attachments_helper:
     dependency: "direct main"
     description:
       path: "../../packages/powersync_attachments_helper"
       relative: true
     source: path
-    version: "0.6.10"
+    version: "0.6.11"
   powersync_flutter_libs:
     dependency: "direct overridden"
     description:
