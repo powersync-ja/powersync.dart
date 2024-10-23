@@ -22,7 +22,7 @@ Our [full SDK reference](https://docs.powersync.com/client-sdk-references/flutte
 
 ## **Web support - Open alpha**
 
-Web support in version 1.6.0 is currently in its alpha stage. This README has been updated to reflect changes relevant to this alpha release.
+Web support in version ^1.6.0 is currently in its alpha stage. This README has been updated to reflect changes relevant to this alpha release.
 
 ### Demo app
 
@@ -42,7 +42,7 @@ The easiest way to test out the alpha is to run the [Supabase Todo-List](./demos
 Install the latest version of the package, for example:
 
 ```
-flutter pub add powersync:'^1.6.0'
+flutter pub add powersync:'^1.8.7'
 ```
 
 The latest version can be found [here](https://pub.dev/packages/powersync/versions).

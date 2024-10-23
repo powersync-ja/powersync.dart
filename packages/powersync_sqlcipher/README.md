@@ -6,7 +6,7 @@
 
 _[PowerSync](https://www.powersync.com) is a sync engine for building local-first apps with instantly-responsive UI/UX and simplified state transfer. Syncs between SQLite on the client-side and Postgres or MongoDB on the server-side (MySQL coming soon)._
 
-This package (`powersync_sqlcipher`) is the PowerSync client SDK for Dart/Flutter with encryption enabled using SQLCipher.
+This package (`powersync_sqlcipher`) is the PowerSync client SDK for Flutter with encryption enabled using SQLCipher.
 
 # Installation
 
@@ -18,7 +18,15 @@ flutter pub add powersync_sqlcipher
 
 Our [full SDK reference](https://docs.powersync.com/client-sdk-references/flutter) contains everything you need to know to get started implementing PowerSync in your project.
 
-This SDK requires a slightly different setup in order to encrypt the local database.
+### Installing PowerSync with SQLCipher encryption in your own project
+
+Install the latest version of the package, for example:
+
+```
+flutter pub add powersync_sqlcipher
+```
+
+This SDK requires a slightly different setup to powersync in order to encrypt the local database.
 
 ### Usage
 
@@ -34,38 +42,15 @@ final cipherFactory = PowerSyncSQLCipherOpenFactory(
 db = PowerSyncDatabase.withFactory(cipherFactory, schema: schema);
 ```
 
-### Installing PowerSync in your own project
-
-Install the latest version of the package, for example:
-
-```
-flutter pub add powersync_sqlcipher
-```
-
 The latest version can be found [here](https://pub.dev/packages/powersync_sqlcipher/versions).
-
-### Demo app
-
-The easiest way to test out the powersync is to run the [Supabase Todo-List](./demos/supabase-todolist) demo app:
-
-1. Checkout [this repo's](https://github.com/powersync-ja/powersync.dart/tree/master) `master` branch.
-
-- Note: If you are an existing user updating to the latest code after a git pull, run `melos exec 'flutter pub upgrade'` in the repo's root and make sure it succeeds.
-
-2. Run `melos prepare` in the repo's root
-3. cd into the `demos/supabase-todolist` folder
-4. If you haven’t yet: `cp lib/app_config_template.dart lib/app_config.dart` (optionally update this config with your own Supabase and PowerSync project details).
-5. Run `flutter run -d chrome`
-
-[comment]: # "The sections below need to be updated"
 
 # Changelog
 
-A changelog for this SDK is available [here](https://releases.powersync.com/announcements/flutter-client-sdk).
+A changelog for this SDK is available [here](https://pub.dev/packages/powersync_sqlcipher/changelog).
 
 # API Reference
 
-The full API reference for this SDK can be found [here](https://pub.dev/documentation/powersync/latest/powersync/powersync-library.html).
+The full API reference for this SDK can be found [here](https://pub.dev/documentation/powersync_sqlcipher/latest/powersync_sqlcipher/powersync_sqlcipher-library.html).
 
 # Examples
 
