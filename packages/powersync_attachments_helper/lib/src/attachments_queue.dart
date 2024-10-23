@@ -6,7 +6,7 @@ import './local_storage_adapter.dart';
 import './remote_storage_adapter.dart';
 import './syncing_service.dart';
 import 'package:logging/logging.dart';
-import 'package:powersync/powersync.dart';
+import 'package:powersync_core/powersync_core.dart';
 
 /// Logger for the attachment queue
 final log = Logger('AttachmentQueue');

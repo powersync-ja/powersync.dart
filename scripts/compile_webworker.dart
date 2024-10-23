@@ -12,8 +12,8 @@ Future<void> main() async {
   final outputPath =
       path.join(repoRoot, 'packages/powersync/assets/$workerFilename');
 
-  final workerSourcePath = path.join(
-      repoRoot, './packages/powersync/lib/src/web/powersync_db.worker.dart');
+  final workerSourcePath = path.join(repoRoot,
+      './packages/powersync_core/lib/src/web/powersync_db.worker.dart');
 
   // And compile worker code
   final process = await Process.run(
@@ -32,6 +32,13 @@ Future<void> main() async {
     throw Exception('Could not compile worker: ${process.stdout.toString()}');
   }
 
+  final workerFile = File(outputPath);
+
+  //Copy worker to powersync_core
+  final powersyncCoreAssetsPath =
+      path.join(repoRoot, 'packages/powersync_core/assets/$workerFilename');
+  workerFile.copySync(powersyncCoreAssetsPath);
+
   // Copy this to all demo apps web folders
   final demosRoot = path.join(repoRoot, 'demos');
   final demoDirectories =
@@ -44,6 +51,6 @@ Future<void> main() async {
       continue;
     }
     final demoOutputPath = path.join(demoWebDir, workerFilename);
-    File(outputPath).copySync(demoOutputPath);
+    workerFile.copySync(demoOutputPath);
   }
 }
