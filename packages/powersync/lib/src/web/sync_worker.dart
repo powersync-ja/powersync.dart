@@ -134,6 +134,10 @@ class _SyncRunner {
               sync?.abort();
               sync = null;
 
+              // The only reliable notification we get for a client closing is
+              // when that client is currently hosting the database. Use the
+              // opportunity to check whether secondary clients have also closed
+              // in the meantime.
               final newHost = await _collectActiveClients();
               if (newHost == null) {
                 _logger.info('No client remains');
