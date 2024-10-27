@@ -40,7 +40,6 @@ dev_dependencies:
   shelf_static: ^1.1.2
   stream_channel: ^2.1.2
   path: ^1.8.3
-  js: ">=0.6.7 <0.8.0"
 
 platforms:
   android:

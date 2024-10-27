@@ -40,6 +40,11 @@ enum SyncWorkerMessageType {
   /// of [SerializedSyncStatus].
   notifySyncStatus,
 
+  /// Notifies clients about a log event emitted by the worker (typically only
+  /// used when workers were compiled in debug mode).
+  /// The payload is a [JSString].
+  logEvent,
+
   okResponse,
   errorResponse,
 }
@@ -253,6 +258,10 @@ final class WorkerCommunicationChannel {
           return;
         case SyncWorkerMessageType.notifySyncStatus:
           _events.add((type, message.payload));
+          return;
+        case SyncWorkerMessageType.logEvent:
+          final msg = (message.payload as JSString).toDart;
+          _logger.info('[Sync Worker]: $msg');
           return;
       }
 

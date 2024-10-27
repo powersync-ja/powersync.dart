@@ -142,7 +142,7 @@ class PowerSyncDatabaseImpl
     final storage = BucketStorage(database);
     StreamingSync sync;
     // Try using a shared worker for the synchronization implementation to avoid
-    // duplicate work across tabs.
+    // duplicating work across tabs.
     try {
       sync = await SyncWorkerHandle.start(
         this,

@@ -27,5 +27,9 @@ dev_dependencies:
 
   flutter_lints: ^3.0.1
 
+dependency_overrides:
+  sqlite_async:
+    path: /home/simon/src/sqlite_async.dart/packages/sqlite_async
+
 flutter:
   uses-material-design: true
