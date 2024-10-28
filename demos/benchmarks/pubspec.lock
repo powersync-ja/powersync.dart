@@ -297,14 +297,14 @@ packages:
       path: "../../packages/powersync"
       relative: true
     source: path
-    version: "1.8.6"
+    version: "1.8.8"
   powersync_flutter_libs:
     dependency: "direct overridden"
     description:
       path: "../../packages/powersync_flutter_libs"
       relative: true
     source: path
-    version: "0.4.0"
+    version: "0.4.1"
   pub_semver:
     dependency: transitive
     description:

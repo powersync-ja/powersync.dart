@@ -93,6 +93,7 @@ Future<void> resync() async {
   timer.start(db);
   db.connect(
       connector: currentConnector,
+      params: {'size_bucket': AppConfig.sizeBucket},
       crudThrottleTime: const Duration(milliseconds: 1));
 }
 
