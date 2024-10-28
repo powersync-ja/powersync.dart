@@ -151,8 +151,8 @@ void main() {
           [testId, 'INFO', 'test log']);
 
       expect(
-          await powersync
-              .getAll("SELECT data ->> 'id' as id FROM ps_crud ORDER BY id"),
+          await powersync.getAll(
+              "SELECT json_extract(data, '\$.id') as id FROM ps_crud ORDER BY id"),
           equals([
             {'id': testId}
           ]));
@@ -179,8 +179,8 @@ void main() {
               .get('SELECT quantity FROM assets WHERE id = ?', [testId]),
           equals({'quantity': bigNumber}));
       expect(
-          await powersync
-              .getAll('SELECT data ->> \'id\' as id FROM ps_crud ORDER BY id'),
+          await powersync.getAll(
+              "SELECT json_extract(data, '\$.id') as id FROM ps_crud ORDER BY id"),
           equals([
             {"id": testId}
           ]));
