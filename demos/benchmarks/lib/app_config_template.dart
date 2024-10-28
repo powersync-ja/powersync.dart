@@ -4,4 +4,5 @@ class AppConfig {
   static const String powersyncUrl = 'http://localhost:8080';
   static const String backendUrl = 'http://localhost:6060';
   static const String token = '';
+  static const String sizeBucket = '10k';
 }
