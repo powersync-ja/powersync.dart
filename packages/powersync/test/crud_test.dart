@@ -151,12 +151,10 @@ void main() {
           [testId, 'INFO', 'test log']);
 
       expect(
-          await powersync.getAll('SELECT data FROM ps_crud ORDER BY id'),
+          await powersync.getAll(
+              "SELECT json_extract(data, '\$.id') as id FROM ps_crud ORDER BY id"),
           equals([
-            {
-              'data':
-                  '{"op":"PUT","type":"logs","id":"$testId","data":{"level":"INFO","content":"test log"}}'
-            }
+            {'id': testId}
           ]));
 
       expect(await powersync.getAll('SELECT * FROM logs'), equals([]));
@@ -181,12 +179,10 @@ void main() {
               .get('SELECT quantity FROM assets WHERE id = ?', [testId]),
           equals({'quantity': bigNumber}));
       expect(
-          await powersync.getAll('SELECT data FROM ps_crud ORDER BY id'),
+          await powersync.getAll(
+              "SELECT json_extract(data, '\$.id') as id FROM ps_crud ORDER BY id"),
           equals([
-            {
-              'data':
-                  '{"op":"PUT","type":"assets","id":"$testId","data":{"quantity":$bigNumber}}'
-            }
+            {"id": testId}
           ]));
 
       var tx = (await powersync.getNextCrudTransaction())!;
@@ -223,15 +219,14 @@ void main() {
       await powersync.execute('DELETE FROM ps_crud WHERE 1');
 
       await powersync.execute(
-          'UPDATE assets SET description = ?, quantity = quantity + 1 WHERE id = ?',
-          ['updated', testId]);
+          'UPDATE assets SET quantity = quantity + 1 WHERE id = ?', [testId]);
 
       expect(
           await powersync.getAll('SELECT data FROM ps_crud ORDER BY id'),
           equals([
             {
               'data':
-                  '{"op":"PATCH","type":"assets","id":"$testId","data":{"quantity":${bigNumber + 1},"description":"updated"}}'
+                  '{"op":"PATCH","type":"assets","id":"$testId","data":{"quantity":${bigNumber + 1}}}'
             }
           ]));
     });

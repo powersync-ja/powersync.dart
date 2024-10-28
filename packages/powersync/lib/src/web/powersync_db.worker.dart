@@ -20,10 +20,9 @@ final class PowerSyncAsyncSqliteController extends AsyncSqliteController {
   @override
   Future<WorkerDatabase> openDatabase(
       WasmSqlite3 sqlite3, String path, String vfs) async {
-    final db = sqlite3.open(path, vfs: vfs);
-    setupPowerSyncDatabase(db);
-
-    return AsyncSqliteDatabase(database: db);
+    final asyncDb = await super.openDatabase(sqlite3, path, vfs);
+    setupPowerSyncDatabase(asyncDb.database);
+    return asyncDb;
   }
 
   @override
