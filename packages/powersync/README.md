@@ -4,7 +4,7 @@
 
 # PowerSync SDK for Dart/Flutter
 
-*[PowerSync](https://www.powersync.com) is a sync engine for building local-first apps with instantly-responsive UI/UX and simplified state transfer. Syncs between SQLite on the client-side and Postgres or MongoDB on the server-side (MySQL coming soon).*
+*[PowerSync](https://www.powersync.com) is a sync engine for building local-first apps with instantly-responsive UI/UX and simplified state transfer. Syncs between SQLite on the client-side and Postgres, MongoDB or MySQL on the server-side.*
 
 This package (`powersync`) is the PowerSync client SDK for Dart/Flutter.
 
