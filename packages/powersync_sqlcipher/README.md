@@ -10,7 +10,6 @@ This package (`powersync_sqlcipher`) is the PowerSync client SDK for Flutter wit
 
 If you do not require encryption, we recommend using the [`powersync`](/packages/powersync/README.md) SDK.
 
-
 ### Installing PowerSync with SQLCipher encryption in your own project
 
 Install the latest version of the package, for example:
@@ -21,7 +20,6 @@ flutter pub add powersync_sqlcipher
 
 Version history can be found [here](https://pub.dev/packages/powersync_sqlcipher/versions).
 
-)
 ### Usage
 
 This SDK requires a slightly different setup to the `powersync` package in order to encrypt the local database:
@@ -33,7 +31,7 @@ import 'package/powersync_sqlcipher/powersync.dart';
 late final PowerSyncDatabase db;
 
 final cipherFactory = PowerSyncSQLCipherOpenFactory(
-      path: path, key: "sqlcipher-encryption-key");
+      path: path, key: "sqlcipher-encryption-key"); // https://www.zetetic.net/sqlcipher/sqlcipher-api/#key
 
 db = PowerSyncDatabase.withFactory(cipherFactory, schema: schema);
 ```
