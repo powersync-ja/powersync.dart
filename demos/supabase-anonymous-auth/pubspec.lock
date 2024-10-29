@@ -502,10 +502,10 @@ packages:
     dependency: transitive
     description:
       name: sqlite3
-      sha256: "45f168ae2213201b54e09429ed0c593dc2c88c924a1488d6f9c523a255d567cb"
+      sha256: bb174b3ec2527f9c5f680f73a89af8149dd99782fbb56ea88ad0807c5638f2ed
       url: "https://pub.dev"
     source: hosted
-    version: "2.4.6"
+    version: "2.4.7"
   sqlite3_flutter_libs:
     dependency: transitive
     description:
@@ -518,18 +518,18 @@ packages:
     dependency: transitive
     description:
       name: sqlite3_web
-      sha256: b4043336e74cac54d3ca44c90434a3c310550b9a80851b09ad1af282af0df6d4
+      sha256: f22d1dda7a40be0867984f55cdf5c2d599e5f05d3be4a642d78f38b38983f554
       url: "https://pub.dev"
     source: hosted
-    version: "0.1.3"
+    version: "0.2.0"
   sqlite_async:
     dependency: "direct main"
     description:
       name: sqlite_async
-      sha256: c5c57b025133d0869cce6a647f99b378ab42cc26488ff22ff942ae9588201af0
+      sha256: "1f7b36e6b5b459bae89941ae1d3ae8151a3c14b8242c3b94e75aea4a692361e2"
       url: "https://pub.dev"
     source: hosted
-    version: "0.9.0"
+    version: "0.9.1"
   stack_trace:
     dependency: transitive
     description:
