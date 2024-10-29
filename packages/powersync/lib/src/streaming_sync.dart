@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert' as convert;
 
+import 'package:async/async.dart';
 import 'package:http/http.dart' as http;
 import 'package:powersync/src/abort_controller.dart';
 import 'package:powersync/src/exceptions.dart';
@@ -26,6 +27,11 @@ class StreamingSyncImplementation {
   final Future<void> Function()? invalidCredentialsCallback;
 
   final Future<void> Function() uploadCrud;
+
+  // An internal controller which is used to trigger CRUD uploads internally
+  // e.g. when reconnecting.
+  final StreamController<Null> _internalCrudTriggerController =
+      StreamController<Null>.broadcast();
 
   final Stream crudUpdateTriggerStream;
 
@@ -83,6 +89,7 @@ class StreamingSyncImplementation {
     // However, we still need to close the underlying stream explicitly, otherwise
     // the break will wait for the next line of data received on the stream.
     _localPingController.add(null);
+    await _internalCrudTriggerController.close();
     // According to the documentation, the behavior is undefined when calling
     // close() while requests are pending. However, this is no other
     // known way to cancel open streams, and this appears to end the stream with
@@ -92,6 +99,9 @@ class StreamingSyncImplementation {
     if (_safeToClose) {
       _client.close();
     }
+
+    await _internalCrudTriggerController.close();
+
     // wait for completeAbort() to be called
     await future;
 
@@ -155,7 +165,8 @@ class StreamingSyncImplementation {
   Future<void> crudLoop() async {
     await uploadAllCrud();
 
-    await for (var _ in crudUpdateTriggerStream) {
+    await for (var _ in StreamGroup.merge(
+        [crudUpdateTriggerStream, _internalCrudTriggerController.stream])) {
       if (_abort?.aborted == true) {
         break;
       }
@@ -297,6 +308,9 @@ class StreamingSyncImplementation {
 
     Future<void>? credentialsInvalidation;
     bool haveInvalidated = false;
+
+    // Trigger a CRUD upload on reconnect
+    _internalCrudTriggerController.add(null);
 
     await for (var line in merged) {
       if (aborted) {
