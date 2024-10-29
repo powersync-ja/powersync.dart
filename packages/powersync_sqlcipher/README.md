@@ -4,11 +4,11 @@
 
 # PowerSync with SQLCipher SDK for Flutter
 
-_[PowerSync](https://www.powersync.com) is a sync engine for building local-first apps with instantly-responsive UI/UX and simplified state transfer. Syncs between SQLite on the client-side and Postgres or MongoDB on the server-side (MySQL coming soon)._
+_[PowerSync](https://www.powersync.com) is a sync engine for building local-first apps with instantly-responsive UI/UX and simplified state transfer. Syncs between SQLite on the client-side and Postgres, MongoDB or MySQL on the server-side._
 
 This package (`powersync_sqlcipher`) is the PowerSync client SDK for Flutter with encryption enabled using SQLCipher. 
 
-If you do not require encryption, we recommend using the [`powersync`](/packages/powersync/README.md) SDK.
+If you do not require encryption in your Flutter application, we recommend using the [`powersync`](https://pub.dev/packages/powersync) SDK.
 
 ### Installing PowerSync with SQLCipher encryption in your own project
 
