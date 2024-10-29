@@ -1,5 +1,5 @@
 /// This file needs to be compiled to JavaScript with the command
-/// dart compile js -O4 packages/powersync/lib/src/web/sync_worker.worker.dart -o assets/db_worker.js
+/// dart compile js -O4 packages/powersync/lib/src/web/sync_worker.dart -o assets/powersync_sync.worker.js
 /// The output should then be included in each project's `web` directory
 library;
 
@@ -9,12 +9,13 @@ import 'dart:js_interop';
 import 'package:async/async.dart';
 import 'package:fetch_client/fetch_client.dart';
 import 'package:powersync/powersync.dart';
+import 'package:powersync/sqlite_async.dart';
+import 'package:powersync/src/database/powersync_db_mixin.dart';
 import 'package:powersync/src/streaming_sync.dart';
 import 'package:sqlite_async/web.dart';
 import 'package:web/web.dart' hide RequestMode;
 
 import '../bucket_storage.dart';
-import '../database/powersync_db_mixin.dart';
 import 'sync_worker_protocol.dart';
 
 final _logger = autoLogger;
@@ -40,10 +41,10 @@ class _SyncWorker {
     });
   }
 
-  _SyncRunner referenceSyncTask(
-      String databaseIdentifier, _ConnectedClient client) {
+  _SyncRunner referenceSyncTask(String databaseIdentifier,
+      int crudThrottleTimeMs, _ConnectedClient client) {
     return _requestedSyncTasks.putIfAbsent(databaseIdentifier, () {
-      return _SyncRunner(databaseIdentifier);
+      return _SyncRunner(databaseIdentifier, crudThrottleTimeMs);
     })
       ..registerClient(client);
   }
@@ -63,7 +64,8 @@ class _ConnectedClient {
         switch (type) {
           case SyncWorkerMessageType.startSynchronization:
             final request = payload as StartSynchronization;
-            _runner = _worker.referenceSyncTask(request.databaseName, this);
+            _runner = _worker.referenceSyncTask(
+                request.databaseName, request.crudThrottleTimeMs, this);
             return (JSObject(), null);
           case SyncWorkerMessageType.abortSynchronization:
             _runner?.unregisterClient(this);
@@ -103,6 +105,7 @@ class _ConnectedClient {
 
 class _SyncRunner {
   final String identifier;
+  final int crudThrottleTimeMs;
 
   final StreamGroup<_RunnerEvent> _group = StreamGroup();
   final StreamController<_RunnerEvent> _mainEvents = StreamController();
@@ -111,7 +114,7 @@ class _SyncRunner {
   _ConnectedClient? databaseHost;
   final connections = <_ConnectedClient>[];
 
-  _SyncRunner(this.identifier) {
+  _SyncRunner(this.identifier, this.crudThrottleTimeMs) {
     _group.add(_mainEvents.stream);
 
     Future(() async {
@@ -209,13 +212,26 @@ class _SyncRunner {
       }
     });
 
+    final tables = ['ps_crud'];
+    final crudThrottleTime = Duration(milliseconds: crudThrottleTimeMs);
+    Stream<UpdateNotification> crudStream =
+        powerSyncUpdateNotifications(Stream.empty());
+    if (database.updates != null) {
+      final filteredStream = database.updates!
+          .transform(UpdateNotification.filterTablesTransformer(tables));
+      crudStream = UpdateNotification.throttleStream(
+        filteredStream,
+        crudThrottleTime,
+        addOne: UpdateNotification.empty(),
+      );
+    }
+
     sync = StreamingSyncImplementation(
       adapter: BucketStorage(database),
       credentialsCallback: client.channel.credentialsCallback,
       invalidCredentialsCallback: client.channel.invalidCredentialsCallback,
       uploadCrud: client.channel.uploadCrud,
-      updateStream: powerSyncUpdateNotifications(
-          database.updates ?? const Stream.empty()),
+      crudUpdateTriggerStream: crudStream,
       retryDelay: Duration(seconds: 3),
       client: FetchClient(mode: RequestMode.cors),
       identifier: identifier,

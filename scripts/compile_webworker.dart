@@ -9,27 +9,52 @@ Future<void> main() async {
 
   /// The monorepo root assets directory
   final workerFilename = 'powersync_db.worker.js';
-  final outputPath =
+  final dbWorkerOutputPath =
       path.join(repoRoot, 'packages/powersync/assets/$workerFilename');
 
   final workerSourcePath = path.join(
       repoRoot, './packages/powersync/lib/src/web/powersync_db.worker.dart');
 
   // And compile worker code
-  final process = await Process.run(
+  final dbWorkerProcess = await Process.run(
       Platform.executable,
       [
         'compile',
         'js',
         '-o',
-        outputPath,
+        dbWorkerOutputPath,
         '-O4',
         workerSourcePath,
       ],
       workingDirectory: cwd);
 
-  if (process.exitCode != 0) {
-    throw Exception('Could not compile worker: ${process.stdout.toString()}');
+  if (dbWorkerProcess.exitCode != 0) {
+    throw Exception(
+        'Could not compile db worker: ${dbWorkerProcess.stdout.toString()}');
+  }
+
+  final syncWorkerFilename = 'powersync_sync.worker.js';
+  final syncWorkerOutputPath =
+      path.join(repoRoot, 'packages/powersync/assets/$syncWorkerFilename');
+
+  final syncWorkerSourcePath =
+      path.join(repoRoot, './packages/powersync/lib/src/web/sync_worker.dart');
+
+  final syncWorkerProcess = await Process.run(
+      Platform.executable,
+      [
+        'compile',
+        'js',
+        '-o',
+        syncWorkerOutputPath,
+        '-O4',
+        syncWorkerSourcePath,
+      ],
+      workingDirectory: cwd);
+
+  if (syncWorkerProcess.exitCode != 0) {
+    throw Exception(
+        'Could not compile sync worker: ${dbWorkerProcess.stdout.toString()}');
   }
 
   // Copy this to all demo apps web folders
@@ -44,6 +69,7 @@ Future<void> main() async {
       continue;
     }
     final demoOutputPath = path.join(demoWebDir, workerFilename);
-    File(outputPath).copySync(demoOutputPath);
+    File(dbWorkerOutputPath).copySync(demoOutputPath);
+    File(syncWorkerOutputPath).copySync(demoOutputPath);
   }
 }

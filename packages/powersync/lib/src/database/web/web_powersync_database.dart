@@ -150,6 +150,7 @@ class PowerSyncDatabaseImpl
       sync = await SyncWorkerHandle.start(
         this,
         connector,
+        crudThrottleTime.inMilliseconds,
         Uri.base.resolve('/powersync_sync.worker.js'),
       );
     } catch (e) {

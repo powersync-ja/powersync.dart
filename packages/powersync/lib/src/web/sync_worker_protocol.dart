@@ -62,11 +62,13 @@ extension type SyncWorkerMessage._(JSObject _) implements JSObject {
 extension type StartSynchronization._(JSObject _) implements JSObject {
   external factory StartSynchronization({
     required String databaseName,
+    required int crudThrottleTimeMs,
     required int requestId,
   });
 
   external String get databaseName;
   external int get requestId;
+  external int get crudThrottleTimeMs;
 }
 
 @anonymous
@@ -313,11 +315,15 @@ final class WorkerCommunicationChannel {
     await _numericRequest(SyncWorkerMessageType.ping);
   }
 
-  Future<void> startSynchronization(String databaseName) async {
+  Future<void> startSynchronization(
+      String databaseName, int crudThrottleTimeMs) async {
     final (id, completion) = _newRequest();
     port.postMessage(SyncWorkerMessage(
       type: SyncWorkerMessageType.startSynchronization.name,
-      payload: StartSynchronization(databaseName: databaseName, requestId: id),
+      payload: StartSynchronization(
+          databaseName: databaseName,
+          crudThrottleTimeMs: crudThrottleTimeMs,
+          requestId: id),
     ));
     await completion;
   }

@@ -12,13 +12,14 @@ import 'sync_worker_protocol.dart';
 class SyncWorkerHandle implements StreamingSync {
   final PowerSyncDatabaseImpl _database;
   final PowerSyncBackendConnector _connector;
+  final int _crudThrottleTimeMs;
 
   late final WorkerCommunicationChannel _channel;
 
   final StreamController<SyncStatus> _status = StreamController.broadcast();
 
-  SyncWorkerHandle._(this._database, this._connector, MessagePort sendToWorker,
-      SharedWorker worker) {
+  SyncWorkerHandle._(this._database, this._connector, this._crudThrottleTimeMs,
+      MessagePort sendToWorker, SharedWorker worker) {
     _channel = WorkerCommunicationChannel(
       port: sendToWorker,
       errors: EventStreamProviders.errorEvent.forTarget(worker),
@@ -69,10 +70,14 @@ class SyncWorkerHandle implements StreamingSync {
     });
   }
 
-  static Future<SyncWorkerHandle> start(PowerSyncDatabaseImpl database,
-      PowerSyncBackendConnector connector, Uri workerUri) async {
+  static Future<SyncWorkerHandle> start(
+      PowerSyncDatabaseImpl database,
+      PowerSyncBackendConnector connector,
+      int crudThrottleTimeMs,
+      Uri workerUri) async {
     final worker = SharedWorker(workerUri.toString().toJS);
-    final handle = SyncWorkerHandle._(database, connector, worker.port, worker);
+    final handle = SyncWorkerHandle._(
+        database, connector, crudThrottleTimeMs, worker.port, worker);
 
     // Make sure that the worker is working, or throw immediately.
     await handle._channel.ping();
@@ -95,6 +100,7 @@ class SyncWorkerHandle implements StreamingSync {
 
   @override
   Future<void> streamingSync() async {
-    await _channel.startSynchronization(_database.openFactory.path);
+    await _channel.startSynchronization(
+        _database.openFactory.path, _crudThrottleTimeMs);
   }
 }
