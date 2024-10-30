@@ -31,7 +31,7 @@ class TestHttpServerHelper {
             });
       });
 
-    _server = await io.serve(router, 'localhost', 0);
+    _server = await io.serve(router.call, 'localhost', 0);
     print('Test server running at ${_server.address}:${_server.port}');
   }
 

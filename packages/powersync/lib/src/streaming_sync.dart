@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert' as convert;
 
-import 'package:async/async.dart';
 import 'package:http/http.dart' as http;
 import 'package:powersync/src/abort_controller.dart';
 import 'package:powersync/src/exceptions.dart';
@@ -171,7 +170,7 @@ class StreamingSyncImplementation {
     // This has the potential (in rare cases) to affect the crudThrottleTime,
     // but it should not result in excessive uploads since the
     // sync reconnects are also throttled.
-    await for (var _ in StreamGroup.merge(
+    await for (var _ in mergeStreams(
         [crudUpdateTriggerStream, _internalCrudTriggerController.stream])) {
       if (_abort?.aborted == true) {
         break;
