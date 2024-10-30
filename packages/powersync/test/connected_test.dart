@@ -1,3 +1,6 @@
+@TestOn('!browser')
+// This test uses a local server which is possible to control in Web via hybrid main,
+// but this makes the test significantly more complex.
 import 'dart:async';
 
 import 'package:powersync/powersync.dart';
