@@ -26,9 +26,7 @@ class TestConnector extends PowerSyncBackendConnector {
 
   @override
   Future<void> uploadData(PowerSyncDatabase database) async {
-    if (_uploadData != null) {
-      await _uploadData(database);
-    }
+    await _uploadData?.call(database);
   }
 }
 
