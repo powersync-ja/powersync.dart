@@ -27,14 +27,12 @@ void main() {
     createTestServer() async {
       final testServer = TestHttpServerHelper();
       await testServer.start();
+      addTearDown(() => testServer.stop());
       return testServer;
     }
 
     test('should connect to mock PowerSync instance', () async {
       final testServer = await createTestServer();
-      // Cant do this inside the createTestServer function unfortunately
-      addTearDown(() => testServer.stop());
-
       final connector = TestConnector(() async {
         return PowerSyncCredentials(
             endpoint: testServer.uri.toString(),
@@ -70,9 +68,6 @@ void main() {
       int uploadCounter = 0;
       Completer uploadTriggeredCompleter = Completer();
       final testServer = await createTestServer();
-      // Cant do this inside the createTestServer function unfortunately
-      addTearDown(() => testServer.stop());
-
       final connector = TestConnector(() async {
         return PowerSyncCredentials(
             endpoint: testServer.uri.toString(),
