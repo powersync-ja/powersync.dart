@@ -93,7 +93,6 @@ void main() {
     final connectedErroredCompleter = Completer();
 
     db.statusStream.listen((status) {
-      // print('status updated: ${status.connected}, ${status.downloadError}');
       if (status.connected) {
         connectedCompleter.complete();
       }

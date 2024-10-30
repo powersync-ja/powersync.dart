@@ -89,7 +89,6 @@ class StreamingSyncImplementation {
     // However, we still need to close the underlying stream explicitly, otherwise
     // the break will wait for the next line of data received on the stream.
     _localPingController.add(null);
-    await _internalCrudTriggerController.close();
     // According to the documentation, the behavior is undefined when calling
     // close() while requests are pending. However, this is no other
     // known way to cancel open streams, and this appears to end the stream with
