@@ -24,7 +24,7 @@ class TestHttpServerHelper {
               'Content-Type': 'text/event-stream',
               'Cache-Control': 'no-cache',
               'Connection': 'keep-alive',
-              'Transfer-Encoding': 'identity', // Use chunked transfer encoding
+              'Transfer-Encoding': 'identity',
             },
             context: {
               "shelf.io.buffer_output": false
