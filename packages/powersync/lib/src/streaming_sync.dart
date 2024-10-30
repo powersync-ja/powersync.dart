@@ -30,6 +30,8 @@ class StreamingSyncImplementation {
 
   // An internal controller which is used to trigger CRUD uploads internally
   // e.g. when reconnecting.
+  // This is only a broadcast stream since the `crudLoop` method is public
+  // and could potentially be called multiple times externally.
   final StreamController<Null> _internalCrudTriggerController =
       StreamController<Null>.broadcast();
 
@@ -164,6 +166,11 @@ class StreamingSyncImplementation {
   Future<void> crudLoop() async {
     await uploadAllCrud();
 
+    // Trigger a CRUD upload whenever the upstream trigger fires
+    // as-well-as whenever the sync stream reconnects.
+    // This has the potential (in rare cases) to affect the crudThrottleTime,
+    // but it should not result in excessive uploads since the
+    // sync reconnects are also throttled.
     await for (var _ in StreamGroup.merge(
         [crudUpdateTriggerStream, _internalCrudTriggerController.stream])) {
       if (_abort?.aborted == true) {
