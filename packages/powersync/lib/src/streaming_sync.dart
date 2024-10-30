@@ -30,7 +30,7 @@ class StreamingSyncImplementation {
 
   // An internal controller which is used to trigger CRUD uploads internally
   // e.g. when reconnecting.
-  // This is only a broadcast stream since the `crudLoop` method is public
+  // This is only a broadcast controller since the `crudLoop` method is public
   // and could potentially be called multiple times externally.
   final StreamController<Null> _internalCrudTriggerController =
       StreamController<Null>.broadcast();

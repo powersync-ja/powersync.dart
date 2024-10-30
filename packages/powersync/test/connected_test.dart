@@ -59,7 +59,7 @@ void main() {
     expect(db.connected, isTrue);
   });
 
-  test('should trigger uploads when connection is established', () async {
+  test('should trigger uploads when connection is re-established', () async {
     int uploadCounter = 0;
     Completer uploadTriggeredCompleter = Completer();
 
