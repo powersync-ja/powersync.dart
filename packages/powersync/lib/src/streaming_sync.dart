@@ -158,6 +158,9 @@ class StreamingSyncImplementation {
         }
       }
     } finally {
+      // The client should no longer be connected at this point
+      // Adding this update allows for breaking out of an in-progress updateLoop
+      _updateStatus(connected: false);
       _abort!.completeAbort();
     }
   }
