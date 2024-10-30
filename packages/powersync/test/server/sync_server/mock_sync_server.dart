@@ -6,14 +6,15 @@ import 'package:shelf/shelf.dart';
 import 'package:shelf/shelf_io.dart' as io;
 import 'package:shelf_router/shelf_router.dart';
 
+// A basic Mock PowerSync service server which queues commands
+// which clients can receive via connecting to the `/sync/stream` route.
+// This assumes only one client will ever be connected at a time.
 class TestHttpServerHelper {
-  final StreamController<String> _controller = StreamController<String>();
+  // Use a queued stream to make tests easier.
+  StreamController<String> _controller = StreamController<String>();
   late HttpServer _server;
-  // late Timer _timer;
-
   Uri get uri => Uri.parse('http://localhost:${_server.port}');
 
-  // Start the HTTP server
   Future<void> start() async {
     final router = Router()
       ..post('/sync/stream', (Request request) async {
@@ -30,27 +31,23 @@ class TestHttpServerHelper {
             });
       });
 
-    // Sending a newline gets the stream going and resolving on the client side
-    _controller.add("\n");
-
-    // // Add data. The mock stream does not seem to resolve without data
-    // _timer = Timer.periodic(Duration(seconds: 1), (Timer timer) {
-    //   // This code will execute every second
-    //   _controller.add('{ "token_expires_in": 3600}\n');
-    // });
-
     _server = await io.serve(router, 'localhost', 0);
     print('Test server running at ${_server.address}:${_server.port}');
   }
 
-  // Programmatically add data to the stream
+  // Queue events which will be sent to connected clients.
   void addEvent(String data) {
     _controller.add(data);
   }
 
-  // Stop the HTTP server
+  // Clear events. We rely on a buffered controller here. Create a new controller
+  // in order to clear the buffer.
+  Future<void> clearEvents() async {
+    await _controller.close();
+    _controller = StreamController<String>();
+  }
+
   Future<void> stop() async {
-    // _timer.cancel();
     await _controller.close();
     await _server.close();
   }
