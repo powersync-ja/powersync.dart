@@ -1,3 +1,7 @@
+## 1.8.9
+
+ - **FIX**: issue where CRUD uploads were not triggered when the SDK reconnected to the PowerSync service after being offline.
+
 ## 1.8.8
 
 - Update dependency `powersync_flutter_libs`

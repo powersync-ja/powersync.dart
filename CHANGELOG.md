@@ -3,6 +3,37 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 2024-10-31
+
+### Changes
+
+---
+
+Packages with breaking changes:
+
+ - There are no breaking changes in this release.
+
+Packages with other changes:
+
+ - [`powersync` - `v1.8.9`](#powersync---v189)
+ - [`powersync_attachments_helper` - `v0.6.13`](#powersync_attachments_helper---v0613)
+ - [`powersync_flutter_libs` - `v0.4.2`](#powersync_flutter_libs---v042)
+
+---
+
+#### `powersync` - `v1.8.9`
+
+ - **FIX**: Issue where CRUD uploads were not triggered when the SDK reconnected to the PowerSync service after being offline.
+
+#### `powersync_attachments_helper` - `v0.6.13`
+
+ - Update a dependency to the latest release.
+
+#### `powersync_flutter_libs` - `v0.4.2`
+
+ - Update a dependency to the latest release.
+
+
 ## 2024-10-21
 
 ### Changes
