@@ -21,7 +21,7 @@ void main() {
     });
 
     tearDown(() async {
-      // await testUtils.cleanDb(path: path);
+      await testUtils.cleanDb(path: path);
     });
 
     createTestServer() async {

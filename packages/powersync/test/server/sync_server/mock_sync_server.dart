@@ -21,10 +21,9 @@ class TestHttpServerHelper {
         // Respond immediately with a stream
         return Response.ok(_controller.stream.transform(utf8.encoder),
             headers: {
-              'Content-Type': 'text/event-stream',
+              'Content-Type': 'application/x-ndjson',
               'Cache-Control': 'no-cache',
               'Connection': 'keep-alive',
-              'Transfer-Encoding': 'identity',
             },
             context: {
               "shelf.io.buffer_output": false

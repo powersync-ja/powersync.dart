@@ -158,9 +158,6 @@ class StreamingSyncImplementation {
         }
       }
     } finally {
-      // The client should no longer be connected at this point
-      // Adding this update allows for breaking out of an in-progress updateLoop
-      _updateStatus(connected: false);
       _abort!.completeAbort();
     }
   }
@@ -493,7 +490,7 @@ class StreamingSyncImplementation {
     }
   }
 
-  /// Delays the standard `retryDelay` Duration, but exists early if
+  /// Delays the standard `retryDelay` Duration, but exits early if
   /// an abort has been requested.
   Future<void> _delayRetry() async {
     await Future.any([Future.delayed(retryDelay), _abort!.onAbort]);
