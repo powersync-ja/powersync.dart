@@ -154,7 +154,7 @@ class StreamingSyncImplementation {
 
           // On error, wait a little before retrying
           // When aborting, don't wait
-          await Future.any([Future.delayed(retryDelay), _abort!.onAbort]);
+          await _delayRetry();
         }
       }
     } finally {
@@ -173,11 +173,9 @@ class StreamingSyncImplementation {
     // This has the potential (in rare cases) to affect the crudThrottleTime,
     // but it should not result in excessive uploads since the
     // sync reconnects are also throttled.
+    // The stream here is closed on abort.
     await for (var _ in mergeStreams(
         [crudUpdateTriggerStream, _internalCrudTriggerController.stream])) {
-      if (_abort?.aborted == true) {
-        break;
-      }
       await uploadAllCrud();
     }
   }
@@ -189,6 +187,13 @@ class StreamingSyncImplementation {
 
       while (true) {
         try {
+          // It's possible that an abort or disconnect operation could
+          // be followed by a `close` operation. The close would cause these
+          // operations, which use the DB, to throw an exception. Breaking the loop
+          // here prevents unnecessary potential (caught) exceptions.
+          if (aborted) {
+            break;
+          }
           // This is the first item in the FIFO CRUD queue.
           CrudEntry? nextCrudItem = await adapter.nextCrudItem();
           if (nextCrudItem != null) {
@@ -215,7 +220,7 @@ class StreamingSyncImplementation {
           checkedCrudItem = null;
           isolateLogger.warning('Data upload error', e, stacktrace);
           _updateStatus(uploading: false, uploadError: e);
-          await Future.delayed(retryDelay);
+          await _delayRetry();
           if (!isConnected) {
             // Exit the upload loop if the sync stream is no longer connected
             break;
@@ -486,6 +491,12 @@ class StreamingSyncImplementation {
       }
       yield parseStreamingSyncLine(line as Map<String, dynamic>);
     }
+  }
+
+  /// Delays the standard `retryDelay` Duration, but exists early if
+  /// an abort has been requested.
+  Future<void> _delayRetry() async {
+    await Future.any([Future.delayed(retryDelay), _abort!.onAbort]);
   }
 }
 
