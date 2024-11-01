@@ -25,6 +25,8 @@ void main(List<String> arguments) async {
   final wasmPath = '${root.toFilePath()}$outputDir/sqlite3.wasm';
 
   final workerPath = '${root.toFilePath()}$outputDir/powersync_db.worker.js';
+  final syncWorkerPath =
+      '${root.toFilePath()}$outputDir/powersync_sync.worker.js';
 
   final packageConfigFile = File.fromUri(
     root.resolve('.dart_tool/package_config.json'),
@@ -57,7 +59,11 @@ void main(List<String> arguments) async {
       final workerUrl =
           'https://github.com/powersync-ja/powersync.dart/releases/download/powersync-v$powersyncVersion/powersync_db.worker.js';
 
+      final syncWorkerUrl =
+          'https://github.com/powersync-ja/powersync.dart/releases/download/powersync-v$powersyncVersion/powersync_sync.worker.js';
+
       await downloadFile(httpClient, workerUrl, workerPath);
+      await downloadFile(httpClient, syncWorkerUrl, syncWorkerPath);
     }
 
     final sqlitePackageName = 'sqlite3';
