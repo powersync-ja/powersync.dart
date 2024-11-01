@@ -70,6 +70,7 @@ Future<void> main() async {
     }
     final demoOutputPath = path.join(demoWebDir, workerFilename);
     File(dbWorkerOutputPath).copySync(demoOutputPath);
-    File(syncWorkerOutputPath).copySync(demoOutputPath);
+    File(syncWorkerOutputPath)
+        .copySync(path.join(demoWebDir, syncWorkerFilename));
   }
 }
