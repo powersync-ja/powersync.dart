@@ -10,8 +10,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  powersync_attachments_helper: ^0.6.13
-  powersync: ^1.8.9
+  powersync_attachments_helper: ^0.6.14
+  powersync: ^1.9.0
   path_provider: ^2.1.1
   supabase_flutter: ^2.0.1
   path: ^1.8.3
