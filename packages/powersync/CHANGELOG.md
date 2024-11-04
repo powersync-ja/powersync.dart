@@ -1,3 +1,7 @@
+## 1.9.1
+
+- Flutter Web Beta release
+
 ## 1.9.0
 
 - **FEAT**: Use a sync worker for web that offloads the task of synchronizing databases to a separate worker, allowing it to be coordinated across tabs even when the database itself is not in a shared worker.
