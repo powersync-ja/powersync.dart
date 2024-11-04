@@ -4,6 +4,7 @@
 library;
 
 import 'dart:async';
+import 'dart:convert';
 import 'dart:js_interop';
 
 import 'package:async/async.dart';
@@ -41,10 +42,14 @@ class _SyncWorker {
     });
   }
 
-  _SyncRunner referenceSyncTask(String databaseIdentifier,
-      int crudThrottleTimeMs, _ConnectedClient client) {
+  _SyncRunner referenceSyncTask(
+      String databaseIdentifier,
+      int crudThrottleTimeMs,
+      String? syncParamsEncoded,
+      _ConnectedClient client) {
     return _requestedSyncTasks.putIfAbsent(databaseIdentifier, () {
-      return _SyncRunner(databaseIdentifier, crudThrottleTimeMs);
+      return _SyncRunner(databaseIdentifier, crudThrottleTimeMs,
+          syncParamsEncoded == null ? null : jsonDecode(syncParamsEncoded));
     })
       ..registerClient(client);
   }
@@ -64,8 +69,8 @@ class _ConnectedClient {
         switch (type) {
           case SyncWorkerMessageType.startSynchronization:
             final request = payload as StartSynchronization;
-            _runner = _worker.referenceSyncTask(
-                request.databaseName, request.crudThrottleTimeMs, this);
+            _runner = _worker.referenceSyncTask(request.databaseName,
+                request.crudThrottleTimeMs, request.syncParamsEncoded, this);
             return (JSObject(), null);
           case SyncWorkerMessageType.abortSynchronization:
             _runner?.unregisterClient(this);
@@ -106,6 +111,7 @@ class _ConnectedClient {
 class _SyncRunner {
   final String identifier;
   final int crudThrottleTimeMs;
+  final Map<String, dynamic>? syncParams;
 
   final StreamGroup<_RunnerEvent> _group = StreamGroup();
   final StreamController<_RunnerEvent> _mainEvents = StreamController();
@@ -114,7 +120,7 @@ class _SyncRunner {
   _ConnectedClient? databaseHost;
   final connections = <_ConnectedClient>[];
 
-  _SyncRunner(this.identifier, this.crudThrottleTimeMs) {
+  _SyncRunner(this.identifier, this.crudThrottleTimeMs, this.syncParams) {
     _group.add(_mainEvents.stream);
 
     Future(() async {
@@ -227,15 +233,15 @@ class _SyncRunner {
     }
 
     sync = StreamingSyncImplementation(
-      adapter: BucketStorage(database),
-      credentialsCallback: client.channel.credentialsCallback,
-      invalidCredentialsCallback: client.channel.invalidCredentialsCallback,
-      uploadCrud: client.channel.uploadCrud,
-      crudUpdateTriggerStream: crudStream,
-      retryDelay: Duration(seconds: 3),
-      client: FetchClient(mode: RequestMode.cors),
-      identifier: identifier,
-    );
+        adapter: BucketStorage(database),
+        credentialsCallback: client.channel.credentialsCallback,
+        invalidCredentialsCallback: client.channel.invalidCredentialsCallback,
+        uploadCrud: client.channel.uploadCrud,
+        crudUpdateTriggerStream: crudStream,
+        retryDelay: Duration(seconds: 3),
+        client: FetchClient(mode: RequestMode.cors),
+        identifier: identifier,
+        syncParameters: syncParams);
     sync!.statusStream.listen((event) {
       _logger.fine('Broadcasting sync event: $event');
       for (final client in connections) {
