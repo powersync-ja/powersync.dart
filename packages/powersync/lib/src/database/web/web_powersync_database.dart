@@ -148,11 +148,11 @@ class PowerSyncDatabaseImpl
     // duplicating work across tabs.
     try {
       sync = await SyncWorkerHandle.start(
-        this,
-        connector,
-        crudThrottleTime.inMilliseconds,
-        Uri.base.resolve('/powersync_sync.worker.js'),
-      );
+          database: this,
+          connector: connector,
+          crudThrottleTimeMs: crudThrottleTime.inMilliseconds,
+          workerUri: Uri.base.resolve('/powersync_sync.worker.js'),
+          syncParams: params);
     } catch (e) {
       logger.warning(
         'Could not use shared worker for synchronization, falling back to locks.',
