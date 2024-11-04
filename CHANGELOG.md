@@ -3,6 +3,32 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 2024-11-04
+
+### Changes
+
+---
+
+Packages with breaking changes:
+
+ - There are no breaking changes in this release.
+
+Packages with other changes:
+
+ - [`powersync` - `v1.9.1`](#powersync---v191)
+ - [`powersync_attachments_helper` - `v0.6.15`](#powersync_attachments_helper---v0615)
+
+---
+
+#### `powersync` - `v1.9.1`
+
+ - Flutter Web Beta release
+
+#### `powersync_attachments_helper` - `v0.6.15`
+
+ - Flutter Web Beta release
+
+
 ## 2024-11-01
 
 ### Changes
