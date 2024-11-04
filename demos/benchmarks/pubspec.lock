@@ -139,6 +139,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "4.0.2"
+  js:
+    dependency: transitive
+    description:
+      name: js
+      sha256: c1b2e9b5ea78c45e1a0788d29606ba27dc5f71f019f32ca5140f61ef071838cf
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.7.1"
   json_annotation:
     dependency: transitive
     description:
@@ -297,14 +305,14 @@ packages:
       path: "../../packages/powersync"
       relative: true
     source: path
-    version: "1.8.8"
+    version: "1.9.0"
   powersync_flutter_libs:
     dependency: "direct overridden"
     description:
       path: "../../packages/powersync_flutter_libs"
       relative: true
     source: path
-    version: "0.4.1"
+    version: "0.4.2"
   pub_semver:
     dependency: transitive
     description:
@@ -370,10 +378,10 @@ packages:
     dependency: "direct main"
     description:
       name: sqlite_async
-      sha256: "1f7b36e6b5b459bae89941ae1d3ae8151a3c14b8242c3b94e75aea4a692361e2"
+      sha256: "4a921c53f12b850c5c7337aa7b2c7a0249efd07696180c1ee6de9750632543c7"
       url: "https://pub.dev"
     source: hosted
-    version: "0.9.1"
+    version: "0.10.1"
   stack_trace:
     dependency: transitive
     description:
