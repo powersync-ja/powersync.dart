@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:js_interop';
 
 import 'package:web/web.dart';
@@ -13,10 +14,12 @@ enum SyncWorkerMessageType {
 
   /// Sent from client to the sync worker to request the synchronization
   /// starting.
+  /// If parameters change, the sync worker reconnects.
   startSynchronization,
 
-  /// Te [SyncWorkerMessage.payload] for the request is a numeric id, the
+  /// The [SyncWorkerMessage.payload] for the request is a numeric id, the
   /// response can be anything (void).
+  /// This disconnects immediately, even if other clients are still open.
   abortSynchronization,
 
   /// Sent from the sync worker to the client when it needs an endpoint to
@@ -60,15 +63,16 @@ extension type SyncWorkerMessage._(JSObject _) implements JSObject {
 
 @anonymous
 extension type StartSynchronization._(JSObject _) implements JSObject {
-  external factory StartSynchronization({
-    required String databaseName,
-    required int crudThrottleTimeMs,
-    required int requestId,
-  });
+  external factory StartSynchronization(
+      {required String databaseName,
+      required int crudThrottleTimeMs,
+      required int requestId,
+      String? syncParamsEncoded});
 
   external String get databaseName;
   external int get requestId;
   external int get crudThrottleTimeMs;
+  external String? get syncParamsEncoded;
 }
 
 @anonymous
@@ -315,15 +319,17 @@ final class WorkerCommunicationChannel {
     await _numericRequest(SyncWorkerMessageType.ping);
   }
 
-  Future<void> startSynchronization(
-      String databaseName, int crudThrottleTimeMs) async {
+  Future<void> startSynchronization(String databaseName, int crudThrottleTimeMs,
+      Map<String, dynamic>? syncParams) async {
     final (id, completion) = _newRequest();
     port.postMessage(SyncWorkerMessage(
       type: SyncWorkerMessageType.startSynchronization.name,
       payload: StartSynchronization(
           databaseName: databaseName,
           crudThrottleTimeMs: crudThrottleTimeMs,
-          requestId: id),
+          requestId: id,
+          syncParamsEncoded:
+              syncParams == null ? null : jsonEncode(syncParams)),
     ));
     await completion;
   }

@@ -4,6 +4,7 @@
 library;
 
 import 'dart:async';
+import 'dart:convert';
 import 'dart:js_interop';
 
 import 'package:async/async.dart';
@@ -41,12 +42,15 @@ class _SyncWorker {
     });
   }
 
-  _SyncRunner referenceSyncTask(String databaseIdentifier,
-      int crudThrottleTimeMs, _ConnectedClient client) {
+  _SyncRunner referenceSyncTask(
+      String databaseIdentifier,
+      int crudThrottleTimeMs,
+      String? syncParamsEncoded,
+      _ConnectedClient client) {
     return _requestedSyncTasks.putIfAbsent(databaseIdentifier, () {
-      return _SyncRunner(databaseIdentifier, crudThrottleTimeMs);
+      return _SyncRunner(databaseIdentifier);
     })
-      ..registerClient(client);
+      ..registerClient(client, crudThrottleTimeMs, syncParamsEncoded);
   }
 }
 
@@ -64,11 +68,11 @@ class _ConnectedClient {
         switch (type) {
           case SyncWorkerMessageType.startSynchronization:
             final request = payload as StartSynchronization;
-            _runner = _worker.referenceSyncTask(
-                request.databaseName, request.crudThrottleTimeMs, this);
+            _runner = _worker.referenceSyncTask(request.databaseName,
+                request.crudThrottleTimeMs, request.syncParamsEncoded, this);
             return (JSObject(), null);
           case SyncWorkerMessageType.abortSynchronization:
-            _runner?.unregisterClient(this);
+            _runner?.disconnectClient(this);
             _runner = null;
             return (JSObject(), null);
           default:
@@ -105,7 +109,8 @@ class _ConnectedClient {
 
 class _SyncRunner {
   final String identifier;
-  final int crudThrottleTimeMs;
+  int crudThrottleTimeMs = 1;
+  String? syncParamsEncoded;
 
   final StreamGroup<_RunnerEvent> _group = StreamGroup();
   final StreamController<_RunnerEvent> _mainEvents = StreamController();
@@ -114,16 +119,34 @@ class _SyncRunner {
   _ConnectedClient? databaseHost;
   final connections = <_ConnectedClient>[];
 
-  _SyncRunner(this.identifier, this.crudThrottleTimeMs) {
+  _SyncRunner(this.identifier) {
     _group.add(_mainEvents.stream);
 
     Future(() async {
       await for (final event in _group.stream) {
         try {
           switch (event) {
-            case _AddConnection(:final client):
+            case _AddConnection(
+                :final client,
+                :final crudThrottleTimeMs,
+                :final syncParamsEncoded
+              ):
               connections.add(client);
+              var reconnect = false;
+              if (this.crudThrottleTimeMs != crudThrottleTimeMs) {
+                this.crudThrottleTimeMs = crudThrottleTimeMs;
+                reconnect = true;
+              }
+              if (this.syncParamsEncoded != syncParamsEncoded) {
+                this.syncParamsEncoded = syncParamsEncoded;
+                reconnect = true;
+              }
               if (sync == null) {
+                await _requestDatabase(client);
+              } else if (reconnect) {
+                // Parameters changed - reconnect.
+                sync?.abort();
+                sync = null;
                 await _requestDatabase(client);
               }
             case _RemoveConnection(:final client):
@@ -132,6 +155,10 @@ class _SyncRunner {
                 await sync?.abort();
                 sync = null;
               }
+            case _DisconnectClient(:final client):
+              connections.remove(client);
+              await sync?.abort();
+              sync = null;
             case _ActiveDatabaseClosed():
               _logger.info('Remote database closed, finding a new client');
               sync?.abort();
@@ -226,16 +253,20 @@ class _SyncRunner {
       );
     }
 
+    final syncParams = syncParamsEncoded == null
+        ? null
+        : jsonDecode(syncParamsEncoded!) as Map<String, dynamic>;
+
     sync = StreamingSyncImplementation(
-      adapter: BucketStorage(database),
-      credentialsCallback: client.channel.credentialsCallback,
-      invalidCredentialsCallback: client.channel.invalidCredentialsCallback,
-      uploadCrud: client.channel.uploadCrud,
-      crudUpdateTriggerStream: crudStream,
-      retryDelay: Duration(seconds: 3),
-      client: FetchClient(mode: RequestMode.cors),
-      identifier: identifier,
-    );
+        adapter: BucketStorage(database),
+        credentialsCallback: client.channel.credentialsCallback,
+        invalidCredentialsCallback: client.channel.invalidCredentialsCallback,
+        uploadCrud: client.channel.uploadCrud,
+        crudUpdateTriggerStream: crudStream,
+        retryDelay: Duration(seconds: 3),
+        client: FetchClient(mode: RequestMode.cors),
+        identifier: identifier,
+        syncParameters: syncParams);
     sync!.statusStream.listen((event) {
       _logger.fine('Broadcasting sync event: $event');
       for (final client in connections) {
@@ -246,12 +277,20 @@ class _SyncRunner {
     sync!.streamingSync();
   }
 
-  void registerClient(_ConnectedClient client) {
-    _mainEvents.add(_AddConnection(client));
+  void registerClient(_ConnectedClient client, int currentCrudThrottleTimeMs,
+      String? currentSyncParamsEncoded) {
+    _mainEvents.add(_AddConnection(
+        client, currentCrudThrottleTimeMs, currentSyncParamsEncoded));
   }
 
+  /// Remove a client, disconnecting if no clients remain..
   void unregisterClient(_ConnectedClient client) {
     _mainEvents.add(_RemoveConnection(client));
+  }
+
+  /// Remove a client, and immediately disconnect.
+  void disconnectClient(_ConnectedClient client) {
+    _mainEvents.add(_DisconnectClient(client));
   }
 }
 
@@ -259,14 +298,22 @@ sealed class _RunnerEvent {}
 
 final class _AddConnection implements _RunnerEvent {
   final _ConnectedClient client;
+  final int crudThrottleTimeMs;
+  final String? syncParamsEncoded;
 
-  _AddConnection(this.client);
+  _AddConnection(this.client, this.crudThrottleTimeMs, this.syncParamsEncoded);
 }
 
 final class _RemoveConnection implements _RunnerEvent {
   final _ConnectedClient client;
 
   _RemoveConnection(this.client);
+}
+
+final class _DisconnectClient implements _RunnerEvent {
+  final _ConnectedClient client;
+
+  _DisconnectClient(this.client);
 }
 
 final class _ActiveDatabaseClosed implements _RunnerEvent {
