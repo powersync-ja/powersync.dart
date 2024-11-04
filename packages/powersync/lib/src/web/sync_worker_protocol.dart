@@ -14,10 +14,12 @@ enum SyncWorkerMessageType {
 
   /// Sent from client to the sync worker to request the synchronization
   /// starting.
+  /// If parameters change, the sync worker reconnects.
   startSynchronization,
 
-  /// Te [SyncWorkerMessage.payload] for the request is a numeric id, the
+  /// The [SyncWorkerMessage.payload] for the request is a numeric id, the
   /// response can be anything (void).
+  /// This disconnects immediately, even if other clients are still open.
   abortSynchronization,
 
   /// Sent from the sync worker to the client when it needs an endpoint to

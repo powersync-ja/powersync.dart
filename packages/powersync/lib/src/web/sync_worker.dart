@@ -72,7 +72,7 @@ class _ConnectedClient {
                 request.crudThrottleTimeMs, request.syncParamsEncoded, this);
             return (JSObject(), null);
           case SyncWorkerMessageType.abortSynchronization:
-            _runner?.unregisterClient(this);
+            _runner?.disconnectClient(this);
             _runner = null;
             return (JSObject(), null);
           default:
@@ -155,6 +155,10 @@ class _SyncRunner {
                 await sync?.abort();
                 sync = null;
               }
+            case _DisconnectClient(:final client):
+              connections.remove(client);
+              await sync?.abort();
+              sync = null;
             case _ActiveDatabaseClosed():
               _logger.info('Remote database closed, finding a new client');
               sync?.abort();
@@ -279,8 +283,14 @@ class _SyncRunner {
         client, currentCrudThrottleTimeMs, currentSyncParamsEncoded));
   }
 
+  /// Remove a client, disconnecting if no clients remain..
   void unregisterClient(_ConnectedClient client) {
     _mainEvents.add(_RemoveConnection(client));
+  }
+
+  /// Remove a client, and immediately disconnect.
+  void disconnectClient(_ConnectedClient client) {
+    _mainEvents.add(_DisconnectClient(client));
   }
 }
 
@@ -298,6 +308,12 @@ final class _RemoveConnection implements _RunnerEvent {
   final _ConnectedClient client;
 
   _RemoveConnection(this.client);
+}
+
+final class _DisconnectClient implements _RunnerEvent {
+  final _ConnectedClient client;
+
+  _DisconnectClient(this.client);
 }
 
 final class _ActiveDatabaseClosed implements _RunnerEvent {
