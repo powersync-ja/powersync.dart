@@ -20,17 +20,17 @@ flutter pub add powersync
 
 Our [full SDK reference](https://docs.powersync.com/client-sdk-references/flutter) contains everything you need to know to get started implementing PowerSync in your project.
 
-## **Web support - Open alpha**
+## **Web support - Beta**
 
-Web support in version 1.6.0 is currently in its alpha stage. This README has been updated to reflect changes relevant to this alpha release.
+Web support in version 1.9.0 is currently in a beta release. This means it is safe to use in production, provided that you've tested your use cases.
 
 ### Demo app
 
-The easiest way to test out the alpha is to run the [Supabase Todo-List](./demos/supabase-todolist) demo app:
+The easiest way to test Flutter Web support is to run the [Supabase Todo-List](https://github.com/powersync-ja/powersync.dart/tree/main/demos/supabase-todolist) demo app:
 
-1. Checkout [this repo's](https://github.com/powersync-ja/powersync.dart/tree/master) `master` branch.
+1. Checkout [this repo's](https://github.com/powersync-ja/powersync.dart/tree/main) `main` branch.
 
-- Note: If you are an existing user updating to the latest code after a git pull, run `melos exec 'flutter pub upgrade'` in the repo's root and make sure it succeeds.
+- Note: If you are an existing user updating to the latest code after a git pull, run `melos exec 'flutter pub upgrade'` in the repo's root directory and make sure it succeeds.
 
 2. Run `melos prepare` in the repo's root
 3. cd into the `demos/supabase-todolist` folder
@@ -42,14 +42,14 @@ The easiest way to test out the alpha is to run the [Supabase Todo-List](./demos
 Install the latest version of the package, for example:
 
 ```
-flutter pub add powersync:'^1.6.0'
+flutter pub add powersync:'^1.9.0'
 ```
 
 The latest version can be found [here](https://pub.dev/packages/powersync/versions).
 
 ### Additional config
 
-Web support requires `sqlite3.wasm` and `powersync_db.worker.js` assets to be served from the web application. They can be downloaded to the `web` directory by running the following command in your application's root folder.
+Web support requires `sqlite3.wasm` and worker (`powersync_db.worker.js` and `powersync_sync.worker.js`) assets to be served from the web application. They can be downloaded to the `web` directory by running the following command in your application's root folder.
 
 ```dart
 dart run powersync:setup_web
@@ -59,9 +59,7 @@ The same code is used for initializing native and web `PowerSyncDatabase` client
 
 ### Limitations
 
-The API for web is essentially the same as for native platforms. Some features within `PowerSyncDatabase` clients are not available.
-
-Multiple tab support is not yet available. Using multiple tabs will break.
+The API for Web is essentially the same as for native platforms, however, some features within `PowerSyncDatabase` clients are not available.
 
 #### Imports
 
