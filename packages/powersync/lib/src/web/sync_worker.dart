@@ -48,10 +48,9 @@ class _SyncWorker {
       String? syncParamsEncoded,
       _ConnectedClient client) {
     return _requestedSyncTasks.putIfAbsent(databaseIdentifier, () {
-      return _SyncRunner(databaseIdentifier, crudThrottleTimeMs,
-          syncParamsEncoded == null ? null : jsonDecode(syncParamsEncoded));
+      return _SyncRunner(databaseIdentifier);
     })
-      ..registerClient(client);
+      ..registerClient(client, crudThrottleTimeMs, syncParamsEncoded);
   }
 }
 
@@ -110,8 +109,8 @@ class _ConnectedClient {
 
 class _SyncRunner {
   final String identifier;
-  final int crudThrottleTimeMs;
-  final Map<String, dynamic>? syncParams;
+  int crudThrottleTimeMs = 1;
+  String? syncParamsEncoded;
 
   final StreamGroup<_RunnerEvent> _group = StreamGroup();
   final StreamController<_RunnerEvent> _mainEvents = StreamController();
@@ -120,16 +119,34 @@ class _SyncRunner {
   _ConnectedClient? databaseHost;
   final connections = <_ConnectedClient>[];
 
-  _SyncRunner(this.identifier, this.crudThrottleTimeMs, this.syncParams) {
+  _SyncRunner(this.identifier) {
     _group.add(_mainEvents.stream);
 
     Future(() async {
       await for (final event in _group.stream) {
         try {
           switch (event) {
-            case _AddConnection(:final client):
+            case _AddConnection(
+                :final client,
+                :final crudThrottleTimeMs,
+                :final syncParamsEncoded
+              ):
               connections.add(client);
+              var reconnect = false;
+              if (this.crudThrottleTimeMs != crudThrottleTimeMs) {
+                this.crudThrottleTimeMs = crudThrottleTimeMs;
+                reconnect = true;
+              }
+              if (this.syncParamsEncoded != syncParamsEncoded) {
+                this.syncParamsEncoded = syncParamsEncoded;
+                reconnect = true;
+              }
               if (sync == null) {
+                await _requestDatabase(client);
+              } else if (reconnect) {
+                // Parameters changed - reconnect.
+                sync?.abort();
+                sync = null;
                 await _requestDatabase(client);
               }
             case _RemoveConnection(:final client):
@@ -232,6 +249,10 @@ class _SyncRunner {
       );
     }
 
+    final syncParams = syncParamsEncoded == null
+        ? null
+        : jsonDecode(syncParamsEncoded!) as Map<String, dynamic>;
+
     sync = StreamingSyncImplementation(
         adapter: BucketStorage(database),
         credentialsCallback: client.channel.credentialsCallback,
@@ -252,8 +273,10 @@ class _SyncRunner {
     sync!.streamingSync();
   }
 
-  void registerClient(_ConnectedClient client) {
-    _mainEvents.add(_AddConnection(client));
+  void registerClient(_ConnectedClient client, int currentCrudThrottleTimeMs,
+      String? currentSyncParamsEncoded) {
+    _mainEvents.add(_AddConnection(
+        client, currentCrudThrottleTimeMs, currentSyncParamsEncoded));
   }
 
   void unregisterClient(_ConnectedClient client) {
@@ -265,8 +288,10 @@ sealed class _RunnerEvent {}
 
 final class _AddConnection implements _RunnerEvent {
   final _ConnectedClient client;
+  final int crudThrottleTimeMs;
+  final String? syncParamsEncoded;
 
-  _AddConnection(this.client);
+  _AddConnection(this.client, this.crudThrottleTimeMs, this.syncParamsEncoded);
 }
 
 final class _RemoveConnection implements _RunnerEvent {
