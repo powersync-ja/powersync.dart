@@ -66,7 +66,9 @@ void main() {
 
       powersync =
           await testUtils.setupPowerSync(path: path, logger: testWarningLogger);
-      powersync.retryDelay = Duration(milliseconds: 0);
+      // Use a short retry delay here.
+      // A zero retry delay makes this test unstable, since it expects `2` error logs later.
+      powersync.retryDelay = Duration(milliseconds: 100);
       var connector = TestConnector(credentialsCallback, uploadData);
       powersync.connect(connector: connector);
 

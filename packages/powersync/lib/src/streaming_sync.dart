@@ -19,7 +19,16 @@ import 'sync_types.dart';
 /// a different value to indicate "no error".
 const _noError = Object();
 
-class StreamingSyncImplementation {
+abstract interface class StreamingSync {
+  Stream<SyncStatus> get statusStream;
+
+  Future<void> streamingSync();
+
+  /// Close any active streams.
+  Future<void> abort();
+}
+
+class StreamingSyncImplementation implements StreamingSync {
   BucketStorage adapter;
 
   final Future<PowerSyncCredentials?> Function() credentialsCallback;
@@ -27,10 +36,19 @@ class StreamingSyncImplementation {
 
   final Future<void> Function() uploadCrud;
 
+  // An internal controller which is used to trigger CRUD uploads internally
+  // e.g. when reconnecting.
+  // This is only a broadcast controller since the `crudLoop` method is public
+  // and could potentially be called multiple times externally.
+  final StreamController<Null> _internalCrudTriggerController =
+      StreamController<Null>.broadcast();
+
   final Stream crudUpdateTriggerStream;
 
   final StreamController<SyncStatus> _statusStreamController =
       StreamController<SyncStatus>.broadcast();
+
+  @override
   late final Stream<SyncStatus> statusStream;
 
   late final http.Client _client;
@@ -74,7 +92,7 @@ class StreamingSyncImplementation {
     statusStream = _statusStreamController.stream;
   }
 
-  /// Close any active streams.
+  @override
   Future<void> abort() async {
     // If streamingSync() hasn't been called yet, _abort will be null.
     var future = _abort?.abort();
@@ -92,6 +110,9 @@ class StreamingSyncImplementation {
     if (_safeToClose) {
       _client.close();
     }
+
+    await _internalCrudTriggerController.close();
+
     // wait for completeAbort() to be called
     await future;
 
@@ -107,6 +128,7 @@ class StreamingSyncImplementation {
     return lastStatus.connected;
   }
 
+  @override
   Future<void> streamingSync() async {
     try {
       _abort = AbortController();
@@ -144,7 +166,7 @@ class StreamingSyncImplementation {
 
           // On error, wait a little before retrying
           // When aborting, don't wait
-          await Future.any([Future.delayed(retryDelay), _abort!.onAbort]);
+          await _delayRetry();
         }
       }
     } finally {
@@ -155,10 +177,14 @@ class StreamingSyncImplementation {
   Future<void> crudLoop() async {
     await uploadAllCrud();
 
-    await for (var _ in crudUpdateTriggerStream) {
-      if (_abort?.aborted == true) {
-        break;
-      }
+    // Trigger a CRUD upload whenever the upstream trigger fires
+    // as-well-as whenever the sync stream reconnects.
+    // This has the potential (in rare cases) to affect the crudThrottleTime,
+    // but it should not result in excessive uploads since the
+    // sync reconnects are also throttled.
+    // The stream here is closed on abort.
+    await for (var _ in mergeStreams(
+        [crudUpdateTriggerStream, _internalCrudTriggerController.stream])) {
       await uploadAllCrud();
     }
   }
@@ -170,6 +196,13 @@ class StreamingSyncImplementation {
 
       while (true) {
         try {
+          // It's possible that an abort or disconnect operation could
+          // be followed by a `close` operation. The close would cause these
+          // operations, which use the DB, to throw an exception. Breaking the loop
+          // here prevents unnecessary potential (caught) exceptions.
+          if (aborted) {
+            break;
+          }
           // This is the first item in the FIFO CRUD queue.
           CrudEntry? nextCrudItem = await adapter.nextCrudItem();
           if (nextCrudItem != null) {
@@ -196,7 +229,7 @@ class StreamingSyncImplementation {
           checkedCrudItem = null;
           isolateLogger.warning('Data upload error', e, stacktrace);
           _updateStatus(uploading: false, uploadError: e);
-          await Future.delayed(retryDelay);
+          await _delayRetry();
           if (!isConnected) {
             // Exit the upload loop if the sync stream is no longer connected
             break;
@@ -297,6 +330,9 @@ class StreamingSyncImplementation {
 
     Future<void>? credentialsInvalidation;
     bool haveInvalidated = false;
+
+    // Trigger a CRUD upload on reconnect
+    _internalCrudTriggerController.add(null);
 
     await for (var line in merged) {
       if (aborted) {
@@ -464,6 +500,12 @@ class StreamingSyncImplementation {
       }
       yield parseStreamingSyncLine(line as Map<String, dynamic>);
     }
+  }
+
+  /// Delays the standard `retryDelay` Duration, but exits early if
+  /// an abort has been requested.
+  Future<void> _delayRetry() async {
+    await Future.any([Future.delayed(retryDelay), _abort!.onAbort]);
   }
 }
 

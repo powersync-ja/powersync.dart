@@ -26,8 +26,8 @@ final testLogger = _makeTestLogger();
 
 final testWarningLogger = _makeTestLogger(level: Level.WARNING);
 
-Logger _makeTestLogger({Level level = Level.ALL}) {
-  final logger = Logger.detached('PowerSync Tests');
+Logger _makeTestLogger({Level level = Level.ALL, String? name}) {
+  final logger = Logger.detached(name ?? 'PowerSync Tests');
   logger.level = level;
   logger.onRecord.listen((record) {
     print(
@@ -53,11 +53,11 @@ Logger _makeTestLogger({Level level = Level.ALL}) {
 }
 
 abstract class AbstractTestUtils {
+  String get _testName => Invoker.current!.liveTest.test.name;
+
   String dbPath() {
-    final test = Invoker.current!.liveTest;
-    var testName = test.test.name;
     var testShortName =
-        testName.replaceAll(RegExp(r'[\s\./]'), '_').toLowerCase();
+        _testName.replaceAll(RegExp(r'[\s\./]'), '_').toLowerCase();
     var dbName = "test-db/$testShortName.db";
     return dbName;
   }
@@ -74,7 +74,8 @@ abstract class AbstractTestUtils {
   Future<PowerSyncDatabase> setupPowerSync(
       {String? path, Schema? schema, Logger? logger}) async {
     final db = PowerSyncDatabase.withFactory(await testFactory(path: path),
-        schema: schema ?? defaultSchema, logger: logger ?? testLogger);
+        schema: schema ?? defaultSchema,
+        logger: logger ?? _makeTestLogger(name: _testName));
     await db.initialize();
     return db;
   }
