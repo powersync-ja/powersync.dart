@@ -24,17 +24,19 @@ flutter pub add powersync
 
 # Getting Started
 
-Our [full SDK reference](https://docs.powersync.com/client-sdk-references/flutter) contains everything you need to know to get started implementing PowerSync in your project.
+Our [full SDK reference](https://docs.powersync.com/client-sdk-references/flutter) contains everything you need to know to get started implementing PowerSync in your project. 
 
 ## **Web support - Beta**
 
-Web support in version 1.9.0 is currently in a beta release. This means it is safe to use in production, provided that you've tested your use cases.
+Flutter Web support in version `^1.9.0` is currently in a beta release. It is functionally ready for production use, provided that you've tested your use cases. 
+
+Please familiarize yourself with the limitations for Flutter Web documented [here](https://docs.powersync.com/client-sdk-references/flutter/flutter-web-support#limitations).
 
 ### Demo app
 
 The easiest way to test Flutter Web support is to run the [Supabase Todo-List](https://github.com/powersync-ja/powersync.dart/tree/main/demos/supabase-todolist) demo app:
 
-1. Checkout [this repo's](https://github.com/powersync-ja/powersync.dart/tree/main) `main` branch.
+1. Clone [this repo](https://github.com/powersync-ja/powersync.dart/tree/main).
 
 - Note: If you are an existing user updating to the latest code after a git pull, run `melos exec 'flutter pub upgrade'` in the repo's root directory and make sure it succeeds.
 
@@ -45,52 +47,15 @@ The easiest way to test Flutter Web support is to run the [Supabase Todo-List](h
 
 ### Installing PowerSync in your own project
 
-Install the latest version of the package, for example:
+Install the [latest version](https://pub.dev/packages/powersync/versions) of the package, for example:
 
 ```
 flutter pub add powersync:'^1.9.0'
 ```
 
-The latest version can be found [here](https://pub.dev/packages/powersync/versions).
+#### Additional config
 
-### Additional config
-
-Web support requires `sqlite3.wasm` and worker (`powersync_db.worker.js` and `powersync_sync.worker.js`) assets to be served from the web application. They can be downloaded to the `web` directory by running the following command in your application's root folder.
-
-```dart
-dart run powersync:setup_web
-```
-
-The same code is used for initializing native and web `PowerSyncDatabase` clients.
-
-### Limitations
-
-The API for Web is essentially the same as for native platforms, however, some features within `PowerSyncDatabase` clients are not available.
-
-#### Imports
-
-Flutter Web does not support importing directly from `sqlite3.dart` as it uses `dart:ffi`.
-
-Change imports from
-
-```Dart
-import 'package/powersync/sqlite3.dart`
-```
-
-to
-
-```Dart
-import 'package/powersync/sqlite3_common.dart'
-```
-
-In code which needs to run on the Web platform. Isolated native specific code can still import from `sqlite3.dart`.
-
-#### Database connections
-
-Web DB connections do not support concurrency. A single DB connection is used. `readLock` and `writeLock` contexts do not
-implement checks for preventing writable queries in read connections and vice-versa.
-
-Direct access to the synchronous `CommonDatabase` (`sqlite.Database` equivalent for web) connection is not available. `computeWithDatabase` is not available on web.
+Additional config is required for web projects. Please see our docs [here](https://docs.powersync.com/client-sdk-references/flutter/flutter-web-support#additional-config) for details.
 
 # Changelog
 
