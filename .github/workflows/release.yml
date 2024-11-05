@@ -4,7 +4,7 @@ name: Compile Assets and Create Draft Release
 on:
   push:
     tags:
-      - "powersync-v[0-9]+.[0-9]+.[0-9]+"
+      - 'powersync-v[0-9]+.[0-9]+.[0-9]+'
 
 jobs:
   build:
@@ -19,8 +19,8 @@ jobs:
       - name: Install Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: "3.x"
-          channel: "stable"
+          flutter-version: '3.x'
+          channel: 'stable'
 
       - name: Install Melos
         run: flutter pub global activate melos
@@ -34,6 +34,9 @@ jobs:
           GH_REPO: ${{ github.repository }}
         run: |
           tag="${{ github.ref_name }}"
-          body="Release $tag"
-          gh release create --draft "$tag" --title "$tag" --notes "$body" --generate-notes
+          version="${tag#powersync-v}"
+          changes=$(awk "/## $version/{flag=1;next}/##/{flag=0}flag" packages/powersync/CHANGELOG.md)
+          body="Release $tag
+          $changes"
+          gh release  --draft "$tag" --title "$tag" --notes "$body"
           gh release upload "${{ github.ref_name }}" packages/powersync/assets/powersync_db.worker.js packages/powersync/assets/powersync_sync.worker.js
