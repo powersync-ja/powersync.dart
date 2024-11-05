@@ -38,5 +38,5 @@ jobs:
           changes=$(awk "/## $version/{flag=1;next}/##/{flag=0}flag" packages/powersync/CHANGELOG.md)
           body="Release $tag
           $changes"
-          gh release "$tag" --title "$tag" --notes "$body"
+          gh release create "$tag" --title "$tag" --notes "$body"
           gh release upload "${{ github.ref_name }}" packages/powersync/assets/powersync_db.worker.js packages/powersync/assets/powersync_sync.worker.js
