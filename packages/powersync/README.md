@@ -41,7 +41,7 @@ The easiest way to test Flutter Web support is to run the [Supabase Todo-List](h
 
 ### Installing PowerSync in your own project
 
-Install the [latest version]((https://pub.dev/packages/powersync/versions)) of the package, for example:
+Install the [latest version](https://pub.dev/packages/powersync/versions) of the package, for example:
 
 ```
 flutter pub add powersync:'^1.9.0'
