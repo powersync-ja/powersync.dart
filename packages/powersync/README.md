@@ -22,15 +22,15 @@ Our [full SDK reference](https://docs.powersync.com/client-sdk-references/flutte
 
 ## **Web support - Beta**
 
-Web support in version 1.9.0 is currently in a beta release. It is functionally ready for production use, provided that you've tested your use cases. 
+Flutter Web support in version 1.9.0 is currently in a beta release. It is functionally ready for production use, provided that you've tested your use cases. 
 
-Please familiarize yourself with the Current Limitations for Web documented [here](https://docs.powersync.com/client-sdk-references/flutter/flutter-web-support#current-limitations).
+Please familiarize yourself with the Current Limitations for Flutter Web documented [here](https://docs.powersync.com/client-sdk-references/flutter/flutter-web-support#current-limitations).
 
 ### Demo app
 
 The easiest way to test Flutter Web support is to run the [Supabase Todo-List](https://github.com/powersync-ja/powersync.dart/tree/main/demos/supabase-todolist) demo app:
 
-1. Checkout [this repo's](https://github.com/powersync-ja/powersync.dart/tree/main) `main` branch.
+1. Clone [this repo](https://github.com/powersync-ja/powersync.dart/tree/main).
 
 - Note: If you are an existing user updating to the latest code after a git pull, run `melos exec 'flutter pub upgrade'` in the repo's root directory and make sure it succeeds.
 
@@ -49,11 +49,7 @@ flutter pub add powersync:'^1.9.0'
 
 #### Additional config
 
-Web support requires `sqlite3.wasm` and worker (`powersync_db.worker.js` and `powersync_sync.worker.js`) assets to be served from the web application. They can be downloaded to the web directory by running the following command in your application's root folder.
-
-```bash
-dart run powersync:setup_web
-```
+Additional config is required for web projects. Please see our docs [here](https://docs.powersync.com/client-sdk-references/flutter/flutter-web-support#additional-config) for details.
 
 # Changelog
 
