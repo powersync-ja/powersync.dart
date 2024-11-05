@@ -19,6 +19,8 @@ assets/*
 powersync_db.worker.js
 powersync_db.worker.js*
 sqlite3.wasm
+powersync_sync.worker.js
+powersync_sync.worker.js*
 
 #Core binaries
 *.dylib

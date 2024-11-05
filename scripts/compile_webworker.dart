@@ -9,35 +9,62 @@ Future<void> main() async {
 
   /// The monorepo root assets directory
   final workerFilename = 'powersync_db.worker.js';
-  final outputPath =
+  final dbWorkerOutputPath =
       path.join(repoRoot, 'packages/powersync/assets/$workerFilename');
 
   final workerSourcePath = path.join(repoRoot,
       './packages/powersync_core/lib/src/web/powersync_db.worker.dart');
 
   // And compile worker code
-  final process = await Process.run(
+  final dbWorkerProcess = await Process.run(
       Platform.executable,
       [
         'compile',
         'js',
         '-o',
-        outputPath,
+        dbWorkerOutputPath,
         '-O4',
         workerSourcePath,
       ],
       workingDirectory: cwd);
 
-  if (process.exitCode != 0) {
-    throw Exception('Could not compile worker: ${process.stdout.toString()}');
+  if (dbWorkerProcess.exitCode != 0) {
+    throw Exception(
+        'Could not compile db worker: ${dbWorkerProcess.stdout.toString()}');
   }
 
-  final workerFile = File(outputPath);
+  final syncWorkerFilename = 'powersync_sync.worker.js';
+  final syncWorkerOutputPath =
+      path.join(repoRoot, 'packages/powersync/assets/$syncWorkerFilename');
 
-  //Copy worker to powersync_core
+  final syncWorkerSourcePath = path.join(
+      repoRoot, './packages/powersync_core/lib/src/web/sync_worker.dart');
+
+  final syncWorkerProcess = await Process.run(
+      Platform.executable,
+      [
+        'compile',
+        'js',
+        '-o',
+        syncWorkerOutputPath,
+        '-O4',
+        syncWorkerSourcePath,
+      ],
+      workingDirectory: cwd);
+
+  if (syncWorkerProcess.exitCode != 0) {
+    throw Exception(
+        'Could not compile sync worker: ${dbWorkerProcess.stdout.toString()}');
+  }
+
+  final workerFile = File(dbWorkerOutputPath);
+  final syncWorkerFile = File(syncWorkerOutputPath);
+
+  //Copy workers to powersync_core
   final powersyncCoreAssetsPath =
-      path.join(repoRoot, 'packages/powersync_core/assets/$workerFilename');
-  workerFile.copySync(powersyncCoreAssetsPath);
+      path.join(repoRoot, 'packages/powersync_core/assets');
+  workerFile.copySync('$powersyncCoreAssetsPath/$workerFilename');
+  syncWorkerFile.copySync('$powersyncCoreAssetsPath/$syncWorkerFilename');
 
   // Copy this to all demo apps web folders
   final demosRoot = path.join(repoRoot, 'demos');
@@ -51,6 +78,8 @@ Future<void> main() async {
       continue;
     }
     final demoOutputPath = path.join(demoWebDir, workerFilename);
-    workerFile.copySync(demoOutputPath);
+    File(dbWorkerOutputPath).copySync(demoOutputPath);
+    File(syncWorkerOutputPath)
+        .copySync(path.join(demoWebDir, syncWorkerFilename));
   }
 }

@@ -36,4 +36,4 @@ jobs:
           tag="${{ github.ref_name }}"
           body="Release $tag"
           gh release create --draft "$tag" --title "$tag" --notes "$body" --generate-notes
-          gh release upload "${{ github.ref_name }}" packages/powersync/assets/powersync_db.worker.js
+          gh release upload "${{ github.ref_name }}" packages/powersync/assets/powersync_db.worker.js packages/powersync/assets/powersync_sync.worker.js

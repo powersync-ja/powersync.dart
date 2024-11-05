@@ -15,6 +15,8 @@ import 'package:powersync_core/src/streaming_sync.dart';
 import 'package:sqlite_async/sqlite_async.dart';
 import 'package:powersync_core/src/schema_logic.dart' as schema_logic;
 
+import '../../web/sync_controller.dart';
+
 /// A PowerSync managed database.
 ///
 /// Web implementation for [PowerSyncDatabase]
@@ -93,7 +95,8 @@ class PowerSyncDatabaseImpl
       Logger? logger}) {
     final db = SqliteDatabase.withFactory(openFactory, maxReaders: 1);
     return PowerSyncDatabaseImpl.withDatabase(
-        schema: schema, logger: logger, database: db);
+        schema: schema, logger: logger, database: db)
+      ..openFactory = openFactory;
   }
 
   /// Open a PowerSyncDatabase on an existing [SqliteDatabase].
@@ -119,14 +122,15 @@ class PowerSyncDatabaseImpl
   /// The connection is automatically re-opened if it fails for any reason.
   ///
   /// Status changes are reported on [statusStream].
-  baseConnect(
-      {required PowerSyncBackendConnector connector,
+  baseConnect({
+    required PowerSyncBackendConnector connector,
 
-      /// Throttle time between CRUD operations
-      /// Defaults to 10 milliseconds.
-      required Duration crudThrottleTime,
-      required Future<void> Function() reconnect,
-      Map<String, dynamic>? params}) async {
+    /// Throttle time between CRUD operations
+    /// Defaults to 10 milliseconds.
+    required Duration crudThrottleTime,
+    required Future<void> Function() reconnect,
+    Map<String, dynamic>? params,
+  }) async {
     await initialize();
 
     // Disconnect if connected
@@ -138,9 +142,24 @@ class PowerSyncDatabaseImpl
     final crudStream =
         database.onChange(['ps_crud'], throttle: crudThrottleTime);
 
-    // TODO better multitab support
     final storage = BucketStorage(database);
-    final sync = StreamingSyncImplementation(
+    StreamingSync sync;
+    // Try using a shared worker for the synchronization implementation to avoid
+    // duplicating work across tabs.
+    try {
+      sync = await SyncWorkerHandle.start(
+          database: this,
+          connector: connector,
+          crudThrottleTimeMs: crudThrottleTime.inMilliseconds,
+          workerUri: Uri.base.resolve('/powersync_sync.worker.js'),
+          syncParams: params);
+    } catch (e) {
+      logger.warning(
+        'Could not use shared worker for synchronization, falling back to locks.',
+        e,
+      );
+
+      sync = StreamingSyncImplementation(
         adapter: storage,
         credentialsCallback: connector.getCredentialsCached,
         invalidCredentialsCallback: connector.fetchCredentials,
@@ -151,7 +170,10 @@ class PowerSyncDatabaseImpl
         syncParameters: params,
         // Only allows 1 sync implementation to run at a time per database
         // This should be global (across tabs) when using Navigator locks.
-        identifier: database.openFactory.path);
+        identifier: database.openFactory.path,
+      );
+    }
+
     sync.statusStream.listen((event) {
       setStatus(event);
     });

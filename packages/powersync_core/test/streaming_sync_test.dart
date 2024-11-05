@@ -13,8 +13,11 @@ final testUtils = TestUtils();
 
 class TestConnector extends PowerSyncBackendConnector {
   final Function _fetchCredentials;
+  final Future<void> Function(PowerSyncDatabase)? _uploadData;
 
-  TestConnector(this._fetchCredentials);
+  TestConnector(this._fetchCredentials,
+      {Future<void> Function(PowerSyncDatabase)? uploadData})
+      : _uploadData = uploadData;
 
   @override
   Future<PowerSyncCredentials?> fetchCredentials() {
@@ -22,7 +25,9 @@ class TestConnector extends PowerSyncBackendConnector {
   }
 
   @override
-  Future<void> uploadData(PowerSyncDatabase database) async {}
+  Future<void> uploadData(PowerSyncDatabase database) async {
+    await _uploadData?.call(database);
+  }
 }
 
 void main() {
