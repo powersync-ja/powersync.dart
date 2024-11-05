@@ -9,7 +9,8 @@ environment:
 
 dev_dependencies:
   lints: ^2.1.1
-  melos: ^6.1.0
+  melos: ^6.2.0
   test: ^1.25.0
   path: ^1.0.0
   yaml: ^3.1.2
+  interact: ^2.1.1
