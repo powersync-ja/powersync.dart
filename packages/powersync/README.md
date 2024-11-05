@@ -24,7 +24,7 @@ Our [full SDK reference](https://docs.powersync.com/client-sdk-references/flutte
 
 Flutter Web support in version `^1.9.0` is currently in a beta release. It is functionally ready for production use, provided that you've tested your use cases. 
 
-Please familiarize yourself with the Current Limitations for Flutter Web documented [here](https://docs.powersync.com/client-sdk-references/flutter/flutter-web-support#current-limitations).
+Please familiarize yourself with the limitations for Flutter Web documented [here](https://docs.powersync.com/client-sdk-references/flutter/flutter-web-support#limitations).
 
 ### Demo app
 
