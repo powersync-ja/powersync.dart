@@ -10,23 +10,29 @@ import '../streaming_sync.dart';
 import 'sync_worker_protocol.dart';
 
 class SyncWorkerHandle implements StreamingSync {
-  final PowerSyncDatabaseImpl _database;
-  final PowerSyncBackendConnector _connector;
-  final int _crudThrottleTimeMs;
+  final PowerSyncDatabaseImpl database;
+  final PowerSyncBackendConnector connector;
+  final int crudThrottleTimeMs;
+  final Map<String, dynamic>? syncParams;
 
   late final WorkerCommunicationChannel _channel;
 
   final StreamController<SyncStatus> _status = StreamController.broadcast();
 
-  SyncWorkerHandle._(this._database, this._connector, this._crudThrottleTimeMs,
-      MessagePort sendToWorker, SharedWorker worker) {
+  SyncWorkerHandle._(
+      {required this.database,
+      required this.connector,
+      required this.crudThrottleTimeMs,
+      required MessagePort sendToWorker,
+      required SharedWorker worker,
+      this.syncParams}) {
     _channel = WorkerCommunicationChannel(
       port: sendToWorker,
       errors: EventStreamProviders.errorEvent.forTarget(worker),
       requestHandler: (type, payload) async {
         switch (type) {
           case SyncWorkerMessageType.requestEndpoint:
-            final endpoint = await (_database.database as WebSqliteConnection)
+            final endpoint = await (database.database as WebSqliteConnection)
                 .exposeEndpoint();
 
             return (
@@ -38,10 +44,10 @@ class SyncWorkerHandle implements StreamingSync {
               [endpoint.connectPort].toJS
             );
           case SyncWorkerMessageType.uploadCrud:
-            await _connector.uploadData(_database);
+            await connector.uploadData(database);
             return (JSObject(), null);
           case SyncWorkerMessageType.invalidCredentialsCallback:
-            final credentials = await _connector.fetchCredentials();
+            final credentials = await connector.fetchCredentials();
             return (
               credentials != null
                   ? SerializedCredentials.from(credentials)
@@ -49,7 +55,7 @@ class SyncWorkerHandle implements StreamingSync {
               null
             );
           case SyncWorkerMessageType.credentialsCallback:
-            final credentials = await _connector.getCredentialsCached();
+            final credentials = await connector.getCredentialsCached();
             return (
               credentials != null
                   ? SerializedCredentials.from(credentials)
@@ -71,13 +77,19 @@ class SyncWorkerHandle implements StreamingSync {
   }
 
   static Future<SyncWorkerHandle> start(
-      PowerSyncDatabaseImpl database,
-      PowerSyncBackendConnector connector,
-      int crudThrottleTimeMs,
-      Uri workerUri) async {
+      {required PowerSyncDatabaseImpl database,
+      required PowerSyncBackendConnector connector,
+      required int crudThrottleTimeMs,
+      required Uri workerUri,
+      Map<String, dynamic>? syncParams}) async {
     final worker = SharedWorker(workerUri.toString().toJS);
     final handle = SyncWorkerHandle._(
-        database, connector, crudThrottleTimeMs, worker.port, worker);
+        database: database,
+        connector: connector,
+        crudThrottleTimeMs: crudThrottleTimeMs,
+        sendToWorker: worker.port,
+        worker: worker,
+        syncParams: syncParams);
 
     // Make sure that the worker is working, or throw immediately.
     await handle._channel.ping();
@@ -101,6 +113,6 @@ class SyncWorkerHandle implements StreamingSync {
   @override
   Future<void> streamingSync() async {
     await _channel.startSynchronization(
-        _database.openFactory.path, _crudThrottleTimeMs);
+        database.openFactory.path, crudThrottleTimeMs, syncParams);
   }
 }
