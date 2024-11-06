@@ -17,19 +17,7 @@ class BenchmarkItemsPage extends StatelessWidget {
   Widget build(BuildContext context) {
     const content = BenchmarkItemsWidget();
 
-    final addButton = FloatingActionButton(
-      onPressed: () {
-        BenchmarkItem.create('Latency test ${itemIndex++}');
-      },
-      tooltip: 'Create Item',
-      child: const Icon(Icons.add),
-    );
-
-    final page = MyHomePage(
-      title: 'Benchmarks',
-      content: content,
-      floatingActionButton: addButton,
-    );
+    const page = MyHomePage(title: 'Benchmarks', content: content);
     return page;
   }
 }
@@ -49,6 +37,7 @@ class _BenchmarkItemsWidgetState extends State<BenchmarkItemsWidget> {
   StreamSubscription? _subscription;
   StreamSubscription? _countSubscription;
   StreamSubscription? _syncStatusSubscription;
+  String _latencyString = '0';
   int? count;
 
   _BenchmarkItemsWidgetState();
@@ -56,15 +45,25 @@ class _BenchmarkItemsWidgetState extends State<BenchmarkItemsWidget> {
   @override
   void initState() {
     super.initState();
-    final stream = BenchmarkItem.watchItems();
-    _subscription = stream.listen((data) {
+    _subscription = BenchmarkItem.watchGroupedItems().listen((data) {
       if (!context.mounted) {
         return;
       }
+
+      // Latency is the same for all items in the group
+      final latencies =
+          data.map((e) => e.latency).where((e) => e != null).toList();
+      final totalLatency = latencies.fold(0, (a, b) => a + b!.inMicroseconds);
+      final averageLatencyMicros =
+          latencies.isNotEmpty ? totalLatency / latencies.length : 0;
+      final latencyString = (averageLatencyMicros / 1000.0).toStringAsFixed(1);
+
       setState(() {
         _data = data;
+        _latencyString = latencyString;
       });
     });
+
     _countSubscription =
         db.watch('select count() as count from ps_oplog').listen((data) {
       if (!context.mounted) {
@@ -92,6 +91,20 @@ class _BenchmarkItemsWidgetState extends State<BenchmarkItemsWidget> {
     _countSubscription?.cancel();
   }
 
+  Future<void> createBatch(int n) async {
+    var items = <String>[];
+    for (var i = 1; i <= n; i++) {
+      items.add('Batch Test $itemIndex/$i');
+    }
+    itemIndex += 1;
+    await db.execute('''
+      INSERT INTO
+        benchmark_items(id, description, client_created_at)
+      SELECT uuid(), e.value, datetime('now', 'subsecond') || 'Z'
+      FROM json_each(?) e
+      ''', [jsonEncode(items)]);
+  }
+
   @override
   Widget build(BuildContext context) {
     Duration? syncDuration = timer.syncTime ?? timer.elapsed;
@@ -100,13 +113,6 @@ class _BenchmarkItemsWidgetState extends State<BenchmarkItemsWidget> {
           child: Text(
               "Busy with sync... ${syncDuration.inMilliseconds}ms / $count operations"));
     }
-
-    final latencies =
-        _data.map((e) => e.latency).where((e) => e != null).toList();
-    final totalLatency = latencies.fold(0, (a, b) => a + b!.inMicroseconds);
-    final averageLatencyMicros =
-        latencies.isNotEmpty ? totalLatency / latencies.length : 0;
-    final latencyString = (averageLatencyMicros / 1000.0).toStringAsFixed(1);
 
     final clearButton = TextButton.icon(
         label: const Text('Delete all'),
@@ -122,37 +128,24 @@ class _BenchmarkItemsWidgetState extends State<BenchmarkItemsWidget> {
         },
         icon: const Icon(Icons.sync));
 
-    final create100 = TextButton.icon(
-        label: const Text('Create 100'),
+    final create1 = TextButton.icon(
+        label: const Text('+1'),
         onPressed: () async {
-          var items = <String>[];
-          for (var i = 1; i <= 100; i++) {
-            items.add('Batch Test $itemIndex/$i');
-          }
-          itemIndex += 1;
-          await db.execute('''
-      INSERT INTO
-        benchmark_items(id, description, client_created_at)
-      SELECT uuid(), e.value, datetime('now', 'subsecond') || 'Z'
-      FROM json_each(?) e
-      ''', [jsonEncode(items)]);
+          await createBatch(1);
+        },
+        icon: const Icon(Icons.create));
+
+    final create100 = TextButton.icon(
+        label: const Text('+100'),
+        onPressed: () async {
+          await createBatch(100);
         },
         icon: const Icon(Icons.create));
 
     final create1000 = TextButton.icon(
-        label: const Text('Create 1000'),
+        label: const Text('+1000'),
         onPressed: () async {
-          var items = <String>[];
-          for (var i = 1; i <= 1000; i++) {
-            items.add('Batch Test $itemIndex/$i');
-          }
-          itemIndex += 1;
-          await db.execute('''
-      INSERT INTO
-        benchmark_items(id, description, client_created_at)
-      SELECT uuid(), e.value, datetime('now', 'subsecond') || 'Z'
-      FROM json_each(?) e
-      ''', [jsonEncode(items)]);
+          await createBatch(1000);
         },
         icon: const Icon(Icons.create));
 
@@ -164,7 +157,8 @@ class _BenchmarkItemsWidgetState extends State<BenchmarkItemsWidget> {
         overflowSpacing: 8.0,
         children: <Widget>[
           Text(
-              'First sync duration: ${syncDuration.inMilliseconds}ms / $count operations / ${latencyString}ms latency'),
+              'First sync duration: ${syncDuration.inMilliseconds}ms / $count operations / ${_latencyString}ms latency'),
+          create1,
           create100,
           create1000,
           resyncButton,

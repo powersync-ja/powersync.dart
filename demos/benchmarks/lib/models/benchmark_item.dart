@@ -29,11 +29,11 @@ class BenchmarkItem {
         serverCreatedAt: DateTime.tryParse(row['server_created_at'] ?? ''));
   }
 
-  static Stream<List<BenchmarkItem>> watchItems() {
+  static Stream<List<BenchmarkItem>> watchGroupedItems() {
     return db
-        .watch(
-            'SELECT * FROM benchmark_items ORDER BY client_created_at DESC, id')
-        .map((results) {
+        .watch('''select max(description) as description, * from benchmark_items
+      group by client_created_at
+      order by client_created_at desc''').map((results) {
       return results.map(BenchmarkItem.fromRow).toList(growable: false);
     });
   }
