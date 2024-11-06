@@ -377,9 +377,10 @@ packages:
   sqlite_async:
     dependency: "direct main"
     description:
-      path: "../../../sqlite_async/packages/sqlite_async"
-      relative: true
-    source: path
+      name: sqlite_async
+      sha256: d66fb6e6d07c1a834743326c033029f75becbb1fad6823d709f921872abc3d5b
+      url: "https://pub.dev"
+    source: hosted
     version: "0.11.0"
   stack_trace:
     dependency: transitive
