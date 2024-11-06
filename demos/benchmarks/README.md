@@ -58,7 +58,7 @@ It should write to the same Postgres database as configured above.
 
 ## Configure the app
 
-Generate a temporary token, and configure the credentials in `lib/app_config.dart`.
+Generate a [temporary token](https://docs.powersync.com/installation/authentication-setup/development-tokens#development-tokens), and configure the credentials in `lib/app_config.dart`.
 
 Currently a size bucket must be hardcoded in the config - one of "10k", "100k", "1m" or "10m" (see the Postgres setup above).
 
