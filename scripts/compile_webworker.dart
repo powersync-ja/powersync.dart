@@ -30,7 +30,7 @@ Future<void> main() async {
 
   if (dbWorkerProcess.exitCode != 0) {
     throw Exception(
-        'Could not compile db worker: ${dbWorkerProcess.stdout.toString()}');
+        'Could not compile db worker.\nstdout: ${dbWorkerProcess.stdout.toString()}\nstderr: ${dbWorkerProcess.stderr.toString()}');
   }
 
   final syncWorkerFilename = 'powersync_sync.worker.js';
@@ -54,7 +54,7 @@ Future<void> main() async {
 
   if (syncWorkerProcess.exitCode != 0) {
     throw Exception(
-        'Could not compile sync worker: ${dbWorkerProcess.stdout.toString()}');
+        'Could not compile sync worker:\nstdout: ${syncWorkerProcess.stdout.toString()}\nstderr: ${syncWorkerProcess.stderr.toString()}');
   }
 
   // Copy this to all demo apps web folders

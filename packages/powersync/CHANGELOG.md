@@ -1,3 +1,7 @@
+## 1.9.2
+
+ - [Web] Automatically flush IndexedDB storage to fix durability issues
+
 ## 1.9.1
 
 - Flutter Web Beta release

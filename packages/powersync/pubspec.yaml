@@ -1,5 +1,5 @@
 name: powersync
-version: 1.9.1
+version: 1.9.2
 homepage: https://powersync.com
 repository: https://github.com/powersync-ja/powersync.dart
 description: PowerSync Flutter SDK - sync engine for building local-first apps.
@@ -10,7 +10,7 @@ dependencies:
   flutter:
     sdk: flutter
 
-  sqlite_async: ^0.10.1
+  sqlite_async: ^0.11.0
   # We only use sqlite3 as a transitive dependency,
   # but right now we need a minimum of v2.4.6.
   sqlite3: ^2.4.6
