@@ -301,10 +301,10 @@ packages:
     dependency: "direct main"
     description:
       name: drift_sqlite_async
-      sha256: fc5450654ccacd5cbba627d7d86d0dd84e26070941c2a068eb8298fb86a01cd3
+      sha256: b29c9a838d2ed3f285c5964bc57c157af2a826cfa6dd3bf1b46121b15bb1212d
       url: "https://pub.dev"
     source: hosted
-    version: "0.2.0-alpha.3"
+    version: "0.2.0"
   fake_async:
     dependency: transitive
     description:
@@ -686,14 +686,14 @@ packages:
       path: "../../packages/powersync"
       relative: true
     source: path
-    version: "1.9.0"
+    version: "1.9.2"
   powersync_attachments_helper:
     dependency: "direct main"
     description:
       path: "../../packages/powersync_attachments_helper"
       relative: true
     source: path
-    version: "0.6.14"
+    version: "0.6.15+1"
   powersync_flutter_libs:
     dependency: "direct overridden"
     description:
@@ -878,10 +878,10 @@ packages:
     dependency: "direct main"
     description:
       name: sqlite_async
-      sha256: "4a921c53f12b850c5c7337aa7b2c7a0249efd07696180c1ee6de9750632543c7"
+      sha256: d66fb6e6d07c1a834743326c033029f75becbb1fad6823d709f921872abc3d5b
       url: "https://pub.dev"
     source: hosted
-    version: "0.10.1"
+    version: "0.11.0"
   sqlparser:
     dependency: transitive
     description:
