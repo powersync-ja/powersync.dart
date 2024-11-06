@@ -35,7 +35,7 @@ For reference, these rows are around 142 bytes each when synced. However, sync p
 
 ## PowerSync Service
 
-Use this sync rules:
+Use these sync rules:
 
 ```yaml
 bucket_definitions:
