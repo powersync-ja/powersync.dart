@@ -227,6 +227,34 @@ void main() {
       await expectNoAssets();
     });
 
+    test('put | put remove', () async {
+      await bucketStorage.saveSyncData(SyncDataBatch([
+        SyncBucketData(bucket: 'bucket1', data: [putAsset1_1]),
+      ]));
+
+      await syncLocalChecked(Checkpoint(lastOpId: '1', checksums: [
+        BucketChecksum(bucket: 'bucket1', checksum: 1),
+      ]));
+
+      expect(
+          await powersync.execute(
+              "SELECT id, description, make FROM assets WHERE id = 'O1'"),
+          equals([
+            {'id': 'O1', 'description': 'bar', 'make': null}
+          ]));
+
+      await bucketStorage.saveSyncData(SyncDataBatch([
+        SyncBucketData(bucket: 'bucket1', data: [putAsset1_3]),
+        SyncBucketData(bucket: 'bucket1', data: [removeAsset1_5])
+      ]));
+
+      await syncLocalChecked(Checkpoint(lastOpId: '5', checksums: [
+        BucketChecksum(bucket: 'bucket1', checksum: 9),
+      ]));
+
+      await expectNoAssets();
+    });
+
     test('should use subkeys', () async {
       // subkeys cause this to be treated as a separate entity in the oplog,
       // but same entity in the local db.
