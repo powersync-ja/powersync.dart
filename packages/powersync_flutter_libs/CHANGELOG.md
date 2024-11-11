@@ -1,3 +1,7 @@
+## 0.4.3
+
+ - powersync-sqlite-core 0.3.6 - fixes dangling rows issue
+
 ## 0.4.2
 
  - Update a dependency to the latest release.
