@@ -27,4 +27,4 @@ git push --follow-tags
 
 **Note: This will launch the `release.yaml` and `publish.yaml` github actions in `.github/workflows`. So only run it when you are absolutely sure you want to release.**
 
-A version bump and tag push for `powersync` will also create a draft github release for the powersync web worker. The worker needs to be manually published in the GitHub [releases](https://github.com/powersync-ja/powersync.dart/releases).
+A version bump and tag push for `powersync` will also create a Github release for the PowerSync web workers. Verify the release exists and is published in the [releases](https://github.com/powersync-ja/powersync.dart/releases).

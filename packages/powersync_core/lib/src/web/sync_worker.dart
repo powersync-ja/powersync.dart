@@ -16,8 +16,8 @@ import 'package:powersync_core/src/streaming_sync.dart';
 import 'package:sqlite_async/web.dart';
 import 'package:web/web.dart' hide RequestMode;
 
-import '../bucket_storage.dart';
 import 'sync_worker_protocol.dart';
+import 'web_bucket_storage.dart';
 
 final _logger = autoLogger;
 
@@ -258,7 +258,7 @@ class _SyncRunner {
         : jsonDecode(syncParamsEncoded!) as Map<String, dynamic>;
 
     sync = StreamingSyncImplementation(
-        adapter: BucketStorage(database),
+        adapter: WebBucketStorage(database),
         credentialsCallback: client.channel.credentialsCallback,
         invalidCredentialsCallback: client.channel.invalidCredentialsCallback,
         uploadCrud: client.channel.uploadCrud,

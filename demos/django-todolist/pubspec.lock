@@ -318,7 +318,7 @@ packages:
       path: "../../packages/powersync"
       relative: true
     source: path
-    version: "1.9.1"
+    version: "1.9.2"
   powersync_core:
     dependency: "direct overridden"
     description:
@@ -454,10 +454,10 @@ packages:
     dependency: "direct main"
     description:
       name: sqlite_async
-      sha256: "4a921c53f12b850c5c7337aa7b2c7a0249efd07696180c1ee6de9750632543c7"
+      sha256: d66fb6e6d07c1a834743326c033029f75becbb1fad6823d709f921872abc3d5b
       url: "https://pub.dev"
     source: hosted
-    version: "0.10.1"
+    version: "0.11.0"
   stack_trace:
     dependency: transitive
     description:
