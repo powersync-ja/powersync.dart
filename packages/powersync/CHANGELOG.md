@@ -1,3 +1,7 @@
+## 1.9.3
+
+ - Update a dependency to the latest release.
+
 ## 1.9.2
 
  - [Web] Automatically flush IndexedDB storage to fix durability issues
