@@ -35,7 +35,7 @@ jobs:
         env:
           GITHUBREF: ${{ github.ref }}
         run: |
-          PACKAGE_NAME=$(sed -E 's/refs\/tags\/([a-z0-9_]+)-v([0-9]+\.[0-9]+\.[0-9]+)/\1/' <<< $GITHUBREF) && \
+          PACKAGE_NAME=$(sed -E 's/refs\/tags\/([a-z0-9_]+)-v([0-9]+\.[0-9]+\.[0-9]+(\+[0-9]+)?)/\1/' <<< $GITHUBREF) && \
           echo "PACKAGE_NAME=$PACKAGE_NAME" >> $GITHUB_ENV
           echo "Package name: $PACKAGE_NAME"
 
