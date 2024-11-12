@@ -11,10 +11,10 @@ This package (`powersync`) is the PowerSync client SDK for Flutter.
 See a summary of features [here](https://docs.powersync.com/client-sdk-references/flutter).
 
 > **Note**
-> This SDK is recommended for Flutter applications that do not require on-device encryption.
+> This package is recommended for Flutter applications that do not require on-device encryption.
 
-> - For Flutter applications that require encryption, use the [`powersync_sqlcipher`](https://pub.dev/packages/powersync_sqlcipher) SDK.
-> - For use cases such as server-side Dart or non-Flutter Dart environments, use the [`powersync_core`](https://pub.dev/packages/powersync_core) SDK.
+> - For Flutter applications that require encryption, use the [`powersync_sqlcipher`](https://pub.dev/packages/powersync_sqlcipher) package.
+> - For use cases such as server-side Dart or non-Flutter Dart environments, use the [`powersync_core`](https://pub.dev/packages/powersync_core) package.
 
 # Installation
 
