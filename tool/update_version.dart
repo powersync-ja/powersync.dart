@@ -7,6 +7,6 @@ void main() {
   final yaml = loadYaml(pubspecContent);
   final version = yaml['version'];
 
-  final versionFile = File('packages/powersync/lib/src/version.dart');
+  final versionFile = File('packages/powersync_core/lib/src/version.dart');
   versionFile.writeAsStringSync("const String libraryVersion = '$version';\n");
 }
