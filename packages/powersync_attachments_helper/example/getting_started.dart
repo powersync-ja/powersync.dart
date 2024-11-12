@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:powersync_attachments_helper/powersync_attachments_helper.dart';
-import 'package:powersync/powersync.dart';
+import 'package:powersync_core/powersync_core.dart';
 
 const schema = Schema([
   Table('users', [Column.text('name'), Column.text('photo_id')])

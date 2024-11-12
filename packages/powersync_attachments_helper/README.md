@@ -4,14 +4,14 @@
 
 ## Features
 
-* Handles syncing uploads, downloads and deletes between local and remote storage.
+- Handles syncing uploads, downloads and deletes between local and remote storage.
 
 ## Getting started
 
 ```dart
 import 'dart:async';
 import 'package:powersync_attachments_helper/powersync_attachments_helper.dart';
-import 'package:powersync/powersync.dart';
+import 'package:powersync_core/powersync_core.dart';
 
 // Set up schema with an id field that can be used in watchIds().
 // In this case it is photo_id

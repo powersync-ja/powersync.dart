@@ -2,13 +2,19 @@
   <a href="https://www.powersync.com" target="_blank"><img src="https://github.com/powersync-ja/.github/assets/7372448/d2538c43-c1a0-4c47-9a76-41462dba484f"/></a>
 </p>
 
-# PowerSync SDK for Dart/Flutter
+# PowerSync SDK for Flutter
 
-*[PowerSync](https://www.powersync.com) is a sync engine for building local-first apps with instantly-responsive UI/UX and simplified state transfer. Syncs between SQLite on the client-side and Postgres, MongoDB or MySQL on the server-side.*
+_[PowerSync](https://www.powersync.com) is a sync engine for building local-first apps with instantly-responsive UI/UX and simplified state transfer. Syncs between SQLite on the client-side and Postgres, MongoDB or MySQL on the server-side._
 
-This package (`powersync`) is the PowerSync client SDK for Dart/Flutter.
+This package (`powersync`) is the PowerSync client SDK for Flutter.
 
 See a summary of features [here](https://docs.powersync.com/client-sdk-references/flutter).
+
+> **Note**
+> This package is recommended for Flutter applications that do not require on-device encryption.
+
+> - For Flutter applications that require encryption, use the [`powersync_sqlcipher`](https://pub.dev/packages/powersync_sqlcipher) package.
+> - For use cases such as server-side Dart or non-Flutter Dart environments, use the [`powersync_core`](https://pub.dev/packages/powersync_core) package.
 
 # Installation
 

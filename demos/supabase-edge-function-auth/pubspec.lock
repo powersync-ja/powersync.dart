@@ -399,6 +399,13 @@ packages:
       relative: true
     source: path
     version: "1.9.2"
+  powersync_core:
+    dependency: "direct overridden"
+    description:
+      path: "../../packages/powersync_core"
+      relative: true
+    source: path
+    version: "0.0.1"
   powersync_flutter_libs:
     dependency: "direct overridden"
     description:

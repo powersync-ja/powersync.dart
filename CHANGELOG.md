@@ -3,6 +3,34 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 2024-11-12
+
+### Changes
+
+---
+
+Packages with breaking changes:
+
+ - There are no breaking changes in this release.
+
+Packages with other changes:
+
+ - [`powersync` - `v1.10.0`](#powersync---v1100)
+ - [`powersync_attachments_helper` - `v0.6.16`](#powersync_attachments_helper---v0616)
+ - [`powersync_core` - `v1.0.0`](#powersync_core---v100)
+ - [`powersync_sqlcipher` - `v0.1.0`](#powersync_sqlcipher---v010)
+
+---
+
+#### `powersync` - `v1.10.0`
+
+#### `powersync_attachments_helper` - `v0.6.16`
+
+#### `powersync_core` - `v1.0.0`
+
+#### `powersync_sqlcipher` - `v0.1.0`
+
+
 ## 2024-11-11
 
 ### Changes

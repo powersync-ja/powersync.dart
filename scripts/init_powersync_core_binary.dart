@@ -1,5 +1,5 @@
-/// Downloads the powersync dynamic library and copies it to the powersync package directory
-/// This is only necessary for running unit tests in the powersync package
+/// Downloads the powersync dynamic library and copies it to the powersync_core package directory
+/// This is only necessary for running unit tests in the powersync_core package
 import 'dart:ffi';
 import 'dart:io';
 
@@ -10,7 +10,8 @@ final sqliteUrl =
 
 void main() async {
   final sqliteCoreFilename = getLibraryForPlatform();
-  final powersyncPath = "packages/powersync";
+  final powersyncPath = "packages/powersync_core";
+  final powersyncCipherPath = "packages/powersync_sqlcipher";
   final sqliteCorePath = '$powersyncPath/$sqliteCoreFilename';
 
   // Download dynamic library
