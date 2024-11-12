@@ -1,3 +1,3 @@
-## 0.0.1
+## 0.1.0
 
-- Initial release.
+ - PowerSync client SDK for Flutter with encryption enabled using SQLCipher initial release

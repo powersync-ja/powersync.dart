@@ -1,10 +1,14 @@
+## 1.10.0
+
+- This package now uses the `powersync_core` package to provide its base functionality.
+
 ## 1.9.3
 
- - Update a dependency to the latest release.
+- Update a dependency to the latest release.
 
 ## 1.9.2
 
- - [Web] Automatically flush IndexedDB storage to fix durability issues
+- [Web] Automatically flush IndexedDB storage to fix durability issues
 
 ## 1.9.1
 
