@@ -2,7 +2,7 @@ import 'dart:io';
 import 'package:yaml/yaml.dart';
 
 void main() {
-  final pubspecFile = File('packages/powersync/pubspec.yaml');
+  final pubspecFile = File('packages/powersync_core/pubspec.yaml');
   final pubspecContent = pubspecFile.readAsStringSync();
   final yaml = loadYaml(pubspecContent);
   final version = yaml['version'];
