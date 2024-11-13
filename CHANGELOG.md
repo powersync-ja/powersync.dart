@@ -3,6 +3,27 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 2024-11-13
+
+### Changes
+
+---
+
+Packages with breaking changes:
+
+ - There are no breaking changes in this release.
+
+Packages with other changes:
+
+ - [`powersync_sqlcipher` - `v0.1.1`](#powersync_sqlcipher---v011)
+
+---
+
+#### `powersync_sqlcipher` - `v0.1.1`
+
+ - Update dependency `powersync_flutter_libs` to v0.4.3
+
+
 ## 2024-11-12
 
 ### Changes
@@ -24,11 +45,19 @@ Packages with other changes:
 
 #### `powersync` - `v1.10.0`
 
+ - This package now uses the `powersync_core` package to provide its base functionality.
+
 #### `powersync_attachments_helper` - `v0.6.16`
+
+ - Update a dependency to the latest release.
 
 #### `powersync_core` - `v1.0.0`
 
+ - Dart library for Powersync for use cases such as server-side Dart or non-Flutter Dart environments initial release.
+
 #### `powersync_sqlcipher` - `v0.1.0`
+
+ - PowerSync client SDK for Flutter with encryption enabled using SQLCipher initial release.
 
 
 ## 2024-11-11
