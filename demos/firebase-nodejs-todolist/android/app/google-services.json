@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1069616552579",
+    "project_id": "sample-firebase-ai-app-27d98",
+    "storage_bucket": "sample-firebase-ai-app-27d98.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1069616552579:android:d2cb390fea186a49db59b6",
+        "android_client_info": {
+          "package_name": "co.powersync.demotodolist"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDBk2GgaUqLvPWGe6cI0h6G4ZZweS2JKGE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
