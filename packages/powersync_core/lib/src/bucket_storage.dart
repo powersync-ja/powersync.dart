@@ -519,8 +519,6 @@ enum OpType {
         return 'PUT';
       case remove:
         return 'REMOVE';
-      default:
-        return '';
     }
   }
 }
