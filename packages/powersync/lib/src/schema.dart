@@ -73,9 +73,12 @@ class Table {
 
   /// Create a table that only supports inserts.
   ///
-  /// This table records INSERT statements, but does not persist data locally.
+  /// This table supports INSERT statements, operations are recorded internally
+  /// and are cleared once handled in the `PowerSyncBackendConnector.uploadData`
+  /// method.
   ///
   /// SELECT queries on the table will always return 0 rows.
+  ///
   const Table.insertOnly(this.name, this.columns, {String? viewName})
       : localOnly = false,
         insertOnly = true,
