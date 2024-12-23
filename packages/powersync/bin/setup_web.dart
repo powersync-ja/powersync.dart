@@ -25,6 +25,8 @@ void main(List<String> arguments) async {
   final wasmPath = '${root.toFilePath()}$outputDir/sqlite3.wasm';
 
   final workerPath = '${root.toFilePath()}$outputDir/powersync_db.worker.js';
+  final syncWorkerPath =
+      '${root.toFilePath()}$outputDir/powersync_sync.worker.js';
 
   final packageConfigFile = File.fromUri(
     root.resolve('.dart_tool/package_config.json'),
@@ -57,7 +59,11 @@ void main(List<String> arguments) async {
       final workerUrl =
           'https://github.com/powersync-ja/powersync.dart/releases/download/powersync-v$powersyncVersion/powersync_db.worker.js';
 
+      final syncWorkerUrl =
+          'https://github.com/powersync-ja/powersync.dart/releases/download/powersync-v$powersyncVersion/powersync_sync.worker.js';
+
       await downloadFile(httpClient, workerUrl, workerPath);
+      await downloadFile(httpClient, syncWorkerUrl, syncWorkerPath);
     }
 
     final sqlitePackageName = 'sqlite3';
@@ -90,8 +96,10 @@ void main(List<String> arguments) async {
 }
 
 bool coreVersionIsInRange(String tag) {
-  //Sets the range of powersync core version that is compatible with the sqlite3 version
-  VersionConstraint constraint = VersionConstraint.parse('>=0.2.0 <0.3.0');
+  // Sets the range of powersync core version that is compatible with the sqlite3 version
+  // We're a little more selective in the versions chosen here than the range
+  // we're compatible with.
+  VersionConstraint constraint = VersionConstraint.parse('>=0.3.0 <0.4.0');
   List<String> parts = tag.split('-');
   String powersyncPart = parts[1];
 

@@ -1,10 +1,58 @@
+## 1.10.0
+
+- This package now uses the `powersync_core` package to provide its base functionality.
+
+## 1.9.3
+
+- Update a dependency to the latest release.
+
+## 1.9.2
+
+- [Web] Automatically flush IndexedDB storage to fix durability issues
+
+## 1.9.1
+
+- Flutter Web Beta release
+
+## 1.9.0
+
+- **FEAT**: Use a sync worker for web that offloads the task of synchronizing databases to a separate worker, allowing it to be coordinated across tabs even when the database itself is not in a shared worker.
+
+## 1.8.9
+
+- **FIX**: issue where CRUD uploads were not triggered when the SDK reconnected to the PowerSync service after being offline.
+
+## 1.8.8
+
+- Update dependency `powersync_flutter_libs`
+
+## 1.8.7
+
+- **FIX**: Validate duplicate table names. ([47f71888](https://github.com/powersync-ja/powersync.dart/commit/47f71888e9adcdcec08c8ee59cb46ac52bd46640))
+
+## 1.8.6
+
+- Update dependency `sqlite_async` to v0.9.0
+
+## 1.8.5
+
+- Update dependency `powersync_flutter_libs`
+
+## 1.8.4
+
+- **FEAT**: Added a warning if connector `uploadData` functions don't process CRUD items completely.
+
+## 1.8.3
+
+- **FIX**: Pass maxReaders parameter to `PowerSyncDatabase.withFactory()`.
+
 ## 1.8.2
 
- - Added `refreshSchema()`, allowing queries and watch calls to work against updated schemas.
+- Added `refreshSchema()`, allowing queries and watch calls to work against updated schemas.
 
 ## 1.8.1
 
- - Fix powersync_flutter_libs dependency
+- Fix powersync_flutter_libs dependency
 
 ## 1.8.0
 
