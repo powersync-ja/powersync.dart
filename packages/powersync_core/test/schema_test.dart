@@ -303,7 +303,7 @@ void main() {
 
     test('Table with too many columns', () {
       final List<Column> manyColumns = List.generate(
-        64, // Exceeds MAX_NUMBER_OF_COLUMNS
+        2000, // Exceeds MAX_NUMBER_OF_COLUMNS
         (index) => Column('col$index', ColumnType.text),
       );
 
