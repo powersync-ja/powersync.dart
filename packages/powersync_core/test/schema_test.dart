@@ -315,7 +315,7 @@ void main() {
           isA<AssertionError>().having(
             (e) => e.message,
             'message',
-            'Table too_many_columns has more than 63 columns, which is not supported',
+            'Table too_many_columns has more than 1999 columns, which is not supported',
           ),
         ),
       );
