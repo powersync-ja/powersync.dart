@@ -46,9 +46,11 @@ class Table {
   /// Override the name for the view
   final String? _viewNameOverride;
 
-  /// There is maximum of 127 arguments for any function in SQLite. Currently we use json_object which uses 1 arg per key (column name)
-  /// and one per value, which limits it to 63 arguments.
-  final int maxNumberOfColumns = 63;
+  /// powersync-sqlite-core limits the number of columns
+  /// per table to 1999, due to internal SQLite limits.
+  ///
+  /// In earlier versions this was limited to 63.
+  final int maxNumberOfColumns = 1999;
 
   /// Internal use only.
   ///

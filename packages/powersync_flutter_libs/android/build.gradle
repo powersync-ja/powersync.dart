@@ -50,5 +50,5 @@ android {
 }
 
 dependencies {
-    implementation 'co.powersync:powersync-sqlite-core:0.3.6'
+    implementation 'co.powersync:powersync-sqlite-core:0.3.8'
 }

@@ -58,10 +58,10 @@ PODS:
   - path_provider_foundation (0.0.1):
     - Flutter
     - FlutterMacOS
-  - powersync-sqlite-core (0.3.7)
+  - powersync-sqlite-core (0.3.8)
   - powersync_flutter_libs (0.0.1):
     - Flutter
-    - powersync-sqlite-core (~> 0.3.6)
+    - powersync-sqlite-core (~> 0.3.8)
   - RecaptchaInterop (100.0.0)
   - shared_preferences_foundation (0.0.1):
     - Flutter
@@ -149,8 +149,8 @@ SPEC CHECKSUMS:
   GoogleUtilities: 26a3abef001b6533cf678d3eb38fd3f614b7872d
   GTMSessionFetcher: 923b710231ad3d6f3f0495ac1ced35421e07d9a6
   path_provider_foundation: 2b6b4c569c0fb62ec74538f866245ac84301af46
-  powersync-sqlite-core: b9bcd19fa191d3d6f3f85c0573c41799d654cfa7
-  powersync_flutter_libs: eb2694b322e1e4ef9a0f1e32dee600847f21ccbc
+  powersync-sqlite-core: 3b1cc184e277776aaf22e221fd0336575c7173c4
+  powersync_flutter_libs: d3772510135d3eec09848015f8516f8b2689c794
   RecaptchaInterop: 7d1a4a01a6b2cb1610a47ef3f85f0c411434cb21
   shared_preferences_foundation: fcdcbc04712aee1108ac7fda236f363274528f78
   sqlite3: 1e522f0938463e44b7faf50393b40bdc1e1e456d
@@ -159,4 +159,4 @@ SPEC CHECKSUMS:
 
 PODFILE CHECKSUM: 2c1730c97ea13f1ea48b32e9c79de785b4f2f02f
 
-COCOAPODS: 1.15.2
+COCOAPODS: 1.16.2

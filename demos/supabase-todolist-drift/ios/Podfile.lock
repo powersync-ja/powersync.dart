@@ -7,10 +7,10 @@ PODS:
   - path_provider_foundation (0.0.1):
     - Flutter
     - FlutterMacOS
-  - powersync-sqlite-core (0.3.0)
+  - powersync-sqlite-core (0.3.8)
   - powersync_flutter_libs (0.0.1):
     - Flutter
-    - powersync-sqlite-core (~> 0.3.0)
+    - powersync-sqlite-core (~> 0.3.8)
   - shared_preferences_foundation (0.0.1):
     - Flutter
     - FlutterMacOS
@@ -73,8 +73,8 @@ SPEC CHECKSUMS:
   camera_avfoundation: dd002b0330f4981e1bbcb46ae9b62829237459a4
   Flutter: e0871f40cf51350855a761d2e70bf5af5b9b5de7
   path_provider_foundation: 2b6b4c569c0fb62ec74538f866245ac84301af46
-  powersync-sqlite-core: ad0e70e23bacd858fe2e79032dc4aabdf972d1bd
-  powersync_flutter_libs: 064c44b51fb07df9486b735fb96ab7608a89e18b
+  powersync-sqlite-core: 3b1cc184e277776aaf22e221fd0336575c7173c4
+  powersync_flutter_libs: d3772510135d3eec09848015f8516f8b2689c794
   shared_preferences_foundation: fcdcbc04712aee1108ac7fda236f363274528f78
   sqlite3: 292c3e1bfe89f64e51ea7fc7dab9182a017c8630
   sqlite3_flutter_libs: c00457ebd31e59fa6bb830380ddba24d44fbcd3b
@@ -82,4 +82,4 @@ SPEC CHECKSUMS:
 
 PODFILE CHECKSUM: 819463e6a0290f5a72f145ba7cde16e8b6ef0796
 
-COCOAPODS: 1.15.2
+COCOAPODS: 1.16.2
