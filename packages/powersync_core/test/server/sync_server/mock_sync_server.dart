@@ -28,6 +28,11 @@ class TestHttpServerHelper {
             context: {
               "shelf.io.buffer_output": false
             });
+      })
+      ..get('/write-checkpoint2.json', (request) {
+        return Response.ok('{"data": {"write_checkpoint": "10"}}', headers: {
+          'Content-Type': 'application/json',
+        });
       });
 
     _server = await io.serve(router.call, 'localhost', 0);
