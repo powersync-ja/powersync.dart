@@ -1,3 +1,7 @@
+## 0.4.4
+
+ - powersync-sqlite-core 0.3.8 - increases column limit and fixes view migration issue
+
 ## 0.4.3
 
  - powersync-sqlite-core 0.3.6 - fixes dangling rows issue

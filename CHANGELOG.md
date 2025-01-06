@@ -3,6 +3,47 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 2025-01-06
+
+### Changes
+
+---
+
+Packages with breaking changes:
+
+ - There are no breaking changes in this release.
+
+Packages with other changes:
+
+ - [`powersync_sqlcipher` - `v0.1.2`](#powersync_sqlcipher---v012)
+ - [`powersync` - `v1.11.0`](#powersync---v1110)
+ - [`powersync_attachments_helper` - `v0.6.17`](#powersync_attachments_helper---v0617)
+ - [`powersync_core` - `v1.1.0`](#powersync_core---v110)
+ - [`powersync_flutter_libs` - `v0.4.4`](#powersync_flutter_libs---v044)
+
+---
+
+#### `powersync_sqlcipher` - `v0.1.2`
+
+#### `powersync` - `v1.11.0`
+
+ - Increase limit on number of columns per table to 1999.
+ - Avoid deleting the $local bucket on connect().
+
+#### `powersync_attachments_helper` - `v0.6.17`
+
+ - Update dependencies.
+
+#### `powersync_core` - `v1.1.0`
+
+ - Increase limit on number of columns per table to 1999.
+ - Avoid deleting the $local bucket on connect().
+
+#### `powersync_flutter_libs` - `v0.4.4`
+
+ - powersync-sqlite-core 0.3.8 - increases column limit and fixes view migration issue
+
+
 ## 2024-11-13
 
 ### Changes
