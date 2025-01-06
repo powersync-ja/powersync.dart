@@ -33,7 +33,7 @@ class BucketStorage {
 
   Future<List<BucketState>> getBucketStates() async {
     final rows = await select(
-        'SELECT name as bucket, cast(last_op as TEXT) as op_id FROM ps_buckets WHERE pending_delete = 0');
+        'SELECT name as bucket, cast(last_op as TEXT) as op_id FROM ps_buckets WHERE pending_delete = 0 AND name != \'\$local\'');
     return [
       for (var row in rows)
         BucketState(bucket: row['bucket'], opId: row['op_id'])
