@@ -1,3 +1,7 @@
+## 0.6.17
+
+ - **FEAT**: PowerSync encryption with SQLCipher ([#194](https://github.com/powersync-ja/powersync.dart/issues/194)). ([ea6186d7](https://github.com/powersync-ja/powersync.dart/commit/ea6186d7d844d976fafb0c2e2e8a9f25e4deb08c))
+
 ## 0.6.16
 
  - Update a dependency to the latest release.

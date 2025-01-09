@@ -303,7 +303,7 @@ void main() {
 
     test('Table with too many columns', () {
       final List<Column> manyColumns = List.generate(
-        64, // Exceeds MAX_NUMBER_OF_COLUMNS
+        2000, // Exceeds MAX_NUMBER_OF_COLUMNS
         (index) => Column('col$index', ColumnType.text),
       );
 
@@ -315,7 +315,7 @@ void main() {
           isA<AssertionError>().having(
             (e) => e.message,
             'message',
-            'Table too_many_columns has more than 63 columns, which is not supported',
+            'Table too_many_columns has more than 1999 columns, which is not supported',
           ),
         ),
       );

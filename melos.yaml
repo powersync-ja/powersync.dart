@@ -74,6 +74,15 @@ scripts:
     description: Check formatting of Dart code in packages.
     run: dart format --output none --set-exit-if-changed packages
 
+  podfile:update:
+    description: Update Podfile.lock in demos.
+    run: cd ios && pod update powersync-sqlite-core
+    exec:
+      concurrency: 1
+    packageFilters:
+      dirExists:
+        - ios
+
   test:
     description: Run tests in a specific package.
     run: flutter test

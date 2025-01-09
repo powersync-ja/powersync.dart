@@ -58,6 +58,11 @@ class SyncResponseException implements Exception {
       final details = _stringOrFirst(decoded['error']?['details']) ?? body;
       final message = '${response.reasonPhrase ?? "Request failed"}: $details';
       return SyncResponseException(response.statusCode, message);
+    } on FormatException catch (_) {
+      return SyncResponseException(
+        response.statusCode,
+        response.reasonPhrase ?? "Request failed",
+      );
     } on Error catch (_) {
       return SyncResponseException(
         response.statusCode,
