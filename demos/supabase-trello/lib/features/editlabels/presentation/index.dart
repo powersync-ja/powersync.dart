@@ -6,7 +6,7 @@ import '../../../utils/service.dart';
 class EditLabels extends StatefulWidget {
   final String cardId;
 
-  const EditLabels({Key? key, required this.cardId}) : super(key: key);
+  const EditLabels({super.key, required this.cardId});
 
   @override
   State<EditLabels> createState() => _EditLabelsState();

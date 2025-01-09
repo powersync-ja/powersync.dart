@@ -3,11 +3,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_expandable_fab/flutter_expandable_fab.dart';
 import 'package:logging/logging.dart';
-import 'package:powersync/powersync.dart' as PowerSync;
+import 'package:powersync/powersync.dart' as power_sync;
 import 'package:trelloappclone_flutter/features/emptywidget/index.dart';
 import 'package:trelloappclone_flutter/main.dart';
-import 'package:trelloappclone_flutter/models/board.dart';
-import 'package:trelloappclone_flutter/models/workspace.dart';
 import 'package:trelloappclone_flutter/features/board/domain/board_arguments.dart';
 import 'package:trelloappclone_flutter/features/board/presentation/index.dart';
 import 'package:trelloappclone_flutter/protocol/data_client.dart';
@@ -28,8 +26,8 @@ class Home extends StatefulWidget {
 }
 
 class _HomeState extends State<Home> with Service {
-  late PowerSync.SyncStatus _connectionState;
-  StreamSubscription<PowerSync.SyncStatus>? _syncStatusSubscription;
+  late power_sync.SyncStatus _connectionState;
+  StreamSubscription<power_sync.SyncStatus>? _syncStatusSubscription;
 
   @override
   void initState() {
@@ -93,20 +91,20 @@ class _HomeState extends State<Home> with Service {
                         Column(children: buildWorkspacesAndBoards(children)));
               }
             }
-            return Center(
+            return const Center(
               child: Padding(
-                padding: const EdgeInsets.all(20.0),
+                padding: EdgeInsets.all(20.0),
                 child: EmptyWidget(
                   image: null,
                   packageImage: PackageImage.Image_1,
                   title: 'No Boards',
                   subTitle: 'Create your first Trello board',
-                  titleTextStyle: const TextStyle(
+                  titleTextStyle: TextStyle(
                     fontSize: 22,
                     color: Color(0xff9da9c7),
                     fontWeight: FontWeight.w500,
                   ),
-                  subtitleTextStyle: const TextStyle(
+                  subtitleTextStyle: TextStyle(
                     fontSize: 14,
                     color: Color(0xffabb8d6),
                   ),

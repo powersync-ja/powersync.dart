@@ -35,7 +35,7 @@ class _CardDetailsState extends State<CardDetails> with Service {
 
     trello.setSelectedCard(args.crd);
     descriptionController.text = args.crd.description ?? " ";
-    nameController.text = args.crd.name ?? " ";
+    nameController.text = args.crd.name;
 
     return Scaffold(
       appBar: (showChecklist || addCardDescription || editCardName)
@@ -109,8 +109,8 @@ class _CardDetailsState extends State<CardDetails> with Service {
                     itemBuilder: (context) {
                       return [
                         PopupMenuItem(
-                          onTap: () => WidgetsBinding?.instance
-                              ?.addPostFrameCallback((_) {
+                          onTap: () =>
+                              WidgetsBinding.instance.addPostFrameCallback((_) {
                             showDialog<String>(
                                 context: context,
                                 builder: (BuildContext context) => AlertDialog(

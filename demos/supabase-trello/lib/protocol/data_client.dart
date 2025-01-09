@@ -1,3 +1,5 @@
+// ignore_for_file: library_private_types_in_public_api
+
 library powersync_client;
 
 import 'package:powersync/powersync.dart';
@@ -21,45 +23,51 @@ class _Repository {
 }
 
 class _ActivityRepository extends _Repository {
-  _ActivityRepository(DataClient client) : super(client);
+  _ActivityRepository(super.client);
 
   Future<bool> createActivity(Activity activity) async {
-    final results = await client.getDBExecutor().execute('''INSERT INTO
+    final results = await client.getDBExecutor().execute(
+        '''INSERT INTO
            activity(id, workspaceId, boardId, userId, cardId, description, dateCreated)
            VALUES(?, ?, ?, ?, ?, ?, datetime())
-           RETURNING *''', [
-      activity.id,
-      activity.workspaceId,
-      activity.boardId,
-      activity.userId,
-      activity.cardId,
-      activity.description
-    ]);
+           RETURNING *''',
+        [
+          activity.id,
+          activity.workspaceId,
+          activity.boardId,
+          activity.userId,
+          activity.cardId,
+          activity.description
+        ]);
     return results.isNotEmpty;
   }
 
   Future<List<Activity>> getActivities(Cardlist cardlist) async {
-    final results = await client.getDBExecutor().execute('''
+    final results = await client.getDBExecutor().execute(
+        '''
           SELECT * FROM activity WHERE cardId = ? ORDER BY dateCreated DESC
-           ''', [cardlist.id]);
+           ''',
+        [cardlist.id]);
     return results.map((row) => Activity.fromRow(row)).toList();
   }
 }
 
 class _AttachmentRepository extends _Repository {
-  _AttachmentRepository(DataClient client) : super(client);
+  _AttachmentRepository(super.client);
 
   Future<Attachment> addAttachment(Attachment attachment) async {
-    final results = await client.getDBExecutor().execute('''INSERT INTO
+    final results = await client.getDBExecutor().execute(
+        '''INSERT INTO
            attachment(id, workspaceId, userId, cardId, attachment)
            VALUES(?, ?, ?, ?, ?)
-           RETURNING *''', [
-      attachment.id,
-      attachment.workspaceId,
-      attachment.userId,
-      attachment.cardId,
-      attachment.attachment
-    ]);
+           RETURNING *''',
+        [
+          attachment.id,
+          attachment.workspaceId,
+          attachment.userId,
+          attachment.cardId,
+          attachment.attachment
+        ]);
     if (results.isEmpty) {
       throw Exception("Failed to add attachment");
     } else {
@@ -75,22 +83,26 @@ class _AttachmentRepository extends _Repository {
 }
 
 class _BoardRepository extends _Repository {
-  _BoardRepository(DataClient client) : super(client);
+  _BoardRepository(super.client);
 
-  String get insertQuery => '''
+  String get insertQuery =>
+      '''
   INSERT INTO
            board(id, userId, workspaceId, name, description, visibility, background, starred, enableCover, watch, availableOffline, label, emailAddress, commenting, memberType, pinned, selfJoin, close)
            VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18)
   ''';
 
-  String get updateQuery => '''
+  String get updateQuery =>
+      '''
   UPDATE board
           set userId = ?1, workspaceId = ?2, name = ?3, description = ?4, visibility = ?5, background = ?6, starred = ?7, enableCover = ?8, watch = ?9, availableOffline = ?10, label = ?11, emailAddress = ?12, commenting = ?13, memberType = ?14, pinned = ?15, selfJoin = ?16, close = ?17
           WHERE id = ?18
   ''';
 
   Future<Board> createBoard(Board board) async {
-    final results = await client.getDBExecutor().execute('''
+    final results = await client
+        .getDBExecutor()
+        .execute('''
           $insertQuery RETURNING *''', [
       board.id,
       board.userId,
@@ -150,14 +162,18 @@ class _BoardRepository extends _Repository {
   }
 
   Future<Workspace?> getWorkspaceForBoard(Board board) async {
-    final results = await client.getDBExecutor().execute('''
+    final results = await client.getDBExecutor().execute(
+        '''
           SELECT * FROM workspace WHERE id = ?
-           ''', [board.workspaceId]);
+           ''',
+        [board.workspaceId]);
     return results.map((row) => Workspace.fromRow(row)).firstOrNull;
   }
 
   Future<List<Board>> getAllBoards() async {
-    final results = await client.getDBExecutor().execute('''
+    final results = await client
+        .getDBExecutor()
+        .execute('''
           SELECT * FROM board
            ''');
     return results.map((row) => Board.fromRow(row)).toList();
@@ -165,9 +181,10 @@ class _BoardRepository extends _Repository {
 }
 
 class _CardlistRepository extends _Repository {
-  _CardlistRepository(DataClient client) : super(client);
+  _CardlistRepository(super.client);
 
-  String get insertQuery => '''
+  String get insertQuery =>
+      '''
   INSERT INTO
            card(id, workspaceId, listId, userId, name, description, startDate, dueDate, attachment, archived, checklist, comments, rank)
            VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)
@@ -197,7 +214,8 @@ class _CardlistRepository extends _Repository {
     }
   }
 
-  String get updateQuery => '''
+  String get updateQuery =>
+      '''
   UPDATE card
           set listId = ?1, userId = ?2, name = ?3, description = ?4, startDate = ?5, dueDate = ?6, attachment = ?7, archived = ?8, checklist = ?9, comments = ?10, rank = ?11
           WHERE id = ?12
@@ -229,17 +247,20 @@ class _CardlistRepository extends _Repository {
   }
 
   Future<List<Cardlist>> getCardsforList(String listId) async {
-    final results = await client.getDBExecutor().execute('''
+    final results = await client.getDBExecutor().execute(
+        '''
           SELECT * FROM card WHERE listId = ? AND archived = 0 ORDER BY rank ASC
-           ''', [listId]);
+           ''',
+        [listId]);
     return results.map((row) => Cardlist.fromRow(row)).toList();
   }
 }
 
 class _CheckListRepository extends _Repository {
-  _CheckListRepository(DataClient client) : super(client);
+  _CheckListRepository(super.client);
 
-  String get insertQuery => '''
+  String get insertQuery =>
+      '''
   INSERT INTO
            checklist(id, workspaceId, cardId, name, status)
            VALUES(?1, ?2, ?3, ?4, ?5)
@@ -261,7 +282,8 @@ class _CheckListRepository extends _Repository {
     }
   }
 
-  String get updateQuery => '''
+  String get updateQuery =>
+      '''
   UPDATE checklist
           set cardId = ?1, name = ?2, status = ?3
           WHERE id = ?4
@@ -285,16 +307,20 @@ class _CheckListRepository extends _Repository {
   }
 
   Future<List<Checklist>> getChecklists(Cardlist crd) async {
-    final results = await client.getDBExecutor().execute('''
+    final results = await client.getDBExecutor().execute(
+        '''
           SELECT * FROM checklist WHERE cardId = ?
-           ''', [crd.id]);
+           ''',
+        [crd.id]);
     return results.map((row) => Checklist.fromRow(row)).toList();
   }
 
   Future<int> deleteChecklist(Cardlist crd) async {
-    final results = await client.getDBExecutor().execute('''
+    final results = await client.getDBExecutor().execute(
+        '''
           SELECT COUNT(*) FROM checklist WHERE cardId = ?
-           ''', [crd.id]);
+           ''',
+        [crd.id]);
     await client
         .getDBExecutor()
         .execute('DELETE FROM checklist WHERE cardId = ?', [crd.id]);
@@ -303,9 +329,10 @@ class _CheckListRepository extends _Repository {
 }
 
 class _CommentRepository extends _Repository {
-  _CommentRepository(DataClient client) : super(client);
+  _CommentRepository(super.client);
 
-  String get insertQuery => '''
+  String get insertQuery =>
+      '''
   INSERT INTO
            comment(id, workspaceId, cardId, userId, description)
            VALUES(?1, ?2, ?3, ?4, ?5)
@@ -327,7 +354,8 @@ class _CommentRepository extends _Repository {
     }
   }
 
-  String get updateQuery => '''
+  String get updateQuery =>
+      '''
   UPDATE comment
           set cardId = ?1, userId = ?2, description = ?3
           WHERE id = ?4
@@ -341,13 +369,15 @@ class _CommentRepository extends _Repository {
 }
 
 class _ListboardRepository extends _Repository {
-  _ListboardRepository(DataClient client) : super(client);
+  _ListboardRepository(super.client);
 
   Future<List<Listboard>> getListsByBoard({required String boardId}) async {
     //first we get the listboards
-    final results = await client.getDBExecutor().execute('''
+    final results = await client.getDBExecutor().execute(
+        '''
           SELECT * FROM listboard WHERE boardId = ?
-           ''', [boardId]);
+           ''',
+        [boardId]);
     List<Listboard> lists =
         results.map((row) => Listboard.fromRow(row)).toList();
 
@@ -367,9 +397,11 @@ class _ListboardRepository extends _Repository {
 
   Stream<List<Listboard>> watchListsByBoard({required String boardId}) {
     //first we get the listboards
-    return client.getDBExecutor().watch('''
+    return client.getDBExecutor().watch(
+        '''
           SELECT * FROM listboard WHERE boardId = ? ORDER BY listOrder ASC
-           ''', parameters: [boardId]).asyncMap((event) async {
+           ''',
+        parameters: [boardId]).asyncMap((event) async {
       List<Listboard> lists =
           event.map((row) => Listboard.fromRow(row)).toList();
 
@@ -388,7 +420,8 @@ class _ListboardRepository extends _Repository {
     });
   }
 
-  String get insertQuery => '''
+  String get insertQuery =>
+      '''
   INSERT INTO
            listboard(id, workspaceId, boardId, userId, name, archived, listOrder)
            VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7)
@@ -412,7 +445,8 @@ class _ListboardRepository extends _Repository {
     }
   }
 
-  String get updateQuery => '''
+  String get updateQuery =>
+      '''
   UPDATE listboard
           set listOrder = ?1
           WHERE id = ?2
@@ -435,18 +469,22 @@ class _ListboardRepository extends _Repository {
       int numCards = cards.length;
 
       //we set each of the cards in the list to archived = true
-      sqlContext.executeBatch('''
+      sqlContext.executeBatch(
+          '''
           UPDATE card
                   SET archived = 1
                   WHERE id = ?
-          ''', cards.map((card) => [card.id]).toList());
+          ''',
+          cards.map((card) => [card.id]).toList());
 
       //touch listboard to trigger update via stream listeners on Listboard
-      sqlContext.execute('''
+      sqlContext.execute(
+          '''
           UPDATE listboard
                   SET archived = 0
                   WHERE id = ?
-          ''', [list.id]);
+          ''',
+          [list.id]);
 
       list.cards = [];
       return numCards;
@@ -456,9 +494,10 @@ class _ListboardRepository extends _Repository {
 }
 
 class _MemberRepository extends _Repository {
-  _MemberRepository(DataClient client) : super(client);
+  _MemberRepository(super.client);
 
-  String get insertQuery => '''
+  String get insertQuery =>
+      '''
   INSERT INTO
            member(id, workspaceId, userId, name, role)
            VALUES(?1, ?2, ?3, ?4, ?5)
@@ -482,9 +521,11 @@ class _MemberRepository extends _Repository {
 
   Future<List<Member>> getMembersByWorkspace(
       {required String workspaceId}) async {
-    final results = await client.getDBExecutor().execute('''
+    final results = await client.getDBExecutor().execute(
+        '''
           SELECT * FROM member WHERE workspaceId = ?
-           ''', [workspaceId]);
+           ''',
+        [workspaceId]);
     return results.map((row) => Member.fromRow(row)).toList();
   }
 
@@ -514,9 +555,10 @@ class _MemberRepository extends _Repository {
 }
 
 class _UserRepository extends _Repository {
-  _UserRepository(DataClient client) : super(client);
+  _UserRepository(super.client);
 
-  String get insertQuery => '''
+  String get insertQuery =>
+      '''
   INSERT INTO
            trellouser(id, name, email, password)
            VALUES(?1, ?2, ?3, ?4)
@@ -536,30 +578,37 @@ class _UserRepository extends _Repository {
   /// We excpect only one record in the local trellouser table
   /// if somebody has logged in and not logged out again
   Future<TrelloUser?> getUser() async {
-    final results = await client.getDBExecutor().execute('''
+    final results = await client
+        .getDBExecutor()
+        .execute('''
           SELECT * FROM trellouser''');
     return results.map((row) => TrelloUser.fromRow(row)).firstOrNull;
   }
 
   Future<TrelloUser?> getUserById({required String userId}) async {
-    final results = await client.getDBExecutor().execute('''
+    final results = await client.getDBExecutor().execute(
+        '''
           SELECT * FROM trellouser WHERE id = ?
-           ''', [userId]);
+           ''',
+        [userId]);
     return results.map((row) => TrelloUser.fromRow(row)).firstOrNull;
   }
 
   Future<TrelloUser?> checkUserExists(String email) async {
-    final results = await client.getDBExecutor().execute('''
+    final results = await client.getDBExecutor().execute(
+        '''
           SELECT * FROM trellouser WHERE email = ?
-           ''', [email]);
+           ''',
+        [email]);
     return results.map((row) => TrelloUser.fromRow(row)).firstOrNull;
   }
 }
 
 class _WorkspaceRepository extends _Repository {
-  _WorkspaceRepository(DataClient client) : super(client);
+  _WorkspaceRepository(super.client);
 
-  String get insertQuery => '''
+  String get insertQuery =>
+      '''
   INSERT INTO
            workspace(id, userId, name, description, visibility)
            VALUES(?1, ?2, ?3, ?4, ?5)
@@ -579,9 +628,11 @@ class _WorkspaceRepository extends _Repository {
 
   Future<List<Workspace>> getWorkspacesByUser({required String userId}) async {
     //First we get the workspaces
-    final results = await client.getDBExecutor().execute('''
+    final results = await client.getDBExecutor().execute(
+        '''
           SELECT * FROM workspace WHERE userId = ?
-           ''', [userId]);
+           ''',
+        [userId]);
     List<Workspace> workspaces =
         results.map((row) => Workspace.fromRow(row)).toList();
 
@@ -616,9 +667,11 @@ class _WorkspaceRepository extends _Repository {
   }
 
   Future<Workspace?> getWorkspaceById({required String workspaceId}) async {
-    final results = await client.getDBExecutor().execute('''
+    final results = await client.getDBExecutor().execute(
+        '''
           SELECT * FROM workspace WHERE id = ?
-           ''', [workspaceId]);
+           ''',
+        [workspaceId]);
     Workspace workspace = Workspace.fromRow(results.first);
     List<Member> members =
         await client.member.getMembersByWorkspace(workspaceId: workspaceId);
@@ -628,9 +681,11 @@ class _WorkspaceRepository extends _Repository {
 
   Future<List<Board>> getBoardsByWorkspace(
       {required String workspaceId}) async {
-    final results = await client.getDBExecutor().execute('''
+    final results = await client.getDBExecutor().execute(
+        '''
           SELECT * FROM board WHERE workspaceId = ?
-           ''', [workspaceId]);
+           ''',
+        [workspaceId]);
 
     List<Board> boards = results.map((row) => Board.fromRow(row)).toList();
 
@@ -643,9 +698,11 @@ class _WorkspaceRepository extends _Repository {
   }
 
   Stream<List<Board>> watchBoardsByWorkspace({required String workspaceId}) {
-    return client.getDBExecutor().watch('''
+    return client.getDBExecutor().watch(
+        '''
           SELECT * FROM board WHERE workspaceId = ?
-           ''', parameters: [workspaceId]).asyncMap((event) async {
+           ''',
+        parameters: [workspaceId]).asyncMap((event) async {
       List<Board> boards = event.map((row) => Board.fromRow(row)).toList();
 
       for (Board board in boards) {
@@ -658,17 +715,19 @@ class _WorkspaceRepository extends _Repository {
   }
 
   Future<bool> updateWorkspace(Workspace workspace) async {
-    await client.getDBExecutor().execute('''
+    await client.getDBExecutor().execute(
+        '''
           UPDATE workspace
           set userId = ?1, name = ?2, description = ?3, visibility = ?4
           WHERE id = ?5
-           ''', [
-      workspace.userId,
-      workspace.name,
-      workspace.description,
-      workspace.visibility,
-      workspace.id
-    ]);
+           ''',
+        [
+          workspace.userId,
+          workspace.name,
+          workspace.description,
+          workspace.visibility,
+          workspace.id
+        ]);
     return true;
   }
 
@@ -681,19 +740,21 @@ class _WorkspaceRepository extends _Repository {
 }
 
 class _BoardLabelRepository extends _Repository {
-  _BoardLabelRepository(DataClient client) : super(client);
+  _BoardLabelRepository(super.client);
 
   Future<BoardLabel> createBoardLabel(BoardLabel boardLabel) async {
-    final results = await client.getDBExecutor().execute('''INSERT INTO
+    final results = await client.getDBExecutor().execute(
+        '''INSERT INTO
            board_label(id, boardId, workspaceId, title, color, dateCreated)
            VALUES(?, ?, ?, ?, ?, datetime())
-           RETURNING *''', [
-      boardLabel.id,
-      boardLabel.boardId,
-      boardLabel.workspaceId,
-      boardLabel.title,
-      boardLabel.color
-    ]);
+           RETURNING *''',
+        [
+          boardLabel.id,
+          boardLabel.boardId,
+          boardLabel.workspaceId,
+          boardLabel.title,
+          boardLabel.color
+        ]);
     if (results.isEmpty) {
       throw Exception("Failed to add BoardLabel");
     } else {
@@ -702,36 +763,42 @@ class _BoardLabelRepository extends _Repository {
   }
 
   Future<bool> updateBoardLabel(BoardLabel boardLabel) async {
-    await client.getDBExecutor().execute('''
+    await client.getDBExecutor().execute(
+        '''
           UPDATE board_label
           set title = ?1
           WHERE id = ?2
-           ''', [boardLabel.title, boardLabel.id]);
+           ''',
+        [boardLabel.title, boardLabel.id]);
     return true;
   }
 
   Future<List<BoardLabel>> getBoardLabels(Board board) async {
-    final results = await client.getDBExecutor().execute('''
+    final results = await client.getDBExecutor().execute(
+        '''
           SELECT * FROM board_label WHERE boardId = ? ORDER BY dateCreated DESC
-           ''', [board.id]);
+           ''',
+        [board.id]);
     return results.map((row) => BoardLabel.fromRow(row)).toList();
   }
 }
 
 class _CardLabelRepository extends _Repository {
-  _CardLabelRepository(DataClient client) : super(client);
+  _CardLabelRepository(super.client);
 
   Future<CardLabel> createCardLabel(CardLabel cardLabel) async {
-    final results = await client.getDBExecutor().execute('''INSERT INTO
+    final results = await client.getDBExecutor().execute(
+        '''INSERT INTO
            card_label(id, cardId, boardId, workspaceId, boardLabelId, dateCreated)
            VALUES(?, ?, ?, ?, ?, datetime())
-           RETURNING *''', [
-      cardLabel.id,
-      cardLabel.cardId,
-      cardLabel.boardId,
-      cardLabel.workspaceId,
-      cardLabel.boardLabelId,
-    ]);
+           RETURNING *''',
+        [
+          cardLabel.id,
+          cardLabel.cardId,
+          cardLabel.boardId,
+          cardLabel.workspaceId,
+          cardLabel.boardLabelId,
+        ]);
     if (results.isEmpty) {
       throw Exception("Failed to add CardLabel");
     } else {
@@ -746,9 +813,11 @@ class _CardLabelRepository extends _Repository {
   }
 
   Future<List<CardLabel>> getCardLabels(Cardlist card) async {
-    final results = await client.getDBExecutor().execute('''
+    final results = await client.getDBExecutor().execute(
+        '''
           SELECT * FROM card_label WHERE cardId = ? ORDER BY dateCreated DESC
-           ''', [card.id]);
+           ''',
+        [card.id]);
     return results.map((row) => CardLabel.fromRow(row)).toList();
   }
 }
@@ -805,8 +874,9 @@ class DataClient {
     String? userId = _powerSyncClient.getUserId();
     if (userId != null) {
       return user.getUserById(userId: userId);
-    } else
+    } else {
       return null;
+    }
   }
 
   Future<void> logOut() async {
@@ -817,13 +887,11 @@ class DataClient {
     String userId = await _powerSyncClient.loginWithEmail(email, password);
 
     TrelloUser? storedUser = await user.getUserById(userId: userId);
-    if (storedUser == null) {
-      storedUser = await user.createUser(TrelloUser(
-          id: userId,
-          name: email.split('@')[0],
-          email: email,
-          password: password));
-    }
+    storedUser ??= await user.createUser(TrelloUser(
+        id: userId,
+        name: email.split('@')[0],
+        email: email,
+        password: password));
     return storedUser;
   }
 
@@ -831,7 +899,7 @@ class DataClient {
       String name, String email, String password) async {
     TrelloUser? storedUser = await user.checkUserExists(email);
     if (storedUser != null) {
-      throw new Exception('User for email already exists. Use Login instead.');
+      throw Exception('User for email already exists. Use Login instead.');
     }
     return _powerSyncClient.signupWithEmail(name, email, password);
   }

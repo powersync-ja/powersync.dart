@@ -1,3 +1,5 @@
+// ignore_for_file: use_build_context_synchronously
+
 import 'dart:convert';
 import 'dart:developer';
 
@@ -20,11 +22,12 @@ import 'package:trelloappclone_flutter/models/board_label.dart';
 import 'package:trelloappclone_flutter/models/card_label.dart';
 import 'package:trelloappclone_flutter/models/attachment.dart';
 
+// ignore: depend_on_referenced_packages
 import 'package:uuid/uuid.dart';
 
 import '../main.dart';
 
-var uuid = Uuid();
+var uuid = const Uuid();
 
 mixin Service {
   randomUuid() {

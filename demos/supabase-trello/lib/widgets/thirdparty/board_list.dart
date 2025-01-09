@@ -3,9 +3,9 @@ import 'boardview.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 
-typedef void OnDropList(int? listIndex, int? oldListIndex);
-typedef void OnTapList(int? listIndex);
-typedef void OnStartDragList(int? listIndex);
+typedef OnDropList = void Function(int? listIndex, int? oldListIndex);
+typedef OnTapList = void Function(int? listIndex);
+typedef OnStartDragList = void Function(int? listIndex);
 
 class BoardList extends StatefulWidget {
   final List<Widget>? header;
@@ -20,7 +20,7 @@ class BoardList extends StatefulWidget {
   final bool draggable;
 
   const BoardList({
-    Key? key,
+    super.key,
     this.header,
     this.items,
     this.footer,
@@ -32,7 +32,7 @@ class BoardList extends StatefulWidget {
     this.onDropList,
     this.onTapList,
     this.onStartDragList,
-  }) : super(key: key);
+  });
 
   final int? index;
 
@@ -45,7 +45,7 @@ class BoardList extends StatefulWidget {
 class BoardListState extends State<BoardList>
     with AutomaticKeepAliveClientMixin {
   List<BoardItemState> itemStates = [];
-  ScrollController boardListController = new ScrollController();
+  ScrollController boardListController = ScrollController();
 
   void onDropList(int? listIndex) {
     if (widget.onDropList != null) {
@@ -80,10 +80,12 @@ class BoardListState extends State<BoardList>
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     List<Widget> listWidgets = [];
     if (widget.header != null) {
-      Color? headerBackgroundColor = Color.fromARGB(255, 255, 255, 255);
       if (widget.headerBackgroundColor != null) {
+        // ignore: unused_local_variable
+        Color? headerBackgroundColor = const Color.fromARGB(255, 255, 255, 255);
         headerBackgroundColor = widget.headerBackgroundColor;
       }
       listWidgets.add(GestureDetector(
@@ -184,7 +186,7 @@ class BoardListState extends State<BoardList>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.start,
-          children: listWidgets as List<Widget>,
+          children: listWidgets,
         ));
   }
 }

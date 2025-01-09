@@ -1,5 +1,3 @@
-import 'dart:ffi';
-
 import 'package:flutter/material.dart';
 import 'package:status_alert/status_alert.dart';
 import 'package:trelloappclone_flutter/features/carddetails/domain/card_detail_arguments.dart';
@@ -48,6 +46,7 @@ class _BoardScreenState extends State<BoardScreen> with Service {
     trello.setSelectedBoard(args.board);
     trello.setSelectedWorkspace(args.workspace);
 
+    // ignore: deprecated_member_use
     return WillPopScope(
         onWillPop: () async {
           Navigator.pushNamed(context, "/home");
@@ -239,7 +238,7 @@ class _BoardScreenState extends State<BoardScreen> with Service {
         BoardItem(
           onTapItem: (listIndex, itemIndex, state) {
             setState(() {
-              selectedList = listIndex!;
+              selectedList = listIndex;
               selectedCard = index;
               showCard = true;
               showtheCard[index] = true;
@@ -423,6 +422,7 @@ class _BoardScreenState extends State<BoardScreen> with Service {
     return items;
   }
 
+  // ignore: non_constant_identifier_names
   List<BoardList> loadBoardView(List<Listboard> Listboards) {
     List<BoardListObject> data = generateBoardListObject(Listboards);
     lists = [];

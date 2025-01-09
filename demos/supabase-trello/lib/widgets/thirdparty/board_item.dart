@@ -3,13 +3,14 @@ import 'package:flutter/widgets.dart';
 
 import 'board_list.dart';
 
-typedef void OnDropItem(int? listIndex, int? itemIndex, int? oldListIndex,
-    int? oldItemIndex, BoardItemState state);
-typedef void OnTapItem(int listIndex, int itemIndex, BoardItemState state);
-typedef void OnStartDragItem(
+typedef OnDropItem = void Function(int? listIndex, int? itemIndex,
+    int? oldListIndex, int? oldItemIndex, BoardItemState state);
+typedef OnTapItem = void Function(
+    int listIndex, int itemIndex, BoardItemState state);
+typedef OnStartDragItem = void Function(
     int? listIndex, int? itemIndex, BoardItemState state);
-typedef void OnDragItem(int oldListIndex, int oldItemIndex, int newListIndex,
-    int newItemIndex, BoardItemState state);
+typedef OnDragItem = void Function(int oldListIndex, int oldItemIndex,
+    int newListIndex, int newItemIndex, BoardItemState state);
 
 class BoardItem extends StatefulWidget {
   final BoardListState? boardList;
@@ -22,7 +23,7 @@ class BoardItem extends StatefulWidget {
   final bool draggable;
 
   const BoardItem(
-      {Key? key,
+      {super.key,
       this.boardList,
       this.item,
       this.index,
@@ -30,8 +31,7 @@ class BoardItem extends StatefulWidget {
       this.onTapItem,
       this.onStartDragItem,
       this.draggable = true,
-      this.onDragItem})
-      : super(key: key);
+      this.onDragItem});
 
   @override
   State<StatefulWidget> createState() {
@@ -91,15 +91,14 @@ class BoardItemState extends State<BoardItem>
   }
 
   void afterFirstLayout(BuildContext context) {
-    try {
-      height = context.size!.height;
-      width = context.size!.width;
-    } catch (e) {}
+    height = context.size!.height;
+    width = context.size!.width;
   }
 
   @override
   Widget build(BuildContext context) {
-    WidgetsBinding.instance!
+    super.build(context);
+    WidgetsBinding.instance
         .addPostFrameCallback((_) => afterFirstLayout(context));
     if (widget.boardList!.itemStates.length > widget.index!) {
       widget.boardList!.itemStates.removeAt(widget.index!);

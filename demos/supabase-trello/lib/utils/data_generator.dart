@@ -1,6 +1,7 @@
+// ignore_for_file: use_build_context_synchronously
+
 import 'dart:math';
 
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:random_name_generator/random_name_generator.dart';
 import 'package:status_alert/status_alert.dart';
@@ -114,10 +115,7 @@ class DataGenerator with Service {
               card: newCard.id,
               description: '${randomNames.name()} updated this card');
         }
-        ;
       }
-      ;
     }
-    ;
   }
 }

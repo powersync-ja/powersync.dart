@@ -1,3 +1,5 @@
+// ignore_for_file: constant_identifier_names, camel_case_extensions
+
 import 'dart:math';
 import 'package:flutter/material.dart';
 
@@ -25,7 +27,8 @@ import 'package:flutter/material.dart';
 /// {@end-tool}
 
 class EmptyWidget extends StatefulWidget {
-  EmptyWidget({
+  const EmptyWidget({
+    super.key,
     this.title,
     this.subTitle,
     this.image,
@@ -139,7 +142,7 @@ class _EmptyListWidgetState extends State<EmptyWidget>
           );
         },
         child: Padding(
-          padding: EdgeInsets.all(10),
+          padding: const EdgeInsets.all(10),
           child: Image.asset(
             isPackageImage ? _packageImage.encode()! : widget.image!,
             fit: BoxFit.contain,
@@ -156,7 +159,7 @@ class _EmptyListWidgetState extends State<EmptyWidget>
           context, EmptyWidgetUtility.fullWidth(context) * .95),
       height: EmptyWidgetUtility.getHeightDimention(
           context, EmptyWidgetUtility.fullWidth(context) * .95),
-      decoration: BoxDecoration(boxShadow: <BoxShadow>[
+      decoration: const BoxDecoration(boxShadow: <BoxShadow>[
         BoxShadow(
           offset: Offset(0, 0),
           color: Color(0xffe2e5ed),
@@ -174,7 +177,7 @@ class _EmptyListWidgetState extends State<EmptyWidget>
     return LayoutBuilder(
         builder: (BuildContext context, BoxConstraints constraints) {
       if (constraints.maxHeight > constraints.maxWidth) {
-        return Container(
+        return SizedBox(
           height: constraints.maxWidth,
           width: constraints.maxWidth,
           child: child,
@@ -191,13 +194,13 @@ class _EmptyListWidgetState extends State<EmptyWidget>
             .typography
             .dense
             .headlineSmall!
-            .copyWith(color: Color(0xff9da9c7));
+            .copyWith(color: const Color(0xff9da9c7));
     _subtitleTextStyle = widget.subtitleTextStyle ??
         Theme.of(context)
             .typography
             .dense
             .bodyMedium!
-            .copyWith(color: Color(0xffabb8d6));
+            .copyWith(color: const Color(0xffabb8d6));
     _packageImage = widget.packageImage;
 
     bool anyImageProvided = widget.image == null && _packageImage == null;
@@ -212,8 +215,8 @@ class _EmptyListWidgetState extends State<EmptyWidget>
             children: <Widget>[
               if (!widget.hideBackgroundAnimation!)
                 RotationTransition(
-                  child: _imageBackground(),
                   turns: _backgroundController,
+                  child: _imageBackground(),
                 ),
               LayoutBuilder(
                   builder: (BuildContext context, BoxConstraints constraints) {
@@ -221,18 +224,18 @@ class _EmptyListWidgetState extends State<EmptyWidget>
                   height: constraints.maxWidth,
                   width: constraints.maxWidth - 30,
                   alignment: Alignment.center,
-                  padding: EdgeInsets.all(10),
+                  padding: const EdgeInsets.all(10),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     mainAxisSize: MainAxisSize.min,
                     children: <Widget>[
                       anyImageProvided
-                          ? SizedBox()
+                          ? const SizedBox()
                           : Expanded(
                               flex: 1,
                               child: Container(),
                             ),
-                      anyImageProvided ? SizedBox() : _imageWidget(),
+                      anyImageProvided ? const SizedBox() : _imageWidget(),
                       Column(
                         children: <Widget>[
                           CustomText(
@@ -242,7 +245,7 @@ class _EmptyListWidgetState extends State<EmptyWidget>
                             overflow: TextOverflow.clip,
                             textAlign: TextAlign.center,
                           ),
-                          SizedBox(
+                          const SizedBox(
                             height: 10,
                           ),
                           CustomText(
@@ -254,7 +257,7 @@ class _EmptyListWidgetState extends State<EmptyWidget>
                         ],
                       ),
                       anyImageProvided
-                          ? SizedBox()
+                          ? const SizedBox()
                           : Expanded(
                               flex: 1,
                               child: Container(),
@@ -329,14 +332,13 @@ class EmptyWidgetUtility {
 
 class CustomText extends StatefulWidget {
   const CustomText(
-      {Key? key,
+      {super.key,
       this.msg,
       this.style,
       this.textAlign,
       this.overflow,
       this.context,
-      this.softwrap})
-      : super(key: key);
+      this.softwrap});
 
   final BuildContext? context;
   final String? msg;
@@ -345,6 +347,8 @@ class CustomText extends StatefulWidget {
   final TextStyle? style;
   final TextAlign? textAlign;
 
+  @override
+  // ignore: library_private_types_in_public_api
   _CustomTextState createState() => _CustomTextState();
 }
 
