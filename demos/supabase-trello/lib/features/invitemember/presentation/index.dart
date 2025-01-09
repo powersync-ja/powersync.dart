@@ -73,6 +73,7 @@ class _InviteMemberState extends State<InviteMember> with Service {
                             _currentMembers
                                 .addAll(trello.selectedWorkspace.members ?? []);
                           });
+                          // ignore: use_build_context_synchronously
                           StatusAlert.show(context,
                               duration: const Duration(seconds: 3),
                               title: 'Added Member',
@@ -82,6 +83,7 @@ class _InviteMemberState extends State<InviteMember> with Service {
                                   icon: Icons.check, color: brandColor),
                               maxWidth: 260);
                         } else {
+                          // ignore: use_build_context_synchronously
                           StatusAlert.show(context,
                               duration: const Duration(seconds: 3),
                               title: 'Add Failed',

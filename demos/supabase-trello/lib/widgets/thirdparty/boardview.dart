@@ -173,6 +173,7 @@ class BoardViewState extends State<BoardView>
               duration: const Duration(milliseconds: 400), curve: Curves.ease)
           .whenComplete(() {
         RenderBox object =
+            // ignore: use_build_context_synchronously
             listStates[tempListIndex!].context.findRenderObject() as RenderBox;
         Offset pos = object.localToGlobal(Offset.zero);
         leftListX = pos.dx;
@@ -231,10 +232,12 @@ class BoardViewState extends State<BoardView>
               duration: const Duration(milliseconds: 400), curve: Curves.ease)
           .whenComplete(() {
         RenderBox object =
+            // ignore: use_build_context_synchronously
             listStates[tempListIndex!].context.findRenderObject() as RenderBox;
         Offset pos = object.localToGlobal(Offset.zero);
         leftListX = pos.dx;
         rightListX = pos.dx + object.size.width;
+        // ignore: use_build_context_synchronously
         RenderBox box = listStates[tempListIndex]
             .itemStates[tempItemIndex!]
             .context
@@ -271,6 +274,7 @@ class BoardViewState extends State<BoardView>
               curve: Curves.ease)
           .whenComplete(() {
         RenderBox object =
+            // ignore: use_build_context_synchronously
             listStates[tempListIndex!].context.findRenderObject() as RenderBox;
         Offset pos = object.localToGlobal(Offset.zero);
         leftListX = pos.dx;
@@ -329,10 +333,12 @@ class BoardViewState extends State<BoardView>
               duration: const Duration(milliseconds: 400), curve: Curves.ease)
           .whenComplete(() {
         RenderBox object =
+            // ignore: use_build_context_synchronously
             listStates[tempListIndex!].context.findRenderObject() as RenderBox;
         Offset pos = object.localToGlobal(Offset.zero);
         leftListX = pos.dx;
         rightListX = pos.dx + object.size.width;
+        // ignore: use_build_context_synchronously
         RenderBox box = listStates[tempListIndex]
             .itemStates[tempItemIndex!]
             .context

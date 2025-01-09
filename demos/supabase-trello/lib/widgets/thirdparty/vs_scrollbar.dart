@@ -1,3 +1,5 @@
+// ignore_for_file: deprecated_member_use
+
 library vs_scrollbar;
 
 import 'package:flutter/gestures.dart';

@@ -372,6 +372,7 @@ class _BoardScreenState extends State<BoardScreen> with Service {
                                 onTap: () {
                                   archiveCardsInList(trello.lstbrd[index])
                                       .then((numCardsArchived) {
+                                    // ignore: use_build_context_synchronously
                                     StatusAlert.show(context,
                                         duration: const Duration(seconds: 2),
                                         title:
@@ -380,6 +381,7 @@ class _BoardScreenState extends State<BoardScreen> with Service {
                                             icon: Icons.archive_outlined,
                                             color: brandColor),
                                         maxWidth: 260);
+                                    // ignore: use_build_context_synchronously
                                     Navigator.of(context).pop();
                                   });
                                 },
