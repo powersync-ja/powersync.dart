@@ -24,5 +24,6 @@ class Attachment {
         workspaceId: row['workspaceId'],
         userId: row['userId'],
         cardId: row['cardId'],
-        attachment: row['attachment']);}
+        attachment: row['attachment']);
+  }
 }

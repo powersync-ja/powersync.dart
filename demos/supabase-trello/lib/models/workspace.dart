@@ -31,6 +31,6 @@ class Workspace {
         name: row['name'],
         description: row['description'],
         visibility: row['visibility'],
-        members: []
-    );}
+        members: []);
+  }
 }

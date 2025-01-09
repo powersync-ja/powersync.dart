@@ -6,7 +6,7 @@ class BoardListObject {
   List<BoardItemObject>? items;
 
   BoardListObject({this.title, this.listId, this.items}) {
-    listId ??="0";
+    listId ??= "0";
     title ??= "";
     items ??= [];
   }

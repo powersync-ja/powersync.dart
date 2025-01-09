@@ -14,7 +14,7 @@ class _LabelDiplayState extends State<LabelDiplay> {
   @override
   Widget build(BuildContext context) {
     return DecoratedBox(
-        decoration: BoxDecoration(            
+        decoration: BoxDecoration(
             color: Color(int.parse(widget.color, radix: 16) + 0xFF000000),
             borderRadius: const BorderRadius.all(Radius.circular(5.0))),
         child: Center(

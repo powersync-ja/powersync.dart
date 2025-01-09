@@ -50,7 +50,7 @@ class _WorkspaceMenuState extends State<WorkspaceMenu> with Service {
                         style: const TextStyle(
                             fontWeight: FontWeight.bold, fontSize: 18),
                       ),
-                      const  Text.rich(TextSpan(children: [
+                      const Text.rich(TextSpan(children: [
                         WidgetSpan(
                             child:
                                 Icon(Icons.lock, color: dangerColor, size: 15)),
@@ -125,15 +125,13 @@ class _WorkspaceMenuState extends State<WorkspaceMenu> with Service {
     List<Widget> avatars = [];
 
     trello.selectedWorkspace.members?.forEach((member) {
-      avatars.add(
-          CircleAvatar(
-            backgroundColor: brandColor,
-            child: Text(member.name[0].toUpperCase()),
-          )
-      );
-      avatars.add(
-        const SizedBox(width: 4,)
-      );
+      avatars.add(CircleAvatar(
+        backgroundColor: brandColor,
+        child: Text(member.name[0].toUpperCase()),
+      ));
+      avatars.add(const SizedBox(
+        width: 4,
+      ));
     });
     return avatars;
   }

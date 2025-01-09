@@ -48,7 +48,8 @@ class _LandingBottomSheetState extends State<LandingBottomSheet> {
               (widget.type == Sign.signUp)
                   ? " SIGN UP WITH GOOGLE"
                   : "LOG IN WITH GOOGLE",
-              style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.grey),
+              style: const TextStyle(
+                  fontWeight: FontWeight.bold, color: Colors.grey),
             ),
           ),
           ListTile(
@@ -61,7 +62,8 @@ class _LandingBottomSheetState extends State<LandingBottomSheet> {
               (widget.type == Sign.signUp)
                   ? " SIGN UP WITH MICROSOFT"
                   : "LOG IN WITH MICROSOFT",
-              style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.grey),
+              style: const TextStyle(
+                  fontWeight: FontWeight.bold, color: Colors.grey),
             ),
           ),
           ListTile(
@@ -74,7 +76,8 @@ class _LandingBottomSheetState extends State<LandingBottomSheet> {
               (widget.type == Sign.signUp)
                   ? " SIGN UP WITH APPLE"
                   : "LOG IN WITH APPLE",
-              style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.grey),
+              style: const TextStyle(
+                  fontWeight: FontWeight.bold, color: Colors.grey),
             ),
           )
         ],

@@ -87,10 +87,7 @@ class _GenerateWorkspaceState extends State<GenerateWorkspace> with Service {
                     child: ElevatedButton(
                         onPressed: () {
                           DataGenerator().createSampleWorkspace(
-                              nameController.text,
-                              trello,
-                              context
-                          );
+                              nameController.text, trello, context);
                         },
                         child: const Text("Create"))),
               )

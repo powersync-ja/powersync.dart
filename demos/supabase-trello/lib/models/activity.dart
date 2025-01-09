@@ -32,8 +32,6 @@ class Activity {
         userId: row['userId'],
         cardId: row['cardId'],
         description: row['description'],
-        dateCreated: DateTime.parse(row['dateCreated'])
-    );
+        dateCreated: DateTime.parse(row['dateCreated']));
   }
-
 }

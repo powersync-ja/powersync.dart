@@ -38,7 +38,6 @@ class Listboard {
         name: row['name'],
         archived: row['archived'] == 1,
         order: row['listOrder'],
-        cards: []
-    );
+        cards: []);
   }
 }
