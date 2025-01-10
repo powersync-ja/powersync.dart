@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:status_alert/status_alert.dart';
 import 'package:trelloappclone_flutter/utils/color.dart';
 import 'package:trelloappclone_flutter/utils/service.dart';
 import 'package:trelloappclone_flutter/models/member.dart';
@@ -74,24 +73,66 @@ class _InviteMemberState extends State<InviteMember> with Service {
                                 .addAll(trello.selectedWorkspace.members ?? []);
                           });
                           // ignore: use_build_context_synchronously
-                          StatusAlert.show(context,
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
                               duration: const Duration(seconds: 3),
-                              title: 'Added Member',
-                              subtitle:
-                                  '${emailcontroller.text} added to workspace.',
-                              configuration: const IconConfiguration(
-                                  icon: Icons.check, color: brandColor),
-                              maxWidth: 260);
+                              margin: EdgeInsets.only(
+                                bottom: MediaQuery.of(context).size.height *
+                                    0.1, // 10% from bottom
+                                right: 20,
+                                left: 20,
+                              ),
+                              content: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Row(
+                                    children: [
+                                      Icon(Icons.check, color: brandColor),
+                                      SizedBox(width: 12),
+                                      Text('Added Member'),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                      '${emailcontroller.text} added to workspace.'),
+                                ],
+                              ),
+                              width: 260,
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
                         } else {
                           // ignore: use_build_context_synchronously
-                          StatusAlert.show(context,
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
                               duration: const Duration(seconds: 3),
-                              title: 'Add Failed',
-                              subtitle:
-                                  '${emailcontroller.text} not an existing user.',
-                              configuration: const IconConfiguration(
-                                  icon: Icons.error_outline, color: brandColor),
-                              maxWidth: 260);
+                              margin: EdgeInsets.only(
+                                bottom: MediaQuery.of(context).size.height *
+                                    0.1, // 10% from bottom
+                                right: 20,
+                                left: 20,
+                              ),
+                              backgroundColor: Colors.red[100],
+                              content: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Row(
+                                    children: [
+                                      Icon(Icons.error_outline,
+                                          color: Colors.red),
+                                      SizedBox(width: 12),
+                                      Text('Add Failed'),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                      '${emailcontroller.text} not an existing user.'),
+                                ],
+                              ),
+                              width: 260,
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
                         }
                       });
                     },

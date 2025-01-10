@@ -109,11 +109,11 @@ class _SignToTrelloState extends State<SignToTrello> with Service {
                         signUp(
                             name: usernamecontroller.text,
                             email: emailcontroller.text,
-                            password: encryptPassword(passwordcontroller.text),
+                            password: passwordcontroller.text,
                             context: context);
                       } else if (args.type == Sign.logIn && validateLogin()) {
-                        logIn(emailcontroller.text,
-                            encryptPassword(passwordcontroller.text), context);
+                        logIn(emailcontroller.text, passwordcontroller.text,
+                            context);
                       }
                     },
                     style:

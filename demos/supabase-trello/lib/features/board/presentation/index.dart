@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:status_alert/status_alert.dart';
 import 'package:trelloappclone_flutter/features/carddetails/domain/card_detail_arguments.dart';
 import 'package:trelloappclone_flutter/features/carddetails/presentation/index.dart';
 import 'package:trelloappclone_flutter/utils/color.dart';
@@ -373,14 +372,30 @@ class _BoardScreenState extends State<BoardScreen> with Service {
                                   archiveCardsInList(trello.lstbrd[index])
                                       .then((numCardsArchived) {
                                     // ignore: use_build_context_synchronously
-                                    StatusAlert.show(context,
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
                                         duration: const Duration(seconds: 2),
-                                        title:
-                                            '$numCardsArchived Cards Archived',
-                                        configuration: const IconConfiguration(
-                                            icon: Icons.archive_outlined,
-                                            color: brandColor),
-                                        maxWidth: 260);
+                                        margin: EdgeInsets.only(
+                                          bottom: MediaQuery.of(context)
+                                                  .size
+                                                  .height *
+                                              0.1, // 10% from bottom
+                                          right: 20,
+                                          left: 20,
+                                        ),
+                                        content: Row(
+                                          children: [
+                                            const Icon(Icons.archive_outlined,
+                                                color: brandColor),
+                                            const SizedBox(width: 12),
+                                            Text(
+                                                '$numCardsArchived Cards Archived'),
+                                          ],
+                                        ),
+                                        width: 260,
+                                        behavior: SnackBarBehavior.floating,
+                                      ),
+                                    );
                                     // ignore: use_build_context_synchronously
                                     Navigator.of(context).pop();
                                   });

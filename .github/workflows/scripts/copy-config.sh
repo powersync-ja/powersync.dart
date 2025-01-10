@@ -20,7 +20,7 @@ copy_config_files() {
     fi
   done
 
-  # Create a new file .env fro supabase-trello demo
+  # Create a new file .env for supabase-trello demo
   echo -n > demos/supabase-trello/.env
 }
 

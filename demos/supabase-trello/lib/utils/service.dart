@@ -6,7 +6,6 @@ import 'dart:developer';
 import 'package:crypto/crypto.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart' hide Card;
-import 'package:status_alert/status_alert.dart';
 import 'package:trelloappclone_flutter/features/home/presentation/custom_search.dart';
 import 'package:trelloappclone_flutter/utils/color.dart';
 import 'package:trelloappclone_flutter/models/listboard.dart';
@@ -46,27 +45,73 @@ mixin Service {
 
       if (context.mounted) {
         Navigator.pushNamed(context, '/');
-        StatusAlert.show(context,
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
             duration: const Duration(seconds: 3),
-            title: 'Account Created',
-            subtitle: 'Log in with your new credentials',
-            subtitleOptions: StatusAlertTextConfiguration(
-                softWrap: true, maxLines: 3, overflow: TextOverflow.ellipsis),
-            configuration:
-                const IconConfiguration(icon: Icons.check, color: brandColor),
-            maxWidth: 260);
+            margin: EdgeInsets.only(
+              bottom:
+                  MediaQuery.of(context).size.height * 0.1, // 10% from bottom
+              right: 20,
+              left: 20,
+            ),
+            content: const Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.check, color: brandColor),
+                    SizedBox(width: 12),
+                    Text('Account Created'),
+                  ],
+                ),
+                SizedBox(height: 4),
+                Text(
+                  'Log in with your new credentials',
+                  softWrap: true,
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+            width: 260,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
       }
     } on Exception catch (e) {
       log('Error with signup: $e', error: e);
-      StatusAlert.show(context,
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
           duration: const Duration(seconds: 5),
-          title: 'Sign Up Error',
-          subtitle: e.toString(),
-          subtitleOptions: StatusAlertTextConfiguration(
-              softWrap: true, maxLines: 3, overflow: TextOverflow.ellipsis),
-          configuration:
-              const IconConfiguration(icon: Icons.check, color: brandColor),
-          maxWidth: 260);
+          margin: EdgeInsets.only(
+            bottom: MediaQuery.of(context).size.height * 0.1, // 10% from bottom
+            right: 20,
+            left: 20,
+          ),
+          backgroundColor: Colors.red[100],
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Row(
+                children: [
+                  Icon(Icons.error, color: Colors.red),
+                  SizedBox(width: 12),
+                  Text('Sign Up Error'),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text(
+                e.toString(),
+                softWrap: true,
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+          width: 260,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     }
   }
 
@@ -78,24 +123,55 @@ mixin Service {
 
       if (context.mounted) {
         Navigator.pushNamed(context, '/home');
-        StatusAlert.show(context,
-            duration: const Duration(seconds: 5),
-            title: 'Syncing Workspaces...',
-            configuration:
-                const IconConfiguration(icon: Icons.sync, color: brandColor),
-            maxWidth: 260);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            duration: Duration(seconds: 5),
+            content: Row(
+              children: [
+                Icon(Icons.sync, color: brandColor),
+                SizedBox(width: 12),
+                Text('Syncing Workspaces...'),
+              ],
+            ),
+            width: 260,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
       }
     } on Exception catch (e) {
       log('Error with login: $e', error: e);
-      StatusAlert.show(context,
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
           duration: const Duration(seconds: 5),
-          title: 'Login Error',
-          subtitle: e.toString(),
-          subtitleOptions: StatusAlertTextConfiguration(
-              softWrap: true, maxLines: 3, overflow: TextOverflow.ellipsis),
-          configuration:
-              const IconConfiguration(icon: Icons.check, color: brandColor),
-          maxWidth: 260);
+          margin: EdgeInsets.only(
+            bottom: MediaQuery.of(context).size.height * 0.1, // 10% from bottom
+            right: 20,
+            left: 20,
+          ),
+          backgroundColor: Colors.red[100],
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Row(
+                children: [
+                  Icon(Icons.error, color: Colors.red),
+                  SizedBox(width: 12),
+                  Text('Login Error'),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text(
+                e.toString(),
+                softWrap: true,
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+          width: 260,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     }
   }
 
@@ -104,15 +180,38 @@ mixin Service {
     try {
       await dataClient.logOut();
     } on Exception catch (e) {
-      StatusAlert.show(context,
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
           duration: const Duration(seconds: 5),
-          title: 'Logout Error',
-          subtitle: e.toString(),
-          subtitleOptions: StatusAlertTextConfiguration(
-              softWrap: true, maxLines: 3, overflow: TextOverflow.ellipsis),
-          configuration:
-              const IconConfiguration(icon: Icons.check, color: brandColor),
-          maxWidth: 260);
+          margin: EdgeInsets.only(
+            bottom: MediaQuery.of(context).size.height * 0.1, // 10% from bottom
+            right: 20,
+            left: 20,
+          ),
+          backgroundColor: Colors.red[100],
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Row(
+                children: [
+                  Icon(Icons.error, color: Colors.red),
+                  SizedBox(width: 12),
+                  Text('Logout Error'),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text(
+                e.toString(),
+                softWrap: true,
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+          width: 260,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     }
   }
 
@@ -131,13 +230,6 @@ mixin Service {
     if (context.mounted) {
       showSearch(context: context, delegate: CustomSearchDelegate(allboards));
     }
-  }
-
-  //encrypt password
-  String encryptPassword(String password) {
-    final bytes = utf8.encode(password);
-    final hash = sha256.convert(bytes);
-    return hash.toString();
   }
 
   //create workspace
@@ -171,13 +263,32 @@ mixin Service {
 
       return addedWorkspace;
     } on Exception catch (e) {
-      StatusAlert.show(context,
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
           duration: const Duration(seconds: 5),
-          title: 'Trello Clone',
-          subtitle: e.toString(),
-          configuration:
-              const IconConfiguration(icon: Icons.check, color: brandColor),
-          maxWidth: 260);
+          margin: EdgeInsets.only(
+            bottom: MediaQuery.of(context).size.height * 0.1, // 10% from bottom
+            right: 20,
+            left: 20,
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Row(
+                children: [
+                  Icon(Icons.check, color: brandColor),
+                  SizedBox(width: 12),
+                  Text('Trello Clone'),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text(e.toString()),
+            ],
+          ),
+          width: 260,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     }
   }
 
@@ -227,13 +338,32 @@ mixin Service {
         Navigator.pushNamed(context, "/home");
       }
     } on Exception catch (e) {
-      StatusAlert.show(context,
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
           duration: const Duration(seconds: 5),
-          title: 'Trello Clone',
-          subtitle: e.toString(),
-          configuration:
-              const IconConfiguration(icon: Icons.check, color: brandColor),
-          maxWidth: 260);
+          margin: EdgeInsets.only(
+            bottom: MediaQuery.of(context).size.height * 0.1, // 10% from bottom
+            right: 20,
+            left: 20,
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Row(
+                children: [
+                  Icon(Icons.check, color: brandColor),
+                  SizedBox(width: 12),
+                  Text('Trello Clone'),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text(e.toString()),
+            ],
+          ),
+          width: 260,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     }
   }
 

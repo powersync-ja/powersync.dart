@@ -4,7 +4,6 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:random_name_generator/random_name_generator.dart';
-import 'package:status_alert/status_alert.dart';
 import 'package:trelloappclone_flutter/utils/color.dart';
 import 'package:trelloappclone_flutter/utils/config.dart';
 import 'package:trelloappclone_flutter/utils/service.dart';
@@ -44,12 +43,25 @@ class DataGenerator with Service {
 
   createSampleWorkspace(
       String workspaceName, TrelloProvider trello, BuildContext context) async {
-    StatusAlert.show(context,
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
         duration: const Duration(seconds: 3),
-        title: 'Generating Workspace Data...',
-        configuration:
-            const IconConfiguration(icon: Icons.sync, color: brandColor),
-        maxWidth: 260);
+        margin: EdgeInsets.only(
+          bottom: MediaQuery.of(context).size.height * 0.1, // 10% from bottom
+          right: 20,
+          left: 20,
+        ),
+        content: const Row(
+          children: [
+            Icon(Icons.sync, color: brandColor),
+            SizedBox(width: 12),
+            Text('Generating Workspace Data...'),
+          ],
+        ),
+        width: 260,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
 
     Workspace workspace = await createWorkspace(context,
         name: workspaceName,
