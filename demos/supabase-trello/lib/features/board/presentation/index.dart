@@ -376,6 +376,7 @@ class _BoardScreenState extends State<BoardScreen> with Service {
                                       SnackBar(
                                         duration: const Duration(seconds: 2),
                                         margin: EdgeInsets.only(
+                                          // ignore: use_build_context_synchronously
                                           bottom: MediaQuery.of(context)
                                                   .size
                                                   .height *
@@ -392,7 +393,6 @@ class _BoardScreenState extends State<BoardScreen> with Service {
                                                 '$numCardsArchived Cards Archived'),
                                           ],
                                         ),
-                                        width: 260,
                                         behavior: SnackBarBehavior.floating,
                                       ),
                                     );

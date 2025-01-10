@@ -77,6 +77,7 @@ class _InviteMemberState extends State<InviteMember> with Service {
                             SnackBar(
                               duration: const Duration(seconds: 3),
                               margin: EdgeInsets.only(
+                                // ignore: use_build_context_synchronously
                                 bottom: MediaQuery.of(context).size.height *
                                     0.1, // 10% from bottom
                                 right: 20,
@@ -97,7 +98,6 @@ class _InviteMemberState extends State<InviteMember> with Service {
                                       '${emailcontroller.text} added to workspace.'),
                                 ],
                               ),
-                              width: 260,
                               behavior: SnackBarBehavior.floating,
                             ),
                           );
@@ -107,6 +107,7 @@ class _InviteMemberState extends State<InviteMember> with Service {
                             SnackBar(
                               duration: const Duration(seconds: 3),
                               margin: EdgeInsets.only(
+                                // ignore: use_build_context_synchronously
                                 bottom: MediaQuery.of(context).size.height *
                                     0.1, // 10% from bottom
                                 right: 20,
@@ -129,7 +130,6 @@ class _InviteMemberState extends State<InviteMember> with Service {
                                       '${emailcontroller.text} not an existing user.'),
                                 ],
                               ),
-                              width: 260,
                               behavior: SnackBarBehavior.floating,
                             ),
                           );

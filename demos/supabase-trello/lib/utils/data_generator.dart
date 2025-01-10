@@ -58,7 +58,6 @@ class DataGenerator with Service {
             Text('Generating Workspace Data...'),
           ],
         ),
-        width: 260,
         behavior: SnackBarBehavior.floating,
       ),
     );

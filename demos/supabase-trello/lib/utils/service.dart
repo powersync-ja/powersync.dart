@@ -1,9 +1,7 @@
 // ignore_for_file: use_build_context_synchronously
 
-import 'dart:convert';
 import 'dart:developer';
 
-import 'package:crypto/crypto.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart' hide Card;
 import 'package:trelloappclone_flutter/features/home/presentation/custom_search.dart';
@@ -73,7 +71,6 @@ mixin Service {
                 ),
               ],
             ),
-            width: 260,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -108,7 +105,6 @@ mixin Service {
               ),
             ],
           ),
-          width: 260,
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -133,7 +129,6 @@ mixin Service {
                 Text('Syncing Workspaces...'),
               ],
             ),
-            width: 260,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -168,7 +163,6 @@ mixin Service {
               ),
             ],
           ),
-          width: 260,
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -208,7 +202,6 @@ mixin Service {
               ),
             ],
           ),
-          width: 260,
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -285,7 +278,6 @@ mixin Service {
               Text(e.toString()),
             ],
           ),
-          width: 260,
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -360,7 +352,6 @@ mixin Service {
               Text(e.toString()),
             ],
           ),
-          width: 260,
           behavior: SnackBarBehavior.floating,
         ),
       );
