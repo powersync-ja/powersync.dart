@@ -35,7 +35,6 @@ class _HomeState extends State<Home> with Service {
 
     _connectionState = dataClient.getCurrentSyncStatus();
     _syncStatusSubscription = dataClient.getStatusStream().listen((event) {
-      log.info('Sync Status: $event');
       setState(() {
         _connectionState = event;
       });
@@ -96,7 +95,6 @@ class _HomeState extends State<Home> with Service {
                 padding: EdgeInsets.all(20.0),
                 child: EmptyWidget(
                   image: null,
-                  packageImage: PackageImage.Image_1,
                   title: 'No Boards',
                   subTitle: 'Create your first Trello board',
                   titleTextStyle: TextStyle(
