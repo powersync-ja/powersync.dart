@@ -1,6 +1,26 @@
-import 'package:powersync_core/sqlite3_common.dart';
+import 'dart:js_interop';
+
 import 'package:powersync_core/src/open_factory/common_db_functions.dart';
+import 'package:sqlite_async/sqlite3_wasm.dart';
+import 'package:sqlite_async/sqlite3_web.dart';
+import 'package:sqlite_async/sqlite3_web_worker.dart';
 import 'package:uuid/uuid.dart';
+
+final class PowerSyncAsyncSqliteController extends AsyncSqliteController {
+  @override
+  Future<WorkerDatabase> openDatabase(
+      WasmSqlite3 sqlite3, String path, String vfs) async {
+    final asyncDb = await super.openDatabase(sqlite3, path, vfs);
+    setupPowerSyncDatabase(asyncDb.database);
+    return asyncDb;
+  }
+
+  @override
+  Future<JSAny?> handleCustomRequest(
+      ClientConnection connection, JSAny? request) {
+    throw UnimplementedError();
+  }
+}
 
 // Registers custom SQLite functions for the SQLite connection
 void setupPowerSyncDatabase(CommonDatabase database) {
