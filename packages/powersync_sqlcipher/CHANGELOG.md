@@ -1,3 +1,7 @@
+## 0.1.3
+
+ - Fix `statusStream` emitting the same sync status multiple times.
+
 ## 0.1.2
 
  - Increase limit on number of columns per table to 1999.

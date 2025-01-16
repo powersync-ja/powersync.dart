@@ -3,6 +3,32 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 2025-01-16
+
+### Changes
+
+---
+
+Packages with breaking changes:
+
+ - There are no breaking changes in this release.
+
+Packages with other changes:
+
+ - [`powersync` - `v1.11.1`](#powersync---v1111)
+ - [`powersync_sqlcipher` - `v0.1.3`](#powersync_sqlcipher---v013)
+
+---
+
+#### `powersync` - `v1.11.1`
+
+ - Fix `statusStream` emitting the same sync status multiple times.
+
+#### `powersync_sqlcipher` - `v0.1.3`
+
+ - Fix `statusStream` emitting the same sync status multiple times.
+
+
 ## 2025-01-06
 
 ### Changes

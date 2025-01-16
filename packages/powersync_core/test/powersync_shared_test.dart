@@ -1,3 +1,4 @@
+import 'package:powersync_core/powersync_core.dart';
 import 'package:sqlite_async/mutex.dart';
 import 'package:test/test.dart';
 import 'package:uuid/parsing.dart';
@@ -88,6 +89,28 @@ void main() {
       final id = await db.getClientId();
       // Check that it is a valid uuid
       UuidParsing.parseAsByteList(id);
+    });
+
+    test('does not emit duplicate sync status events', () async {
+      final db = await testUtils.setupPowerSync(path: path);
+      expectLater(
+        db.statusStream,
+        emitsInOrder(
+          [
+            // Manual setStatus call. hasSynced set to true because lastSyncedAt is set
+            isA<SyncStatus>().having((e) => e.hasSynced, 'hasSynced', true),
+            // Closing the database emits a disconnected status
+            isA<SyncStatus>().having((e) => e.connected, 'connected', false),
+            emitsDone
+          ],
+        ),
+      );
+
+      final status = SyncStatus(connected: true, lastSyncedAt: DateTime.now());
+      db.setStatus(status);
+      db.setStatus(status); // Should not re-emit!
+
+      await db.close();
     });
   });
 }
