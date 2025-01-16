@@ -12,7 +12,7 @@ dependencies:
   flutter:
     sdk: flutter
 
-  powersync_core: ^1.1.0
+  powersync_core: ^1.1.1
   powersync_flutter_libs: ^0.4.4
   sqlcipher_flutter_libs: ^0.6.4
 dev_dependencies:
