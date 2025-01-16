@@ -1,4 +1,4 @@
-## 1.1.1-dev
+## 1.1.1
 
 - Fix `statusStream` emitting the same sync status multiple times.
 
