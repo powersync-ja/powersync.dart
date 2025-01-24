@@ -14,10 +14,8 @@ import 'src/stub.dart'
 
 /// A factory for opening a database with SQLCipher encryption.
 /// An encryption [key] is required to open the database.
-abstract base class PowerSyncSQLCipherOpenFactory extends PowerSyncOpenFactory {
-  PowerSyncSQLCipherOpenFactory.internal(
-      {required super.path, required this.key, super.sqliteOptions});
-
+abstract interface class PowerSyncSQLCipherOpenFactory
+    extends PowerSyncOpenFactory {
   factory PowerSyncSQLCipherOpenFactory(
       {required String path,
       required String key,
@@ -25,5 +23,5 @@ abstract base class PowerSyncSQLCipherOpenFactory extends PowerSyncOpenFactory {
     return cipherFactory(path: path, key: key, options: sqliteOptions);
   }
 
-  final String key;
+  String get key;
 }

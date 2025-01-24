@@ -5,12 +5,16 @@ import 'package:sqlcipher_flutter_libs/sqlcipher_flutter_libs.dart';
 
 import '../powersync.dart';
 
-final class _NativeCipherOpenFactory extends PowerSyncSQLCipherOpenFactory {
+final class _NativeCipherOpenFactory extends PowerSyncOpenFactory
+    implements PowerSyncSQLCipherOpenFactory {
+  @override
+  final String key;
+
   _NativeCipherOpenFactory({
     required super.path,
-    required super.key,
+    required this.key,
     super.sqliteOptions,
-  }) : super.internal();
+  });
 
   @override
   List<String> pragmaStatements(SqliteOpenOptions options) {

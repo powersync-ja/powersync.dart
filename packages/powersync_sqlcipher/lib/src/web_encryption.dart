@@ -3,13 +3,16 @@ import 'package:powersync_core/web.dart';
 
 import '../powersync.dart';
 
-final class _WebEncryptionFactory extends PowerSyncSQLCipherOpenFactory
-    with WebSqliteOpenFactory {
+final class _WebEncryptionFactory extends PowerSyncWebOpenFactory
+    implements PowerSyncSQLCipherOpenFactory {
+  @override
+  final String key;
+
   _WebEncryptionFactory({
     required super.path,
-    required super.key,
+    required this.key,
     super.sqliteOptions,
-  }) : super.internal();
+  });
 
   @override
   List<String> pragmaStatements(SqliteOpenOptions options) {
