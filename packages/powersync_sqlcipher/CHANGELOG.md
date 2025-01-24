@@ -1,3 +1,7 @@
+## 0.1.4-dev
+
+- Support encryption on the web (through SQLite3 Multiple Ciphers).
+
 ## 0.1.3
 
  - Fix `statusStream` emitting the same sync status multiple times.

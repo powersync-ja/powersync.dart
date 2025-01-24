@@ -11,7 +11,7 @@ import '../../web/worker_utils.dart';
 
 /// Web implementation for [AbstractPowerSyncOpenFactory]
 class PowerSyncOpenFactory extends AbstractPowerSyncOpenFactory
-    implements WebSqliteOpenFactory {
+    with WebSqliteOpenFactory {
   PowerSyncOpenFactory({
     required super.path,
     super.sqliteOptions,
@@ -27,6 +27,12 @@ class PowerSyncOpenFactory extends AbstractPowerSyncOpenFactory
   }
 
   @override
+  Future<ConnectToRecommendedResult> connectToWorker(
+      WebSqlite sqlite, String name) {
+    return sqlite.connectToRecommended(name);
+  }
+
+  @override
   void enableExtension() {
     // No op for web
   }
@@ -34,11 +40,11 @@ class PowerSyncOpenFactory extends AbstractPowerSyncOpenFactory
   @override
   Future<SqliteConnection> openConnection(SqliteOpenOptions options) async {
     var conn = await super.openConnection(options);
-    for (final statement in super.pragmaStatements(options)) {
+    for (final statement in pragmaStatements(options)) {
       await conn.execute(statement);
     }
 
-    return super.openConnection(options);
+    return conn;
   }
 
   @override
