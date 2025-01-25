@@ -82,6 +82,7 @@ class CrudEntry {
 
   factory CrudEntry.fromRow(sqlite.Row row) {
     final data = jsonDecode(row['data']);
+    assert(data['id'] is String);
     return CrudEntry(row['id'], UpdateType.fromJsonChecked(data['op'])!,
         data['type'], data['id'], row['tx_id'], data['data']);
   }
