@@ -5,6 +5,7 @@ repository: https://github.com/powersync-ja/powersync.dart
 description: PowerSync Flutter SDK - sync engine for building local-first apps.
 environment:
   sdk: ^3.4.0
+
 dependencies:
   # Needed because of sqlite3_flutter_libs
   flutter:
@@ -17,8 +18,9 @@ dependencies:
   pubspec_parse: ^1.3.0
   args: ^2.5.0
   pub_semver: ^2.1.4
+
 dev_dependencies:
-  lints: ^3.0.0
+  lints: ^5.1.0
   path: ^1.8.3
   path_provider: ^2.0.13
 
