@@ -29,6 +29,7 @@ class SyncWorkerHandle implements StreamingSync {
     _channel = WorkerCommunicationChannel(
       port: sendToWorker,
       errors: EventStreamProviders.errorEvent.forTarget(worker),
+      logger: database.logger,
       requestHandler: (type, payload) async {
         switch (type) {
           case SyncWorkerMessageType.requestEndpoint:
@@ -84,12 +85,13 @@ class SyncWorkerHandle implements StreamingSync {
       Map<String, dynamic>? syncParams}) async {
     final worker = SharedWorker(workerUri.toString().toJS);
     final handle = SyncWorkerHandle._(
-        database: database,
-        connector: connector,
-        crudThrottleTimeMs: crudThrottleTimeMs,
-        sendToWorker: worker.port,
-        worker: worker,
-        syncParams: syncParams);
+      database: database,
+      connector: connector,
+      crudThrottleTimeMs: crudThrottleTimeMs,
+      sendToWorker: worker.port,
+      worker: worker,
+      syncParams: syncParams,
+    );
 
     // Make sure that the worker is working, or throw immediately.
     await handle._channel.ping();
