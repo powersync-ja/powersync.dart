@@ -19,6 +19,11 @@ flutter pub add powersync_sqlcipher
 ```
 
 Version history can be found [here](https://pub.dev/packages/powersync_sqlcipher/versions).
+To use this package on the web, additional assets are required. You can download them by running this in your project directory:
+
+```
+dart run powersync_sqlcipher:setup_web
+```
 
 ### Usage
 

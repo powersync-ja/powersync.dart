@@ -12,6 +12,11 @@ import 'src/stub.dart'
     if (dart.library.js_interop) 'src/web_encryption.dart'
     if (dart.library.ffi) 'src/sqlcipher.dart';
 
+const _defaultOptions = SqliteOptions(
+  webSqliteOptions: WebSqliteOptions(
+      wasmUri: 'sqlite3mc.wasm', workerUri: 'powersync_db.worker.js'),
+);
+
 /// A factory for opening a database with SQLCipher encryption.
 /// An encryption [key] is required to open the database.
 abstract interface class PowerSyncSQLCipherOpenFactory
@@ -19,7 +24,7 @@ abstract interface class PowerSyncSQLCipherOpenFactory
   factory PowerSyncSQLCipherOpenFactory(
       {required String path,
       required String key,
-      SqliteOptions sqliteOptions = powerSyncDefaultSqliteOptions}) {
+      SqliteOptions sqliteOptions = _defaultOptions}) {
     return cipherFactory(path: path, key: key, options: sqliteOptions);
   }
 
