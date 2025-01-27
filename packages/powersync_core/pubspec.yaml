@@ -8,7 +8,7 @@ environment:
   sdk: ^3.4.3
 
 dependencies:
-  sqlite_async: ^0.11.0
+  sqlite_async: ^0.11.1
   # We only use sqlite3 as a transitive dependency,
   # but right now we need a minimum of v2.4.6.
   sqlite3: ^2.4.6
