@@ -6,4 +6,4 @@ export 'open_factory/open_factory_stub.dart'
     // ignore: uri_does_not_exist
     if (dart.library.io) 'open_factory/native/native_open_factory.dart'
     // ignore: uri_does_not_exist
-    if (dart.library.html) 'open_factory/web/web_open_factory.dart';
+    if (dart.library.js_interop) 'open_factory/web/web_open_factory.dart';

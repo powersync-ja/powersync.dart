@@ -23,7 +23,8 @@ Future<void> downloadWebAssets(List<String> arguments,
   final root = Directory.current.uri;
   print('Project root: ${root.toFilePath()}');
 
-  final wasmPath = '${root.toFilePath()}$outputDir/sqlite3.wasm';
+  final wasmFileName = encryption ? 'sqlite3mc.wasm' : 'sqlite3.wasm';
+  final wasmPath = '${root.toFilePath()}$outputDir/$wasmFileName';
 
   final workerPath = '${root.toFilePath()}$outputDir/powersync_db.worker.js';
   final syncWorkerPath =
@@ -86,9 +87,8 @@ Future<void> downloadWebAssets(List<String> arguments,
           You can view the full list of releases at https://github.com/powersync-ja/sqlite3.dart/releases""");
     }
 
-    final filename = encryption ? 'sqlite3mc.wasm' : 'sqlite3.wasm';
     final sqliteUrl =
-        'https://github.com/powersync-ja/sqlite3.dart/releases/download/$sqlite3Version/$filename';
+        'https://github.com/powersync-ja/sqlite3.dart/releases/download/$sqlite3Version/$wasmFileName';
 
     await downloadFile(httpClient, sqliteUrl, wasmPath);
   } catch (e) {
