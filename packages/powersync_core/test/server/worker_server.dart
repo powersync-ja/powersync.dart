@@ -1,6 +1,5 @@
 import 'dart:io';
 
-import 'package:dcli/dcli.dart';
 import 'package:path/path.dart' as p;
 import 'package:shelf/shelf.dart';
 import 'package:shelf/shelf_io.dart' as io;
@@ -9,8 +8,7 @@ import 'package:stream_channel/stream_channel.dart';
 import 'asset_server.dart';
 
 Future<void> hybridMain(StreamChannel<Object?> channel) async {
-  final assetsDirectory = p
-      .normalize(p.join(DartScript.self.pathToScriptDirectory, '../../assets'));
+  final assetsDirectory = p.normalize('assets');
 
   // Copy sqlite3.wasm file expected by the worker
   final sqliteOutputPath = p.join(assetsDirectory, 'sqlite3.wasm');

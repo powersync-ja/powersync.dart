@@ -1,4 +1,6 @@
 @TestOn('!browser')
+library;
+
 import 'package:powersync_core/powersync_core.dart';
 import 'package:test/test.dart';
 

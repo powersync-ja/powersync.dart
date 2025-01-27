@@ -1,12 +1,12 @@
 import 'dart:async';
-import 'dart:html';
+import 'dart:js_interop';
 
-import 'package:js/js.dart';
 import 'package:logging/logging.dart';
 import 'package:powersync_core/powersync_core.dart';
 import 'package:sqlite_async/sqlite3_common.dart';
 import 'package:sqlite_async/sqlite_async.dart';
 import 'package:test/test.dart';
+import 'package:web/web.dart' show Blob, BlobPropertyBag;
 import 'abstract_test_utils.dart';
 
 @JS('URL.createObjectURL')
@@ -29,8 +29,9 @@ class TestUtils extends AbstractTestUtils {
     // Cross origin workers are not supported, but we can supply a Blob
     final workerUriSource = 'http://localhost:$port/powersync_db.worker.js';
 
-    final blob = Blob(<String>['importScripts("$workerUriSource");'],
-        'application/javascript');
+    final blob = Blob(
+        <JSString>['importScripts("$workerUriSource");'.toJS].toJS,
+        BlobPropertyBag(type: 'application/javascript'));
     workerUri = _createObjectURL(blob);
   }
 

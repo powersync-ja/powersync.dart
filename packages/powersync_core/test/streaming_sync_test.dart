@@ -1,4 +1,6 @@
 @TestOn('!browser')
+library;
+
 // TODO setup hybrid server
 import 'dart:async';
 import 'dart:math';

@@ -20,14 +20,12 @@ dependencies:
   logging: ^1.1.1
   collection: ^1.17.0
   fetch_client: ^1.1.2
-  js: ^0.7.0
   web: ^1.0.0
+
 dev_dependencies:
-  dcli: ^4.0.0
-  lints: ^3.0.0
+  lints: ^5.1.1
   test: ^1.25.0
   test_api: ^0.7.0
-  path_provider: ^2.0.13
   shelf: ^1.4.1
   shelf_router: ^1.1.4
   shelf_static: ^1.1.2
