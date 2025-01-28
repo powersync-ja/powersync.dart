@@ -1,6 +1,8 @@
-## 0.1.4-dev
+## 0.1.4
 
-- Support encryption on the web (through SQLite3 Multiple Ciphers).
+ - Web: Support running in contexts where web workers are unavailable.
+ - Web: Fix sync worker logs not being disabled.
+ - `powersync_sqlcipher`: Web support.
 
 ## 0.1.3
 
