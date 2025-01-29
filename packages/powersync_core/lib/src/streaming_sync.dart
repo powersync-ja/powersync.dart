@@ -433,8 +433,9 @@ class StreamingSyncImplementation implements StreamingSync {
           await adapter.removeBuckets(diff.removedBuckets);
           adapter.setTargetCheckpoint(targetCheckpoint);
         case SyncBucketData():
+          // TODO: Merge multiple of these into a single one...
           _updateStatus(downloading: true);
-          await adapter.saveSyncData(SyncDataBatch([line]));
+          await adapter.saveSyncData(SyncDataBatch([line], bucketMap));
         case StreamingSyncKeepalive():
           if (line.tokenExpiresIn == 0) {
             // Token expired already - stop the connection immediately

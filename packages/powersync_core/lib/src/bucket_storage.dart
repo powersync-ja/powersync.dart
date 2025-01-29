@@ -53,12 +53,20 @@ class BucketStorage {
     var count = 0;
 
     await writeTransaction((tx) async {
+      final descriptions = [
+        for (final MapEntry(:key, :value) in batch.descriptions.entries)
+          {
+            key: {'priority': value.priority},
+          }
+      ];
+
       for (var b in batch.buckets) {
         count += b.data.length;
         await _updateBucket2(
             tx,
             jsonEncode({
-              'buckets': [b]
+              'buckets': [b],
+              'descriptions': descriptions,
             }));
       }
       // No need to flush - the data is not directly visible to the user either way.
@@ -352,8 +360,9 @@ class BucketState {
 
 final class SyncDataBatch {
   final List<SyncBucketData> buckets;
+  final Map<String, BucketDescription> descriptions;
 
-  SyncDataBatch(this.buckets);
+  SyncDataBatch(this.buckets, this.descriptions);
 }
 
 class SyncLocalDatabaseResult {
