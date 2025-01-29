@@ -4,9 +4,8 @@ import 'dart:convert';
 sealed class StreamingSyncLine {
   const StreamingSyncLine();
 
-  /// Parses a [StreamingSyncLine] from JSON, or return `null` if the line is
-  /// not understood by this client.
-  static StreamingSyncLine? fromJson(Map<String, dynamic> line) {
+  /// Parses a [StreamingSyncLine] from JSON.
+  static StreamingSyncLine fromJson(Map<String, dynamic> line) {
     if (line.containsKey('checkpoint')) {
       return Checkpoint.fromJson(line['checkpoint']);
     } else if (line.containsKey('checkpoint_diff')) {
@@ -19,9 +18,16 @@ sealed class StreamingSyncLine {
     } else if (line.containsKey('token_expires_in')) {
       return StreamingSyncKeepalive.fromJson(line);
     } else {
-      return null;
+      return UnknownSyncLine(line);
     }
   }
+}
+
+/// A message from the sync service that this client doesn't support.
+final class UnknownSyncLine implements StreamingSyncLine {
+  final Map<String, dynamic> rawData;
+
+  const UnknownSyncLine(this.rawData);
 }
 
 /// Indicates that a checkpoint is available, along with checksums for each
@@ -54,8 +60,11 @@ final class Checkpoint extends StreamingSyncLine {
   }
 }
 
+typedef BucketDescription = ({String name, int priority});
+
 class BucketChecksum {
   final String bucket;
+  final int priority;
   final int checksum;
 
   /// Count is informational only
@@ -64,12 +73,14 @@ class BucketChecksum {
 
   const BucketChecksum(
       {required this.bucket,
+      required this.priority,
       required this.checksum,
       this.count,
       this.lastOpId});
 
   BucketChecksum.fromJson(Map<String, dynamic> json)
       : bucket = json['bucket'],
+        priority = json['priority'],
         checksum = json['checksum'],
         count = json['count'],
         lastOpId = json['last_op_id'];
@@ -110,6 +121,19 @@ final class StreamingSyncCheckpointComplete extends StreamingSyncLine {
 
   StreamingSyncCheckpointComplete.fromJson(Map<String, dynamic> json)
       : lastOpId = json['last_op_id'];
+}
+
+/// Sent after all the [SyncBucketData] messages for a given priority within a
+/// checkpoint have been sent.
+final class StreamingSyncCheckpointPartiallyComplete extends StreamingSyncLine {
+  String lastOpId;
+  int bucketPriority;
+
+  StreamingSyncCheckpointPartiallyComplete(this.lastOpId, this.bucketPriority);
+
+  StreamingSyncCheckpointPartiallyComplete.fromJson(Map<String, dynamic> json)
+      : lastOpId = json['last_op_id'],
+        bucketPriority = json['priority'];
 }
 
 /// Sent as a periodic ping to keep the connection alive and to notify the

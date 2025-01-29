@@ -302,29 +302,36 @@ class StreamingSyncImplementation implements StreamingSync {
     _statusStreamController.add(newStatus);
   }
 
+  Future<(List<BucketRequest>, Map<String, BucketDescription>)>
+      _collectLocalBucketState() async {
+    final bucketEntries = await adapter.getBucketStates();
+
+    final initialRequests = [
+      for (final entry in bucketEntries) BucketRequest(entry.bucket, entry.opId)
+    ];
+    final localDescriptions = {
+      for (final entry in bucketEntries)
+        entry.bucket: (
+          name: entry.bucket,
+          priority: entry.priority,
+        )
+    };
+
+    return (initialRequests, localDescriptions);
+  }
+
   Future<bool> streamingSyncIteration(
       {AbortController? abortController}) async {
     adapter.startSession();
-    final bucketEntries = await adapter.getBucketStates();
 
-    Map<String, String> initialBucketStates = {};
-
-    for (final entry in bucketEntries) {
-      initialBucketStates[entry.bucket] = entry.opId;
-    }
-
-    final List<BucketRequest> buckets = [];
-    for (var entry in initialBucketStates.entries) {
-      buckets.add(BucketRequest(entry.key, entry.value));
-    }
+    var (bucketRequests, bucketMap) = await _collectLocalBucketState();
 
     Checkpoint? targetCheckpoint;
     Checkpoint? validatedCheckpoint;
     Checkpoint? appliedCheckpoint;
-    var bucketSet = Set<String>.from(initialBucketStates.keys);
 
     var requestStream = streamingSyncRequest(
-        StreamingSyncRequest(buckets, syncParameters, clientId!));
+        StreamingSyncRequest(bucketRequests, syncParameters, clientId!));
 
     var merged = addBroadcast(requestStream, _localPingController.stream);
 
@@ -343,17 +350,41 @@ class StreamingSyncImplementation implements StreamingSync {
       switch (line) {
         case Checkpoint():
           targetCheckpoint = line;
-          final Set<String> bucketsToDelete = {...bucketSet};
-          final Set<String> newBuckets = {};
+          final Set<String> bucketsToDelete = {...bucketMap.keys};
+          final Map<String, BucketDescription> newBuckets = {};
           for (final checksum in line.checksums) {
-            newBuckets.add(checksum.bucket);
+            newBuckets[checksum.bucket] = (
+              name: checksum.bucket,
+              priority: checksum.priority,
+            );
             bucketsToDelete.remove(checksum.bucket);
           }
-          bucketSet = newBuckets;
+          bucketMap = newBuckets;
           await adapter.removeBuckets([...bucketsToDelete]);
           _updateStatus(downloading: true);
         case StreamingSyncCheckpointComplete():
           final result = await adapter.syncLocalDatabase(targetCheckpoint!);
+          if (!result.checkpointValid) {
+            // This means checksums failed. Start again with a new checkpoint.
+            // TODO: better back-off
+            // await new Promise((resolve) => setTimeout(resolve, 50));
+            return false;
+          } else if (!result.ready) {
+            // Checksums valid, but need more data for a consistent checkpoint.
+            // Continue waiting.
+          } else {
+            appliedCheckpoint = targetCheckpoint;
+
+            _updateStatus(
+                downloading: false,
+                downloadError: _noError,
+                lastSyncedAt: DateTime.now());
+          }
+
+          validatedCheckpoint = targetCheckpoint;
+        case StreamingSyncCheckpointPartiallyComplete(:final bucketPriority):
+          final result = await adapter.syncLocalDatabase(targetCheckpoint!,
+              forPriority: bucketPriority);
           if (!result.checkpointValid) {
             // This means checksums failed. Start again with a new checkpoint.
             // TODO: better back-off
@@ -397,7 +428,8 @@ class StreamingSyncImplementation implements StreamingSync {
               writeCheckpoint: diff.writeCheckpoint);
           targetCheckpoint = newCheckpoint;
 
-          bucketSet = Set.from(newBuckets.keys);
+          bucketMap = newBuckets.map((name, checksum) =>
+              MapEntry(name, (name: name, priority: checksum.priority)));
           await adapter.removeBuckets(diff.removedBuckets);
           adapter.setTargetCheckpoint(targetCheckpoint);
         case SyncBucketData():
@@ -424,6 +456,9 @@ class StreamingSyncImplementation implements StreamingSync {
               });
             }
           }
+        case UnknownSyncLine(:final rawData):
+          isolateLogger.fine('Ignoring unknown sync line: $rawData');
+          break;
         case null: // Local ping
           if (targetCheckpoint == appliedCheckpoint) {
             _updateStatus(

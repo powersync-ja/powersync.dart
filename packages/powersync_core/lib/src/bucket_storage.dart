@@ -33,10 +33,14 @@ class BucketStorage {
 
   Future<List<BucketState>> getBucketStates() async {
     final rows = await select(
-        'SELECT name as bucket, cast(last_op as TEXT) as op_id FROM ps_buckets WHERE pending_delete = 0 AND name != \'\$local\'');
+        'SELECT name as bucket, priority, cast(last_op as TEXT) as op_id FROM ps_buckets WHERE pending_delete = 0 AND name != \'\$local\'');
     return [
       for (var row in rows)
-        BucketState(bucket: row['bucket'], opId: row['op_id'])
+        BucketState(
+          bucket: row['bucket'],
+          priority: row['priority'],
+          opId: row['op_id'],
+        )
     ];
   }
 
@@ -100,8 +104,8 @@ class BucketStorage {
     return false;
   }
 
-  Future<SyncLocalDatabaseResult> syncLocalDatabase(
-      Checkpoint checkpoint) async {
+  Future<SyncLocalDatabaseResult> syncLocalDatabase(Checkpoint checkpoint,
+      {int? forPriority}) async {
     final r = await validateChecksums(checkpoint);
 
     if (!r.checkpointValid) {
@@ -124,7 +128,7 @@ class BucketStorage {
       // Not flushing here - the flush will happen in the next step
     }, flush: false);
 
-    final valid = await updateObjectsFromBuckets(checkpoint);
+    final valid = await updateObjectsFromBuckets(forPriority: forPriority);
     if (!valid) {
       return SyncLocalDatabaseResult(ready: false);
     }
@@ -134,11 +138,11 @@ class BucketStorage {
     return SyncLocalDatabaseResult(ready: true);
   }
 
-  Future<bool> updateObjectsFromBuckets(Checkpoint checkpoint) async {
+  Future<bool> updateObjectsFromBuckets({int? forPriority}) async {
     return writeTransaction((tx) async {
       await tx.execute(
           "INSERT INTO powersync_operations(op, data) VALUES(?, ?)",
-          ['sync_local', '']);
+          ['sync_local', forPriority]);
       final rs = await tx.execute('SELECT last_insert_rowid() as result');
       final result = rs[0]['result'];
       if (result == 1) {
@@ -321,9 +325,11 @@ class BucketStorage {
 
 class BucketState {
   final String bucket;
+  final int priority;
   final String opId;
 
-  const BucketState({required this.bucket, required this.opId});
+  const BucketState(
+      {required this.bucket, required this.priority, required this.opId});
 
   @override
   String toString() {
@@ -332,17 +338,20 @@ class BucketState {
 
   @override
   int get hashCode {
-    return Object.hash(bucket, opId);
+    return Object.hash(bucket, priority, opId);
   }
 
   @override
   bool operator ==(Object other) {
-    return other is BucketState && other.bucket == bucket && other.opId == opId;
+    return other is BucketState &&
+        other.priority == priority &&
+        other.bucket == bucket &&
+        other.opId == opId;
   }
 }
 
-class SyncDataBatch {
-  List<SyncBucketData> buckets;
+final class SyncDataBatch {
+  final List<SyncBucketData> buckets;
 
   SyncDataBatch(this.buckets);
 }
