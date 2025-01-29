@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+/// Messages sent from the sync service.
 sealed class StreamingSyncLine {
   const StreamingSyncLine();
 
@@ -23,6 +24,10 @@ sealed class StreamingSyncLine {
   }
 }
 
+/// Indicates that a checkpoint is available, along with checksums for each
+/// bucket in the checkpoint.
+///
+/// Note: Called `StreamingSyncCheckpoint` in sync-service.
 final class Checkpoint extends StreamingSyncLine {
   final String lastOpId;
   final String? writeCheckpoint;
@@ -70,6 +75,11 @@ class BucketChecksum {
         lastOpId = json['last_op_id'];
 }
 
+/// A variant of [Checkpoint] that may be sent when the server has already sent
+/// a [Checkpoint] message before.
+///
+/// It has the same conceptual meaning as a [Checkpoint] message, but only
+/// contains details about changed buckets as an optimization.
 final class StreamingSyncCheckpointDiff extends StreamingSyncLine {
   String lastOpId;
   List<BucketChecksum> updatedBuckets;
@@ -88,6 +98,11 @@ final class StreamingSyncCheckpointDiff extends StreamingSyncLine {
         removedBuckets = List<String>.from(json['removed_buckets']);
 }
 
+/// Sent after the last [SyncBucketData] message for a checkpoint.
+///
+/// Since this indicates that we may have a consistent view of the data, the
+/// client may make previous [SyncBucketData] rows visible to the application
+/// at this point.
 final class StreamingSyncCheckpointComplete extends StreamingSyncLine {
   String lastOpId;
 
@@ -97,6 +112,11 @@ final class StreamingSyncCheckpointComplete extends StreamingSyncLine {
       : lastOpId = json['last_op_id'];
 }
 
+/// Sent as a periodic ping to keep the connection alive and to notify the
+/// client about the remaining lifetime of the JWT.
+///
+/// When the token is nearing its expiry date, the client may ask for another
+/// one and open a new sync session with that token.
 final class StreamingSyncKeepalive extends StreamingSyncLine {
   int tokenExpiresIn;
 
