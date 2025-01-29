@@ -1,16 +1,20 @@
-import 'package:powersync_core/powersync_core.dart';
 import 'package:powersync_core/sqlite3_common.dart';
 import 'package:powersync_core/sqlite3_open.dart' as sqlite3_open;
 import 'package:powersync_core/sqlite_async.dart';
 import 'package:sqlcipher_flutter_libs/sqlcipher_flutter_libs.dart';
 
-/// A factory for opening a database with SQLCipher encryption.
-/// An encryption [key] is required to open the database.
-class PowerSyncSQLCipherOpenFactory extends PowerSyncOpenFactory {
-  PowerSyncSQLCipherOpenFactory(
-      {required super.path, required this.key, super.sqliteOptions});
+import '../powersync.dart';
 
+final class _NativeCipherOpenFactory extends PowerSyncOpenFactory
+    implements PowerSyncSQLCipherOpenFactory {
+  @override
   final String key;
+
+  _NativeCipherOpenFactory({
+    required super.path,
+    required this.key,
+    super.sqliteOptions,
+  });
 
   @override
   List<String> pragmaStatements(SqliteOpenOptions options) {
@@ -36,4 +40,12 @@ class PowerSyncSQLCipherOpenFactory extends PowerSyncOpenFactory {
     }
     return db;
   }
+}
+
+PowerSyncSQLCipherOpenFactory cipherFactory({
+  required String path,
+  required String key,
+  required SqliteOptions options,
+}) {
+  return _NativeCipherOpenFactory(path: path, key: key, sqliteOptions: options);
 }
