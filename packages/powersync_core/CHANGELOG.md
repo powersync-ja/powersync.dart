@@ -1,3 +1,9 @@
+## 1.1.2
+
+ - Web: Support running in contexts where web workers are unavailable.
+ - Web: Fix sync worker logs not being disabled.
+ - `powersync_sqlcipher`: Web support.
+
 ## 1.1.1
 
 - Fix `statusStream` emitting the same sync status multiple times.

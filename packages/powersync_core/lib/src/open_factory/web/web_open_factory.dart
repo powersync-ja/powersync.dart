@@ -3,14 +3,34 @@ import 'dart:async';
 import 'package:powersync_core/src/open_factory/abstract_powersync_open_factory.dart';
 import 'package:powersync_core/src/uuid.dart';
 import 'package:sqlite_async/sqlite3_common.dart';
+import 'package:sqlite_async/sqlite3_web.dart';
 import 'package:sqlite_async/sqlite_async.dart';
+import 'package:sqlite_async/web.dart';
+
+import '../../web/worker_utils.dart';
 
 /// Web implementation for [AbstractPowerSyncOpenFactory]
-class PowerSyncOpenFactory extends AbstractPowerSyncOpenFactory {
+class PowerSyncOpenFactory extends AbstractPowerSyncOpenFactory
+    with WebSqliteOpenFactory {
   PowerSyncOpenFactory({
     required super.path,
     super.sqliteOptions,
   });
+
+  @override
+  Future<WebSqlite> openWebSqlite(WebSqliteOptions options) async {
+    return WebSqlite.open(
+      wasmModule: Uri.parse(sqliteOptions.webSqliteOptions.wasmUri),
+      worker: Uri.parse(sqliteOptions.webSqliteOptions.workerUri),
+      controller: PowerSyncAsyncSqliteController(),
+    );
+  }
+
+  @override
+  Future<ConnectToRecommendedResult> connectToWorker(
+      WebSqlite sqlite, String name) {
+    return sqlite.connectToRecommended(name);
+  }
 
   @override
   void enableExtension() {
@@ -20,11 +40,11 @@ class PowerSyncOpenFactory extends AbstractPowerSyncOpenFactory {
   @override
   Future<SqliteConnection> openConnection(SqliteOpenOptions options) async {
     var conn = await super.openConnection(options);
-    for (final statement in super.pragmaStatements(options)) {
+    for (final statement in pragmaStatements(options)) {
       await conn.execute(statement);
     }
 
-    return super.openConnection(options);
+    return conn;
   }
 
   @override

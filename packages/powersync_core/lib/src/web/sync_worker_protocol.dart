@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:js_interop';
 
+import 'package:logging/logging.dart';
 import 'package:web/web.dart';
 
 import '../connector.dart';
@@ -197,8 +198,6 @@ extension type SerializedSyncStatus._(JSObject _) implements JSObject {
 }
 
 final class WorkerCommunicationChannel {
-  static final _logger = autoLogger;
-
   final Map<int, Completer<JSAny?>> _pendingRequests = {};
   int _nextRequestId = 0;
   bool _hasError = false;
@@ -210,6 +209,7 @@ final class WorkerCommunicationChannel {
       requestHandler;
   final StreamController<(SyncWorkerMessageType, JSAny)> _events =
       StreamController();
+  final Logger _logger;
 
   Stream<(SyncWorkerMessageType, JSAny)> get events => _events.stream;
 
@@ -217,7 +217,8 @@ final class WorkerCommunicationChannel {
     required this.port,
     required this.requestHandler,
     Stream<Event>? errors,
-  }) {
+    Logger? logger,
+  }) : _logger = logger ?? autoLogger {
     port.start();
     _incomingErrors = errors?.listen((event) {
       _hasError = true;
