@@ -22,11 +22,11 @@ class SyncStatus {
   /// Time that a last sync has fully completed, if any.
   ///
   /// This is null while loading the database.
-  final DateTime? lastSyncedAt;
+  DateTime? get lastSyncedAt => statusInPriority.lastOrNull?.lastSyncedAt;
 
   /// Indicates whether there has been at least one full sync, if any.
   /// Is null when unknown, for example when state is still being loaded from the database.
-  final bool? hasSynced;
+  bool? get hasSynced => statusInPriority.lastOrNull?.hasSynced;
 
   /// Error during uploading.
   ///
@@ -38,15 +38,19 @@ class SyncStatus {
   /// Cleared on the next successful data download.
   final Object? downloadError;
 
-  const SyncStatus(
-      {this.connected = false,
-      this.connecting = false,
-      this.lastSyncedAt,
-      this.hasSynced,
-      this.downloading = false,
-      this.uploading = false,
-      this.downloadError,
-      this.uploadError});
+  final List<SyncPriorityStatus> statusInPriority;
+
+  const SyncStatus({
+    this.connected = false,
+    this.connecting = false,
+    this.lastSyncedAt,
+    this.hasSynced,
+    this.downloading = false,
+    this.uploading = false,
+    this.downloadError,
+    this.uploadError,
+    this.statusInPriority = const [],
+  });
 
   @override
   bool operator ==(Object other) {
@@ -99,6 +103,29 @@ class SyncStatus {
     return "SyncStatus<connected: $connected connecting: $connecting downloading: $downloading uploading: $uploading lastSyncedAt: $lastSyncedAt, hasSynced: $hasSynced, error: $anyError>";
   }
 }
+
+/// The priority of a PowerSync bucket.
+extension type const BucketPriority._(int priorityNumber) {
+  static const _highest = 0;
+  static const _lowests = 3;
+
+  factory BucketPriority(int i) {
+    assert(i >= _highest && i <= _lowests);
+    return BucketPriority._(i);
+  }
+
+  /// A [Comparator] instance suitable for comparing [BucketPriority] values.
+  static Comparator<BucketPriority> comparator =
+      (a, b) => -a.priorityNumber.compareTo(b.priorityNumber);
+}
+
+/// Partial information about the synchronization status for buckets within a
+/// priority.
+typedef SyncPriorityStatus = ({
+  BucketPriority priority,
+  DateTime lastSyncedAt,
+  bool hasSynced,
+});
 
 /// Stats of the local upload queue.
 class UploadQueueStats {
