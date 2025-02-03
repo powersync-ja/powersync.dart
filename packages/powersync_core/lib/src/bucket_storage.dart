@@ -114,7 +114,7 @@ class BucketStorage {
 
   Future<SyncLocalDatabaseResult> syncLocalDatabase(Checkpoint checkpoint,
       {int? forPriority}) async {
-    final r = await validateChecksums(checkpoint);
+    final r = await validateChecksums(checkpoint, priority: forPriority);
 
     if (!r.checkpointValid) {
       for (String b in r.checkpointFailures ?? []) {
@@ -165,10 +165,15 @@ class BucketStorage {
     }, flush: true);
   }
 
-  Future<SyncLocalDatabaseResult> validateChecksums(
-      Checkpoint checkpoint) async {
-    final rs = await select("SELECT powersync_validate_checkpoint(?) as result",
-        [jsonEncode(checkpoint)]);
+  Future<SyncLocalDatabaseResult> validateChecksums(Checkpoint checkpoint,
+      {int? priority}) async {
+    final rs =
+        await select("SELECT powersync_validate_checkpoint(?) as result", [
+      jsonEncode({
+        ...checkpoint.toJson(),
+        if (priority != null) 'priority': priority,
+      })
+    ]);
     final result = jsonDecode(rs[0]['result']);
     if (result['valid']) {
       return SyncLocalDatabaseResult(ready: true);

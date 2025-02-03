@@ -13,6 +13,9 @@ sealed class StreamingSyncLine {
     } else if (line.containsKey('checkpoint_complete')) {
       return StreamingSyncCheckpointComplete.fromJson(
           line['checkpoint_complete']);
+    } else if (line.containsKey('partial_checkpoint_complete')) {
+      return StreamingSyncCheckpointPartiallyComplete.fromJson(
+          line['partial_checkpoint_complete']);
     } else if (line.containsKey('data')) {
       return SyncBucketData.fromJson(line['data']);
     } else if (line.containsKey('token_expires_in')) {
