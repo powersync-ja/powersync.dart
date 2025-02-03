@@ -82,9 +82,13 @@ class CrudEntry {
 
   factory CrudEntry.fromRow(sqlite.Row row) {
     final data = jsonDecode(row['data']);
-    assert(data['id'] is String, 'row ID should be of type String');
-    return CrudEntry(row['id'], UpdateType.fromJsonChecked(data['op'])!,
-        data['type'], data['id'], row['tx_id'], data['data']);
+    return CrudEntry(
+        row['id'] as int,
+        UpdateType.fromJsonChecked(data['op'] as String)!,
+        data['type'] as String,
+        data['id'] as String,
+        row['tx_id'] as int,
+        data['data']);
   }
 
   /// Converts the change to JSON format, as required by the dev crud API.
