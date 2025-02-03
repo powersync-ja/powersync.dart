@@ -88,7 +88,7 @@ class CrudEntry {
       data['type'] as String,
       data['id'] as String,
       row['tx_id'] as int,
-      data['data'] as Map<String, Object?>,
+      data['data'] as Map<String, Object?>?,
     );
   }
 
