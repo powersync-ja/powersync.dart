@@ -302,7 +302,7 @@ class StreamingSyncImplementation implements StreamingSync {
     _statusStreamController.add(newStatus);
   }
 
-  Future<(List<BucketRequest>, Map<String, BucketDescription>)>
+  Future<(List<BucketRequest>, Map<String, BucketDescription?>)>
       _collectLocalBucketState() async {
     final bucketEntries = await adapter.getBucketStates();
 
@@ -310,11 +310,7 @@ class StreamingSyncImplementation implements StreamingSync {
       for (final entry in bucketEntries) BucketRequest(entry.bucket, entry.opId)
     ];
     final localDescriptions = {
-      for (final entry in bucketEntries)
-        entry.bucket: (
-          name: entry.bucket,
-          priority: entry.priority,
-        )
+      for (final entry in bucketEntries) entry.bucket: null
     };
 
     return (initialRequests, localDescriptions);
@@ -435,7 +431,7 @@ class StreamingSyncImplementation implements StreamingSync {
         case SyncBucketData():
           // TODO: Merge multiple of these into a single one...
           _updateStatus(downloading: true);
-          await adapter.saveSyncData(SyncDataBatch([line], bucketMap));
+          await adapter.saveSyncData(SyncDataBatch([line]));
         case StreamingSyncKeepalive():
           if (line.tokenExpiresIn == 0) {
             // Token expired already - stop the connection immediately

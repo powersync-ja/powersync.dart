@@ -33,12 +33,11 @@ class BucketStorage {
 
   Future<List<BucketState>> getBucketStates() async {
     final rows = await select(
-        'SELECT name as bucket, priority, cast(last_op as TEXT) as op_id FROM ps_buckets WHERE pending_delete = 0 AND name != \'\$local\'');
+        'SELECT name as bucket, cast(last_op as TEXT) as op_id FROM ps_buckets WHERE pending_delete = 0 AND name != \'\$local\'');
     return [
       for (var row in rows)
         BucketState(
           bucket: row['bucket'],
-          priority: row['priority'],
           opId: row['op_id'],
         )
     ];
@@ -53,20 +52,12 @@ class BucketStorage {
     var count = 0;
 
     await writeTransaction((tx) async {
-      final descriptions = [
-        for (final MapEntry(:key, :value) in batch.descriptions.entries)
-          {
-            key: {'priority': value.priority},
-          }
-      ];
-
       for (var b in batch.buckets) {
         count += b.data.length;
         await _updateBucket2(
             tx,
             jsonEncode({
               'buckets': [b],
-              'descriptions': descriptions,
             }));
       }
       // No need to flush - the data is not directly visible to the user either way.
@@ -136,7 +127,8 @@ class BucketStorage {
       // Not flushing here - the flush will happen in the next step
     }, flush: false);
 
-    final valid = await updateObjectsFromBuckets(forPriority: forPriority);
+    final valid = await updateObjectsFromBuckets(checkpoint,
+        forPartialPriority: forPriority);
     if (!valid) {
       return SyncLocalDatabaseResult(ready: false);
     }
@@ -146,11 +138,25 @@ class BucketStorage {
     return SyncLocalDatabaseResult(ready: true);
   }
 
-  Future<bool> updateObjectsFromBuckets({int? forPriority}) async {
+  Future<bool> updateObjectsFromBuckets(Checkpoint checkpoint,
+      {int? forPartialPriority}) async {
     return writeTransaction((tx) async {
-      await tx.execute(
-          "INSERT INTO powersync_operations(op, data) VALUES(?, ?)",
-          ['sync_local', forPriority]);
+      await tx
+          .execute("INSERT INTO powersync_operations(op, data) VALUES(?, ?)", [
+        'sync_local',
+        forPartialPriority != null
+            ? jsonEncode({
+                'priority': forPartialPriority,
+                // If we're at a partial checkpoint, we should only publish the
+                // buckets at the completed priority levels.
+                'buckets': [
+                  for (final desc in checkpoint.checksums)
+                    // Note that higher priorities are encoded as smaller values
+                    if (desc.priority <= forPartialPriority) desc.bucket,
+                ],
+              })
+            : null,
+      ]);
       final rs = await tx.execute('SELECT last_insert_rowid() as result');
       final result = rs[0]['result'];
       if (result == 1) {
@@ -338,11 +344,9 @@ class BucketStorage {
 
 class BucketState {
   final String bucket;
-  final int priority;
   final String opId;
 
-  const BucketState(
-      {required this.bucket, required this.priority, required this.opId});
+  const BucketState({required this.bucket, required this.opId});
 
   @override
   String toString() {
@@ -351,23 +355,19 @@ class BucketState {
 
   @override
   int get hashCode {
-    return Object.hash(bucket, priority, opId);
+    return Object.hash(bucket, opId);
   }
 
   @override
   bool operator ==(Object other) {
-    return other is BucketState &&
-        other.priority == priority &&
-        other.bucket == bucket &&
-        other.opId == opId;
+    return other is BucketState && other.bucket == bucket && other.opId == opId;
   }
 }
 
 final class SyncDataBatch {
   final List<SyncBucketData> buckets;
-  final Map<String, BucketDescription> descriptions;
 
-  SyncDataBatch(this.buckets, this.descriptions);
+  SyncDataBatch(this.buckets);
 }
 
 class SyncLocalDatabaseResult {

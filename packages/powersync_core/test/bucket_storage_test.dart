@@ -45,10 +45,7 @@ BucketChecksum checksum(
 }
 
 SyncDataBatch syncDataBatch(List<SyncBucketData> data) {
-  return SyncDataBatch(data, {
-    for (final bucket in data.map((e) => e.bucket).toSet())
-      bucket: (name: bucket, priority: 1),
-  });
+  return SyncDataBatch(data);
 }
 
 void main() {
@@ -108,10 +105,8 @@ void main() {
       ]));
 
       final bucketStates = await bucketStorage.getBucketStates();
-      expect(
-          bucketStates,
-          equals(
-              [const BucketState(bucket: 'bucket1', opId: '3', priority: 1)]));
+      expect(bucketStates,
+          equals([const BucketState(bucket: 'bucket1', opId: '3')]));
 
       await syncLocalChecked(Checkpoint(
           lastOpId: '3',
