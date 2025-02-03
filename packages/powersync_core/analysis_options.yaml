@@ -13,6 +13,12 @@
 
 include: package:lints/recommended.yaml
 
+analyzer:
+  language:
+    strict-casts: true
+    strict-inference: true
+    strict-raw-types: true
+
 # Uncomment the following section to specify additional rules.
 
 # linter:

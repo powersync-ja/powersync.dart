@@ -43,7 +43,7 @@ class StreamingSyncImplementation implements StreamingSync {
   final StreamController<Null> _internalCrudTriggerController =
       StreamController<Null>.broadcast();
 
-  final Stream crudUpdateTriggerStream;
+  final Stream<void> crudUpdateTriggerStream;
 
   final StreamController<SyncStatus> _statusStreamController =
       StreamController<SyncStatus>.broadcast();
@@ -505,7 +505,7 @@ class StreamingSyncImplementation implements StreamingSync {
   /// Delays the standard `retryDelay` Duration, but exits early if
   /// an abort has been requested.
   Future<void> _delayRetry() async {
-    await Future.any([Future.delayed(retryDelay), _abort!.onAbort]);
+    await Future.any([Future<void>.delayed(retryDelay), _abort!.onAbort]);
   }
 }
 

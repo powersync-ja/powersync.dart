@@ -81,14 +81,15 @@ class CrudEntry {
       this.opData);
 
   factory CrudEntry.fromRow(sqlite.Row row) {
-    final data = jsonDecode(row['data']);
+    final data = jsonDecode(row['data'] as String);
     return CrudEntry(
-        row['id'] as int,
-        UpdateType.fromJsonChecked(data['op'] as String)!,
-        data['type'] as String,
-        data['id'] as String,
-        row['tx_id'] as int,
-        data['data']);
+      row['id'] as int,
+      UpdateType.fromJsonChecked(data['op'] as String)!,
+      data['type'] as String,
+      data['id'] as String,
+      row['tx_id'] as int,
+      data['data'] as Map<String, Object?>,
+    );
   }
 
   /// Converts the change to JSON format, as required by the dev crud API.
@@ -116,13 +117,13 @@ class CrudEntry {
         other.op == op &&
         other.table == table &&
         other.id == id &&
-        const MapEquality().equals(other.opData, opData));
+        const MapEquality<String, dynamic>().equals(other.opData, opData));
   }
 
   @override
   int get hashCode {
     return Object.hash(transactionId, clientId, op.toJson(), table, id,
-        const MapEquality().hash(opData));
+        const MapEquality<String, dynamic>().hash(opData));
   }
 }
 

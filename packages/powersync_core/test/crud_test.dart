@@ -72,7 +72,7 @@ void main() {
             'INSERT INTO assets(id, description) VALUES(?, ?)',
             [testId, 'test3']);
       },
-          throwsA((e) =>
+          throwsA((dynamic e) =>
               e is SqliteException &&
               e.message.contains('UNIQUE constraint failed')));
     });
@@ -132,7 +132,7 @@ void main() {
             'INSERT INTO assets(id, description) VALUES(?, ?) ON CONFLICT DO UPDATE SET description = ?',
             [testId, 'test2', 'test3']);
       },
-          throwsA((e) =>
+          throwsA((dynamic e) =>
               e is SqliteException &&
               e.message.contains('cannot UPSERT a view')));
     });

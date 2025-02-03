@@ -77,7 +77,7 @@ void main() {
       final timer = Stopwatch()..start();
 
       await db.writeTransaction((tx) async {
-        List<Future> futures = [];
+        List<Future<void>> futures = [];
         for (var i = 0; i < 1000; i++) {
           var future = tx.execute(
               'INSERT INTO customers(id, name, email) VALUES(uuid(), ?, ?)',

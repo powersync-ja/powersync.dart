@@ -87,8 +87,8 @@ String? _stringOrFirst(Object? details) {
     return null;
   } else if (details is String) {
     return details;
-  } else if (details is List && details[0] is String) {
-    return details[0];
+  } else if (details case [final String first, ...]) {
+    return first;
   } else {
     return null;
   }

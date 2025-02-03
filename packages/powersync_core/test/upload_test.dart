@@ -15,7 +15,7 @@ const partialWarning =
     'Potentially previously uploaded CRUD entries are still present';
 
 class TestConnector extends PowerSyncBackendConnector {
-  final Function _fetchCredentials;
+  final Future<PowerSyncCredentials?> Function() _fetchCredentials;
   final Future<void> Function(PowerSyncDatabase database) _uploadData;
 
   TestConnector(this._fetchCredentials, this._uploadData);
@@ -78,7 +78,7 @@ void main() {
           'INSERT INTO assets(id, description) VALUES(?, ?)', [testId, 'test']);
 
       // Wait for the uploadData to be called.
-      await Future.delayed(Duration(milliseconds: 100));
+      await Future<void>.delayed(Duration(milliseconds: 100));
 
       // Create something else with CRUD in it.
       await powersync.execute(

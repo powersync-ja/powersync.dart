@@ -49,7 +49,7 @@ void main() {
       addTearDown(() => {db.close()});
       await db.initialize();
 
-      final connectedCompleter = Completer();
+      final connectedCompleter = Completer<void>();
 
       db.statusStream.listen((status) {
         if (status.connected) {
@@ -69,7 +69,7 @@ void main() {
 
     test('should trigger uploads when connection is re-established', () async {
       int uploadCounter = 0;
-      Completer uploadTriggeredCompleter = Completer();
+      var uploadTriggeredCompleter = Completer<void>();
       final testServer = await createTestServer();
       final connector = TestConnector(() async {
         return PowerSyncCredentials(
@@ -99,9 +99,9 @@ void main() {
       uploadTriggeredCompleter = Completer();
 
       // Connect the PowerSync instance
-      final connectedCompleter = Completer();
+      final connectedCompleter = Completer<void>();
       // The first connection attempt will fail
-      final connectedErroredCompleter = Completer();
+      final connectedErroredCompleter = Completer<void>();
 
       db.statusStream.listen((status) {
         if (status.connected && !connectedCompleter.isCompleted) {
@@ -185,7 +185,7 @@ void main() {
       await db.connect(connector: connector);
       await db.statusStream
           .firstWhere((status) => status.connected && status.downloading);
-      await Future.delayed(Duration(milliseconds: 20));
+      await Future<void>.delayed(Duration(milliseconds: 20));
       expect(
           await db.getAll('select name from customers'),
           equals([
@@ -241,7 +241,7 @@ void main() {
       await db.connect(connector: connector);
       await db.statusStream
           .firstWhere((status) => status.connected && status.downloading);
-      await Future.delayed(Duration(milliseconds: 20));
+      await Future<void>.delayed(Duration(milliseconds: 20));
       expect(await db.getAll('select name from customers'), equals([]));
     });
   });

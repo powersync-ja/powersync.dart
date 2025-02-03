@@ -201,8 +201,8 @@ final class WorkerCommunicationChannel {
   final Map<int, Completer<JSAny?>> _pendingRequests = {};
   int _nextRequestId = 0;
   bool _hasError = false;
-  StreamSubscription? _incomingMessages;
-  StreamSubscription? _incomingErrors;
+  StreamSubscription<MessageEvent>? _incomingMessages;
+  StreamSubscription<Event>? _incomingErrors;
 
   final MessagePort port;
   final FutureOr<(JSAny?, JSArray?)> Function(SyncWorkerMessageType, JSAny)

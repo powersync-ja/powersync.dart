@@ -41,7 +41,7 @@ class TestServer {
       var blob = "*" * 5000;
       for (var i = 0; i < 50; i++) {
         yield {"token_expires_in": tokenExpiresIn, "blob": blob};
-        await Future.delayed(Duration(microseconds: 1));
+        await Future<void>.delayed(Duration(microseconds: 1));
       }
     }
 

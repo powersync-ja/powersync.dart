@@ -91,7 +91,7 @@ Future<String> getDatabasePath() async {
   return join(dir, dbFilename);
 }
 
-openDatabase() async {
+Future<void> openDatabase() async {
   // Setup the database.
   final psFactory = PowerSyncDartOpenFactory(path: await getDatabasePath());
   db = PowerSyncDatabase.withFactory(psFactory, schema: schema);

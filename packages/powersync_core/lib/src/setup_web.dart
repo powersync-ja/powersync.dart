@@ -116,8 +116,8 @@ bool coreVersionIsInRange(String tag) {
 }
 
 dynamic getPackageFromConfig(dynamic packageConfig, String packageName) {
-  final pkg = (packageConfig['packages'] ?? []).firstWhere(
-    (e) => e['name'] == packageName,
+  final pkg = (packageConfig['packages'] as List? ?? <dynamic>[]).firstWhere(
+    (dynamic e) => e['name'] == packageName,
     orElse: () => null,
   );
   if (pkg == null) {
@@ -128,7 +128,8 @@ dynamic getPackageFromConfig(dynamic packageConfig, String packageName) {
 
 String getPubspecVersion(
     File packageConfigFile, dynamic package, String packageName) {
-  final rootUri = packageConfigFile.uri.resolve(package['rootUri'] ?? '');
+  final rootUri =
+      packageConfigFile.uri.resolve(package['rootUri'] as String? ?? '');
   print('Using package:$packageName from ${rootUri.toFilePath()}');
 
   String pubspec =
@@ -150,7 +151,7 @@ Future<List<String>> getLatestTagsFromRelease(HttpClient httpClient) async {
   var response = await request.close();
   if (response.statusCode == HttpStatus.ok) {
     var res = await response.transform(utf8.decoder).join();
-    List<dynamic> jsonObj = json.decode(res);
+    var jsonObj = json.decode(res) as List<dynamic>;
     List<String> tags = [];
     for (dynamic obj in jsonObj) {
       final tagName = obj['tag_name'] as String;
