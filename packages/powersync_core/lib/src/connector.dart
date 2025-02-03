@@ -95,8 +95,8 @@ class PowerSyncCredentials {
 
     return PowerSyncCredentials(
         endpoint: parsed['endpoint'] as String,
-        token: parsed['token'] as String,
-        userId: parsed['user_id'] as String,
+        token: token,
+        userId: parsed['user_id'] as String?,
         expiresAt: expiresAt);
   }
 
