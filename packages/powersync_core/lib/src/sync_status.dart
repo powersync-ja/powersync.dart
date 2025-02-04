@@ -1,4 +1,6 @@
-class SyncStatus {
+import 'package:collection/collection.dart';
+
+final class SyncStatus {
   /// true if currently connected.
   ///
   /// This means the PowerSync connection is ready to download, and
@@ -22,11 +24,11 @@ class SyncStatus {
   /// Time that a last sync has fully completed, if any.
   ///
   /// This is null while loading the database.
-  DateTime? get lastSyncedAt => statusInPriority.lastOrNull?.lastSyncedAt;
+  final DateTime? lastSyncedAt;
 
   /// Indicates whether there has been at least one full sync, if any.
   /// Is null when unknown, for example when state is still being loaded from the database.
-  bool? get hasSynced => statusInPriority.lastOrNull?.hasSynced;
+  final bool? hasSynced;
 
   /// Error during uploading.
   ///
@@ -62,7 +64,8 @@ class SyncStatus {
         other.downloadError == downloadError &&
         other.uploadError == uploadError &&
         other.lastSyncedAt == lastSyncedAt &&
-        other.hasSynced == hasSynced);
+        other.hasSynced == hasSynced &&
+        _statusEquality.equals(other.statusInPriority, statusInPriority));
   }
 
   SyncStatus copyWith({
@@ -74,6 +77,7 @@ class SyncStatus {
     Object? downloadError,
     DateTime? lastSyncedAt,
     bool? hasSynced,
+    List<SyncPriorityStatus>? statusInPriority,
   }) {
     return SyncStatus(
       connected: connected ?? this.connected,
@@ -84,6 +88,7 @@ class SyncStatus {
       downloadError: downloadError ?? this.downloadError,
       lastSyncedAt: lastSyncedAt ?? this.lastSyncedAt,
       hasSynced: hasSynced ?? this.hasSynced,
+      statusInPriority: statusInPriority ?? this.statusInPriority,
     );
   }
 
@@ -92,31 +97,57 @@ class SyncStatus {
     return downloadError ?? uploadError;
   }
 
+  /// Returns [lastSyncedAt] and [hasSynced] information for a partial sync
+  /// operation, or `null` if the status for that priority is unknown.
+  SyncPriorityStatus? statusForPriority(BucketPriority priority) {
+    assert(statusInPriority.isSortedByCompare(
+        (e) => e.priority, BucketPriority.comparator));
+
+    for (final known in statusInPriority) {
+      // Lower-priority buckets are synchronized after higher-priority buckets,
+      // and since statusInPriority is sorted we look for the first entry that
+      // doesn't have a higher priority.
+      if (BucketPriority.comparator(known.priority, priority) <= 0) {
+        return known;
+      }
+    }
+
+    return null;
+  }
+
   @override
   int get hashCode {
-    return Object.hash(connected, downloading, uploading, connecting,
-        uploadError, downloadError, lastSyncedAt);
+    return Object.hash(
+        connected,
+        downloading,
+        uploading,
+        connecting,
+        uploadError,
+        downloadError,
+        lastSyncedAt,
+        _statusEquality.hash(statusInPriority));
   }
 
   @override
   String toString() {
     return "SyncStatus<connected: $connected connecting: $connecting downloading: $downloading uploading: $uploading lastSyncedAt: $lastSyncedAt, hasSynced: $hasSynced, error: $anyError>";
   }
+
+  static const _statusEquality = ListEquality<SyncPriorityStatus>();
 }
 
 /// The priority of a PowerSync bucket.
 extension type const BucketPriority._(int priorityNumber) {
   static const _highest = 0;
-  static const _lowests = 3;
 
   factory BucketPriority(int i) {
-    assert(i >= _highest && i <= _lowests);
+    assert(i >= _highest);
     return BucketPriority._(i);
   }
 
   /// A [Comparator] instance suitable for comparing [BucketPriority] values.
-  static Comparator<BucketPriority> comparator =
-      (a, b) => -a.priorityNumber.compareTo(b.priorityNumber);
+  static int comparator(BucketPriority a, BucketPriority b) =>
+      -a.priorityNumber.compareTo(b.priorityNumber);
 }
 
 /// Partial information about the synchronization status for buckets within a

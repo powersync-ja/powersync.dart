@@ -135,13 +135,27 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
     }
   }
 
-  /// Returns a [Future] which will resolve once the first full sync has completed.
-  Future<void> waitForFirstSync() async {
-    if (currentStatus.hasSynced ?? false) {
+  /// Returns a [Future] which will resolve once a synchronization operation has
+  /// completed.
+  ///
+  /// When [priority] is null (the default), this method waits for a full sync
+  /// operation to complete. When set to a [BucketPriority] however, it also
+  /// completes once a partial sync operation containing that priority has
+  /// completed.
+  Future<void> waitForFirstSync({BucketPriority? priority}) async {
+    bool matches(SyncStatus status) {
+      if (priority == null) {
+        return status.hasSynced == true;
+      } else {
+        return status.statusForPriority(priority)?.hasSynced == true;
+      }
+    }
+
+    if (matches(currentStatus)) {
       return;
     }
     await for (final result in statusStream) {
-      if (result.hasSynced ?? false) {
+      if (matches(result)) {
         break;
       }
     }
