@@ -498,7 +498,10 @@ class StreamingSyncImplementation implements StreamingSync {
       if (aborted) {
         break;
       }
+
+      print('sync: sending $line');
       yield parseStreamingSyncLine(line as Map<String, dynamic>);
+      await Future<void>.delayed(const Duration(seconds: 5));
     }
   }
 
