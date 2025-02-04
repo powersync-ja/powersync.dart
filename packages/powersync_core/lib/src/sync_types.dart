@@ -52,11 +52,12 @@ final class Checkpoint extends StreamingSyncLine {
             .map((b) => BucketChecksum.fromJson(b))
             .toList();
 
-  Map<String, dynamic> toJson() {
+  Map<String, dynamic> toJson({int? priority}) {
     return {
       'last_op_id': lastOpId,
       'write_checkpoint': writeCheckpoint,
       'buckets': checksums
+          .where((c) => priority == null || c.priority <= priority)
           .map((c) => {'bucket': c.bucket, 'checksum': c.checksum})
           .toList(growable: false)
     };

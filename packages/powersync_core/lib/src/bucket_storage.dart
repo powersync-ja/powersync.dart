@@ -176,7 +176,7 @@ class BucketStorage {
     final rs =
         await select("SELECT powersync_validate_checkpoint(?) as result", [
       jsonEncode({
-        ...checkpoint.toJson(),
+        ...checkpoint.toJson(priority: priority),
         if (priority != null) 'priority': priority,
       })
     ]);
