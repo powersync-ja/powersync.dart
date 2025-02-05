@@ -118,7 +118,7 @@ void main() {
       });
 
       final crud = (await db.getAll('SELECT data FROM ps_crud ORDER BY id'))
-          .map((d) => jsonDecode(d['data']))
+          .map((d) => jsonDecode(d['data'] as String))
           .toList();
       expect(
           crud,

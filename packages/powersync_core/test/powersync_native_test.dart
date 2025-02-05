@@ -70,7 +70,7 @@ void main() {
       await expectLater(() async {
         await db.getAll('INSERT INTO assets(id) VALUES(?)', ['test']);
       },
-          throwsA((e) =>
+          throwsA((dynamic e) =>
               e is SqliteException &&
               e.message
                   .contains('attempt to write in a read-only transaction')));
@@ -83,7 +83,7 @@ void main() {
         await db.getAll(
             "WITH test AS (SELECT 1 AS one) INSERT INTO assets(id) SELECT one FROM test");
       },
-          throwsA((e) =>
+          throwsA((dynamic e) =>
               e is SqliteException &&
               e.message
                   .contains('attempt to write in a read-only transaction')));

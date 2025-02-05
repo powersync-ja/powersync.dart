@@ -76,7 +76,7 @@ void main() {
 
       // Updated
       expect(versionAfter2['schema_version'],
-          greaterThan(versionAfter['schema_version']));
+          greaterThan(versionAfter['schema_version'] as int));
 
       final schema3 = Schema([
         Table('assets', [
@@ -106,7 +106,7 @@ void main() {
 
       // Updated again (index)
       expect(versionAfter3['schema_version'],
-          greaterThan(versionAfter2['schema_version']));
+          greaterThan(versionAfter2['schema_version'] as int));
     });
 
     /// The assets table is locked after performing the EXPLAIN QUERY

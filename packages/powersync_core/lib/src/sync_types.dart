@@ -9,10 +9,10 @@ class Checkpoint {
       {required this.lastOpId, required this.checksums, this.writeCheckpoint});
 
   Checkpoint.fromJson(Map<String, dynamic> json)
-      : lastOpId = json['last_op_id'],
-        writeCheckpoint = json['write_checkpoint'],
+      : lastOpId = json['last_op_id'] as String,
+        writeCheckpoint = json['write_checkpoint'] as String?,
         checksums = (json['buckets'] as List)
-            .map((b) => BucketChecksum.fromJson(b))
+            .map((b) => BucketChecksum.fromJson(b as Map<String, dynamic>))
             .toList();
 
   Map<String, dynamic> toJson() {
@@ -41,10 +41,10 @@ class BucketChecksum {
       this.lastOpId});
 
   BucketChecksum.fromJson(Map<String, dynamic> json)
-      : bucket = json['bucket'],
-        checksum = json['checksum'],
-        count = json['count'],
-        lastOpId = json['last_op_id'];
+      : bucket = json['bucket'] as String,
+        checksum = json['checksum'] as int,
+        count = json['count'] as int?,
+        lastOpId = json['last_op_id'] as String?;
 }
 
 class StreamingSyncCheckpoint {
@@ -66,12 +66,12 @@ class StreamingSyncCheckpointDiff {
       this.lastOpId, this.updatedBuckets, this.removedBuckets);
 
   StreamingSyncCheckpointDiff.fromJson(Map<String, dynamic> json)
-      : lastOpId = json['last_op_id'],
-        writeCheckpoint = json['write_checkpoint'],
+      : lastOpId = json['last_op_id'] as String,
+        writeCheckpoint = json['write_checkpoint'] as String?,
         updatedBuckets = (json['updated_buckets'] as List)
-            .map((e) => BucketChecksum.fromJson(e))
+            .map((e) => BucketChecksum.fromJson(e as Map<String, Object?>))
             .toList(),
-        removedBuckets = List<String>.from(json['removed_buckets']);
+        removedBuckets = (json['removed_buckets'] as List).cast();
 }
 
 class StreamingSyncCheckpointComplete {
@@ -80,7 +80,7 @@ class StreamingSyncCheckpointComplete {
   StreamingSyncCheckpointComplete(this.lastOpId);
 
   StreamingSyncCheckpointComplete.fromJson(Map<String, dynamic> json)
-      : lastOpId = json['last_op_id'];
+      : lastOpId = json['last_op_id'] as String;
 }
 
 class StreamingSyncKeepalive {
@@ -89,19 +89,20 @@ class StreamingSyncKeepalive {
   StreamingSyncKeepalive(this.tokenExpiresIn);
 
   StreamingSyncKeepalive.fromJson(Map<String, dynamic> json)
-      : tokenExpiresIn = json['token_expires_in'];
+      : tokenExpiresIn = json['token_expires_in'] as int;
 }
 
 Object? parseStreamingSyncLine(Map<String, dynamic> line) {
   if (line.containsKey('checkpoint')) {
-    return Checkpoint.fromJson(line['checkpoint']);
+    return Checkpoint.fromJson(line['checkpoint'] as Map<String, dynamic>);
   } else if (line.containsKey('checkpoint_diff')) {
-    return StreamingSyncCheckpointDiff.fromJson(line['checkpoint_diff']);
+    return StreamingSyncCheckpointDiff.fromJson(
+        line['checkpoint_diff'] as Map<String, dynamic>);
   } else if (line.containsKey('checkpoint_complete')) {
     return StreamingSyncCheckpointComplete.fromJson(
-        line['checkpoint_complete']);
+        line['checkpoint_complete'] as Map<String, dynamic>);
   } else if (line.containsKey('data')) {
-    return SyncBucketData.fromJson(line['data']);
+    return SyncBucketData.fromJson(line['data'] as Map<String, dynamic>);
   } else if (line.containsKey('token_expires_in')) {
     return StreamingSyncKeepalive.fromJson(line);
   } else {

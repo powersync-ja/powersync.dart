@@ -75,19 +75,19 @@ Stream<String> newlines(ByteStream input) {
   return lineInput;
 }
 
-void pauseAll(List<StreamSubscription> subscriptions) {
+void pauseAll(List<StreamSubscription<void>> subscriptions) {
   for (var sub in subscriptions) {
     sub.pause();
   }
 }
 
-void resumeAll(List<StreamSubscription> subscriptions) {
+void resumeAll(List<StreamSubscription<void>> subscriptions) {
   for (var sub in subscriptions) {
     sub.resume();
   }
 }
 
-Future<void> cancelAll(List<StreamSubscription> subscriptions) async {
+Future<void> cancelAll(List<StreamSubscription<void>> subscriptions) async {
   final futures = subscriptions.map((sub) => sub.cancel());
   await Future.wait(futures);
 }

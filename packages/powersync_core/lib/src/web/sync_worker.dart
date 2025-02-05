@@ -9,6 +9,7 @@ import 'dart:js_interop';
 
 import 'package:async/async.dart';
 import 'package:fetch_client/fetch_client.dart';
+import 'package:logging/logging.dart';
 import 'package:powersync_core/powersync_core.dart';
 import 'package:powersync_core/sqlite_async.dart';
 import 'package:powersync_core/src/database/powersync_db_mixin.dart';
@@ -59,7 +60,7 @@ class _ConnectedClient {
   final _SyncWorker _worker;
 
   _SyncRunner? _runner;
-  StreamSubscription? _logSubscription;
+  StreamSubscription<LogRecord>? _logSubscription;
 
   _ConnectedClient(MessagePort port, this._worker) {
     channel = WorkerCommunicationChannel(
