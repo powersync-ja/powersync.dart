@@ -119,6 +119,7 @@ class StreamingSyncImplementation implements StreamingSync {
 
     // Now close the client in all cases not covered above
     _client.close();
+    _statusStreamController.close();
   }
 
   bool get aborted {
@@ -281,7 +282,7 @@ class StreamingSyncImplementation implements StreamingSync {
     for (final (i, priority) in existingPriorityState.indexed) {
       switch (
           BucketPriority.comparator(priority.priority, completed.priority)) {
-        case < 0:
+        case > 0:
           // Entries from here on have a higher priority than the one that was
           // just completed
           final copy = existingPriorityState.toList();
@@ -293,7 +294,7 @@ class StreamingSyncImplementation implements StreamingSync {
           copy[i] = completed;
           _updateStatus(statusInPriority: copy);
           return;
-        case > 0:
+        case < 0:
           continue;
       }
     }
@@ -537,49 +538,55 @@ class StreamingSyncImplementation implements StreamingSync {
     return true;
   }
 
-  Stream<StreamingSyncLine?> streamingSyncRequest(
-      StreamingSyncRequest data) async* {
-    final credentials = await credentialsCallback();
-    if (credentials == null) {
-      throw CredentialsException('Not logged in');
-    }
-    final uri = credentials.endpointUri('sync/stream');
-
-    final request = http.Request('POST', uri);
-    request.headers['Content-Type'] = 'application/json';
-    request.headers['Authorization'] = "Token ${credentials.token}";
-    request.headers.addAll(_userAgentHeaders);
-
-    request.body = convert.jsonEncode(data);
-
-    http.StreamedResponse res;
-    try {
-      // Do not close the client during the request phase - this causes uncaught errors.
-      _safeToClose = false;
-      res = await _client.send(request);
-    } finally {
-      _safeToClose = true;
-    }
-    if (aborted) {
-      return;
-    }
-
-    if (res.statusCode == 401) {
-      if (invalidCredentialsCallback != null) {
-        await invalidCredentialsCallback!();
+  Stream<StreamingSyncLine?> streamingSyncRequest(StreamingSyncRequest data) {
+    Future<http.ByteStream?> setup() async {
+      final credentials = await credentialsCallback();
+      if (credentials == null) {
+        throw CredentialsException('Not logged in');
       }
-    }
-    if (res.statusCode != 200) {
-      throw await SyncResponseException.fromStreamedResponse(res);
-    }
+      final uri = credentials.endpointUri('sync/stream');
 
-    // Note: The response stream is automatically closed when this loop errors
-    await for (var line in ndjson(res.stream)) {
+      final request = http.Request('POST', uri);
+      request.headers['Content-Type'] = 'application/json';
+      request.headers['Authorization'] = "Token ${credentials.token}";
+      request.headers.addAll(_userAgentHeaders);
+
+      request.body = convert.jsonEncode(data);
+
+      http.StreamedResponse res;
+      try {
+        // Do not close the client during the request phase - this causes uncaught errors.
+        _safeToClose = false;
+        res = await _client.send(request);
+      } finally {
+        _safeToClose = true;
+      }
       if (aborted) {
-        break;
+        return null;
       }
-      yield StreamingSyncLine.fromJson(line as Map<String, dynamic>);
+
+      if (res.statusCode == 401) {
+        if (invalidCredentialsCallback != null) {
+          await invalidCredentialsCallback!();
+        }
+      }
+      if (res.statusCode != 200) {
+        throw await SyncResponseException.fromStreamedResponse(res);
+      }
+
+      return res.stream;
     }
+
+    return Stream.fromFuture(setup()).asyncExpand((stream) {
+      if (stream == null || aborted) {
+        return const Stream.empty();
+      } else {
+        return ndjson(stream)
+            .map((line) =>
+                StreamingSyncLine.fromJson(line as Map<String, dynamic>))
+            .takeWhile((_) => !aborted);
+      }
+    });
   }
 
   /// Delays the standard `retryDelay` Duration, but exits early if

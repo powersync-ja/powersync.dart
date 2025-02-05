@@ -9,28 +9,10 @@ import 'package:powersync_core/powersync_core.dart';
 import 'package:test/test.dart';
 
 import 'test_server.dart';
+import 'utils/abstract_test_utils.dart';
 import 'utils/test_utils_impl.dart';
 
 final testUtils = TestUtils();
-
-class TestConnector extends PowerSyncBackendConnector {
-  final Function _fetchCredentials;
-  final Future<void> Function(PowerSyncDatabase)? _uploadData;
-
-  TestConnector(this._fetchCredentials,
-      {Future<void> Function(PowerSyncDatabase)? uploadData})
-      : _uploadData = uploadData;
-
-  @override
-  Future<PowerSyncCredentials?> fetchCredentials() {
-    return _fetchCredentials();
-  }
-
-  @override
-  Future<void> uploadData(PowerSyncDatabase database) async {
-    await _uploadData?.call(database);
-  }
-}
 
 void main() {
   group('Streaming Sync Test', () {

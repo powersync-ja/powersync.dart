@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:logging/logging.dart';
 import 'package:meta/meta.dart';
@@ -121,17 +122,56 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
 
   Future<void> _updateHasSynced() async {
     // Query the database to see if any data has been synced.
-    final result =
-        await database.get('SELECT powersync_last_synced_at() as synced_at');
-    final timestamp = result['synced_at'] as String?;
-    final hasSynced = timestamp != null;
+    final result = await database.get('''
+      SELECT CASE
+        WHEN EXISTS (SELECT 1 FROM sqlite_master WHERE name = 'ps_sync_state')
+          THEN (SELECT json_group_array(
+            json_object('prio', priority, 'last_sync', last_synced_at)
+          ) FROM ps_sync_state ORDER BY priority)
+          ELSE powersync_last_synced_at()
+        END AS r;
+    ''');
+    final value = result['r'] as String?;
+    final hasData = value != null;
 
-    if (hasSynced != currentStatus.hasSynced) {
-      final lastSyncedAt =
-          timestamp == null ? null : DateTime.parse('${timestamp}Z').toLocal();
-      final status =
-          SyncStatus(hasSynced: hasSynced, lastSyncedAt: lastSyncedAt);
-      setStatus(status);
+    DateTime parseDateTime(String sql) {
+      return DateTime.parse('${sql}Z').toLocal();
+    }
+
+    if (hasData) {
+      DateTime? lastCompleteSync;
+      final priorityStatus = <SyncPriorityStatus>[];
+      var hasSynced = false;
+
+      if (value.startsWith('[')) {
+        for (final entry in jsonDecode(value) as List) {
+          final priority = entry['prio'] as int;
+          final lastSyncedAt = parseDateTime(entry['last_sync'] as String);
+
+          if (priority == -1) {
+            hasSynced = true;
+            lastCompleteSync = lastSyncedAt;
+          } else {
+            priorityStatus.add((
+              hasSynced: true,
+              lastSyncedAt: lastSyncedAt,
+              priority: BucketPriority(priority)
+            ));
+          }
+        }
+      } else {
+        hasSynced = true;
+        lastCompleteSync = parseDateTime(value);
+      }
+
+      if (hasSynced != currentStatus.hasSynced) {
+        final status = SyncStatus(
+          hasSynced: hasSynced,
+          lastSyncedAt: lastCompleteSync,
+          statusInPriority: priorityStatus,
+        );
+        setStatus(status);
+      }
     }
   }
 
@@ -201,7 +241,10 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
     await disconnect();
     // Now we can close the database
     await database.close();
-    await statusStreamController.close();
+
+    // If there are paused subscriptionso n the status stream, don't delay
+    // closing the database because of that.
+    unawaited(statusStreamController.close());
   }
 
   /// Connect to the PowerSync service, and keep the databases in sync.

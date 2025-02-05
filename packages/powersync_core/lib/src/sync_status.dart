@@ -99,7 +99,15 @@ final class SyncStatus {
 
   /// Returns [lastSyncedAt] and [hasSynced] information for a partial sync
   /// operation, or `null` if the status for that priority is unknown.
-  SyncPriorityStatus? statusForPriority(BucketPriority priority) {
+  ///
+  /// The information returned may be more generic than requested. For instance,
+  /// a completed sync operation (as expressed by [lastSyncedAt]) also
+  /// guarantees that every bucket priority was synchronized before that.
+  /// Similarly, requesting the sync status for priority `1` may return
+  /// information extracted from the lower priority `2` since each partial sync
+  /// in priority `2` necessarily includes a consistent view over data in
+  /// priority `1`.
+  SyncPriorityStatus statusForPriority(BucketPriority priority) {
     assert(statusInPriority.isSortedByCompare(
         (e) => e.priority, BucketPriority.comparator));
 
@@ -112,7 +120,12 @@ final class SyncStatus {
       }
     }
 
-    return null;
+    // If we have a complete sync, that necessarily includes all priorities.
+    return (
+      priority: priority,
+      hasSynced: hasSynced,
+      lastSyncedAt: lastSyncedAt
+    );
   }
 
   @override
@@ -154,8 +167,8 @@ extension type const BucketPriority._(int priorityNumber) {
 /// priority.
 typedef SyncPriorityStatus = ({
   BucketPriority priority,
-  DateTime lastSyncedAt,
-  bool hasSynced,
+  DateTime? lastSyncedAt,
+  bool? hasSynced,
 });
 
 /// Stats of the local upload queue.

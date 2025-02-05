@@ -1,5 +1,8 @@
+import 'package:http/http.dart';
 import 'package:logging/logging.dart';
 import 'package:powersync_core/powersync_core.dart';
+import 'package:powersync_core/src/bucket_storage.dart';
+import 'package:powersync_core/src/streaming_sync.dart';
 import 'package:sqlite_async/sqlite3_common.dart';
 import 'package:sqlite_async/sqlite_async.dart';
 import 'package:test_api/src/backend/invoker.dart';
@@ -52,6 +55,23 @@ Logger _makeTestLogger({Level level = Level.ALL, String? name}) {
   return logger;
 }
 
+abstract mixin class TestPowerSyncFactory implements PowerSyncOpenFactory {
+  Future<CommonDatabase> openRawInMemoryDatabase();
+
+  Future<(CommonDatabase, PowerSyncDatabase)> openInMemoryDatabase() async {
+    final raw = await openRawInMemoryDatabase();
+    return (raw, wrapRaw(raw));
+  }
+
+  PowerSyncDatabase wrapRaw(CommonDatabase raw) {
+    return PowerSyncDatabase.withDatabase(
+      schema: schema,
+      database: SqliteDatabase.singleConnection(
+          SqliteConnection.synchronousWrapper(raw)),
+    );
+  }
+}
+
 abstract class AbstractTestUtils {
   String get _testName => Invoker.current!.liveTest.test.name;
 
@@ -63,12 +83,10 @@ abstract class AbstractTestUtils {
   }
 
   /// Generates a test open factory
-  Future<PowerSyncOpenFactory> testFactory(
+  Future<TestPowerSyncFactory> testFactory(
       {String? path,
       String sqlitePath = '',
-      SqliteOptions options = const SqliteOptions.defaults()}) async {
-    return PowerSyncOpenFactory(path: path ?? dbPath(), sqliteOptions: options);
-  }
+      SqliteOptions options = const SqliteOptions.defaults()});
 
   /// Creates a SqliteDatabaseConnection
   Future<PowerSyncDatabase> setupPowerSync(
@@ -92,4 +110,42 @@ abstract class AbstractTestUtils {
 
   /// Deletes any DB data
   Future<void> cleanDb({required String path});
+}
+
+class TestConnector extends PowerSyncBackendConnector {
+  final Function _fetchCredentials;
+  final Future<void> Function(PowerSyncDatabase)? _uploadData;
+
+  TestConnector(this._fetchCredentials,
+      {Future<void> Function(PowerSyncDatabase)? uploadData})
+      : _uploadData = uploadData;
+
+  @override
+  Future<PowerSyncCredentials?> fetchCredentials() {
+    return _fetchCredentials();
+  }
+
+  @override
+  Future<void> uploadData(PowerSyncDatabase database) async {
+    await _uploadData?.call(database);
+  }
+}
+
+extension MockSync on PowerSyncDatabase {
+  StreamingSyncImplementation connectWithMockService(
+      Client client, PowerSyncBackendConnector connector) {
+    final impl = StreamingSyncImplementation(
+      adapter: BucketStorage(this),
+      client: client,
+      retryDelay: const Duration(seconds: 5),
+      credentialsCallback: connector.getCredentialsCached,
+      invalidCredentialsCallback: connector.prefetchCredentials,
+      uploadCrud: () => connector.uploadData(this),
+      crudUpdateTriggerStream: database
+          .onChange(['ps_crud'], throttle: const Duration(milliseconds: 10)),
+    );
+    impl.statusStream.listen(setStatus);
+
+    return impl;
+  }
 }

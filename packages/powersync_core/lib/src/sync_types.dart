@@ -58,7 +58,11 @@ final class Checkpoint extends StreamingSyncLine {
       'write_checkpoint': writeCheckpoint,
       'buckets': checksums
           .where((c) => priority == null || c.priority <= priority)
-          .map((c) => {'bucket': c.bucket, 'checksum': c.checksum})
+          .map((c) => {
+                'bucket': c.bucket,
+                'checksum': c.checksum,
+                'priority': c.priority,
+              })
           .toList(growable: false)
     };
   }
