@@ -15,7 +15,7 @@ class AttachmentsService {
       this.attachmentsQueueTableName);
 
   /// Table used for storing attachments in the attachment queue.
-  get table {
+  String get table {
     return attachmentsQueueTableName;
   }
 

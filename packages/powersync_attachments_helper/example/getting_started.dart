@@ -14,12 +14,13 @@ late AbstractRemoteStorageAdapter remoteStorage;
 late PhotoAttachmentQueue attachmentQueue;
 
 class PhotoAttachmentQueue extends AbstractAttachmentQueue {
-  PhotoAttachmentQueue(db, remoteStorage)
+  PhotoAttachmentQueue(
+      PowerSyncDatabase db, AbstractRemoteStorageAdapter remoteStorage)
       : super(db: db, remoteStorage: remoteStorage);
 
   @override
   Future<Attachment> saveFile(String fileId, int size,
-      {mediaType = 'image/jpeg'}) async {
+      {String mediaType = 'image/jpeg'}) async {
     String filename = '$fileId.jpg';
     Attachment photoAttachment = Attachment(
       id: fileId,
@@ -60,7 +61,7 @@ class PhotoAttachmentQueue extends AbstractAttachmentQueue {
   }
 }
 
-initializeAttachmentQueue(PowerSyncDatabase db) async {
+Future<void> initializeAttachmentQueue(PowerSyncDatabase db) async {
   attachmentQueue = PhotoAttachmentQueue(db, remoteStorage);
   await attachmentQueue.init();
 }

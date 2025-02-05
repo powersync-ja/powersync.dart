@@ -14,7 +14,7 @@ class SyncingService {
   final AbstractRemoteStorageAdapter remoteStorage;
   final LocalStorageAdapter localStorage;
   final AttachmentsService attachmentsService;
-  final Function getLocalUri;
+  final Future<String> Function(String name) getLocalUri;
   final Future<bool> Function(Attachment attachment, Object exception)?
       onDownloadError;
   final Future<bool> Function(Attachment attachment, Object exception)?
@@ -165,7 +165,7 @@ class SyncingService {
   }
 
   /// Process ID's to be included in the attachment queue.
-  processIds(List<String> ids, String fileExtension) async {
+  Future<void> processIds(List<String> ids, String fileExtension) async {
     List<Attachment> attachments = List.empty(growable: true);
 
     for (String id in ids) {
@@ -188,7 +188,7 @@ class SyncingService {
   }
 
   /// Delete attachments which have been archived
-  deleteArchivedAttachments() async {
+  Future<void> deleteArchivedAttachments() async {
     await db.execute('''
       DELETE FROM ${attachmentsService.table}
       WHERE state = ${AttachmentState.archived.index}
