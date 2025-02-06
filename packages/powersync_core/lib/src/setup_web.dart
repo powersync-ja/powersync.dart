@@ -49,7 +49,7 @@ Future<void> downloadWebAssets(List<String> arguments,
 
   if (Platform.environment.containsKey('IS_IN_POWERSYNC_CI')) {
     print('IS_IN_POWERSYNC_CI env variable is set, copying from local build');
-    return _copyPrecompiled(Directory.current, wasmFileName);
+    return _copyPrecompiled(Directory.current, wasmFileName, outputDir);
   }
 
   try {
@@ -184,7 +184,8 @@ Future<void> downloadFile(
   }
 }
 
-Future<void> _copyPrecompiled(Directory project, String wasmFile) async {
+Future<void> _copyPrecompiled(
+    Directory project, String wasmFile, String outputDir) async {
   // Keep going up until we see the melos.yaml file indicating the workspace
   // root.
   var dir = project;
@@ -200,7 +201,7 @@ Future<void> _copyPrecompiled(Directory project, String wasmFile) async {
 
   // In the CI, an earlier step will have put these files into the prepared
   // sqlite3_wasm_build package.
-  final destination = p.join(project.path, 'web');
+  final destination = p.join(project.path, outputDir);
   final wasmSource = p.join(dir.path, 'packages', 'sqlite3_wasm_build', 'dist');
   print('Copying $wasmFile from $wasmSource to $destination');
   await File(p.join(wasmSource, wasmFile)).copy(p.join(destination, wasmFile));
