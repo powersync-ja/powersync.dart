@@ -50,13 +50,14 @@ class Attachment {
 
   factory Attachment.fromRow(sqlite.Row row) {
     return Attachment(
-        id: row['id'],
-        filename: row['filename'],
-        localUri: row['local_uri'],
-        size: row['size'],
-        mediaType: row['media_type'],
-        timestamp: row['timestamp'],
-        state: row['state']);
+      id: row['id'] as String,
+      filename: row['filename'] as String,
+      localUri: row['local_uri'] as String?,
+      size: row['size'] as int?,
+      mediaType: row['media_type'] as String?,
+      timestamp: row['timestamp'] as int?,
+      state: row['state'] as int,
+    );
   }
 }
 

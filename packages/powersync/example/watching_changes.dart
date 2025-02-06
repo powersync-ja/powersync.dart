@@ -10,12 +10,12 @@ const schema = Schema([
 
 final parameterSets = List.generate(1000, (i) => [uuid.v4(), 'Row $i']);
 
-openDatabase() async {
+Future<void> openDatabase() async {
   db = PowerSyncDatabase(schema: schema, path: 'test.db');
   await db.initialize();
 }
 
-main() async {
+Future<void> main() async {
   await openDatabase();
 
   // Watch a single query.
@@ -23,7 +23,7 @@ main() async {
   var subscription1 =
       db.watch('SELECT count() AS count FROM data').listen((results) {
     print('Results: $results');
-  }, onError: (e) {
+  }, onError: (Object e) {
     print('Query failed: $e');
   });
 
@@ -37,14 +37,14 @@ main() async {
         await db.get('SELECT sum(length(contents)) AS length FROM data');
     print(
         'Results after change to ${update.tables}: ${count['count']} entries, ${length['length']} characters');
-  }).listen((_) {}, onError: (e) {
+  }).listen((_) {}, onError: (Object e) {
     print('Query failed: $e');
   });
 
   for (var i = 0; i < 10; i++) {
     await db.execute(
         'INSERT INTO data(id, contents) VALUES(uuid(), ?)', ['Row $i']);
-    await Future.delayed(Duration(milliseconds: 500));
+    await Future<void>.delayed(Duration(milliseconds: 500));
   }
 
   subscription1.cancel();
