@@ -4,6 +4,7 @@ import 'package:collection/collection.dart';
 import 'package:pub_semver/pub_semver.dart';
 import 'package:pubspec_parse/pubspec_parse.dart';
 import 'package:args/args.dart';
+import 'package:path/path.dart' as p;
 
 Future<void> downloadWebAssets(List<String> arguments,
     {bool encryption = false}) async {
@@ -44,6 +45,11 @@ Future<void> downloadWebAssets(List<String> arguments,
     print('Invalid .dart_tool/package_config.json');
     print('Run `flutter pub get` first.');
     exit(1);
+  }
+
+  if (Platform.environment.containsKey('IS_IN_POWERSYNC_CI')) {
+    print('IS_IN_POWERSYNC_CI env variable is set, copying from local build');
+    return _copyPrecompiled(Directory.current, wasmFileName);
   }
 
   try {
@@ -176,4 +182,26 @@ Future<void> downloadFile(
     throw Exception(
         'Failed to download file: ${response.statusCode} ${response.reasonPhrase}');
   }
+}
+
+Future<void> _copyPrecompiled(Directory project, String wasmFile) async {
+  // Keep going up until we see the melos.yaml file indicating the workspace
+  // root.
+  var dir = project;
+  while (!await File(p.join(dir.path, 'melos.yaml')).exists()) {
+    print('Looking for melos workspace in $dir');
+    final parent = dir.parent;
+    if (p.equals(parent.path, dir.path)) {
+      throw 'Melos workspace not found';
+    }
+
+    dir = parent;
+  }
+
+  // In the CI, an earlier step will have put these files into the prepared
+  // sqlite3_wasm_build package.
+  final destination = p.join(project.path, 'web');
+  final wasmSource = p.join(dir.path, 'packages', 'sqlite3_wasm_build', 'dist');
+  print('Copying $wasmFile from $wasmSource to $destination');
+  await File(p.join(wasmSource, wasmFile)).copy(p.join(destination, wasmFile));
 }

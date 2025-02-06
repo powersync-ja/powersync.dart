@@ -14,7 +14,7 @@ jobs:
         id: cache_build
         with:
           path: packages/sqlite3_wasm_build/dist/
-          key: ${{ runner.os }}-${{ hashFiles('packages/sqlite3_wasm_build/build.sh') }}
+          key: wasm-${{ runner.os }}-${{ hashFiles('packages/sqlite3_wasm_build/build.sh') }}
 
       - name: Setup Homebrew
         if: steps.cache_build.outputs.cache-hit != 'true'

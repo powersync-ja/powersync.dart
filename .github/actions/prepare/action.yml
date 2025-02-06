@@ -4,7 +4,6 @@ description: Prepare CI environment
 runs:
   using: composite
   steps:
-    - uses: actions/checkout@v4
     - name: Install Flutter
       uses: subosito/flutter-action@v2
       with:
@@ -20,4 +19,6 @@ runs:
       run: flutter pub global activate melos
     - name: Install dependencies
       shell: sh
+      env:
+        IS_IN_POWERSYNC_CI: 1
       run: melos prepare
