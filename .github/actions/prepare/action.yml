@@ -1,0 +1,23 @@
+name: Prepare
+description: Prepare CI environment
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/checkout@v4
+    - name: Install Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: "3.x"
+        channel: "stable"
+    - name: Download sqlite3.wasm
+      uses: actions/download-artifact@v4
+      with:
+        name: sqlite3-wasm
+        path: packages/sqlite3_wasm_build/dist/
+    - name: Install Melos
+      shell: sh
+      run: flutter pub global activate melos
+    - name: Install dependencies
+      shell: sh
+      run: melos prepare

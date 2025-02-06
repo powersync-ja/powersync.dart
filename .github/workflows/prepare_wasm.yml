@@ -1,8 +1,7 @@
 name: Build SQLite3 WASM
 
 on:
-  push:
-    branches: ["**"]
+  workflow_call:
 
 jobs:
   compile_sqlite3_wasm:
