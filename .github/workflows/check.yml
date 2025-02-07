@@ -11,7 +11,7 @@ on:
 jobs:
   setup:
     uses: ./.github/workflows/prepare_wasm.yml
-  
+
   build:
     runs-on: ubuntu-latest
     needs: [setup]

@@ -7,6 +7,9 @@ on:
       - 'powersync-v[0-9]+.[0-9]+.[0-9]+'
 
 jobs:
+  setup:
+    uses: ./.github/workflows/prepare_wasm.yml
+
   build:
     runs-on: macos-latest
     permissions:
@@ -15,28 +18,7 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
-
-      - name: Install Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.x'
-          channel: 'stable'
-      - name: Setup Homebrew
-        id: set-up-homebrew
-        uses: Homebrew/actions/setup-homebrew@master
-      - name: Setup macOS build dependencies
-        run: brew install cmake llvm lld binaryen wasi-libc wasi-runtimes
-
-      - name: Install Melos
-        run: flutter pub global activate melos
-
-      - name: Install Dependencies and Compile Assets
-        run: melos prepare
-
-      - name: Compile sqlite3.wasm on macOS
-        if: runner.os == 'macOS'
-        working-directory: packages/sqlite3_wasm_build
-        run: ./build.sh
+      - uses: ./.github/actions/prepare
 
       - name: Create Draft Release
         env:
