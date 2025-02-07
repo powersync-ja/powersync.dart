@@ -59,10 +59,20 @@ final class _StreamingSyncLineParser
   @override
   void add(Map<String, dynamic> event) {
     final parsed = StreamingSyncLine.fromJson(event);
-    if (parsed is SyncDataBatch) {
+
+    // Buffer small batches and group them to reduce amounts of transactions
+    // used to store them.
+    if (parsed is SyncDataBatch && parsed.totalOperations <= 100) {
       if (_pendingBatch case (final batch, _)?) {
         // Add this line to the pending batch of data items
         batch.buckets.addAll(parsed.buckets);
+
+        if (batch.totalOperations >= 1000) {
+          // This is unlikely to happen since we're only buffering for a single
+          // event loop iteration, but make sure we're not keeping huge amonts
+          // of data in memory.
+          _flushBatch();
+        }
       } else {
         // Insert of adding this batch directly, keep it buffered here for a
         // while so that we can add new entries to it.
@@ -243,6 +253,9 @@ class BucketRequest {
 /// at once improves performance.
 final class SyncDataBatch extends StreamingSyncLine {
   List<SyncBucketData> buckets;
+
+  int get totalOperations =>
+      buckets.fold(0, (prev, data) => prev + data.data.length);
 
   SyncDataBatch(this.buckets);
 }
