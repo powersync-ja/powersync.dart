@@ -53,7 +53,7 @@ class StreamingSyncImplementation implements StreamingSync {
 
   late final http.Client _client;
 
-  final StreamController<String?> _localPingController =
+  final StreamController<Null> _localPingController =
       StreamController.broadcast();
 
   final Duration retryDelay;
@@ -340,96 +340,19 @@ class StreamingSyncImplementation implements StreamingSync {
       }
 
       _updateStatus(connected: true, connecting: false);
-      if (line is Checkpoint) {
-        targetCheckpoint = line;
-        final Set<String> bucketsToDelete = {...bucketSet};
-        final Set<String> newBuckets = {};
-        for (final checksum in line.checksums) {
-          newBuckets.add(checksum.bucket);
-          bucketsToDelete.remove(checksum.bucket);
-        }
-        bucketSet = newBuckets;
-        await adapter.removeBuckets([...bucketsToDelete]);
-        _updateStatus(downloading: true);
-      } else if (line is StreamingSyncCheckpointComplete) {
-        final result = await adapter.syncLocalDatabase(targetCheckpoint!);
-        if (!result.checkpointValid) {
-          // This means checksums failed. Start again with a new checkpoint.
-          // TODO: better back-off
-          // await new Promise((resolve) => setTimeout(resolve, 50));
-          return false;
-        } else if (!result.ready) {
-          // Checksums valid, but need more data for a consistent checkpoint.
-          // Continue waiting.
-        } else {
-          appliedCheckpoint = targetCheckpoint;
-
-          _updateStatus(
-              downloading: false,
-              downloadError: _noError,
-              lastSyncedAt: DateTime.now());
-        }
-
-        validatedCheckpoint = targetCheckpoint;
-      } else if (line is StreamingSyncCheckpointDiff) {
-        // TODO: It may be faster to just keep track of the diff, instead of the entire checkpoint
-        if (targetCheckpoint == null) {
-          throw PowerSyncProtocolException(
-              'Checkpoint diff without previous checkpoint');
-        }
-        _updateStatus(downloading: true);
-        final diff = line;
-        final Map<String, BucketChecksum> newBuckets = {};
-        for (var checksum in targetCheckpoint.checksums) {
-          newBuckets[checksum.bucket] = checksum;
-        }
-        for (var checksum in diff.updatedBuckets) {
-          newBuckets[checksum.bucket] = checksum;
-        }
-        for (var bucket in diff.removedBuckets) {
-          newBuckets.remove(bucket);
-        }
-
-        final newCheckpoint = Checkpoint(
-            lastOpId: diff.lastOpId,
-            checksums: [...newBuckets.values],
-            writeCheckpoint: diff.writeCheckpoint);
-        targetCheckpoint = newCheckpoint;
-
-        bucketSet = Set.from(newBuckets.keys);
-        await adapter.removeBuckets(diff.removedBuckets);
-        adapter.setTargetCheckpoint(targetCheckpoint);
-      } else if (line is SyncBucketData) {
-        _updateStatus(downloading: true);
-        await adapter.saveSyncData(SyncDataBatch([line]));
-      } else if (line is StreamingSyncKeepalive) {
-        if (line.tokenExpiresIn == 0) {
-          // Token expired already - stop the connection immediately
-          invalidCredentialsCallback?.call().ignore();
-          break;
-        } else if (line.tokenExpiresIn <= 30) {
-          // Token expires soon - refresh it in the background
-          if (credentialsInvalidation == null &&
-              invalidCredentialsCallback != null) {
-            credentialsInvalidation = invalidCredentialsCallback!().then((_) {
-              // Token has been refreshed - we should restart the connection.
-              haveInvalidated = true;
-              // trigger next loop iteration ASAP, don't wait for another
-              // message from the server.
-              _localPingController.add(null);
-            }, onError: (_) {
-              // Token refresh failed - retry on next keepalive.
-              credentialsInvalidation = null;
-            });
+      switch (line) {
+        case Checkpoint():
+          targetCheckpoint = line;
+          final Set<String> bucketsToDelete = {...bucketSet};
+          final Set<String> newBuckets = {};
+          for (final checksum in line.checksums) {
+            newBuckets.add(checksum.bucket);
+            bucketsToDelete.remove(checksum.bucket);
           }
-        }
-      } else {
-        if (targetCheckpoint == appliedCheckpoint) {
-          _updateStatus(
-              downloading: false,
-              downloadError: _noError,
-              lastSyncedAt: DateTime.now());
-        } else if (validatedCheckpoint == targetCheckpoint) {
+          bucketSet = newBuckets;
+          await adapter.removeBuckets([...bucketsToDelete]);
+          _updateStatus(downloading: true);
+        case StreamingSyncCheckpointComplete():
           final result = await adapter.syncLocalDatabase(targetCheckpoint!);
           if (!result.checkpointValid) {
             // This means checksums failed. Start again with a new checkpoint.
@@ -447,7 +370,88 @@ class StreamingSyncImplementation implements StreamingSync {
                 downloadError: _noError,
                 lastSyncedAt: DateTime.now());
           }
-        }
+
+          validatedCheckpoint = targetCheckpoint;
+        case StreamingSyncCheckpointDiff():
+          // TODO: It may be faster to just keep track of the diff, instead of
+          // the entire checkpoint
+          if (targetCheckpoint == null) {
+            throw PowerSyncProtocolException(
+                'Checkpoint diff without previous checkpoint');
+          }
+          _updateStatus(downloading: true);
+          final diff = line;
+          final Map<String, BucketChecksum> newBuckets = {};
+          for (var checksum in targetCheckpoint.checksums) {
+            newBuckets[checksum.bucket] = checksum;
+          }
+          for (var checksum in diff.updatedBuckets) {
+            newBuckets[checksum.bucket] = checksum;
+          }
+          for (var bucket in diff.removedBuckets) {
+            newBuckets.remove(bucket);
+          }
+
+          final newCheckpoint = Checkpoint(
+              lastOpId: diff.lastOpId,
+              checksums: [...newBuckets.values],
+              writeCheckpoint: diff.writeCheckpoint);
+          targetCheckpoint = newCheckpoint;
+
+          bucketSet = Set.from(newBuckets.keys);
+          await adapter.removeBuckets(diff.removedBuckets);
+          adapter.setTargetCheckpoint(targetCheckpoint);
+        case SyncDataBatch():
+          _updateStatus(downloading: true);
+          await adapter.saveSyncData(line);
+        case StreamingSyncKeepalive(:final tokenExpiresIn):
+          if (tokenExpiresIn == 0) {
+            // Token expired already - stop the connection immediately
+            invalidCredentialsCallback?.call().ignore();
+            break;
+          } else if (tokenExpiresIn <= 30) {
+            // Token expires soon - refresh it in the background
+            if (credentialsInvalidation == null &&
+                invalidCredentialsCallback != null) {
+              credentialsInvalidation = invalidCredentialsCallback!().then((_) {
+                // Token has been refreshed - we should restart the connection.
+                haveInvalidated = true;
+                // trigger next loop iteration ASAP, don't wait for another
+                // message from the server.
+                _localPingController.add(null);
+              }, onError: (_) {
+                // Token refresh failed - retry on next keepalive.
+                credentialsInvalidation = null;
+              });
+            }
+          }
+        case UnknownSyncLine(:final rawData):
+          isolateLogger.fine('Unknown sync line: $rawData');
+        case null: // Local ping
+          if (targetCheckpoint == appliedCheckpoint) {
+            _updateStatus(
+                downloading: false,
+                downloadError: _noError,
+                lastSyncedAt: DateTime.now());
+          } else if (validatedCheckpoint == targetCheckpoint) {
+            final result = await adapter.syncLocalDatabase(targetCheckpoint!);
+            if (!result.checkpointValid) {
+              // This means checksums failed. Start again with a new checkpoint.
+              // TODO: better back-off
+              // await new Promise((resolve) => setTimeout(resolve, 50));
+              return false;
+            } else if (!result.ready) {
+              // Checksums valid, but need more data for a consistent checkpoint.
+              // Continue waiting.
+            } else {
+              appliedCheckpoint = targetCheckpoint;
+
+              _updateStatus(
+                  downloading: false,
+                  downloadError: _noError,
+                  lastSyncedAt: DateTime.now());
+            }
+          }
       }
 
       if (haveInvalidated) {
@@ -458,7 +462,8 @@ class StreamingSyncImplementation implements StreamingSync {
     return true;
   }
 
-  Stream<Object?> streamingSyncRequest(StreamingSyncRequest data) async* {
+  Stream<StreamingSyncLine> streamingSyncRequest(
+      StreamingSyncRequest data) async* {
     final credentials = await credentialsCallback();
     if (credentials == null) {
       throw CredentialsException('Not logged in');
@@ -494,12 +499,10 @@ class StreamingSyncImplementation implements StreamingSync {
     }
 
     // Note: The response stream is automatically closed when this loop errors
-    await for (var line in ndjson(res.stream)) {
-      if (aborted) {
-        break;
-      }
-      yield parseStreamingSyncLine(line as Map<String, dynamic>);
-    }
+    yield* ndjson(res.stream)
+        .cast<Map<String, dynamic>>()
+        .transform(StreamingSyncLine.reader)
+        .takeWhile((_) => !aborted);
   }
 
   /// Delays the standard `retryDelay` Duration, but exits early if
