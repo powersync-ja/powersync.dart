@@ -54,53 +54,81 @@ Future<void> downloadWebAssets(List<String> arguments,
 
   try {
     final httpClient = HttpClient();
+    const sqlitePackageName = 'sqlite3';
 
-    final powersyncPackageName = 'powersync';
+    final (tag: powersyncTag, version: powerSyncVersion) =
+        await powerSyncVersionOrLatest(
+            httpClient, packageConfig, packageConfigFile);
+    final firstPowerSyncVersionWithOwnWasm = Version(1, 12, 0);
 
     if (downloadWorker) {
-      final powersyncPkg =
-          getPackageFromConfig(packageConfig, powersyncPackageName);
-
-      final powersyncVersion = getPubspecVersion(
-          packageConfigFile, powersyncPkg, powersyncPackageName);
-
       final workerUrl =
-          'https://github.com/powersync-ja/powersync.dart/releases/download/powersync-v$powersyncVersion/powersync_db.worker.js';
-
+          'https://github.com/powersync-ja/powersync.dart/releases/download/$powersyncTag/powersync_db.worker.js';
       final syncWorkerUrl =
-          'https://github.com/powersync-ja/powersync.dart/releases/download/powersync-v$powersyncVersion/powersync_sync.worker.js';
+          'https://github.com/powersync-ja/powersync.dart/releases/download/$powersyncTag/powersync_sync.worker.js';
 
       await downloadFile(httpClient, workerUrl, workerPath);
       await downloadFile(httpClient, syncWorkerUrl, syncWorkerPath);
     }
 
-    final sqlitePackageName = 'sqlite3';
+    if (powerSyncVersion >= firstPowerSyncVersionWithOwnWasm) {
+      final wasmUrl =
+          'https://github.com/powersync-ja/powersync.dart/releases/download/powersync-$powersyncTag/$wasmFileName';
 
-    final sqlite3Pkg = getPackageFromConfig(packageConfig, sqlitePackageName);
-
-    String sqlite3Version =
-        "v${getPubspecVersion(packageConfigFile, sqlite3Pkg, sqlitePackageName)}";
-
-    List<String> tags = await getLatestTagsFromRelease(httpClient);
-    String? matchTag = tags.firstWhereOrNull((element) =>
-        element.contains(sqlite3Version) && coreVersionIsInRange(element));
-    if (matchTag != null) {
-      sqlite3Version = matchTag;
+      await downloadFile(httpClient, wasmUrl, wasmPath);
     } else {
-      throw Exception(
-          """No compatible powersync core version found for sqlite3 version $sqlite3Version
+      final sqlite3Pkg = getPackageFromConfig(packageConfig, sqlitePackageName);
+
+      String sqlite3Version =
+          "v${getPubspecVersion(packageConfigFile, sqlite3Pkg, sqlitePackageName)}";
+
+      List<String> tags = await getLatestTagsFromRelease(httpClient);
+      String? matchTag = tags.firstWhereOrNull((element) =>
+          element.contains(sqlite3Version) && coreVersionIsInRange(element));
+      if (matchTag != null) {
+        sqlite3Version = matchTag;
+      } else {
+        throw Exception(
+            """No compatible powersync core version found for sqlite3 version $sqlite3Version
           Latest supported sqlite3 versions: ${tags.take(3).map((tag) => tag.split('-')[0]).join(', ')}.
           You can view the full list of releases at https://github.com/powersync-ja/sqlite3.dart/releases""");
+      }
+
+      final sqliteUrl =
+          'https://github.com/powersync-ja/sqlite3.dart/releases/download/$sqlite3Version/$wasmFileName';
+
+      await downloadFile(httpClient, sqliteUrl, wasmPath);
     }
-
-    final sqliteUrl =
-        'https://github.com/powersync-ja/sqlite3.dart/releases/download/$sqlite3Version/$wasmFileName';
-
-    await downloadFile(httpClient, sqliteUrl, wasmPath);
   } catch (e) {
     print(e);
     exit(1);
   }
+}
+
+Future<({String tag, Version version})> powerSyncVersionOrLatest(
+    HttpClient client, dynamic packageConfig, File packageConfigFile) async {
+  const powersyncPackageName = 'powersync';
+  // Don't require powersync dependency. The user has one if running this script
+  // and we also want to support powersync_sqlcipher (for which we download
+  // the latest versions).
+  final powersyncPkg = getPackageFromConfig(packageConfig, powersyncPackageName,
+      required: false);
+  if (powersyncPkg == null) {
+    final [tag, ...] =
+        await getLatestTagsFromRelease(client, repo: 'powersync.dart');
+
+    return (
+      tag: tag,
+      version: Version.parse(tag.substring('powersync-v'.length))
+    );
+  }
+
+  final powersyncVersion =
+      getPubspecVersion(packageConfigFile, powersyncPkg, powersyncPackageName);
+  return (
+    tag: 'powersync-v$powersyncVersion',
+    version: Version.parse(powersyncVersion),
+  );
 }
 
 bool coreVersionIsInRange(String tag) {
@@ -121,12 +149,13 @@ bool coreVersionIsInRange(String tag) {
   return false;
 }
 
-dynamic getPackageFromConfig(dynamic packageConfig, String packageName) {
+dynamic getPackageFromConfig(dynamic packageConfig, String packageName,
+    {bool required = false}) {
   final pkg = (packageConfig['packages'] as List? ?? <dynamic>[]).firstWhere(
     (dynamic e) => e['name'] == packageName,
     orElse: () => null,
   );
-  if (pkg == null) {
+  if (pkg == null && required) {
     throw Exception('Dependency on package:$packageName is required');
   }
   return pkg;
@@ -151,9 +180,10 @@ String getPubspecVersion(
 
 String capitalize(String s) => s[0].toUpperCase() + s.substring(1);
 
-Future<List<String>> getLatestTagsFromRelease(HttpClient httpClient) async {
-  var request = await httpClient.getUrl(Uri.parse(
-      "https://api.github.com/repos/powersync-ja/sqlite3.dart/releases"));
+Future<List<String>> getLatestTagsFromRelease(HttpClient httpClient,
+    {String repo = 'sqlite3.dart'}) async {
+  var request = await httpClient.getUrl(
+      Uri.parse("https://api.github.com/repos/powersync-ja/$repo/releases"));
   var response = await request.close();
   if (response.statusCode == HttpStatus.ok) {
     var res = await response.transform(utf8.decoder).join();
@@ -161,7 +191,7 @@ Future<List<String>> getLatestTagsFromRelease(HttpClient httpClient) async {
     List<String> tags = [];
     for (dynamic obj in jsonObj) {
       final tagName = obj['tag_name'] as String;
-      if (!tagName.contains("-powersync")) continue;
+      if (!tagName.contains("powersync")) continue;
       tags.add(tagName);
     }
     return tags;
