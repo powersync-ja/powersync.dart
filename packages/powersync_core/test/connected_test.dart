@@ -9,7 +9,6 @@ import 'package:powersync_core/powersync_core.dart';
 import 'package:test/test.dart';
 
 import 'server/sync_server/mock_sync_server.dart';
-import 'streaming_sync_test.dart';
 import 'utils/abstract_test_utils.dart';
 import 'utils/test_utils_impl.dart';
 

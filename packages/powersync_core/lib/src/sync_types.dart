@@ -67,8 +67,8 @@ final class _StreamingSyncLineParser
         // Insert of adding this batch directly, keep it buffered here for a
         // while so that we can add new entries to it.
         final timer = Timer(Duration.zero, () {
-          _pendingBatch = null;
           _out.add(_pendingBatch!.$1);
+          _pendingBatch = null;
         });
         _pendingBatch = (parsed, timer);
       }
