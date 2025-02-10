@@ -444,8 +444,6 @@ class StreamingSyncImplementation implements StreamingSync {
               hasSynced: true,
             ));
           }
-
-          validatedCheckpoint = targetCheckpoint;
         case StreamingSyncCheckpointDiff():
           // TODO: It may be faster to just keep track of the diff, instead of
           // the entire checkpoint
@@ -479,12 +477,12 @@ class StreamingSyncImplementation implements StreamingSync {
         case SyncDataBatch():
           _updateStatus(downloading: true);
           await adapter.saveSyncData(line);
-        case StreamingSyncKeepalive():
-          if (line.tokenExpiresIn == 0) {
+        case StreamingSyncKeepalive(:final tokenExpiresIn):
+          if (tokenExpiresIn == 0) {
             // Token expired already - stop the connection immediately
             invalidCredentialsCallback?.call().ignore();
             break;
-          } else if (line.tokenExpiresIn <= 30) {
+          } else if (tokenExpiresIn <= 30) {
             // Token expires soon - refresh it in the background
             if (credentialsInvalidation == null &&
                 invalidCredentialsCallback != null) {
@@ -501,8 +499,7 @@ class StreamingSyncImplementation implements StreamingSync {
             }
           }
         case UnknownSyncLine(:final rawData):
-          isolateLogger.fine('Ignoring unknown sync line: $rawData');
-          break;
+          isolateLogger.fine('Unknown sync line: $rawData');
         case null: // Local ping
           if (targetCheckpoint == appliedCheckpoint) {
             _updateStatus(

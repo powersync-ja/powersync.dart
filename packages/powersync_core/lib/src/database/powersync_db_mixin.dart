@@ -123,13 +123,9 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
   Future<void> _updateHasSynced() async {
     // Query the database to see if any data has been synced.
     final result = await database.get('''
-      SELECT CASE
-        WHEN EXISTS (SELECT 1 FROM sqlite_master WHERE name = 'ps_sync_state')
-          THEN (SELECT json_group_array(
-            json_object('prio', priority, 'last_sync', last_synced_at)
-          ) FROM ps_sync_state ORDER BY priority)
-          ELSE powersync_last_synced_at()
-        END AS r;
+      SELECT json_group_array(
+        json_object('prio', priority, 'last_sync', last_synced_at)
+      ) AS r FROM ps_sync_state ORDER BY priority
     ''');
     final value = result['r'] as String?;
     final hasData = value != null;

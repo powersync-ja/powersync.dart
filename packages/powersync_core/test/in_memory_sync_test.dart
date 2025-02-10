@@ -102,6 +102,66 @@ void main() {
           isTrue);
     });
 
+    test('can save independent buckets in same transaction', () async {
+      final status = await waitForConnection();
+
+      syncService.addLine({
+        'checkpoint': Checkpoint(
+          lastOpId: '0',
+          writeCheckpoint: null,
+          checksums: [
+            BucketChecksum(bucket: 'a', checksum: 0, priority: 3),
+            BucketChecksum(bucket: 'b', checksum: 0, priority: 3),
+          ],
+        )
+      });
+      await expectLater(status, emits(isSyncStatus(downloading: true)));
+
+      var commits = 0;
+      raw.commits.listen((_) => commits++);
+
+      syncService
+        ..addLine({
+          'data': {
+            'bucket': 'a',
+            'data': <Map<String, Object?>>[
+              {
+                'op_id': '1',
+                'op': 'PUT',
+                'object_type': 'a',
+                'object_id': '1',
+                'checksum': 0,
+                'data': {},
+              }
+            ],
+          }
+        })
+        ..addLine({
+          'data': {
+            'bucket': 'b',
+            'data': <Map<String, Object?>>[
+              {
+                'op_id': '2',
+                'op': 'PUT',
+                'object_type': 'b',
+                'object_id': '1',
+                'checksum': 0,
+                'data': {},
+              }
+            ],
+          }
+        });
+
+      // Wait for the operations to be inserted.
+      while (raw.select('SELECT * FROM ps_oplog;').length < 2) {
+        await pumpEventQueue();
+      }
+
+      // The two buckets should have been inserted in a single transaction
+      // because the messages were received in quick succession.
+      expect(commits, 1);
+    });
+
     group('partial sync', () {
       test('updates sync state incrementally', () async {
         final status = await waitForConnection();

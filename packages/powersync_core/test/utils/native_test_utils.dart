@@ -24,16 +24,16 @@ class TestOpenFactory extends PowerSyncOpenFactory with TestPowerSyncFactory {
   }
 
   @override
+  CommonDatabase open(SqliteOpenOptions options) {
+    applyOpenOverride();
+    return super.open(options);
+  }
+
+  @override
   void enableExtension() {
     var powersyncLib = getLibraryForPlatform();
     sqlite3.ensureExtensionLoaded(SqliteExtension.inLibrary(
         DynamicLibrary.open(powersyncLib), 'sqlite3_powersync_init'));
-  }
-
-  @override
-  CommonDatabase open(SqliteOpenOptions options) {
-    applyOpenOverride();
-    return super.open(options);
   }
 
   @override
