@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:logging/logging.dart';
 import 'package:meta/meta.dart';
@@ -122,52 +121,40 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
 
   Future<void> _updateHasSynced() async {
     // Query the database to see if any data has been synced.
-    final result = await database.get('''
-      SELECT json_group_array(
-        json_object('prio', priority, 'last_sync', last_synced_at)
-      ) AS r FROM ps_sync_state ORDER BY priority
-    ''');
-    final value = result['r'] as String?;
-    final hasData = value != null;
+    final result = await database.getAll(
+      'SELECT priority, last_synced_at FROM ps_sync_state ORDER BY priority;',
+    );
+    var hasSynced = false;
+    DateTime? lastCompleteSync;
+    final priorityStatus = <SyncPriorityStatus>[];
 
     DateTime parseDateTime(String sql) {
       return DateTime.parse('${sql}Z').toLocal();
     }
 
-    if (hasData) {
-      DateTime? lastCompleteSync;
-      final priorityStatus = <SyncPriorityStatus>[];
-      var hasSynced = false;
+    for (final row in result) {
+      final priority = row.columnAt(0) as int;
+      final lastSyncedAt = parseDateTime(row.columnAt(1) as String);
 
-      if (value.startsWith('[')) {
-        for (final entry in jsonDecode(value) as List) {
-          final priority = entry['prio'] as int;
-          final lastSyncedAt = parseDateTime(entry['last_sync'] as String);
-
-          if (priority == -1) {
-            hasSynced = true;
-            lastCompleteSync = lastSyncedAt;
-          } else {
-            priorityStatus.add((
-              hasSynced: true,
-              lastSyncedAt: lastSyncedAt,
-              priority: BucketPriority(priority)
-            ));
-          }
-        }
-      } else {
+      if (priority == -1) {
         hasSynced = true;
-        lastCompleteSync = parseDateTime(value);
+        lastCompleteSync = lastSyncedAt;
+      } else {
+        priorityStatus.add((
+          hasSynced: true,
+          lastSyncedAt: lastSyncedAt,
+          priority: BucketPriority(priority)
+        ));
       }
+    }
 
-      if (hasSynced != currentStatus.hasSynced) {
-        final status = SyncStatus(
-          hasSynced: hasSynced,
-          lastSyncedAt: lastCompleteSync,
-          statusInPriority: priorityStatus,
-        );
-        setStatus(status);
-      }
+    if (hasSynced != currentStatus.hasSynced) {
+      final status = SyncStatus(
+        hasSynced: hasSynced,
+        lastSyncedAt: lastCompleteSync,
+        statusInPriority: priorityStatus,
+      );
+      setStatus(status);
     }
   }
 
