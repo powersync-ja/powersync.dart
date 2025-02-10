@@ -27,7 +27,9 @@ void main() {
       await db.writeTransaction((tx) async {
         await expectLater(() async {
           await db.execute('INSERT INTO assets(id) VALUES(?)', ['test']);
-        }, throwsA((e) => e is LockError && e.message.contains('tx.execute')));
+        },
+            throwsA((dynamic e) =>
+                e is LockError && e.message.contains('tx.execute')));
       });
     });
 
@@ -41,7 +43,9 @@ void main() {
         // allow it by default.
         await expectLater(() async {
           await db.getAll('SELECT * FROM assets');
-        }, throwsA((e) => e is LockError && e.message.contains('tx.getAll')));
+        },
+            throwsA((dynamic e) =>
+                e is LockError && e.message.contains('tx.getAll')));
       });
 
       await db.readTransaction((tx) async {
@@ -51,7 +55,9 @@ void main() {
         // opens another connection, but doesn't use it.
         await expectLater(() async {
           await db.getAll('SELECT * FROM assets');
-        }, throwsA((e) => e is LockError && e.message.contains('tx.getAll')));
+        },
+            throwsA((dynamic e) =>
+                e is LockError && e.message.contains('tx.getAll')));
       });
     });
 
@@ -63,16 +69,16 @@ void main() {
         await expectLater(() async {
           await db.getOptional('SELECT * FROM assets');
         },
-            throwsA(
-                (e) => e is LockError && e.message.contains('tx.getOptional')));
+            throwsA((dynamic e) =>
+                e is LockError && e.message.contains('tx.getOptional')));
       });
 
       await db.readLock((tx) async {
         await expectLater(() async {
           await db.getOptional('SELECT * FROM assets');
         },
-            throwsA(
-                (e) => e is LockError && e.message.contains('tx.getOptional')));
+            throwsA((dynamic e) =>
+                e is LockError && e.message.contains('tx.getOptional')));
       });
     });
 

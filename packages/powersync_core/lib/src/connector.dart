@@ -90,13 +90,13 @@ class PowerSyncCredentials {
   }
 
   factory PowerSyncCredentials.fromJson(Map<String, dynamic> parsed) {
-    String token = parsed['token'];
+    String token = parsed['token'] as String;
     DateTime? expiresAt = getExpiryDate(token);
 
     return PowerSyncCredentials(
-        endpoint: parsed['endpoint'],
-        token: parsed['token'],
-        userId: parsed['user_id'],
+        endpoint: parsed['endpoint'] as String,
+        token: token,
+        userId: parsed['user_id'] as String?,
         expiresAt: expiresAt);
   }
 
@@ -110,9 +110,9 @@ class PowerSyncCredentials {
         // dart:convert doesn't like missing padding
         final rawData = base64Url.decode(base64.normalize(parts[1]));
         final text = Utf8Decoder().convert(rawData);
-        Map<String, dynamic> payload = jsonDecode(text);
-        if (payload.containsKey('exp') && payload['exp'] is int) {
-          return DateTime.fromMillisecondsSinceEpoch(payload['exp'] * 1000);
+        final payload = jsonDecode(text) as Map<String, dynamic>;
+        if (payload['exp'] case int exp) {
+          return DateTime.fromMillisecondsSinceEpoch(exp * 1000);
         }
       }
       return null;
@@ -131,7 +131,7 @@ class PowerSyncCredentials {
     return Uri.parse(endpoint).resolve(path);
   }
 
-  _validateEndpoint() {
+  void _validateEndpoint() {
     final parsed = Uri.parse(endpoint);
     if ((!parsed.isScheme('http') && !parsed.isScheme('https')) ||
         parsed.host.isEmpty) {
@@ -162,14 +162,14 @@ class DevCredentials {
 
   factory DevCredentials.fromJson(Map<String, dynamic> parsed) {
     return DevCredentials(
-        endpoint: parsed['endpoint'],
-        token: parsed['token'],
-        userId: parsed['user_id']);
+        endpoint: parsed['endpoint'] as String,
+        token: parsed['token'] as String?,
+        userId: parsed['user_id'] as String?);
   }
 
   factory DevCredentials.fromString(String credentials) {
     var parsed = jsonDecode(credentials);
-    return DevCredentials.fromJson(parsed);
+    return DevCredentials.fromJson(parsed as Map<String, dynamic>);
   }
 
   static DevCredentials? fromOptionalString(String? credentials) {
@@ -255,10 +255,12 @@ class DevConnector extends PowerSyncBackendConnector {
 
     if (res.statusCode == 200) {
       var parsed = jsonDecode(res.body);
+      var data = parsed['data'] as Map<String, dynamic>;
+
       storeDevCredentials(DevCredentials(
           endpoint: endpoint,
-          token: parsed['data']['token'],
-          userId: parsed['data']['user_id']));
+          token: data['token'] as String?,
+          userId: data['user_id'] as String?));
     } else {
       throw http.ClientException(res.reasonPhrase ?? 'Request failed', uri);
     }
@@ -281,7 +283,8 @@ class DevConnector extends PowerSyncBackendConnector {
       throw http.ClientException(res.reasonPhrase ?? 'Request failed', uri);
     }
 
-    return PowerSyncCredentials.fromJson(jsonDecode(res.body)['data']);
+    return PowerSyncCredentials.fromJson(
+        jsonDecode(res.body)['data'] as Map<String, dynamic>);
   }
 
   /// Upload changes using the PowerSync dev API.
@@ -319,7 +322,7 @@ class DevConnector extends PowerSyncBackendConnector {
     final body = jsonDecode(response.body);
     // writeCheckpoint is optional, but reduces latency between writing,
     // and reading back the same change.
-    final String? writeCheckpoint = body['data']['write_checkpoint'];
+    final writeCheckpoint = body['data']['write_checkpoint'] as String?;
     await batch.complete(writeCheckpoint: writeCheckpoint);
   }
 }

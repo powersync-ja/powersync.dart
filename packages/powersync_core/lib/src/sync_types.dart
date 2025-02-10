@@ -1,4 +1,7 @@
+import 'dart:async';
 import 'dart:convert';
+
+import 'bucket_storage.dart';
 
 /// Messages sent from the sync service.
 sealed class StreamingSyncLine {
@@ -7,22 +10,97 @@ sealed class StreamingSyncLine {
   /// Parses a [StreamingSyncLine] from JSON.
   static StreamingSyncLine fromJson(Map<String, dynamic> line) {
     if (line.containsKey('checkpoint')) {
-      return Checkpoint.fromJson(line['checkpoint']);
+      return Checkpoint.fromJson(line['checkpoint'] as Map<String, Object?>);
     } else if (line.containsKey('checkpoint_diff')) {
-      return StreamingSyncCheckpointDiff.fromJson(line['checkpoint_diff']);
+      return StreamingSyncCheckpointDiff.fromJson(
+          line['checkpoint_diff'] as Map<String, Object?>);
     } else if (line.containsKey('checkpoint_complete')) {
       return StreamingSyncCheckpointComplete.fromJson(
-          line['checkpoint_complete']);
+          line['checkpoint_complete'] as Map<String, Object?>);
     } else if (line.containsKey('partial_checkpoint_complete')) {
       return StreamingSyncCheckpointPartiallyComplete.fromJson(
-          line['partial_checkpoint_complete']);
+          line['partial_checkpoint_complete'] as Map<String, Object?>);
     } else if (line.containsKey('data')) {
-      return SyncBucketData.fromJson(line['data']);
+      return SyncDataBatch([
+        SyncBucketData.fromJson(line['data'] as Map<String, Object?>),
+      ]);
     } else if (line.containsKey('token_expires_in')) {
       return StreamingSyncKeepalive.fromJson(line);
     } else {
       return UnknownSyncLine(line);
     }
+  }
+
+  /// A [StreamTransformer] that returns a stream emitting raw JSON objects into
+  /// a stream emitting [StreamingSyncLine].
+  static StreamTransformer<Map<String, dynamic>, StreamingSyncLine> reader =
+      StreamTransformer.fromBind((source) {
+    return Stream.eventTransformed(source, _StreamingSyncLineParser.new);
+  });
+}
+
+final class _StreamingSyncLineParser
+    implements EventSink<Map<String, dynamic>> {
+  final EventSink<StreamingSyncLine> _out;
+
+  /// When we receive multiple `data` lines in quick succession, group them into
+  /// a single batch. This will make the streaming sync service insert them with
+  /// a single transaction, which is more efficient than inserting them
+  /// individually.
+  (SyncDataBatch, Timer)? _pendingBatch;
+
+  _StreamingSyncLineParser(this._out);
+
+  void _flushBatch() {
+    if (_pendingBatch case (final pending, final timer)?) {
+      timer.cancel();
+      _pendingBatch = null;
+      _out.add(pending);
+    }
+  }
+
+  @override
+  void add(Map<String, dynamic> event) {
+    final parsed = StreamingSyncLine.fromJson(event);
+
+    // Buffer small batches and group them to reduce amounts of transactions
+    // used to store them.
+    if (parsed is SyncDataBatch && parsed.totalOperations <= 100) {
+      if (_pendingBatch case (final batch, _)?) {
+        // Add this line to the pending batch of data items
+        batch.buckets.addAll(parsed.buckets);
+
+        if (batch.totalOperations >= 1000) {
+          // This is unlikely to happen since we're only buffering for a single
+          // event loop iteration, but make sure we're not keeping huge amonts
+          // of data in memory.
+          _flushBatch();
+        }
+      } else {
+        // Insert of adding this batch directly, keep it buffered here for a
+        // while so that we can add new entries to it.
+        final timer = Timer(Duration.zero, () {
+          _out.add(_pendingBatch!.$1);
+          _pendingBatch = null;
+        });
+        _pendingBatch = (parsed, timer);
+      }
+    } else {
+      _flushBatch();
+      _out.add(parsed);
+    }
+  }
+
+  @override
+  void addError(Object error, [StackTrace? stackTrace]) {
+    _flushBatch();
+    _out.addError(error, stackTrace);
+  }
+
+  @override
+  void close() {
+    _flushBatch();
+    _out.close();
   }
 }
 
@@ -36,7 +114,7 @@ final class UnknownSyncLine implements StreamingSyncLine {
 /// Indicates that a checkpoint is available, along with checksums for each
 /// bucket in the checkpoint.
 ///
-/// Note: Called `StreamingSyncCheckpoint` in sync-service.
+/// Note: Called `StreamingSyncCheckpoint` in sync service protocol.
 final class Checkpoint extends StreamingSyncLine {
   final String lastOpId;
   final String? writeCheckpoint;
@@ -46,10 +124,10 @@ final class Checkpoint extends StreamingSyncLine {
       {required this.lastOpId, required this.checksums, this.writeCheckpoint});
 
   Checkpoint.fromJson(Map<String, dynamic> json)
-      : lastOpId = json['last_op_id'],
-        writeCheckpoint = json['write_checkpoint'],
+      : lastOpId = json['last_op_id'] as String,
+        writeCheckpoint = json['write_checkpoint'] as String?,
         checksums = (json['buckets'] as List)
-            .map((b) => BucketChecksum.fromJson(b))
+            .map((b) => BucketChecksum.fromJson(b as Map<String, dynamic>))
             .toList();
 
   Map<String, dynamic> toJson({int? priority}) {
@@ -87,11 +165,11 @@ class BucketChecksum {
       this.lastOpId});
 
   BucketChecksum.fromJson(Map<String, dynamic> json)
-      : bucket = json['bucket'],
-        priority = json['priority'],
-        checksum = json['checksum'],
-        count = json['count'],
-        lastOpId = json['last_op_id'];
+      : bucket = json['bucket'] as String,
+        priority = json['priority'] as int,
+        checksum = json['checksum'] as int,
+        count = json['count'] as int?,
+        lastOpId = json['last_op_id'] as String?;
 }
 
 /// A variant of [Checkpoint] that may be sent when the server has already sent
@@ -109,12 +187,12 @@ final class StreamingSyncCheckpointDiff extends StreamingSyncLine {
       this.lastOpId, this.updatedBuckets, this.removedBuckets);
 
   StreamingSyncCheckpointDiff.fromJson(Map<String, dynamic> json)
-      : lastOpId = json['last_op_id'],
-        writeCheckpoint = json['write_checkpoint'],
+      : lastOpId = json['last_op_id'] as String,
+        writeCheckpoint = json['write_checkpoint'] as String?,
         updatedBuckets = (json['updated_buckets'] as List)
-            .map((e) => BucketChecksum.fromJson(e))
+            .map((e) => BucketChecksum.fromJson(e as Map<String, Object?>))
             .toList(),
-        removedBuckets = List<String>.from(json['removed_buckets']);
+        removedBuckets = (json['removed_buckets'] as List).cast();
 }
 
 /// Sent after the last [SyncBucketData] message for a checkpoint.
@@ -128,7 +206,7 @@ final class StreamingSyncCheckpointComplete extends StreamingSyncLine {
   StreamingSyncCheckpointComplete(this.lastOpId);
 
   StreamingSyncCheckpointComplete.fromJson(Map<String, dynamic> json)
-      : lastOpId = json['last_op_id'];
+      : lastOpId = json['last_op_id'] as String;
 }
 
 /// Sent after all the [SyncBucketData] messages for a given priority within a
@@ -140,8 +218,8 @@ final class StreamingSyncCheckpointPartiallyComplete extends StreamingSyncLine {
   StreamingSyncCheckpointPartiallyComplete(this.lastOpId, this.bucketPriority);
 
   StreamingSyncCheckpointPartiallyComplete.fromJson(Map<String, dynamic> json)
-      : lastOpId = json['last_op_id'],
-        bucketPriority = json['priority'];
+      : lastOpId = json['last_op_id'] as String,
+        bucketPriority = json['priority'] as int;
 }
 
 /// Sent as a periodic ping to keep the connection alive and to notify the
@@ -155,7 +233,7 @@ final class StreamingSyncKeepalive extends StreamingSyncLine {
   StreamingSyncKeepalive(this.tokenExpiresIn);
 
   StreamingSyncKeepalive.fromJson(Map<String, dynamic> json)
-      : tokenExpiresIn = json['token_expires_in'];
+      : tokenExpiresIn = json['token_expires_in'] as int;
 }
 
 class StreamingSyncRequest {
@@ -194,7 +272,21 @@ class BucketRequest {
       };
 }
 
-final class SyncBucketData extends StreamingSyncLine {
+/// A batch of sync operations being delivered from the sync service.
+///
+/// Note that the service will always send individual [SyncBucketData] lines,
+/// but we group them into [SyncDataBatch]es because writing multiple entries
+/// at once improves performance.
+final class SyncDataBatch extends StreamingSyncLine {
+  List<SyncBucketData> buckets;
+
+  int get totalOperations =>
+      buckets.fold(0, (prev, data) => prev + data.data.length);
+
+  SyncDataBatch(this.buckets);
+}
+
+final class SyncBucketData {
   final String bucket;
   final List<OplogEntry> data;
   final bool hasMore;
@@ -209,12 +301,13 @@ final class SyncBucketData extends StreamingSyncLine {
       this.nextAfter});
 
   SyncBucketData.fromJson(Map<String, dynamic> json)
-      : bucket = json['bucket'],
-        hasMore = json['has_more'] ?? false,
-        after = json['after'],
-        nextAfter = json['next_after'],
-        data =
-            (json['data'] as List).map((e) => OplogEntry.fromJson(e)).toList();
+      : bucket = json['bucket'] as String,
+        hasMore = json['has_more'] as bool? ?? false,
+        after = json['after'] as String?,
+        nextAfter = json['next_after'] as String?,
+        data = (json['data'] as List)
+            .map((e) => OplogEntry.fromJson(e as Map<String, dynamic>))
+            .toList();
 
   Map<String, dynamic> toJson() {
     return {
@@ -254,16 +347,25 @@ class OplogEntry {
       required this.checksum});
 
   OplogEntry.fromJson(Map<String, dynamic> json)
-      : opId = json['op_id'],
-        op = OpType.fromJson(json['op']),
-        rowType = json['object_type'],
-        rowId = json['object_id'],
-        checksum = json['checksum'],
-        data = json['data'] is String ? json['data'] : jsonEncode(json['data']),
-        subkey = json['subkey'] is String ? json['subkey'] : null;
+      : opId = json['op_id'] as String,
+        op = OpType.fromJson(json['op'] as String),
+        rowType = json['object_type'] as String?,
+        rowId = json['object_id'] as String?,
+        checksum = json['checksum'] as int,
+        data = switch (json['data']) {
+          String data => data,
+          var other => jsonEncode(other),
+        },
+        subkey = switch (json['subkey']) {
+          String subkey => subkey,
+          _ => null,
+        };
 
   Map<String, dynamic>? get parsedData {
-    return data == null ? null : jsonDecode(data!);
+    return switch (data) {
+      final data? => jsonDecode(data) as Map<String, dynamic>,
+      null => null,
+    };
   }
 
   /// Key to uniquely represent a source entry in a bucket.
@@ -283,44 +385,5 @@ class OplogEntry {
       'subkey': subkey,
       'data': data
     };
-  }
-}
-
-enum OpType {
-  clear(1),
-  move(2),
-  put(3),
-  remove(4);
-
-  final int value;
-
-  const OpType(this.value);
-
-  static OpType? fromJson(String json) {
-    switch (json) {
-      case 'CLEAR':
-        return clear;
-      case 'MOVE':
-        return move;
-      case 'PUT':
-        return put;
-      case 'REMOVE':
-        return remove;
-      default:
-        return null;
-    }
-  }
-
-  String toJson() {
-    switch (this) {
-      case clear:
-        return 'CLEAR';
-      case move:
-        return 'MOVE';
-      case put:
-        return 'PUT';
-      case remove:
-        return 'REMOVE';
-    }
   }
 }

@@ -25,7 +25,7 @@ class BackendConnector extends PowerSyncBackendConnector {
   }
 }
 
-openDatabase() async {
+Future<void> openDatabase() async {
   var path = 'powersync-demo.db';
   // getApplicationSupportDirectory is not supported on Web
   if (!kIsWeb) {

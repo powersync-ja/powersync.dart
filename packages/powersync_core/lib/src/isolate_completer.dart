@@ -26,7 +26,7 @@ class IsolateResult<T> {
     return PortCompleter(receivePort.sendPort);
   }
 
-  close() {
+  void close() {
     receivePort.close();
   }
 }
@@ -43,10 +43,10 @@ class PortCompleter<T> {
   }
 
   void completeError(Object error, [StackTrace? stackTrace]) {
-    sendPort.send(PortResult.error(error, stackTrace));
+    sendPort.send(PortResult<void>.error(error, stackTrace));
   }
 
-  addExitHandler() {
+  void addExitHandler() {
     Isolate.current.addOnExitListener(sendPort, response: abortedResponse);
   }
 

@@ -19,7 +19,7 @@ void main() {
         [int count = 50, Object? error]) async* {
       for (var i = 0; i < count; i++) {
         yield "$prefix $i";
-        await Future.delayed(delay);
+        await Future<void>.delayed(delay);
       }
       if (error != null) {
         throw error;
@@ -70,7 +70,7 @@ void main() {
       Stream<String> stream2 =
           genStream('S2:', Duration(milliseconds: 20)).asBroadcastStream();
 
-      var controller = StreamController();
+      var controller = StreamController<String>();
       var stream1 = controller.stream;
 
       var merged = addBroadcast(stream1, stream2);

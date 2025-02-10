@@ -14,23 +14,6 @@ const testId2 = "2290de4f-0488-4e50-abed-f8e8eb1d0b43";
 const partialWarning =
     'Potentially previously uploaded CRUD entries are still present';
 
-class TestConnector extends PowerSyncBackendConnector {
-  final Function _fetchCredentials;
-  final Future<void> Function(PowerSyncDatabase database) _uploadData;
-
-  TestConnector(this._fetchCredentials, this._uploadData);
-
-  @override
-  Future<PowerSyncCredentials?> fetchCredentials() {
-    return _fetchCredentials();
-  }
-
-  @override
-  Future<void> uploadData(PowerSyncDatabase database) async {
-    return _uploadData(database);
-  }
-}
-
 void main() {
   group('CRUD Tests', () {
     late PowerSyncDatabase powersync;
@@ -70,7 +53,8 @@ void main() {
       // Use a short retry delay here.
       // A zero retry delay makes this test unstable, since it expects `2` error logs later.
       powersync.retryDelay = Duration(milliseconds: 100);
-      var connector = TestConnector(credentialsCallback, uploadData);
+      var connector =
+          TestConnector(credentialsCallback, uploadData: uploadData);
       powersync.connect(connector: connector);
 
       // Create something with CRUD in it.
@@ -78,7 +62,7 @@ void main() {
           'INSERT INTO assets(id, description) VALUES(?, ?)', [testId, 'test']);
 
       // Wait for the uploadData to be called.
-      await Future.delayed(Duration(milliseconds: 100));
+      await Future<void>.delayed(Duration(milliseconds: 100));
 
       // Create something else with CRUD in it.
       await powersync.execute(

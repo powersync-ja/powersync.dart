@@ -174,8 +174,8 @@ extension type SerializedSyncStatus._(JSObject _) implements JSObject {
         for (final entry in status.statusInPriority)
           [
             entry.priority.priorityNumber.toJS,
-            entry.lastSyncedAt.microsecondsSinceEpoch.toJS,
-            entry.hasSynced.toJS,
+            entry.lastSyncedAt?.microsecondsSinceEpoch.toJS,
+            entry.hasSynced?.toJS,
           ].toJS
       ].toJS,
     );
@@ -206,12 +206,14 @@ extension type SerializedSyncStatus._(JSObject _) implements JSObject {
       statusInPriority: statusInPriority?.toDart.map((e) {
             final [rawPriority, rawSynced, rawHasSynced, ...] =
                 (e as JSArray).toDart;
+            final syncedMillis = (rawSynced as JSNumber?)?.toDartInt;
 
             return (
               priority: BucketPriority((rawPriority as JSNumber).toDartInt),
-              lastSyncedAt: DateTime.fromMicrosecondsSinceEpoch(
-                  (rawSynced as JSNumber).toDartInt),
-              hasSynced: (rawHasSynced as JSBoolean).toDart,
+              lastSyncedAt: syncedMillis != null
+                  ? DateTime.fromMicrosecondsSinceEpoch(syncedMillis)
+                  : null,
+              hasSynced: (rawHasSynced as JSBoolean?)?.toDart,
             );
           }).toList() ??
           const [],
@@ -223,8 +225,8 @@ final class WorkerCommunicationChannel {
   final Map<int, Completer<JSAny?>> _pendingRequests = {};
   int _nextRequestId = 0;
   bool _hasError = false;
-  StreamSubscription? _incomingMessages;
-  StreamSubscription? _incomingErrors;
+  StreamSubscription<MessageEvent>? _incomingMessages;
+  StreamSubscription<Event>? _incomingErrors;
 
   final MessagePort port;
   final FutureOr<(JSAny?, JSArray?)> Function(SyncWorkerMessageType, JSAny)

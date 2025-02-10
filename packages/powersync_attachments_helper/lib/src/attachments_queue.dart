@@ -71,7 +71,7 @@ abstract class AbstractAttachmentQueue {
   /// 1. Creating attachments directory
   /// 2. Adding watches for uploads, downloads, and deletes
   /// 3. Adding trigger to run uploads, downloads, and deletes when device is online after being offline
-  init() async {
+  Future<void> init() async {
     // Ensure the directory where attachments are downloaded, exists
     await localStorage.makeDir(await getStorageDirectory());
 
@@ -93,7 +93,7 @@ abstract class AbstractAttachmentQueue {
     });
   }
 
-  _trigger() async {
+  Future<void> _trigger() async {
     await syncingService.runSync();
   }
 

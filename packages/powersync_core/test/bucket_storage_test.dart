@@ -495,7 +495,7 @@ void main() {
       await expectLater(() async {
         await powersync.execute('SELECT * FROM assets');
       },
-          throwsA((e) =>
+          throwsA((dynamic e) =>
               e is SqliteException && e.message.contains('no such table')));
 
       await powersync.close();
@@ -530,7 +530,7 @@ void main() {
 
       await expectLater(
           () async => await powersync.execute('SELECT * FROM assets'),
-          throwsA((e) =>
+          throwsA((dynamic e) =>
               e is SqliteException && e.message.contains('no such table')));
 
       await powersync.close();

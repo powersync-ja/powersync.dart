@@ -113,7 +113,7 @@ abstract class AbstractTestUtils {
 }
 
 class TestConnector extends PowerSyncBackendConnector {
-  final Function _fetchCredentials;
+  final Future<PowerSyncCredentials> Function() _fetchCredentials;
   final Future<void> Function(PowerSyncDatabase)? _uploadData;
 
   TestConnector(this._fetchCredentials,

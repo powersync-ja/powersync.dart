@@ -21,7 +21,7 @@ class BucketStorage {
     _init();
   }
 
-  _init() {}
+  void _init() {}
 
   // Use only for read statements
   Future<ResultSet> select(String query,
@@ -37,9 +37,7 @@ class BucketStorage {
     return [
       for (var row in rows)
         BucketState(
-          bucket: row['bucket'],
-          opId: row['op_id'],
-        )
+            bucket: row['bucket'] as String, opId: row['op_id'] as String)
     ];
   }
 
@@ -180,14 +178,16 @@ class BucketStorage {
         if (priority != null) 'priority': priority,
       })
     ]);
-    final result = jsonDecode(rs[0]['result']);
-    if (result['valid']) {
+    final result =
+        jsonDecode(rs[0]['result'] as String) as Map<String, dynamic>;
+    if (result['valid'] as bool) {
       return SyncLocalDatabaseResult(ready: true);
     } else {
       return SyncLocalDatabaseResult(
           checkpointValid: false,
           ready: false,
-          checkpointFailures: result['failed_buckets'].cast<String>());
+          checkpointFailures:
+              (result['failed_buckets'] as List).cast<String>());
     }
   }
 
@@ -255,7 +255,7 @@ class BucketStorage {
       // Nothing to update
       return false;
     }
-    int seqBefore = rs.first['seq'];
+    int seqBefore = rs.first['seq'] as int;
     var opId = await checkpointCallback();
 
     return await writeTransaction((tx) async {
@@ -267,7 +267,7 @@ class BucketStorage {
           .execute('SELECT seq FROM sqlite_sequence WHERE name = \'ps_crud\'');
       assert(rs.isNotEmpty);
 
-      int seqAfter = rs.first['seq'];
+      int seqAfter = rs.first['seq'] as int;
       if (seqAfter != seqBefore) {
         // New crud data may have been uploaded since we got the checkpoint. Abort.
         return false;
@@ -364,12 +364,6 @@ class BucketState {
   }
 }
 
-final class SyncDataBatch {
-  final List<SyncBucketData> buckets;
-
-  SyncDataBatch(this.buckets);
-}
-
 class SyncLocalDatabaseResult {
   final bool ready;
   final bool checkpointValid;
@@ -387,8 +381,8 @@ class SyncLocalDatabaseResult {
 
   @override
   int get hashCode {
-    return Object.hash(
-        ready, checkpointValid, const ListEquality().hash(checkpointFailures));
+    return Object.hash(ready, checkpointValid,
+        const ListEquality<String?>().hash(checkpointFailures));
   }
 
   @override
@@ -396,7 +390,7 @@ class SyncLocalDatabaseResult {
     return other is SyncLocalDatabaseResult &&
         other.ready == ready &&
         other.checkpointValid == checkpointValid &&
-        const ListEquality()
+        const ListEquality<String?>()
             .equals(other.checkpointFailures, checkpointFailures);
   }
 }
@@ -406,4 +400,43 @@ class ChecksumCache {
   Map<String, BucketChecksum> checksums;
 
   ChecksumCache(this.lastOpId, this.checksums);
+}
+
+enum OpType {
+  clear(1),
+  move(2),
+  put(3),
+  remove(4);
+
+  final int value;
+
+  const OpType(this.value);
+
+  static OpType? fromJson(String json) {
+    switch (json) {
+      case 'CLEAR':
+        return clear;
+      case 'MOVE':
+        return move;
+      case 'PUT':
+        return put;
+      case 'REMOVE':
+        return remove;
+      default:
+        return null;
+    }
+  }
+
+  String toJson() {
+    switch (this) {
+      case clear:
+        return 'CLEAR';
+      case move:
+        return 'MOVE';
+      case put:
+        return 'PUT';
+      case remove:
+        return 'REMOVE';
+    }
+  }
 }

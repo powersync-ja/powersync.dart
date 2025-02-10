@@ -88,7 +88,7 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
     try {
       final row =
           await database.get('SELECT powersync_rs_version() as version');
-      version = row['version'];
+      version = row['version'] as String;
     } catch (e) {
       throw SqliteException(
           1, 'The powersync extension is not loaded correctly. Details: $e');
@@ -348,7 +348,7 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
   /// A connection factory that can be passed to different isolates.
   ///
   /// Use this to access the database in background isolates.
-  isolateConnectionFactory() {
+  IsolateConnectionFactory<CommonDatabase> isolateConnectionFactory() {
     return database.isolateConnectionFactory();
   }
 
@@ -366,10 +366,10 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
       final row = await getOptional(
           'SELECT SUM(cast(data as blob) + 20) as size, count(*) as count FROM ps_crud');
       return UploadQueueStats(
-          count: row?['count'] ?? 0, size: row?['size'] ?? 0);
+          count: row?['count'] as int? ?? 0, size: row?['size'] as int? ?? 0);
     } else {
       final row = await getOptional('SELECT count(*) as count FROM ps_crud');
-      return UploadQueueStats(count: row?['count'] ?? 0);
+      return UploadQueueStats(count: row?['count'] as int? ?? 0);
     }
   }
 
@@ -388,7 +388,7 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
   /// This method does include transaction ids in the result, but does not group
   /// data by transaction. One batch may contain data from multiple transactions,
   /// and a single transaction may be split over multiple batches.
-  Future<CrudBatch?> getCrudBatch({limit = 100}) async {
+  Future<CrudBatch?> getCrudBatch({int limit = 100}) async {
     final rows = await getAll(
         'SELECT id, tx_id, data FROM ps_crud ORDER BY id ASC LIMIT ?',
         [limit + 1]);
@@ -441,7 +441,7 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
       if (first == null) {
         return null;
       }
-      final int? txId = first['tx_id'];
+      final txId = first['tx_id'] as int?;
       List<CrudEntry> all;
       if (txId == null) {
         all = [CrudEntry.fromRow(first)];

@@ -143,10 +143,10 @@ class PowerSyncDatabaseImpl
     await isInitialized;
     final dbRef = database.isolateConnectionFactory();
     ReceivePort rPort = ReceivePort();
-    StreamSubscription? crudUpdateSubscription;
+    StreamSubscription<UpdateNotification>? crudUpdateSubscription;
     rPort.listen((data) async {
       if (data is List) {
-        String action = data[0];
+        String action = data[0] as String;
         if (action == "getCredentials") {
           await (data[1] as PortCompleter).handle(() async {
             final token = await connector.getCredentialsCached();
@@ -159,7 +159,7 @@ class PowerSyncDatabaseImpl
             await connector.prefetchCredentials();
           });
         } else if (action == 'init') {
-          SendPort port = data[1];
+          SendPort port = data[1] as SendPort;
           var crudStream =
               database.onChange(['ps_crud'], throttle: crudThrottleTime);
           crudUpdateSubscription = crudStream.listen((event) {
@@ -173,7 +173,7 @@ class PowerSyncDatabaseImpl
             await connector.uploadData(this);
           });
         } else if (action == 'status') {
-          final SyncStatus status = data[1];
+          final SyncStatus status = data[1] as SyncStatus;
           setStatus(status);
         } else if (action == 'close') {
           // Clear status apart from lastSyncedAt
@@ -181,7 +181,7 @@ class PowerSyncDatabaseImpl
           rPort.close();
           crudUpdateSubscription?.cancel();
         } else if (action == 'log') {
-          LogRecord record = data[1];
+          LogRecord record = data[1] as LogRecord;
           logger.log(
               record.level, record.message, record.error, record.stackTrace);
         }
@@ -290,7 +290,7 @@ Future<void> _powerSyncDatabaseIsolate(
 
   rPort.listen((message) async {
     if (message is List) {
-      String action = message[0];
+      String action = message[0] as String;
       if (action == 'update') {
         crudUpdateController.add('update');
       } else if (action == 'close') {

@@ -69,10 +69,10 @@ packages:
     dependency: transitive
     description:
       name: args
-      sha256: "7cf60b9f0cc88203c5a190b4cd62a99feea42759a7fa695010eb5de1c0b2252a"
+      sha256: bf9f5caeea8d8fe6721a9c358dd8a5c1947b27f1cfaa18b39c301273594919e6
       url: "https://pub.dev"
     source: hosted
-    version: "2.5.0"
+    version: "2.6.0"
   async:
     dependency: transitive
     description:
@@ -686,28 +686,28 @@ packages:
       path: "../../packages/powersync"
       relative: true
     source: path
-    version: "1.10.0"
+    version: "1.11.2"
   powersync_attachments_helper:
     dependency: "direct main"
     description:
       path: "../../packages/powersync_attachments_helper"
       relative: true
     source: path
-    version: "0.6.16"
+    version: "0.6.18"
   powersync_core:
     dependency: "direct overridden"
     description:
       path: "../../packages/powersync_core"
       relative: true
     source: path
-    version: "1.0.0"
+    version: "1.1.2"
   powersync_flutter_libs:
     dependency: "direct overridden"
     description:
       path: "../../packages/powersync_flutter_libs"
       relative: true
     source: path
-    version: "0.4.3"
+    version: "0.4.4"
   pub_semver:
     dependency: transitive
     description:
@@ -861,10 +861,10 @@ packages:
     dependency: transitive
     description:
       name: sqlite3
-      sha256: bb174b3ec2527f9c5f680f73a89af8149dd99782fbb56ea88ad0807c5638f2ed
+      sha256: "35d3726fe18ab1463403a5cc8d97dbc81f2a0b08082e8173851363fcc97b6627"
       url: "https://pub.dev"
     source: hosted
-    version: "2.4.7"
+    version: "2.7.2"
   sqlite3_flutter_libs:
     dependency: transitive
     description:
@@ -877,18 +877,18 @@ packages:
     dependency: transitive
     description:
       name: sqlite3_web
-      sha256: f22d1dda7a40be0867984f55cdf5c2d599e5f05d3be4a642d78f38b38983f554
+      sha256: "870f287c2375117af1f769893c5ea0941882ee820444af5c3dcceec3b217aab1"
       url: "https://pub.dev"
     source: hosted
-    version: "0.2.0"
+    version: "0.3.0"
   sqlite_async:
     dependency: "direct main"
     description:
       name: sqlite_async
-      sha256: d66fb6e6d07c1a834743326c033029f75becbb1fad6823d709f921872abc3d5b
+      sha256: a60e8d5c8df8e694933bd5a312c38393e79ad77d784bb91c6f38ba627bfb7aec
       url: "https://pub.dev"
     source: hosted
-    version: "0.11.0"
+    version: "0.11.4"
   sqlparser:
     dependency: transitive
     description:
@@ -1138,5 +1138,5 @@ packages:
     source: hosted
     version: "2.0.1"
 sdks:
-  dart: ">=3.4.0 <4.0.0"
+  dart: ">=3.5.0 <4.0.0"
   flutter: ">=3.22.0"

@@ -45,7 +45,7 @@ void main() {
         var connector = TestConnector(credentialsCallback);
         pdb.connect(connector: connector);
 
-        await Future.delayed(Duration(milliseconds: random.nextInt(100)));
+        await Future<void>.delayed(Duration(milliseconds: random.nextInt(100)));
         if (random.nextBool()) {
           server.close();
         }
@@ -55,7 +55,8 @@ void main() {
         // Give some time for connections to close
         final watch = Stopwatch()..start();
         while (server.connectionCount != 0 && watch.elapsedMilliseconds < 100) {
-          await Future.delayed(Duration(milliseconds: random.nextInt(10)));
+          await Future<void>.delayed(
+              Duration(milliseconds: random.nextInt(10)));
         }
 
         expect(server.connectionCount, equals(0));
@@ -98,7 +99,7 @@ void main() {
         // var stream = impl.streamingSyncRequest(StreamingSyncRequest([]));
         // 2ms: HttpException: HttpServer is not bound to a socket
         // 20ms: Connection closed while receiving data
-        await Future.delayed(Duration(milliseconds: 20));
+        await Future<void>.delayed(Duration(milliseconds: 20));
         server.close();
       }
       await pdb.close();
@@ -124,16 +125,16 @@ void main() {
 
       // Wait for at least one connection
       while (server.connectionCount < 1 && watch.elapsedMilliseconds < 500) {
-        await Future.delayed(Duration(milliseconds: random.nextInt(10)));
+        await Future<void>.delayed(Duration(milliseconds: random.nextInt(10)));
       }
       // Give some time for a second connection if any
-      await Future.delayed(Duration(milliseconds: random.nextInt(50)));
+      await Future<void>.delayed(Duration(milliseconds: random.nextInt(50)));
 
       await pdb.close();
 
       // Give some time for connections to close
       while (server.connectionCount != 0 && watch.elapsedMilliseconds < 1000) {
-        await Future.delayed(Duration(milliseconds: random.nextInt(10)));
+        await Future<void>.delayed(Duration(milliseconds: random.nextInt(10)));
       }
 
       expect(server.connectionCount, equals(0));

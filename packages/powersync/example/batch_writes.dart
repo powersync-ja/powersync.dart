@@ -9,12 +9,12 @@ const schema = Schema([
 
 final parameterSets = List.generate(1000, (i) => [uuid.v4(), 'Row $i']);
 
-openDatabase() async {
+Future<void> openDatabase() async {
   db = PowerSyncDatabase(schema: schema, path: 'test.db');
   await db.initialize();
 }
 
-singleWrites() async {
+Future<void> singleWrites() async {
   // Execute each write as a separate statement.
   // Each write flushes the changes to persistent storage, so this is slow.
   for (var params in parameterSets) {
@@ -22,7 +22,7 @@ singleWrites() async {
   }
 }
 
-transactionalWrites() async {
+Future<void> transactionalWrites() async {
   // Combine all the writes into a single transaction, only flushing to
   // persistent storage once.
   await db.writeTransaction((tx) async {
@@ -32,7 +32,7 @@ transactionalWrites() async {
   });
 }
 
-batchWrites() async {
+Future<void> batchWrites() async {
   // Combine all the writes into a single batch, automatically wrapped in a transaction.
   // This avoids the overhead of asynchronously waiting for each call to complete,
   // and also only parses the SQL statement once.
@@ -40,7 +40,7 @@ batchWrites() async {
       'INSERT INTO data(id, contents) VALUES(?, ?)', parameterSets);
 }
 
-inIsolateWrites() async {
+Future<void> inIsolateWrites() async {
   // This is the same as executeBatch, but using the low-level sqlite APIs.
   // The call is executed in a transaction in the database isolate, with
   // synchronous access to the database.
@@ -60,7 +60,7 @@ inIsolateWrites() async {
   });
 }
 
-main() async {
+Future<void> main() async {
   await openDatabase();
   for (var call in [
     singleWrites,

@@ -57,7 +57,7 @@ void main() {
           await powersync.execute(
               'INSERT INTO assets(id, make, customer_id) VALUES (uuid(), ?, ?)',
               ['test', id]);
-          await Future.delayed(
+          await Future<void>.delayed(
               Duration(milliseconds: Random().nextInt(baseTime * 2)));
         }
       }
@@ -74,7 +74,7 @@ void main() {
 
         var lastCount = 0;
         for (var r in results) {
-          final count = r.first['count'];
+          final count = r.first['count'] as int;
           // This is not strictly incrementing, since we can't guarantee the
           // exact order between reads and writes.
           // We can guarantee that there will always be a read after the last write,
@@ -84,7 +84,8 @@ void main() {
         }
 
         // The number of read queries must not be greater than the number of writes overall.
-        expect(numberOfQueries, lessThanOrEqualTo(results.last.first['count']));
+        expect(numberOfQueries,
+            lessThanOrEqualTo(results.last.first['count'] as int));
 
         DateTime? lastTime;
         for (var r in times) {
@@ -112,7 +113,7 @@ void main() {
         while (!done) {
           await powersync.execute(
               'INSERT INTO assets(id, make) VALUES (uuid(), ?)', ['test']);
-          await Future.delayed(
+          await Future<void>.delayed(
               Duration(milliseconds: Random().nextInt(baseTime)));
         }
       }

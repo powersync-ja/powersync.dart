@@ -13,9 +13,9 @@ import 'utils/in_memory_http.dart';
 import 'utils/test_utils_impl.dart';
 
 void main() {
-  final testUtils = TestUtils();
-
   group('in-memory sync tests', () {
+    late final testUtils = TestUtils();
+
     late TestPowerSyncFactory factory;
     late CommonDatabase raw;
     late PowerSyncDatabase database;
@@ -98,7 +98,7 @@ void main() {
       expect(
           independentDb.currentStatus
               .statusForPriority(BucketPriority(3))
-              ?.hasSynced,
+              .hasSynced,
           isTrue);
     });
 
