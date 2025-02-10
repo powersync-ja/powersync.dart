@@ -1,4 +1,4 @@
-From 04fd5a3a01be7b42ec97c2d9865e4c7501b5b6a8 Mon Sep 17 00:00:00 2001
+From 80ec8f3a54d938c6bf39b471aa26c4c77f9984a2 Mon Sep 17 00:00:00 2001
 From: Simon Binder <simon@journeyapps.com>
 Date: Mon, 27 Jan 2025 15:12:53 +0100
 Subject: [PATCH] Link PowerSync core extension
@@ -10,7 +10,7 @@ Subject: [PATCH] Link PowerSync core extension
  3 files changed, 17 insertions(+), 3 deletions(-)
 
 diff --git a/sqlite3/assets/wasm/CMakeLists.txt b/sqlite3/assets/wasm/CMakeLists.txt
-index e4283b3..5c52593 100644
+index 6597d86..81a5a41 100644
 --- a/sqlite3/assets/wasm/CMakeLists.txt
 +++ b/sqlite3/assets/wasm/CMakeLists.txt
 @@ -6,6 +6,7 @@ project(${PROJECT_NAME} LANGUAGES C)
@@ -43,11 +43,11 @@ index e4283b3..5c52593 100644
    )
  
 diff --git a/sqlite3/assets/wasm/os_web.c b/sqlite3/assets/wasm/os_web.c
-index 04f2e97..666902d 100644
+index 4a1df1d..be9c3c9 100644
 --- a/sqlite3/assets/wasm/os_web.c
 +++ b/sqlite3/assets/wasm/os_web.c
-@@ -4,6 +4,15 @@
- 
+@@ -6,7 +6,16 @@
+ #include "bridge.h"
  #include "sqlite3.h"
  
 -int sqlite3_os_init(void) { return SQLITE_OK; }
@@ -63,11 +63,12 @@ index 04f2e97..666902d 100644
 +}
  
  int sqlite3_os_end(void) { return SQLITE_OK; }
+ 
 diff --git a/sqlite3/assets/wasm/sqlite_cfg.h b/sqlite3/assets/wasm/sqlite_cfg.h
-index 6f3e3c2..45847f8 100644
+index 74e8dd7..682acbf 100644
 --- a/sqlite3/assets/wasm/sqlite_cfg.h
 +++ b/sqlite3/assets/wasm/sqlite_cfg.h
-@@ -43,7 +43,7 @@
+@@ -42,7 +42,7 @@
  // Disable things we don't need
  #define SQLITE_OMIT_DEPRECATED
  #define SQLITE_OMIT_PROGRESS_CALLBACK
