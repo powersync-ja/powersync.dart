@@ -1,7 +1,7 @@
 #!/bin/sh
 set -e
 
-SQLITE_VERSION="2.7.2"
+SQLITE_VERSION="2.7.3"
 POWERSYNC_CORE_VERSION="0.3.9"
 SQLITE_PATH="sqlite3.dart"
 
