@@ -187,7 +187,7 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
       if (priority == null) {
         return status.hasSynced == true;
       } else {
-        return status.statusForPriority(priority)?.hasSynced == true;
+        return status.statusForPriority(priority).hasSynced == true;
       }
     }
 

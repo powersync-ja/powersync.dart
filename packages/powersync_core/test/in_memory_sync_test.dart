@@ -134,7 +134,7 @@ void main() {
           await expectLater(
             status,
             emits(isSyncStatus(downloading: true, hasSynced: false).having(
-              (e) => e.statusForPriority(BucketPriority(0))?.hasSynced,
+              (e) => e.statusForPriority(BucketPriority(0)).hasSynced,
               'status for $prio',
               isTrue,
             )),
@@ -180,12 +180,12 @@ void main() {
         expect(
             independentDb.currentStatus
                 .statusForPriority(BucketPriority(0))
-                ?.hasSynced,
+                .hasSynced,
             isTrue);
         expect(
             independentDb.currentStatus
                 .statusForPriority(BucketPriority(3))
-                ?.hasSynced,
+                .hasSynced,
             isFalse);
       });
     });
