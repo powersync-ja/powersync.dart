@@ -11,7 +11,7 @@ jobs:
     uses: ./.github/workflows/prepare_wasm.yml
 
   build:
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
     permissions:
       contents: write
 

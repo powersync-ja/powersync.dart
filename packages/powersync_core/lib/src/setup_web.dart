@@ -214,6 +214,13 @@ Future<void> downloadFile(
   }
 }
 
+/// Copies WebAssembly modules from `packages/sqlite3_wasm_build/dist` into
+/// `web/`.
+///
+/// When we're running this setup script as part of our CI, a previous action
+/// (`.github/actions/prepare/`) will have put compiled assets into that folder.
+/// Copying from there ensures we run web tests against our current SQLite web
+/// build and avoids downloading from GitHub releases for every package we test.
 Future<void> _copyPrecompiled(
     Directory project, String wasmFile, String outputDir) async {
   // Keep going up until we see the melos.yaml file indicating the workspace
