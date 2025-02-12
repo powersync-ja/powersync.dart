@@ -1,0 +1,61 @@
+name: Check packages and demos
+
+concurrency:
+  group: packages-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+
+on:
+  push:
+    branches:
+      - "**"
+
+jobs:
+  setup:
+    uses: ./.github/workflows/prepare_wasm.yml
+
+  build:
+    runs-on: ubuntu-latest
+    needs: [setup]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/prepare
+      - name: Check formatting
+        run: melos format:check:packages
+      - name: Lint
+        run: melos analyze:packages
+      - name: Publish dry-run
+        run: melos publish --dry-run --yes
+
+  pana:
+    runs-on: ubuntu-latest
+    needs: [setup]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/prepare
+      - name: Check pana score
+        run: |
+          flutter pub global activate pana
+          melos analyze:packages:pana --no-select
+
+  test:
+    runs-on: ubuntu-latest
+    needs: [setup]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/prepare
+      - name: Run flutter tests
+        run: melos test
+      - name: Run dart tests
+        run: melos test:web
+
+  check_demos:
+    runs-on: ubuntu-latest
+    needs: [setup]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/prepare
+      - name: Check formatting
+        run: melos format:check:demos
+      - name: Lint
+        run: |
+          ./.github/workflows/scripts/copy-config.sh
+          melos analyze:demos
