@@ -1,0 +1,53 @@
+name: Build SQLite3 WASM
+
+on:
+  workflow_call:
+
+jobs:
+  compile_sqlite3_wasm:
+    name: Compile sqlite3 wasm
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
+        id: cache_build
+        with:
+          path: packages/sqlite3_wasm_build/dist/
+          key: wasm-${{ runner.os }}-${{ hashFiles('packages/sqlite3_wasm_build/build.sh') }}
+
+      - name: Setup Homebrew
+        if: steps.cache_build.outputs.cache-hit != 'true'
+        id: set-up-homebrew
+        uses: Homebrew/actions/setup-homebrew@master
+      - name: Install Dart SDK
+        if: steps.cache_build.outputs.cache-hit != 'true'
+        uses: dart-lang/setup-dart@v1
+      - name: Setup macOS build dependencies
+        if: steps.cache_build.outputs.cache-hit != 'true'
+        run: brew install cmake llvm lld binaryen wasi-libc wasi-runtimes
+      - name: Compile sqlite3.wasm on macOS
+        if: steps.cache_build.outputs.cache-hit != 'true'
+        working-directory: packages/sqlite3_wasm_build
+        run: ./build.sh
+
+      - name: Upload built sqlite3 binaries
+        uses: actions/upload-artifact@v4
+        with:
+          name: sqlite3-wasm
+          path: packages/sqlite3_wasm_build/dist/
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+      - uses: pnpm/action-setup@v2
+        name: Install pnpm
+        with:
+          run_install: false
+          version: 10
+      - name: Dry-run npm publish
+        working-directory: packages/sqlite3_wasm_build
+        run: |
+          pnpm i
+          pnpm publish --no-git-checks --dry-run

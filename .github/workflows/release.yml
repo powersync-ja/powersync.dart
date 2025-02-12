@@ -7,6 +7,9 @@ on:
       - 'powersync-v[0-9]+.[0-9]+.[0-9]+'
 
 jobs:
+  setup:
+    uses: ./.github/workflows/prepare_wasm.yml
+
   build:
     runs-on: ubuntu-latest
     permissions:
@@ -15,18 +18,7 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
-
-      - name: Install Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.x'
-          channel: 'stable'
-
-      - name: Install Melos
-        run: flutter pub global activate melos
-
-      - name: Install Dependencies and Compile Assets
-        run: melos prepare
+      - uses: ./.github/actions/prepare
 
       - name: Create Draft Release
         env:
@@ -39,4 +31,21 @@ jobs:
           body="Release $tag
           $changes"
           gh release create "$tag" --title "$tag" --notes "$body"
-          gh release upload "${{ github.ref_name }}" packages/powersync/assets/powersync_db.worker.js packages/powersync/assets/powersync_sync.worker.js
+          gh release upload "${{ github.ref_name }}" packages/powersync/assets/powersync_db.worker.js packages/powersync/assets/powersync_sync.worker.js packages/sqlite3_wasm_build/dist/*.wasm
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+      - uses: pnpm/action-setup@v2
+        name: Install pnpm
+        with:
+          run_install: false
+          version: 10
+      - name: Publish npm package with WASM files
+        working-directory: packages/sqlite3_wasm_build
+        run: |
+          pnpm i
+          npm version --allow-same-version --no-git-tag-version $(echo $GITHUB_REF_NAME | sed -E 's/powersync-v//')
+          pnpm publish --no-git-checks --access public
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
