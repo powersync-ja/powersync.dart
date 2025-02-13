@@ -1,16 +1,23 @@
 // This file performs setup of the PowerSync database
+import 'dart:async';
+
+import 'package:drift/drift.dart';
+import 'package:drift_sqlite_async/drift_sqlite_async.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:logging/logging.dart';
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:powersync/powersync.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:supabase_todolist_drift/database.dart';
-import 'package:supabase_todolist_drift/migrations/fts_setup.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:supabase_todolist_drift/utils/stateful_provider.dart';
 
 import 'app_config.dart';
 import 'models/schema.dart';
-import 'supabase.dart';
+
+part 'powersync.g.dart';
 
 final log = Logger('powersync-supabase');
 
@@ -132,50 +139,22 @@ class SupabaseConnector extends PowerSyncBackendConnector {
   }
 }
 
-/// Global reference to the database
-late final PowerSyncDatabase db;
-late final AppDatabase appDb;
-
-bool isLoggedIn() {
-  return Supabase.instance.client.auth.currentSession?.accessToken != null;
-}
-
-/// id of the user currently logged in
-String? getUserId() {
-  return Supabase.instance.client.auth.currentSession?.user.id;
-}
-
-Future<String> getDatabasePath() async {
-  const dbFilename = 'powersync-demo.db';
-  // getApplicationSupportDirectory is not supported on Web
-  if (kIsWeb) {
-    return dbFilename;
-  }
-  final dir = await getApplicationSupportDirectory();
-  return join(dir.path, dbFilename);
-}
-
-Future<void> openDatabase() async {
-  // Open the local database
-  db = PowerSyncDatabase(
-      schema: schema, path: await getDatabasePath(), logger: attachedLogger);
+@Riverpod(keepAlive: true)
+Future<PowerSyncDatabase> initializePowerSync(Ref ref) async {
+  final db = PowerSyncDatabase(
+      schema: schema, path: await _getDatabasePath(), logger: attachedLogger);
   await db.initialize();
-  // Initialize the Drift database
-  appDb = AppDatabase(db);
-
-  await loadSupabase();
 
   SupabaseConnector? currentConnector;
 
-  if (isLoggedIn()) {
-    // If the user is already logged in, connect immediately.
-    // Otherwise, connect once logged in.
+  if (ref.read(session) != null) {
     currentConnector = SupabaseConnector();
     db.connect(connector: currentConnector);
   }
 
-  Supabase.instance.client.auth.onAuthStateChange.listen((data) async {
-    final AuthChangeEvent event = data.event;
+  final instance = Supabase.instance.client.auth;
+  final sub = instance.onAuthStateChange.listen((data) async {
+    final event = data.event;
     if (event == AuthChangeEvent.signedIn) {
       // Connect to PowerSync when the user is signed in
       currentConnector = SupabaseConnector();
@@ -189,14 +168,66 @@ Future<void> openDatabase() async {
       currentConnector?.prefetchCredentials();
     }
   });
+  ref.onDispose(sub.cancel);
 
-  // Demo using SQLite Full-Text Search with PowerSync.
-  // See https://docs.powersync.com/usage-examples/full-text-search for more details
-  await configureFts(db);
+  return db;
+}
+
+final session = statefulProvider<Session?>((ref, change) {
+  final instance = Supabase.instance.client.auth;
+
+  final sub = instance.onAuthStateChange.listen((data) {
+    change(instance.currentSession);
+  });
+  ref.onDispose(sub.cancel);
+
+  return instance.currentSession;
+});
+
+final syncStatus = statefulProvider<SyncStatus>((ref, change) {
+  final status = Stream.fromFuture(ref.read(initializePowerSyncProvider.future))
+      .asyncExpand((db) => db.statusStream);
+  final sub = status.listen(change);
+  ref.onDispose(sub.cancel);
+
+  return const SyncStatus();
+});
+
+final driftDatabase = Provider<AppDatabase>((ref) {
+  final powerSync = ref.read(initializePowerSyncProvider.future);
+  return AppDatabase(DatabaseConnection.delayed(Future(() async {
+    return SqliteAsyncDriftConnection(await powerSync);
+  })));
+});
+
+@riverpod
+bool isLoggedIn(Ref ref) {
+  return ref.watch(session) != null;
+}
+
+@riverpod
+String? userId(Ref ref) {
+  return ref.watch(session)?.user.id;
+}
+
+@riverpod
+bool didCompleteSync(Ref ref) {
+  final status = ref.watch(syncStatus);
+  return status.hasSynced ?? false;
+}
+
+Future<String> _getDatabasePath() async {
+  const dbFilename = 'powersync-demo.db';
+  // getApplicationSupportDirectory is not supported on Web
+  if (kIsWeb) {
+    return dbFilename;
+  }
+  final dir = await getApplicationSupportDirectory();
+  return join(dir.path, dbFilename);
 }
 
 /// Explicit sign out - clear database and log out.
 Future<void> logout() async {
   await Supabase.instance.client.auth.signOut();
-  await db.disconnectAndClear();
+//  await db.disconnectAndClear();
 }

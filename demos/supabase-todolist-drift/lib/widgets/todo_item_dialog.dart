@@ -1,19 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_todolist_drift/database.dart';
 import 'package:supabase_todolist_drift/powersync.dart';
 
-class TodoItemDialog extends StatefulWidget {
+class TodoItemDialog extends ConsumerStatefulWidget {
   final ListItem list;
 
   const TodoItemDialog({super.key, required this.list});
 
   @override
-  State<StatefulWidget> createState() {
+  ConsumerState<TodoItemDialog> createState() {
     return _TodoItemDialogState();
   }
 }
 
-class _TodoItemDialogState extends State<TodoItemDialog> {
+class _TodoItemDialogState extends ConsumerState<TodoItemDialog> {
   final TextEditingController _textFieldController = TextEditingController();
 
   _TodoItemDialogState();
@@ -31,8 +32,10 @@ class _TodoItemDialogState extends State<TodoItemDialog> {
 
   Future<void> add() async {
     Navigator.of(context).pop();
+    final db = ref.read(driftDatabase);
 
-    await appDb.addTodo(widget.list, _textFieldController.text);
+    await db.addTodo(
+        widget.list, _textFieldController.text, ref.read(userIdProvider));
   }
 
   @override

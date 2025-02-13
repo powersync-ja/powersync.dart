@@ -1,24 +1,26 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_todolist_drift/database.dart';
 import 'package:supabase_todolist_drift/powersync.dart';
 
 import 'todo_list_page.dart';
 
-class ListItemWidget extends StatelessWidget {
+class ListItemWidget extends ConsumerWidget {
   ListItemWidget({
     required this.list,
   }) : super(key: ObjectKey(list));
 
   final ListItemWithStats list;
 
-  Future<void> delete() async {
-    // Server will take care of deleting related todos
-    await appDb.deleteList(list.self);
-  }
-
   @override
-  Widget build(BuildContext context) {
-    viewList() {
+  Widget build(BuildContext context, WidgetRef ref) {
+    Future<void> delete() async {
+      // Server will take care of deleting related todos
+      final db = ref.read(driftDatabase);
+      await db.deleteList(list.self);
+    }
+
+    void viewList() {
       var navigator = Navigator.of(context);
 
       navigator.push(MaterialPageRoute(

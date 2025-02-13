@@ -2,11 +2,12 @@ import 'dart:async';
 
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:powersync/powersync.dart' as powersync;
 import 'package:supabase_todolist_drift/attachments/queue.dart';
 import 'package:supabase_todolist_drift/powersync.dart';
 
-class TakePhotoWidget extends StatefulWidget {
+class TakePhotoWidget extends ConsumerStatefulWidget {
   final String todoId;
   final CameraDescription camera;
 
@@ -14,12 +15,12 @@ class TakePhotoWidget extends StatefulWidget {
       {super.key, required this.todoId, required this.camera});
 
   @override
-  State<StatefulWidget> createState() {
+  ConsumerState<TakePhotoWidget> createState() {
     return _TakePhotoWidgetState();
   }
 }
 
-class _TakePhotoWidgetState extends State<TakePhotoWidget> {
+class _TakePhotoWidgetState extends ConsumerState<TakePhotoWidget> {
   late CameraController _cameraController;
   late Future<void> _initializeControllerFuture;
 
@@ -56,7 +57,7 @@ class _TakePhotoWidgetState extends State<TakePhotoWidget> {
 
       int photoSize = await photo.length();
 
-      await appDb.addTodoPhoto(widget.todoId, photoId);
+      await ref.read(driftDatabase).addTodoPhoto(widget.todoId, photoId);
       await attachmentQueue.saveFile(photoId, photoSize);
     } catch (e) {
       log.info('Error taking photo: $e');

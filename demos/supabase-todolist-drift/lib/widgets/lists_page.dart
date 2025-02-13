@@ -1,12 +1,26 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_todolist_drift/database.dart';
 import 'package:supabase_todolist_drift/powersync.dart';
+import 'package:drift_riverpod/drift_riverpod.dart';
 
 import 'list_item.dart';
 import 'list_item_dialog.dart';
 import '../main.dart';
+
+part 'lists_page.g.dart';
+
+@QueryProvider<ListItemWithStats>()
+final listsWithStats = driftDatabase.stats('''
+  SELECT
+    self.**,
+    (SELECT count() FROM todos WHERE list_id = self.id AND completed = TRUE) as completed_count,
+    (SELECT count() FROM todos WHERE list_id = self.id AND completed = FALSE) as pending_count
+  FROM lists as self
+  ORDER BY created_at;
+''');
 
 void _showAddDialog(BuildContext context) async {
   return showDialog<void>(
@@ -42,61 +56,29 @@ class ListsPage extends StatelessWidget {
   }
 }
 
-class ListsWidget extends StatefulWidget {
+final class ListsWidget extends ConsumerWidget {
   const ListsWidget({super.key});
 
   @override
-  State<StatefulWidget> createState() {
-    return _ListsWidgetState();
-  }
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    final lists = ref.watch(listsWithStats);
+    final didSync = ref.watch(didCompleteSyncProvider);
 
-class _ListsWidgetState extends State<ListsWidget> {
-  List<ListItemWithStats> _data = [];
-  bool hasSynced = false;
-  StreamSubscription? _subscription;
-  StreamSubscription? _syncStatusSubscription;
+    if (!didSync) {
+      return const Text('Busy with sync...');
+    }
 
-  _ListsWidgetState();
-
-  @override
-  void initState() {
-    super.initState();
-    final stream = appDb.watchListsWithStats();
-    _subscription = stream.listen((data) {
-      if (!context.mounted) {
-        return;
-      }
-      setState(() {
-        _data = data;
-      });
-    });
-    _syncStatusSubscription = db.statusStream.listen((status) {
-      if (!context.mounted) {
-        return;
-      }
-      setState(() {
-        hasSynced = status.hasSynced ?? false;
-      });
-    });
-  }
-
-  @override
-  void dispose() {
-    super.dispose();
-    _subscription?.cancel();
-    _syncStatusSubscription?.cancel();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return !hasSynced
-        ? const Text("Busy with sync...")
-        : ListView(
-            padding: const EdgeInsets.symmetric(vertical: 8.0),
-            children: _data.map((list) {
-              return ListItemWidget(list: list);
-            }).toList(),
-          );
+    return lists.map(
+      data: (data) {
+        return ListView(
+          padding: const EdgeInsets.symmetric(vertical: 8.0),
+          children: data.value.map((list) {
+            return ListItemWidget(list: list);
+          }).toList(),
+        );
+      },
+      error: (_) => const Text('Error loading lists'),
+      loading: (_) => const CircularProgressIndicator(),
+    );
   }
 }

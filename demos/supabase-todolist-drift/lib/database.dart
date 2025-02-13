@@ -1,7 +1,5 @@
 import 'package:drift/drift.dart';
-import 'package:powersync/powersync.dart' show PowerSyncDatabase, uuid;
-import 'package:drift_sqlite_async/drift_sqlite_async.dart';
-import 'package:supabase_todolist_drift/powersync.dart';
+import 'package:powersync/powersync.dart' show uuid;
 
 part 'database.g.dart';
 
@@ -32,21 +30,21 @@ class ListItems extends Table {
   TextColumn get ownerId => text().nullable().named('owner_id')();
 }
 
-class ListItemWithStats {
-  late ListItem self;
-  int completedCount;
-  int pendingCount;
+final class ListItemWithStats {
+  final ListItem self;
+  final int completedCount;
+  final int pendingCount;
 
-  ListItemWithStats(
+  const ListItemWithStats(
     this.self,
     this.completedCount,
     this.pendingCount,
   );
 }
 
-@DriftDatabase(tables: [TodoItems, ListItems], include: {'queries.drift'})
+@DriftDatabase(tables: [TodoItems, ListItems])
 class AppDatabase extends _$AppDatabase {
-  AppDatabase(PowerSyncDatabase db) : super(SqliteAsyncDriftConnection(db));
+  AppDatabase(super.e);
 
   @override
   int get schemaVersion => 1;
@@ -57,13 +55,9 @@ class AppDatabase extends _$AppDatabase {
         .watch();
   }
 
-  Stream<List<ListItemWithStats>> watchListsWithStats() {
-    return listsWithStats().watch();
-  }
-
-  Future<ListItem> createList(String name) async {
+  Future<ListItem> createList(String name, String? userId) async {
     return into(listItems).insertReturning(
-        ListItemsCompanion.insert(name: name, ownerId: Value(getUserId())));
+        ListItemsCompanion.insert(name: name, ownerId: Value(userId)));
   }
 
   Future<void> deleteList(ListItem list) async {
@@ -81,21 +75,23 @@ class AppDatabase extends _$AppDatabase {
     await (delete(todoItems)..where((t) => t.id.equals(todo.id))).go();
   }
 
-  Future<TodoItem> addTodo(ListItem list, String description) async {
+  Future<TodoItem> addTodo(
+      ListItem list, String description, String? creator) async {
     return into(todoItems).insertReturning(TodoItemsCompanion.insert(
-        listId: list.id,
-        description: description,
-        completed: const Value(false),
-        createdBy: Value(getUserId())));
+      listId: list.id,
+      description: description,
+      completed: const Value(false),
+      createdBy: Value(creator),
+    ));
   }
 
-  Future<void> toggleTodo(TodoItem todo) async {
+  Future<void> toggleTodo(TodoItem todo, String? userId) async {
     if (todo.completed != true) {
       await (update(todoItems)..where((t) => t.id.equals(todo.id))).write(
           TodoItemsCompanion(
               completed: const Value(true),
               completedAt: Value(DateTime.now()),
-              completedBy: Value(getUserId())));
+              completedBy: Value(userId)));
     } else {
       await (update(todoItems)..where((t) => t.id.equals(todo.id))).write(
           const TodoItemsCompanion(
