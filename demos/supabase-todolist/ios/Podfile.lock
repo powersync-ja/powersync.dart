@@ -7,27 +7,28 @@ PODS:
   - path_provider_foundation (0.0.1):
     - Flutter
     - FlutterMacOS
-  - powersync-sqlite-core (0.3.8)
+  - powersync-sqlite-core (0.3.10)
   - powersync_flutter_libs (0.0.1):
     - Flutter
-    - powersync-sqlite-core (~> 0.3.8)
+    - powersync-sqlite-core (~> 0.3.10)
   - shared_preferences_foundation (0.0.1):
     - Flutter
     - FlutterMacOS
-  - "sqlite3 (3.46.1+1)":
-    - "sqlite3/common (= 3.46.1+1)"
-  - "sqlite3/common (3.46.1+1)"
-  - "sqlite3/dbstatvtab (3.46.1+1)":
+  - sqlite3 (3.49.0):
+    - sqlite3/common (= 3.49.0)
+  - sqlite3/common (3.49.0)
+  - sqlite3/dbstatvtab (3.49.0):
     - sqlite3/common
-  - "sqlite3/fts5 (3.46.1+1)":
+  - sqlite3/fts5 (3.49.0):
     - sqlite3/common
-  - "sqlite3/perf-threadsafe (3.46.1+1)":
+  - sqlite3/perf-threadsafe (3.49.0):
     - sqlite3/common
-  - "sqlite3/rtree (3.46.1+1)":
+  - sqlite3/rtree (3.49.0):
     - sqlite3/common
   - sqlite3_flutter_libs (0.0.1):
     - Flutter
-    - "sqlite3 (~> 3.46.0+1)"
+    - FlutterMacOS
+    - sqlite3 (~> 3.49.0)
     - sqlite3/dbstatvtab
     - sqlite3/fts5
     - sqlite3/perf-threadsafe
@@ -42,7 +43,7 @@ DEPENDENCIES:
   - path_provider_foundation (from `.symlinks/plugins/path_provider_foundation/darwin`)
   - powersync_flutter_libs (from `.symlinks/plugins/powersync_flutter_libs/ios`)
   - shared_preferences_foundation (from `.symlinks/plugins/shared_preferences_foundation/darwin`)
-  - sqlite3_flutter_libs (from `.symlinks/plugins/sqlite3_flutter_libs/ios`)
+  - sqlite3_flutter_libs (from `.symlinks/plugins/sqlite3_flutter_libs/darwin`)
   - url_launcher_ios (from `.symlinks/plugins/url_launcher_ios/ios`)
 
 SPEC REPOS:
@@ -64,21 +65,21 @@ EXTERNAL SOURCES:
   shared_preferences_foundation:
     :path: ".symlinks/plugins/shared_preferences_foundation/darwin"
   sqlite3_flutter_libs:
-    :path: ".symlinks/plugins/sqlite3_flutter_libs/ios"
+    :path: ".symlinks/plugins/sqlite3_flutter_libs/darwin"
   url_launcher_ios:
     :path: ".symlinks/plugins/url_launcher_ios/ios"
 
 SPEC CHECKSUMS:
-  app_links: e7a6750a915a9e161c58d91bc610e8cd1d4d0ad0
-  camera_avfoundation: dd002b0330f4981e1bbcb46ae9b62829237459a4
+  app_links: 3da4c36b46cac3bf24eb897f1a6ce80bda109874
+  camera_avfoundation: 04b44aeb14070126c6529e5ab82cc7c9fca107cf
   Flutter: e0871f40cf51350855a761d2e70bf5af5b9b5de7
-  path_provider_foundation: 2b6b4c569c0fb62ec74538f866245ac84301af46
-  powersync-sqlite-core: 3b1cc184e277776aaf22e221fd0336575c7173c4
-  powersync_flutter_libs: d3772510135d3eec09848015f8516f8b2689c794
-  shared_preferences_foundation: fcdcbc04712aee1108ac7fda236f363274528f78
-  sqlite3: 0bb0e6389d824e40296f531b858a2a0b71c0d2fb
-  sqlite3_flutter_libs: c00457ebd31e59fa6bb830380ddba24d44fbcd3b
-  url_launcher_ios: 5334b05cef931de560670eeae103fd3e431ac3fe
+  path_provider_foundation: 080d55be775b7414fd5a5ef3ac137b97b097e564
+  powersync-sqlite-core: c7045a44bb1040485ba46b42a3b0acaed424a5cd
+  powersync_flutter_libs: f33ed290b2813a13809ea4f0e6ae6621f3de8218
+  shared_preferences_foundation: 9e1978ff2562383bd5676f64ec4e9aa8fa06a6f7
+  sqlite3: 4922312598b67e1825c6a6c821296dcbf6783046
+  sqlite3_flutter_libs: 3c323550ef3b928bc0aa9513c841e45a7d242832
+  url_launcher_ios: 694010445543906933d732453a59da0a173ae33d
 
 PODFILE CHECKSUM: f7b3cb7384a2d5da4b22b090e1f632de7f377987
 
