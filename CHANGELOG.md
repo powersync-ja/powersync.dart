@@ -3,6 +3,43 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 2025-02-17
+
+### Changes
+
+---
+
+Packages with breaking changes:
+
+ - There are no breaking changes in this release.
+
+Packages with other changes:
+
+ - [`powersync_core` - `v1.1.3`](#powersync_core---v113)
+ - [`powersync_flutter_libs` - `v0.4.5`](#powersync_flutter_libs---v045)
+ - [`powersync_attachments_helper` - `v0.6.18+1`](#powersync_attachments_helper---v06181)
+ - [`powersync_sqlcipher` - `v0.1.4+1`](#powersync_sqlcipher---v0141)
+ - [`powersync` - `v1.11.3`](#powersync---v1113)
+
+Packages with dependency updates only:
+
+> Packages listed below depend on other packages in this workspace that have had changes. Their versions have been incremented to bump the minimum dependency versions of the packages they depend upon in this project.
+
+ - `powersync_attachments_helper` - `v0.6.18+1`
+ - `powersync_sqlcipher` - `v0.1.4+1`
+ - `powersync` - `v1.11.3`
+
+---
+
+#### `powersync_core` - `v1.1.3`
+
+ - Add explicit casts in sync service, avoiding possible issues with dart2js optimizations.
+
+#### `powersync_flutter_libs` - `v0.4.5`
+
+ - Update core extension to 0.3.10 in preparation for bucket priorities.
+
+
 ## 2025-01-28
 
 ### Changes

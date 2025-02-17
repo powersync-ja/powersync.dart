@@ -1,3 +1,7 @@
+## 0.1.4+1
+
+ - Update a dependency to the latest release.
+
 ## 0.1.4
 
  - Web: Support running in contexts where web workers are unavailable.
