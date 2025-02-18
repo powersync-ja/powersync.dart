@@ -1,3 +1,7 @@
+## 0.4.5
+
+ - Update core extension to 0.3.10 in preparation for bucket priorities.
+
 ## 0.4.4
 
  - powersync-sqlite-core 0.3.8 - increases column limit and fixes view migration issue

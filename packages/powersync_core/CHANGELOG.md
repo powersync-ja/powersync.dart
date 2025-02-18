@@ -1,3 +1,7 @@
+## 1.1.3
+
+ - Add explicit casts in sync service, avoiding possible issues with dart2js optimizations.
+
 ## 1.1.2
 
  - Web: Support running in contexts where web workers are unavailable.
