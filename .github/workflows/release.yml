@@ -40,6 +40,9 @@ jobs:
         with:
           run_install: false
           version: 10
+      - name: Add NPM auth
+        run: |
+          echo "//registry.npmjs.org/:_authToken=${{secrets.NPM_TOKEN}}" >> ~/.npmrc
       - name: Publish npm package with WASM files
         working-directory: packages/sqlite3_wasm_build
         run: |
