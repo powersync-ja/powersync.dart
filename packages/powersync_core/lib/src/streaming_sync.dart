@@ -331,8 +331,11 @@ class StreamingSyncImplementation implements StreamingSync {
           : (downloadError ?? lastStatus.downloadError),
       statusInPriority: statusInPriority ?? lastStatus.statusInPriority,
     );
-    lastStatus = newStatus;
-    _statusStreamController.add(newStatus);
+
+    if (!_statusStreamController.isClosed) {
+      lastStatus = newStatus;
+      _statusStreamController.add(newStatus);
+    }
   }
 
   Future<(List<BucketRequest>, Map<String, BucketDescription?>)>
