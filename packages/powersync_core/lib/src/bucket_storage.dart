@@ -173,10 +173,7 @@ class BucketStorage {
       {int? priority}) async {
     final rs =
         await select("SELECT powersync_validate_checkpoint(?) as result", [
-      jsonEncode({
-        ...checkpoint.toJson(priority: priority),
-        if (priority != null) 'priority': priority,
-      })
+      jsonEncode({...checkpoint.toJson(priority: priority)})
     ]);
     final result =
         jsonDecode(rs[0]['result'] as String) as Map<String, dynamic>;
