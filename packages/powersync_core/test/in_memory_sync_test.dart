@@ -168,15 +168,35 @@ void main() {
 
         final checksums = [
           for (var prio = 0; prio <= 3; prio++)
-            BucketChecksum(bucket: 'prio$prio', priority: prio, checksum: 0)
+            BucketChecksum(
+                bucket: 'prio$prio', priority: prio, checksum: 10 + prio)
         ];
         syncService.addLine({
           'checkpoint': Checkpoint(
-            lastOpId: '0',
+            lastOpId: '4',
             writeCheckpoint: null,
             checksums: checksums,
           )
         });
+        var operationId = 1;
+
+        void addRow(int priority) {
+          syncService.addLine({
+            'data': {
+              'bucket': 'prio$priority',
+              'data': [
+                {
+                  'checksum': priority + 10,
+                  'data': {'name': 'test', 'email': 'email'},
+                  'op': 'PUT',
+                  'op_id': '${operationId++}',
+                  'object_id': 'prio$priority',
+                  'object_type': 'customers'
+                }
+              ]
+            }
+          });
+        }
 
         // Receiving the checkpoint sets the state to downloading
         await expectLater(
@@ -184,9 +204,10 @@ void main() {
 
         // Emit partial sync complete for each priority but the last.
         for (var prio = 0; prio < 3; prio++) {
+          addRow(prio);
           syncService.addLine({
             'partial_checkpoint_complete': {
-              'last_op_id': '0',
+              'last_op_id': operationId.toString(),
               'priority': prio,
             }
           });
@@ -199,15 +220,22 @@ void main() {
               isTrue,
             )),
           );
+
+          await database.waitForFirstSync(priority: BucketPriority(prio));
+          expect(await database.getAll('SELECT * FROM customers'),
+              hasLength(prio + 1));
         }
 
         // Complete the sync
+        addRow(3);
         syncService.addLine({
-          'checkpoint_complete': {'last_op_id': '0'}
+          'checkpoint_complete': {'last_op_id': operationId.toString()}
         });
 
         await expectLater(
             status, emits(isSyncStatus(downloading: false, hasSynced: true)));
+        await database.waitForFirstSync();
+        expect(await database.getAll('SELECT * FROM customers'), hasLength(4));
       });
 
       test('remembers last partial sync state', () async {

@@ -111,13 +111,16 @@ class BucketStorage {
       }
       return r;
     }
-    final bucketNames = [for (final c in checkpoint.checksums) c.bucket];
+    final bucketNames = [
+      for (final c in checkpoint.checksums)
+        if (forPriority == null || c.priority <= forPriority) c.bucket
+    ];
 
     await writeTransaction((tx) async {
       await tx.execute(
           "UPDATE ps_buckets SET last_op = ? WHERE name IN (SELECT json_each.value FROM json_each(?))",
           [checkpoint.lastOpId, jsonEncode(bucketNames)]);
-      if (checkpoint.writeCheckpoint != null) {
+      if (forPriority == null && checkpoint.writeCheckpoint != null) {
         await tx.execute(
             "UPDATE ps_buckets SET last_op = ? WHERE name = '\$local'",
             [checkpoint.writeCheckpoint]);
