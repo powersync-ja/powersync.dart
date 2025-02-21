@@ -97,12 +97,15 @@ final class SyncStatus {
     return downloadError ?? uploadError;
   }
 
-  /// Returns [lastSyncedAt] and [hasSynced] information for a partial sync
-  /// operation, or `null` if the status for that priority is unknown.
+  /// Returns information for [lastSyncedAt] and [hasSynced] information at a
+  /// partial sync priority, or `null` if the status for that priority is
+  /// unknown.
   ///
   /// The information returned may be more generic than requested. For instance,
-  /// a completed sync operation (as expressed by [lastSyncedAt]) also
-  /// guarantees that every bucket priority was synchronized before that.
+  /// a fully-completed sync cycle (as expressed by [lastSyncedAt]) necessarily
+  /// includes all buckets across all priorities. So, if no further partial
+  /// checkpoints have been received since that complete sync,
+  /// [statusForPriority] may return information for that complete sync.
   /// Similarly, requesting the sync status for priority `1` may return
   /// information extracted from the lower priority `2` since each partial sync
   /// in priority `2` necessarily includes a consistent view over data in

@@ -159,13 +159,14 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
     }
   }
 
-  /// Returns a [Future] which will resolve once a synchronization operation has
-  /// completed.
+  /// Returns a [Future] which will resolve once at least one full sync cycle
+  /// has completed (meaninng that the first consistent checkpoint has been
+  /// reached across all buckets).
   ///
-  /// When [priority] is null (the default), this method waits for a full sync
-  /// operation to complete. When set to a [BucketPriority] however, it also
-  /// completes once a partial sync operation containing that priority has
-  /// completed.
+  /// When [priority] is null (the default), this method waits for the first
+  /// full sync checkpoint to complete. When set to a [BucketPriority] however,
+  /// it completes once all buckets within that priority (as well as those in
+  /// higher priorities) have been synchronized at least once.
   Future<void> waitForFirstSync({BucketPriority? priority}) async {
     bool matches(SyncStatus status) {
       if (priority == null) {
