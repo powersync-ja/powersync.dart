@@ -166,7 +166,10 @@ class BucketChecksum {
 
   BucketChecksum.fromJson(Map<String, dynamic> json)
       : bucket = json['bucket'] as String,
-        priority = json['priority'] as int,
+        // Use the default priority (3) as a fallback if the server doesn't send
+        // priorities. This value is arbitrary though, it won't get used since
+        // servers not sending priorities also won't send partial checkpoints.
+        priority = json['priority'] as int? ?? 3,
         checksum = json['checksum'] as int,
         count = json['count'] as int?,
         lastOpId = json['last_op_id'] as String?;

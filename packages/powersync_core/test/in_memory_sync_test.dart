@@ -75,11 +75,15 @@ void main() {
       final status = await waitForConnection();
 
       syncService.addLine({
-        'checkpoint': Checkpoint(
-          lastOpId: '0',
-          writeCheckpoint: null,
-          checksums: [BucketChecksum(bucket: 'bkt', priority: 1, checksum: 0)],
-        )
+        'checkpoint': {
+          'last_op_id': '0',
+          'buckets': [
+            {
+              'bucket': 'bkt',
+              'checksum': 0,
+            }
+          ],
+        },
       });
       await expectLater(status, emits(isSyncStatus(downloading: true)));
 
