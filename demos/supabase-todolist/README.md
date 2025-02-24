@@ -43,7 +43,8 @@ bucket_definitions:
       - select * from todos where list_id = bucket.list_id
 ```
 
-The rules synchronize list with a higher priority the items within the list. This can be
+**Note**: These rules showcase [prioritized sync](https://docs.powersync.com/usage/use-case-examples/prioritized-sync),
+by syncing a user's lists with a higher priority than the items within a list (todos). This can be
 useful to keep the list overview page reactive during a large sync cycle affecting many
 rows in the `user_todos` bucket. The two buckets can also be unified into a single one if
 priorities are not important (the app will work without changes):
