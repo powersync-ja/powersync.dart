@@ -276,30 +276,13 @@ class StreamingSyncImplementation implements StreamingSync {
   }
 
   void _updateStatusForPriority(SyncPriorityStatus completed) {
-    // Note: statusInPriority is sorted by priorities (ascending)
-    final existingPriorityState = lastStatus.statusInPriority;
-
-    for (final (i, priority) in existingPriorityState.indexed) {
-      switch (
-          BucketPriority.comparator(priority.priority, completed.priority)) {
-        case > 0:
-          // Entries from here on have a higher priority than the one that was
-          // just completed
-          final copy = existingPriorityState.toList();
-          copy.insert(i, completed);
-          _updateStatus(statusInPriority: copy);
-          return;
-        case 0:
-          final copy = existingPriorityState.toList();
-          copy[i] = completed;
-          _updateStatus(statusInPriority: copy);
-          return;
-        case < 0:
-          continue;
-      }
-    }
-
-    _updateStatus(statusInPriority: [...existingPriorityState, completed]);
+    // All status entries with a higher priority can be deleted since this
+    // partial sync includes them.
+    _updateStatus(priorityStatusEntries: [
+      for (final entry in lastStatus.priorityStatusEntries)
+        if (entry.priority < completed.priority) entry,
+      completed
+    ]);
   }
 
   /// Update sync status based on any non-null parameters.
@@ -313,7 +296,7 @@ class StreamingSyncImplementation implements StreamingSync {
     bool? uploading,
     Object? uploadError,
     Object? downloadError,
-    List<SyncPriorityStatus>? statusInPriority,
+    List<SyncPriorityStatus>? priorityStatusEntries,
   }) {
     final c = connected ?? lastStatus.connected;
     var newStatus = SyncStatus(
@@ -329,7 +312,8 @@ class StreamingSyncImplementation implements StreamingSync {
       downloadError: downloadError == _noError
           ? null
           : (downloadError ?? lastStatus.downloadError),
-      statusInPriority: statusInPriority ?? lastStatus.statusInPriority,
+      priorityStatusEntries:
+          priorityStatusEntries ?? lastStatus.priorityStatusEntries,
     );
 
     if (!_statusStreamController.isClosed) {
@@ -412,7 +396,7 @@ class StreamingSyncImplementation implements StreamingSync {
               downloading: false,
               downloadError: _noError,
               lastSyncedAt: now,
-              statusInPriority: [
+              priorityStatusEntries: [
                 if (appliedCheckpoint.checksums.isNotEmpty)
                   (
                     hasSynced: true,

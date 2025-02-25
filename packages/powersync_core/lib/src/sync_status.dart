@@ -40,7 +40,7 @@ final class SyncStatus {
   /// Cleared on the next successful data download.
   final Object? downloadError;
 
-  final List<SyncPriorityStatus> statusInPriority;
+  final List<SyncPriorityStatus> priorityStatusEntries;
 
   const SyncStatus({
     this.connected = false,
@@ -51,7 +51,7 @@ final class SyncStatus {
     this.uploading = false,
     this.downloadError,
     this.uploadError,
-    this.statusInPriority = const [],
+    this.priorityStatusEntries = const [],
   });
 
   @override
@@ -65,7 +65,8 @@ final class SyncStatus {
         other.uploadError == uploadError &&
         other.lastSyncedAt == lastSyncedAt &&
         other.hasSynced == hasSynced &&
-        _statusEquality.equals(other.statusInPriority, statusInPriority));
+        _statusEquality.equals(
+            other.priorityStatusEntries, priorityStatusEntries));
   }
 
   SyncStatus copyWith({
@@ -77,7 +78,7 @@ final class SyncStatus {
     Object? downloadError,
     DateTime? lastSyncedAt,
     bool? hasSynced,
-    List<SyncPriorityStatus>? statusInPriority,
+    List<SyncPriorityStatus>? priorityStatusEntries,
   }) {
     return SyncStatus(
       connected: connected ?? this.connected,
@@ -88,7 +89,8 @@ final class SyncStatus {
       downloadError: downloadError ?? this.downloadError,
       lastSyncedAt: lastSyncedAt ?? this.lastSyncedAt,
       hasSynced: hasSynced ?? this.hasSynced,
-      statusInPriority: statusInPriority ?? this.statusInPriority,
+      priorityStatusEntries:
+          priorityStatusEntries ?? this.priorityStatusEntries,
     );
   }
 
@@ -111,14 +113,14 @@ final class SyncStatus {
   /// in priority `2` necessarily includes a consistent view over data in
   /// priority `1`.
   SyncPriorityStatus statusForPriority(BucketPriority priority) {
-    assert(statusInPriority.isSortedByCompare(
+    assert(priorityStatusEntries.isSortedByCompare(
         (e) => e.priority, BucketPriority.comparator));
 
-    for (final known in statusInPriority) {
+    for (final known in priorityStatusEntries) {
       // Lower-priority buckets are synchronized after higher-priority buckets,
-      // and since statusInPriority is sorted we look for the first entry that
-      // doesn't have a higher priority.
-      if (BucketPriority.comparator(known.priority, priority) <= 0) {
+      // and since priorityStatusEntries is sorted we look for the first entry
+      // that doesn't have a higher priority.
+      if (known.priority <= priority) {
         return known;
       }
     }
@@ -141,7 +143,7 @@ final class SyncStatus {
         uploadError,
         downloadError,
         lastSyncedAt,
-        _statusEquality.hash(statusInPriority));
+        _statusEquality.hash(priorityStatusEntries));
   }
 
   @override
@@ -160,6 +162,11 @@ extension type const BucketPriority._(int priorityNumber) {
     assert(i >= _highest);
     return BucketPriority._(i);
   }
+
+  bool operator >(BucketPriority other) => comparator(this, other) > 0;
+  bool operator >=(BucketPriority other) => comparator(this, other) >= 0;
+  bool operator <(BucketPriority other) => comparator(this, other) < 0;
+  bool operator <=(BucketPriority other) => comparator(this, other) <= 0;
 
   /// A [Comparator] instance suitable for comparing [BucketPriority] values.
   static int comparator(BucketPriority a, BucketPriority b) =>

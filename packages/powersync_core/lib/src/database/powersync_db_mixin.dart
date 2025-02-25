@@ -127,7 +127,7 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
     const prioritySentinel = 2147483647;
     var hasSynced = false;
     DateTime? lastCompleteSync;
-    final priorityStatus = <SyncPriorityStatus>[];
+    final priorityStatusEntries = <SyncPriorityStatus>[];
 
     DateTime parseDateTime(String sql) {
       return DateTime.parse('${sql}Z').toLocal();
@@ -141,7 +141,7 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
         hasSynced = true;
         lastCompleteSync = lastSyncedAt;
       } else {
-        priorityStatus.add((
+        priorityStatusEntries.add((
           hasSynced: true,
           lastSyncedAt: lastSyncedAt,
           priority: BucketPriority(priority)
@@ -153,7 +153,7 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
       final status = SyncStatus(
         hasSynced: hasSynced,
         lastSyncedAt: lastCompleteSync,
-        statusInPriority: priorityStatus,
+        priorityStatusEntries: priorityStatusEntries,
       );
       setStatus(status);
     }
