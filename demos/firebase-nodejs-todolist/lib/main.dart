@@ -40,7 +40,7 @@ const listsPage = ListsPage();
 const homePage = listsPage;
 
 const sqlConsolePage = Scaffold(
-    appBar: StatusAppBar(title: 'SQL Console'),
+    appBar: StatusAppBar(title: Text('SQL Console')),
     body: QueryWidget(defaultQuery: defaultQuery));
 
 const loginPage = LoginPage();
@@ -77,7 +77,7 @@ class MyHomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: StatusAppBar(title: title),
+      appBar: StatusAppBar(title: Text(title)),
       body: Center(child: content),
       floatingActionButton: floatingActionButton,
       drawer: Drawer(
