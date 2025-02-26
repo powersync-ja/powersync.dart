@@ -20,7 +20,7 @@ import 'package:web/web.dart' hide RequestMode;
 import 'sync_worker_protocol.dart';
 import 'web_bucket_storage.dart';
 
-final _logger = autoLogger;
+final _logger = debugLogger;
 
 void main() {
   _SyncWorker().start();
@@ -244,14 +244,18 @@ class _SyncRunner {
     final crudThrottleTime = Duration(milliseconds: crudThrottleTimeMs);
     Stream<UpdateNotification> crudStream =
         powerSyncUpdateNotifications(Stream.empty());
-    if (database.updates != null) {
-      final filteredStream = database.updates!
-          .transform(UpdateNotification.filterTablesTransformer(tables));
+    if (database.updates case final updates?) {
+      final filteredStream =
+          updates.transform(UpdateNotification.filterTablesTransformer(tables));
       crudStream = UpdateNotification.throttleStream(
         filteredStream,
         crudThrottleTime,
         addOne: UpdateNotification.empty(),
       );
+    } else {
+      _logger.warning(
+          'Database is missing updates stream, sync worker will not upload '
+          'reliably.');
     }
 
     final syncParams = syncParamsEncoded == null
