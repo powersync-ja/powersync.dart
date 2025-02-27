@@ -1,4 +1,5 @@
 // This file performs setup of the PowerSync database
+import 'package:drift/drift.dart';
 import 'package:flutter/foundation.dart';
 import 'package:logging/logging.dart';
 import 'package:path/path.dart';
@@ -162,6 +163,11 @@ Future<void> openDatabase() async {
   await db.initialize();
   // Initialize the Drift database
   appDb = AppDatabase(db);
+
+  // Watch all tables to reproduce issue?
+  for (final table in appDb.allTables) {
+    table.all().watch().listen(null);
+  }
 
   await loadSupabase();
 

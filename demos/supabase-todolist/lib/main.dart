@@ -13,7 +13,7 @@ import './widgets/signup_page.dart';
 import './widgets/status_app_bar.dart';
 
 void main() async {
-  Logger.root.level = Level.INFO;
+  Logger.root.level = Level.ALL;
   Logger.root.onRecord.listen((record) {
     if (kDebugMode) {
       print(
