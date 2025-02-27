@@ -151,7 +151,7 @@ final class SyncStatus {
     return "SyncStatus<connected: $connected connecting: $connecting downloading: $downloading uploading: $uploading lastSyncedAt: $lastSyncedAt, hasSynced: $hasSynced, error: $anyError>";
   }
 
-  static const _statusEquality = ListEquality<SyncPriorityStatus>();
+  static const _statusEquality = ListEquality<Object?>();
 }
 
 /// The priority of a PowerSync bucket.

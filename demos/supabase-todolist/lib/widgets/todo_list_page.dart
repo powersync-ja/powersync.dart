@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:powersync_flutter_demo/models/todo_item.dart';
+import 'package:powersync_flutter_demo/powersync.dart';
 
 import './status_app_bar.dart';
 import './todo_item_dialog.dart';
@@ -81,8 +82,9 @@ class TodoListWidgetState extends State<TodoListWidget> {
   Widget build(BuildContext context) {
     return StreamBuilder(
       stream: TodoList.watchSyncStatus().map((e) => e.hasSynced),
+      initialData: db.currentStatus.hasSynced,
       builder: (context, snapshot) {
-        if (snapshot.data ?? false) {
+        if (snapshot.data != true) {
           return const Text('Busy with sync');
         }
 

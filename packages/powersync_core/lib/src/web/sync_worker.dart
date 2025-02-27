@@ -65,6 +65,7 @@ class _ConnectedClient {
   _ConnectedClient(MessagePort port, this._worker) {
     channel = WorkerCommunicationChannel(
       port: port,
+      logger: _logger,
       requestHandler: (type, payload) async {
         switch (type) {
           case SyncWorkerMessageType.startSynchronization:
@@ -251,7 +252,11 @@ class _SyncRunner {
         filteredStream,
         crudThrottleTime,
         addOne: UpdateNotification.empty(),
-      );
+      ).map((event) {
+        _logger.fine('Saw update events: $event, triggering upload');
+
+        return event;
+      });
     } else {
       _logger.warning(
           'Database is missing updates stream, sync worker will not upload '
