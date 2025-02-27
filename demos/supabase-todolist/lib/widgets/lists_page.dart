@@ -1,6 +1,6 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
+import 'package:powersync/powersync.dart';
+import 'package:powersync_flutter_demo/powersync.dart';
 
 import './list_item.dart';
 import './list_item_dialog.dart';
@@ -41,61 +41,36 @@ class ListsPage extends StatelessWidget {
   }
 }
 
-class ListsWidget extends StatefulWidget {
+final class ListsWidget extends StatelessWidget {
   const ListsWidget({super.key});
 
   @override
-  State<StatefulWidget> createState() {
-    return _ListsWidgetState();
-  }
-}
-
-class _ListsWidgetState extends State<ListsWidget> {
-  List<TodoList> _data = [];
-  bool hasSynced = false;
-  StreamSubscription? _subscription;
-  StreamSubscription? _syncStatusSubscription;
-
-  _ListsWidgetState();
-
-  @override
-  void initState() {
-    super.initState();
-    final stream = TodoList.watchListsWithStats();
-    _subscription = stream.listen((data) {
-      if (!context.mounted) {
-        return;
-      }
-      setState(() {
-        _data = data;
-      });
-    });
-    _syncStatusSubscription = TodoList.watchSyncStatus().listen((status) {
-      if (!context.mounted) {
-        return;
-      }
-      setState(() {
-        hasSynced = status.hasSynced ?? false;
-      });
-    });
-  }
-
-  @override
-  void dispose() {
-    super.dispose();
-    _subscription?.cancel();
-    _syncStatusSubscription?.cancel();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return !hasSynced
-        ? const Text("Busy with sync...")
-        : ListView(
-            padding: const EdgeInsets.symmetric(vertical: 8.0),
-            children: _data.map((list) {
-              return ListItemWidget(list: list);
-            }).toList(),
+    return FutureBuilder(
+      future: db.waitForFirstSync(priority: _listsPriority),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.done) {
+          return StreamBuilder(
+            stream: TodoList.watchListsWithStats(),
+            builder: (context, snapshot) {
+              if (snapshot.data case final todoLists?) {
+                return ListView(
+                  padding: const EdgeInsets.symmetric(vertical: 8.0),
+                  children: todoLists.map((list) {
+                    return ListItemWidget(list: list);
+                  }).toList(),
+                );
+              } else {
+                return const CircularProgressIndicator();
+              }
+            },
           );
+        } else {
+          return const Text('Busy with sync...');
+        }
+      },
+    );
   }
+
+  static final _listsPriority = BucketPriority(1);
 }
