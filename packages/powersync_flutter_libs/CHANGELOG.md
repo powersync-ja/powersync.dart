@@ -1,3 +1,7 @@
+## 0.4.6
+
+ - Bump version of core extension to 0.3.11
+
 ## 0.4.5
 
  - Update core extension to 0.3.10 in preparation for bucket priorities.

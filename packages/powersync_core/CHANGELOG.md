@@ -1,3 +1,7 @@
+## 1.2.0
+
+ - Support bucket priorities and partial syncs.
+
 ## 1.1.3
 
  - Add explicit casts in sync service, avoiding possible issues with dart2js optimizations.

@@ -3,6 +3,49 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 2025-03-03
+
+### Changes
+
+---
+
+Packages with breaking changes:
+
+ - There are no breaking changes in this release.
+
+Packages with other changes:
+
+ - [`powersync_core` - `v1.2.0`](#powersync_core---v120)
+ - [`powersync_flutter_libs` - `v0.4.6`](#powersync_flutter_libs---v046)
+ - [`powersync` - `v1.12.0`](#powersync---v1120)
+ - [`powersync_sqlcipher` - `v0.1.5`](#powersync_sqlcipher---v015)
+ - [`powersync_attachments_helper` - `v0.6.18+2`](#powersync_attachments_helper---v06182)
+
+Packages with dependency updates only:
+
+> Packages listed below depend on other packages in this workspace that have had changes. Their versions have been incremented to bump the minimum dependency versions of the packages they depend upon in this project.
+
+ - `powersync_attachments_helper` - `v0.6.18+2`
+
+---
+
+#### `powersync_core` - `v1.2.0`
+
+ - Support bucket priorities and partial syncs.
+
+#### `powersync_flutter_libs` - `v0.4.6`
+
+ - Bump version of core extension to 0.3.11
+
+#### `powersync` - `v1.12.0`
+
+ - Support bucket priorities and partial syncs.
+
+#### `powersync_sqlcipher` - `v0.1.5`
+
+ - Support bucket priorities and partial syncs.
+
+
 ## 2025-02-17
 
 ### Changes
