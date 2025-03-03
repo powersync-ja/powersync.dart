@@ -203,7 +203,9 @@ extension type SerializedSyncStatus._(JSObject _) implements JSObject {
       hasSynced: hasSynced,
       uploadError: uploadError,
       downloadError: downloadError,
-      priorityStatusEntries: priorityStatusEntries?.toDart.map((e) {
+      priorityStatusEntries: <SyncPriorityStatus>[
+        if (priorityStatusEntries case final jsEntries?)
+          ...jsEntries.toDart.map((e) {
             final [rawPriority, rawSynced, rawHasSynced, ...] =
                 (e as JSArray).toDart;
             final syncedMillis = (rawSynced as JSNumber?)?.toDartInt;
@@ -215,8 +217,8 @@ extension type SerializedSyncStatus._(JSObject _) implements JSObject {
                   : null,
               hasSynced: (rawHasSynced as JSBoolean?)?.toDart,
             );
-          }).toList() ??
-          const [],
+          })
+      ],
     );
   }
 }
