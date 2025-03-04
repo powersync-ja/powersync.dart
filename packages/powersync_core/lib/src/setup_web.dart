@@ -73,7 +73,7 @@ Future<void> downloadWebAssets(List<String> arguments,
 
     if (powerSyncVersion >= firstPowerSyncVersionWithOwnWasm) {
       final wasmUrl =
-          'https://github.com/powersync-ja/powersync.dart/releases/download/powersync-$powersyncTag/$wasmFileName';
+          'https://github.com/powersync-ja/powersync.dart/releases/download/$powersyncTag/$wasmFileName';
 
       await downloadFile(httpClient, wasmUrl, wasmPath);
     } else {

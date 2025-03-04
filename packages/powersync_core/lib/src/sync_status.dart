@@ -151,7 +151,9 @@ final class SyncStatus {
     return "SyncStatus<connected: $connected connecting: $connecting downloading: $downloading uploading: $uploading lastSyncedAt: $lastSyncedAt, hasSynced: $hasSynced, error: $anyError>";
   }
 
-  static const _statusEquality = ListEquality<SyncPriorityStatus>();
+  // This should be a ListEquality<SyncPriorityStatus>, but that appears to
+  // cause weird type errors with DDC (but only after hot reloads?!)
+  static const _statusEquality = ListEquality<Object?>();
 }
 
 /// The priority of a PowerSync bucket.
