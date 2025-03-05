@@ -57,6 +57,8 @@ extension type const PowerSyncCoreVersion((int, int, int) _tuple) {
   /// The minimum version of the sqlite core extensions we support. We check
   /// this version when opening databases to fail early and with an actionable
   /// error message.
+  // Note: When updating this, also update the download URL in
+  // scripts/init_powersync_core_binary.dart
   static const minimum = PowerSyncCoreVersion((0, 3, 11));
 
   /// The first version of the core extensions that this version of the Dart
