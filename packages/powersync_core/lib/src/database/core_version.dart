@@ -58,7 +58,8 @@ extension type const PowerSyncCoreVersion((int, int, int) _tuple) {
   /// this version when opening databases to fail early and with an actionable
   /// error message.
   // Note: When updating this, also update the download URL in
-  // scripts/init_powersync_core_binary.dart
+  // scripts/init_powersync_core_binary.dart and the version ref in
+  // packages/sqlite3_wasm_build/build.sh
   static const minimum = PowerSyncCoreVersion((0, 3, 11));
 
   /// The first version of the core extensions that this version of the Dart
