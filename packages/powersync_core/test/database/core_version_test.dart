@@ -28,9 +28,11 @@ void main() {
     test('checkSupported', () {
       expect(PowerSyncCoreVersion.parse('0.3.10').checkSupported,
           throwsA(isA<SqliteException>()));
-      expect(PowerSyncCoreVersion.parse('0.4.5').checkSupported,
-          isNot(throwsA(anything)));
       expect(PowerSyncCoreVersion.parse('1.0.0').checkSupported,
+          throwsA(isA<SqliteException>()));
+
+      PowerSyncCoreVersion.minimum.checkSupported();
+      expect(PowerSyncCoreVersion.maximumExclusive.checkSupported,
           throwsA(isA<SqliteException>()));
     });
   });

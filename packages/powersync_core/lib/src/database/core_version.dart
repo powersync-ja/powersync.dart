@@ -17,6 +17,7 @@ extension type const PowerSyncCoreVersion((int, int, int) _tuple) {
     };
   }
 
+  bool operator <(PowerSyncCoreVersion other) => compareTo(other) < 0;
   bool operator >=(PowerSyncCoreVersion other) => compareTo(other) >= 0;
 
   String get versionString => '$major.$minor.$patch';
@@ -24,7 +25,7 @@ extension type const PowerSyncCoreVersion((int, int, int) _tuple) {
   void checkSupported() {
     const isWeb = bool.fromEnvironment('dart.library.js_interop');
 
-    if (minimum >= this || this >= maximumExclusive) {
+    if (this < minimum || this >= maximumExclusive) {
       var message =
           'Unsupported powersync extension version. This version of the '
           'PowerSync SDK needs >=${minimum.versionString} '
