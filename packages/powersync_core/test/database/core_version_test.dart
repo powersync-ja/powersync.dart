@@ -1,5 +1,5 @@
 import 'package:powersync_core/src/database/core_version.dart';
-import 'package:sqlite3/sqlite3.dart';
+import 'package:sqlite3/common.dart';
 import 'package:test/test.dart';
 
 void main() {
