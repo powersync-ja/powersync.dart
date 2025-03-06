@@ -6,12 +6,11 @@ import 'dart:io';
 import 'package:melos/melos.dart';
 
 final sqliteUrl =
-    'https://github.com/powersync-ja/powersync-sqlite-core/releases/download/v0.3.11';
+    'https://github.com/powersync-ja/powersync-sqlite-core/releases/download/v0.3.12';
 
 void main() async {
   final sqliteCoreFilename = getLibraryForPlatform();
   final powersyncPath = "packages/powersync_core";
-  final powersyncCipherPath = "packages/powersync_sqlcipher";
   final sqliteCorePath = '$powersyncPath/$sqliteCoreFilename';
 
   // Download dynamic library
