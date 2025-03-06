@@ -7,6 +7,7 @@ import 'package:powersync_core/sqlite_async.dart';
 import 'package:powersync_core/src/abort_controller.dart';
 import 'package:powersync_core/src/connector.dart';
 import 'package:powersync_core/src/crud.dart';
+import 'package:powersync_core/src/database/core_version.dart';
 import 'package:powersync_core/src/powersync_update_notification.dart';
 import 'package:powersync_core/src/schema.dart';
 import 'package:powersync_core/src/schema_logic.dart';
@@ -93,23 +94,7 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
           1, 'The powersync extension is not loaded correctly. Details: $e');
     }
 
-    // Parse version
-    List<int> versionInts;
-    try {
-      versionInts =
-          version.split(RegExp(r'[./]')).take(3).map(int.parse).toList();
-    } catch (e) {
-      throw SqliteException(1,
-          'Unsupported powersync extension version. Need >=0.2.0 <1.0.0, got: $version. Details: $e');
-    }
-
-    // Validate >=0.2.0 <1.0.0
-    if (versionInts[0] != 0 ||
-        (versionInts[1] < 2) ||
-        (versionInts[1] == 2 && versionInts[2] < 0)) {
-      throw SqliteException(1,
-          'Unsupported powersync extension version. Need >=0.2.0 <1.0.0, got: $version');
-    }
+    PowerSyncCoreVersion.parse(version).checkSupported();
   }
 
   /// Wait for initialization to complete.
