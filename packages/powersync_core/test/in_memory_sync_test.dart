@@ -280,6 +280,37 @@ void main() {
                 .hasSynced,
             isFalse);
       });
+
+      test(
+        "multiple completed syncs don't create multiple sync state entries",
+        () async {
+          final status = await waitForConnection();
+
+          for (var i = 0; i < 5; i++) {
+            syncService.addLine({
+              'checkpoint': Checkpoint(
+                lastOpId: '0',
+                writeCheckpoint: null,
+                checksums: [
+                  BucketChecksum(bucket: 'bkt', priority: 1, checksum: 0)
+                ],
+              )
+            });
+            await expectLater(status, emits(isSyncStatus(downloading: true)));
+
+            syncService.addLine({
+              'checkpoint_complete': {
+                'last_op_id': '0',
+              }
+            });
+
+            await expectLater(status, emits(isSyncStatus(downloading: false)));
+          }
+
+          final rows = await database.getAll('SELECT * FROM ps_sync_state;');
+          expect(rows, hasLength(1));
+        },
+      );
     });
   });
 }

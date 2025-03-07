@@ -76,12 +76,13 @@ scripts:
 
   podfile:update:
     description: Update Podfile.lock in demos.
-    run: cd ios && pod update powersync-sqlite-core
+    run: cd ios && pod update && cd ../macos && pod update
     exec:
       concurrency: 1
     packageFilters:
       dirExists:
         - ios
+        - macos
 
   test:
     description: Run tests in a specific package.

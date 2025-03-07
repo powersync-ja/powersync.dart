@@ -1,11 +1,11 @@
 PODS:
-  - Flutter (1.0.0)
+  - FlutterMacOS (1.0.0)
   - path_provider_foundation (0.0.1):
     - Flutter
     - FlutterMacOS
   - powersync-sqlite-core (0.3.12)
   - powersync_flutter_libs (0.0.1):
-    - Flutter
+    - FlutterMacOS
     - powersync-sqlite-core (~> 0.3.12)
   - sqlite3 (3.49.1):
     - sqlite3/common (= 3.49.1)
@@ -28,10 +28,10 @@ PODS:
     - sqlite3/rtree
 
 DEPENDENCIES:
-  - Flutter (from `Flutter`)
-  - path_provider_foundation (from `.symlinks/plugins/path_provider_foundation/darwin`)
-  - powersync_flutter_libs (from `.symlinks/plugins/powersync_flutter_libs/ios`)
-  - sqlite3_flutter_libs (from `.symlinks/plugins/sqlite3_flutter_libs/darwin`)
+  - FlutterMacOS (from `Flutter/ephemeral`)
+  - path_provider_foundation (from `Flutter/ephemeral/.symlinks/plugins/path_provider_foundation/darwin`)
+  - powersync_flutter_libs (from `Flutter/ephemeral/.symlinks/plugins/powersync_flutter_libs/macos`)
+  - sqlite3_flutter_libs (from `Flutter/ephemeral/.symlinks/plugins/sqlite3_flutter_libs/darwin`)
 
 SPEC REPOS:
   trunk:
@@ -39,23 +39,23 @@ SPEC REPOS:
     - sqlite3
 
 EXTERNAL SOURCES:
-  Flutter:
-    :path: Flutter
+  FlutterMacOS:
+    :path: Flutter/ephemeral
   path_provider_foundation:
-    :path: ".symlinks/plugins/path_provider_foundation/darwin"
+    :path: Flutter/ephemeral/.symlinks/plugins/path_provider_foundation/darwin
   powersync_flutter_libs:
-    :path: ".symlinks/plugins/powersync_flutter_libs/ios"
+    :path: Flutter/ephemeral/.symlinks/plugins/powersync_flutter_libs/macos
   sqlite3_flutter_libs:
-    :path: ".symlinks/plugins/sqlite3_flutter_libs/darwin"
+    :path: Flutter/ephemeral/.symlinks/plugins/sqlite3_flutter_libs/darwin
 
 SPEC CHECKSUMS:
-  Flutter: e0871f40cf51350855a761d2e70bf5af5b9b5de7
+  FlutterMacOS: 8f6f14fa908a6fb3fba0cd85dbd81ec4b251fb24
   path_provider_foundation: 080d55be775b7414fd5a5ef3ac137b97b097e564
   powersync-sqlite-core: fcc32da5528fca9d50b185fcd777705c034e255b
-  powersync_flutter_libs: 23a227cf1aca676e605548a4857da261b06d9421
+  powersync_flutter_libs: 011c1704766d154faf2373bb9c973d26910d322b
   sqlite3: fc1400008a9b3525f5914ed715a5d1af0b8f4983
   sqlite3_flutter_libs: f8fc13346870e73fe35ebf6dbb997fbcd156b241
 
-PODFILE CHECKSUM: 819463e6a0290f5a72f145ba7cde16e8b6ef0796
+PODFILE CHECKSUM: 236401fc2c932af29a9fcf0e97baeeb2d750d367
 
 COCOAPODS: 1.16.2

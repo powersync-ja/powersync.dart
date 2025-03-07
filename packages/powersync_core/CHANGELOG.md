@@ -1,3 +1,7 @@
+## 1.2.1
+
+ - Raise minimum version of core extension to 0.3.11.
+
 ## 1.2.0
 
  - Support bucket priorities and partial syncs.

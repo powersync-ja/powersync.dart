@@ -1,3 +1,7 @@
+## 0.4.7
+
+ - Update core extension to 0.3.12.
+
 ## 0.4.6
 
  - Bump version of core extension to 0.3.11
