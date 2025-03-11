@@ -13,7 +13,7 @@ dependencies:
   # but right now we need a minimum of v2.4.6.
   sqlite3: ^2.4.6
   # We implement a database controller, which is an interface of sqlite3_web.
-  sqlite3_web: ^0.3.0
+  sqlite3_web: ^0.3.1
   universal_io: ^2.0.0
   meta: ^1.0.0
   http: ^1.1.0
