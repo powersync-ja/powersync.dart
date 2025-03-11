@@ -1,3 +1,7 @@
+## 1.2.2
+
+ - Fix handling token invalidation on the web.
+
 ## 1.2.1
 
  - Raise minimum version of core extension to 0.3.11.
