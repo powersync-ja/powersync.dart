@@ -20,9 +20,11 @@ void main() {
     late CommonDatabase raw;
     late PowerSyncDatabase database;
     late MockSyncService syncService;
-    late StreamingSyncImplementation syncClient;
+    late StreamingSync syncClient;
+    var credentialsCallbackCount = 0;
 
     setUp(() async {
+      credentialsCallbackCount = 0;
       final (client, server) = inMemoryServer();
       syncService = MockSyncService();
       server.mount(syncService.router.call);
@@ -30,12 +32,14 @@ void main() {
       factory = await testUtils.testFactory();
       (raw, database) = await factory.openInMemoryDatabase();
       await database.initialize();
+
       syncClient = database.connectWithMockService(
         client,
         TestConnector(() async {
+          credentialsCallbackCount++;
           return PowerSyncCredentials(
             endpoint: server.url.toString(),
-            token: 'token not used here',
+            token: 'token$credentialsCallbackCount',
             expiresAt: DateTime.now(),
           );
         }),
@@ -312,17 +316,36 @@ void main() {
         },
       );
     });
+
+    test('reconnects when token expires', () async {
+      await waitForConnection();
+      expect(credentialsCallbackCount, 1);
+      // When the sync service says the token has expired
+      syncService
+        ..addLine({'token_expires_in': 0})
+        ..endCurrentListener();
+
+      final nextRequest = await syncService.waitForListener;
+      expect(nextRequest.headers['Authorization'], 'Token token2');
+      expect(credentialsCallbackCount, 2);
+    });
   });
 }
 
 TypeMatcher<SyncStatus> isSyncStatus(
-    {Object? downloading, Object? connected, Object? hasSynced}) {
+    {Object? downloading,
+    Object? connected,
+    Object? connecting,
+    Object? hasSynced}) {
   var matcher = isA<SyncStatus>();
   if (downloading != null) {
     matcher = matcher.having((e) => e.downloading, 'downloading', downloading);
   }
   if (connected != null) {
     matcher = matcher.having((e) => e.connected, 'connected', connected);
+  }
+  if (connecting != null) {
+    matcher = matcher.having((e) => e.connecting, 'connecting', connecting);
   }
   if (hasSynced != null) {
     matcher = matcher.having((e) => e.hasSynced, 'hasSynced', hasSynced);

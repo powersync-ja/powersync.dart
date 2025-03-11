@@ -48,7 +48,7 @@ class SyncWorkerHandle implements StreamingSync {
             await connector.uploadData(database);
             return (JSObject(), null);
           case SyncWorkerMessageType.invalidCredentialsCallback:
-            final credentials = await connector.fetchCredentials();
+            final credentials = await connector.prefetchCredentials();
             return (
               credentials != null
                   ? SerializedCredentials.from(credentials)

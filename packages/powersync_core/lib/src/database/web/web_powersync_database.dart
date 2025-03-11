@@ -162,7 +162,7 @@ class PowerSyncDatabaseImpl
       sync = StreamingSyncImplementation(
         adapter: storage,
         credentialsCallback: connector.getCredentialsCached,
-        invalidCredentialsCallback: connector.fetchCredentials,
+        invalidCredentialsCallback: connector.prefetchCredentials,
         uploadCrud: () => connector.uploadData(this),
         crudUpdateTriggerStream: crudStream,
         retryDelay: Duration(seconds: 3),
