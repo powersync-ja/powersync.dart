@@ -2,7 +2,7 @@ name: powersync
 version: 1.12.2
 homepage: https://powersync.com
 repository: https://github.com/powersync-ja/powersync.dart
-description: PowerSync Flutter SDK - sync engine for building local-first apps.
+description: PowerSync Flutter SDK. Sync Postgres, MongoDB or MySQL with SQLite in your Flutter app
 environment:
   sdk: ^3.4.0
 
