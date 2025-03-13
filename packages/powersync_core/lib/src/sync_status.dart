@@ -1,4 +1,5 @@
 import 'package:collection/collection.dart';
+import 'package:meta/meta.dart';
 
 final class SyncStatus {
   /// true if currently connected.
@@ -17,6 +18,12 @@ final class SyncStatus {
   ///
   /// This is only true when [connected] is also true.
   final bool downloading;
+
+  /// A realtime progress report on how many operations have been downloaded and
+  /// how many are necessary in total to complete the next sync iteration.
+  ///
+  /// This field is only set when [downloading] is also true.
+  final SyncDownloadProgress? downloadProgress;
 
   /// true if uploading changes
   final bool uploading;
@@ -47,6 +54,7 @@ final class SyncStatus {
     this.connecting = false,
     this.lastSyncedAt,
     this.hasSynced,
+    this.downloadProgress,
     this.downloading = false,
     this.uploading = false,
     this.downloadError,
@@ -200,5 +208,85 @@ class UploadQueueStats {
     } else {
       return "UploadQueueStats<count: $count size: ${size! / 1024}kB>";
     }
+  }
+}
+
+@internal
+typedef OperationCounter = ({BucketPriority priority, int opCount});
+
+@internal
+final class InternalSyncDownloadProgress {
+  final List<OperationCounter> downloaded;
+  final List<OperationCounter> target;
+
+  final int _totalDownloaded;
+  final int _totalTarget;
+
+  InternalSyncDownloadProgress(this.downloaded, this.target)
+      : _totalDownloaded = downloaded.map((e) => e.opCount).sum,
+        _totalTarget = target.map((e) => e.opCount).sum;
+
+  static int sumInPriority(
+      List<OperationCounter> counters, BucketPriority priority) {
+    return counters
+        .where((e) => e.priority >= priority)
+        .map((e) => e.opCount)
+        .sum;
+  }
+}
+
+/// Provides realtime progress about how PowerSync is downloading rows.
+///
+/// The reported progress always reflects the status towards the end of a
+/// sync iteration (after which a consistent snapshot of all buckets is
+/// available locally). Note that [downloaded] starts at `0` every time an
+/// iteration begins.
+/// This has an effect when iterations are interrupted. Consider this flow
+/// as an example:
+///
+///   1. The client comes online for the first time and has to synchronize a
+///      large amount of rows (say 100k). Here, [downloaded] starts at `0` and
+///      [total] would be the `100,000` rows.
+///   2. The client makes some progress, so that [downloaded] is perhaps
+///      `60,000`.
+///   3. The client briefly looses connectivity.
+///   4. Back online, a new sync iteration starts. This means that [downloaded]
+///      is reset to `0`. However, since half of the target has already been
+///      downloaded in the earlier iteration, [total] is now set to `40,000` to
+///      reflect the remaining rows to download in the new iteration.
+extension type SyncDownloadProgress._(InternalSyncDownloadProgress _internal) {
+  /// The amount of operations that have been downloaded in the current sync
+  /// iteration.
+  ///
+  /// This number always starts at zero as [SyncStatus.downloading] changes
+  /// from `false` to `true`.
+  int get downloaded => _internal._totalDownloaded;
+
+  /// The total amount of operations expected for this sync operation.
+  int get total => _internal._totalTarget;
+
+  /// The fraction of [total] operations that have already been [downloaded], as
+  /// a number between 0 and 1.
+  double get progress => _internal._totalDownloaded / _internal._totalTarget;
+
+  int downloadedFor(BucketPriority priority) {
+    return InternalSyncDownloadProgress.sumInPriority(
+        _internal.downloaded, priority);
+  }
+
+  int totalFor(BucketPriority priority) {
+    return InternalSyncDownloadProgress.sumInPriority(
+        _internal.target, priority);
+  }
+
+  double progressFor(BucketPriority priority) {
+    final downloaded = downloadedFor(priority);
+    final total = totalFor(priority);
+
+    if (total == 0) {
+      return 0;
+    }
+
+    return downloaded / total;
   }
 }
