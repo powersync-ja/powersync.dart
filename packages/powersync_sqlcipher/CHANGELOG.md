@@ -1,3 +1,15 @@
+## 0.1.5+2
+
+ - Update a dependency to the latest release.
+
+## 0.1.5+1
+
+ - Update a dependency to the latest release.
+
+## 0.1.5
+
+ - Support bucket priorities and partial syncs.
+
 ## 0.1.4+1
 
  - Update a dependency to the latest release.

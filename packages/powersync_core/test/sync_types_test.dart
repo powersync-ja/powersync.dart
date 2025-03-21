@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:powersync_core/src/sync_status.dart';
 import 'package:powersync_core/src/sync_types.dart';
 import 'package:test/test.dart';
 
@@ -213,6 +214,13 @@ void main() {
           }
         });
       }
+    });
+
+    test('bucket priority comparisons', () {
+      expect(BucketPriority(0) < BucketPriority(3), isFalse);
+      expect(BucketPriority(0) > BucketPriority(3), isTrue);
+      expect(BucketPriority(0) >= BucketPriority(3), isTrue);
+      expect(BucketPriority(0) >= BucketPriority(0), isTrue);
     });
   });
 }

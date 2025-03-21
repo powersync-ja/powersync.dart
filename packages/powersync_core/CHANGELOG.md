@@ -1,3 +1,15 @@
+## 1.2.2
+
+ - Fix handling token invalidation on the web.
+
+## 1.2.1
+
+ - Raise minimum version of core extension to 0.3.11.
+
+## 1.2.0
+
+ - Support bucket priorities and partial syncs.
+
 ## 1.1.3
 
  - Add explicit casts in sync service, avoiding possible issues with dart2js optimizations.

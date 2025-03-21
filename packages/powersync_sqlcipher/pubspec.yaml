@@ -1,5 +1,5 @@
 name: powersync_sqlcipher
-version: 0.1.4+1
+version: 0.1.5+2
 homepage: https://powersync.com
 repository: https://github.com/powersync-ja/powersync.dart
 description: PowerSync Flutter SDK - sync engine for building local-first apps.
@@ -12,8 +12,8 @@ dependencies:
   flutter:
     sdk: flutter
 
-  powersync_core: ^1.1.3
-  powersync_flutter_libs: ^0.4.5
+  powersync_core: ^1.2.2
+  powersync_flutter_libs: ^0.4.7
   sqlcipher_flutter_libs: ^0.6.4
   sqlite3_web: ^0.3.0
 

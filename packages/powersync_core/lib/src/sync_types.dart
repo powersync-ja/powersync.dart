@@ -17,6 +17,9 @@ sealed class StreamingSyncLine {
     } else if (line.containsKey('checkpoint_complete')) {
       return StreamingSyncCheckpointComplete.fromJson(
           line['checkpoint_complete'] as Map<String, Object?>);
+    } else if (line.containsKey('partial_checkpoint_complete')) {
+      return StreamingSyncCheckpointPartiallyComplete.fromJson(
+          line['partial_checkpoint_complete'] as Map<String, Object?>);
     } else if (line.containsKey('data')) {
       return SyncDataBatch([
         SyncBucketData.fromJson(line['data'] as Map<String, Object?>),
@@ -127,19 +130,27 @@ final class Checkpoint extends StreamingSyncLine {
             .map((b) => BucketChecksum.fromJson(b as Map<String, dynamic>))
             .toList();
 
-  Map<String, dynamic> toJson() {
+  Map<String, dynamic> toJson({int? priority}) {
     return {
       'last_op_id': lastOpId,
       'write_checkpoint': writeCheckpoint,
       'buckets': checksums
-          .map((c) => {'bucket': c.bucket, 'checksum': c.checksum})
+          .where((c) => priority == null || c.priority <= priority)
+          .map((c) => {
+                'bucket': c.bucket,
+                'checksum': c.checksum,
+                'priority': c.priority,
+              })
           .toList(growable: false)
     };
   }
 }
 
-final class BucketChecksum {
+typedef BucketDescription = ({String name, int priority});
+
+class BucketChecksum {
   final String bucket;
+  final int priority;
   final int checksum;
 
   /// Count is informational only
@@ -148,12 +159,17 @@ final class BucketChecksum {
 
   const BucketChecksum(
       {required this.bucket,
+      required this.priority,
       required this.checksum,
       this.count,
       this.lastOpId});
 
   BucketChecksum.fromJson(Map<String, dynamic> json)
       : bucket = json['bucket'] as String,
+        // Use the default priority (3) as a fallback if the server doesn't send
+        // priorities. This value is arbitrary though, it won't get used since
+        // servers not sending priorities also won't send partial checkpoints.
+        priority = json['priority'] as int? ?? 3,
         checksum = json['checksum'] as int,
         count = json['count'] as int?,
         lastOpId = json['last_op_id'] as String?;
@@ -194,6 +210,19 @@ final class StreamingSyncCheckpointComplete extends StreamingSyncLine {
 
   StreamingSyncCheckpointComplete.fromJson(Map<String, dynamic> json)
       : lastOpId = json['last_op_id'] as String;
+}
+
+/// Sent after all the [SyncBucketData] messages for a given priority within a
+/// checkpoint have been sent.
+final class StreamingSyncCheckpointPartiallyComplete extends StreamingSyncLine {
+  String lastOpId;
+  int bucketPriority;
+
+  StreamingSyncCheckpointPartiallyComplete(this.lastOpId, this.bucketPriority);
+
+  StreamingSyncCheckpointPartiallyComplete.fromJson(Map<String, dynamic> json)
+      : lastOpId = json['last_op_id'] as String,
+        bucketPriority = json['priority'] as int;
 }
 
 /// Sent as a periodic ping to keep the connection alive and to notify the

@@ -1,3 +1,15 @@
+## 1.12.2
+
+ - Update a dependency to the latest release.
+
+## 1.12.1
+
+ - Update a dependency to the latest release.
+
+## 1.12.0
+
+ - Support bucket priorities and partial syncs.
+
 ## 1.11.3
 
  - Update a dependency to the latest release.

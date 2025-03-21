@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../powersync.dart';
 import './status_app_bar.dart';
 import './todo_item_dialog.dart';
 import './todo_item_widget.dart';
@@ -45,15 +46,21 @@ class TodoListWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return StreamBuilder(
-      stream: list.watchItems(),
+      stream: TodoList.watchSyncStatus().map((e) => e.hasSynced),
+      initialData: db.currentStatus.hasSynced,
       builder: (context, snapshot) {
-        final items = snapshot.data ?? const [];
+        return StreamBuilder(
+          stream: list.watchItems(),
+          builder: (context, snapshot) {
+            final items = snapshot.data ?? const [];
 
-        return ListView(
-          padding: const EdgeInsets.symmetric(vertical: 8.0),
-          children: items.map((todo) {
-            return TodoItemWidget(todo: todo);
-          }).toList(),
+            return ListView(
+              padding: const EdgeInsets.symmetric(vertical: 8.0),
+              children: items.map((todo) {
+                return TodoItemWidget(todo: todo);
+              }).toList(),
+            );
+          },
         );
       },
     );

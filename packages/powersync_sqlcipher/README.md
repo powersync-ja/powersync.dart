@@ -51,7 +51,7 @@ A changelog for this SDK is available [here](https://pub.dev/packages/powersync_
 
 # API Reference
 
-The full API reference for this SDK can be found [here](https://pub.dev/documentation/powersync_sqlcipher/latest/powersync_sqlcipher/powersync_sqlcipher-library.html).
+The full API reference for this SDK can be found [here](https://pub.dev/documentation/powersync_sqlcipher/latest/).
 
 # Examples
 

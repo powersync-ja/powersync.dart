@@ -6,15 +6,15 @@ import 'package:shelf_router/shelf_router.dart';
 
 final class MockSyncService {
   // Use a queued stream to make tests easier.
-  StreamController<String> _controller = StreamController<String>();
-  Completer<void> _listener = Completer();
+  StreamController<String> _controller = StreamController();
+  Completer<Request> _listener = Completer();
 
   final router = Router();
 
   MockSyncService() {
     router
       ..post('/sync/stream', (Request request) async {
-        _listener.complete();
+        _listener.complete(request);
         // Respond immediately with a stream
         return Response.ok(_controller.stream.transform(utf8.encoder),
             headers: {
@@ -33,7 +33,7 @@ final class MockSyncService {
       });
   }
 
-  Future<void> get waitForListener => _listener.future;
+  Future<Request> get waitForListener => _listener.future;
 
   // Queue events which will be sent to connected clients.
   void addRawEvent(String data) {
@@ -46,6 +46,12 @@ final class MockSyncService {
 
   void addKeepAlive([int tokenExpiresIn = 3600]) {
     addLine({'token_expires_in': tokenExpiresIn});
+  }
+
+  void endCurrentListener() {
+    _controller.close();
+    _controller = StreamController();
+    _listener = Completer();
   }
 
   // Clear events. We rely on a buffered controller here. Create a new controller

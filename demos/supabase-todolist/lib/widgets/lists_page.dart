@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:powersync/powersync.dart';
+import 'package:powersync_flutter_demo/powersync.dart';
 
-import '../powersync.dart';
 import './list_item.dart';
 import './list_item_dialog.dart';
 import '../main.dart';
@@ -46,7 +47,7 @@ class ListsWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return FutureBuilder(
-      future: db.waitForFirstSync(),
+      future: db.waitForFirstSync(priority: _listsPriority),
       builder: (context, snapshot) {
         return switch (snapshot.connectionState) {
           ConnectionState.done => StreamBuilder(
@@ -68,4 +69,6 @@ class ListsWidget extends StatelessWidget {
       },
     );
   }
+
+  static final _listsPriority = BucketPriority(1);
 }
