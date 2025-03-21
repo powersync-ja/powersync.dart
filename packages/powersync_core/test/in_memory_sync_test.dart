@@ -3,8 +3,8 @@ import 'package:logging/logging.dart';
 import 'package:powersync_core/powersync_core.dart';
 import 'package:powersync_core/sqlite3_common.dart';
 import 'package:powersync_core/src/log_internal.dart';
-import 'package:powersync_core/src/streaming_sync.dart';
-import 'package:powersync_core/src/sync_types.dart';
+import 'package:powersync_core/src/sync/streaming_sync.dart';
+import 'package:powersync_core/src/sync/protocol.dart';
 import 'package:test/test.dart';
 
 import 'server/sync_server/in_memory_sync_server.dart';

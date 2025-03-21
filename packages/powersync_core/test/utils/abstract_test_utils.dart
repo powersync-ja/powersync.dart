@@ -2,7 +2,7 @@ import 'package:http/http.dart';
 import 'package:logging/logging.dart';
 import 'package:powersync_core/powersync_core.dart';
 import 'package:powersync_core/src/bucket_storage.dart';
-import 'package:powersync_core/src/streaming_sync.dart';
+import 'package:powersync_core/src/sync/streaming_sync.dart';
 import 'package:sqlite_async/sqlite3_common.dart';
 import 'package:sqlite_async/sqlite_async.dart';
 import 'package:test_api/src/backend/invoker.dart';

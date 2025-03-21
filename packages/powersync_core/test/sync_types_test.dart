@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:powersync_core/src/sync_status.dart';
-import 'package:powersync_core/src/sync_types.dart';
+import 'package:powersync_core/src/sync/protocol.dart';
 import 'package:test/test.dart';
 
 void main() {

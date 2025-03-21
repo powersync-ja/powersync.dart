@@ -6,7 +6,7 @@ import 'package:sqlite_async/web.dart';
 import 'package:web/web.dart';
 
 import '../database/web/web_powersync_database.dart';
-import '../streaming_sync.dart';
+import '../sync/streaming_sync.dart';
 import 'sync_worker_protocol.dart';
 
 class SyncWorkerHandle implements StreamingSync {

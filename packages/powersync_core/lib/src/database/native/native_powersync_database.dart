@@ -16,7 +16,7 @@ import 'package:powersync_core/src/open_factory/abstract_powersync_open_factory.
 import 'package:powersync_core/src/open_factory/native/native_open_factory.dart';
 import 'package:powersync_core/src/schema.dart';
 import 'package:powersync_core/src/schema_logic.dart';
-import 'package:powersync_core/src/streaming_sync.dart';
+import 'package:powersync_core/src/sync/streaming_sync.dart';
 import 'package:powersync_core/src/sync_status.dart';
 import 'package:sqlite_async/sqlite3_common.dart';
 import 'package:sqlite_async/sqlite_async.dart';

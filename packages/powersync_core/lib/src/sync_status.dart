@@ -1,6 +1,8 @@
 import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
 
+import 'sync/protocol.dart';
+
 final class SyncStatus {
   /// true if currently connected.
   ///
@@ -77,6 +79,7 @@ final class SyncStatus {
             other.priorityStatusEntries, priorityStatusEntries));
   }
 
+  @Deprecated('Should not be used in user code')
   SyncStatus copyWith({
     bool? connected,
     bool? downloading,
@@ -158,11 +161,11 @@ final class SyncStatus {
   String toString() {
     return "SyncStatus<connected: $connected connecting: $connecting downloading: $downloading uploading: $uploading lastSyncedAt: $lastSyncedAt, hasSynced: $hasSynced, error: $anyError>";
   }
-
-  // This should be a ListEquality<SyncPriorityStatus>, but that appears to
-  // cause weird type errors with DDC (but only after hot reloads?!)
-  static const _statusEquality = ListEquality<Object?>();
 }
+
+// This should be a ListEquality<SyncPriorityStatus>, but that appears to
+// cause weird type errors with DDC (but only after hot reloads?!)
+const _statusEquality = ListEquality<Object?>();
 
 /// The priority of a PowerSync bucket.
 extension type const BucketPriority._(int priorityNumber) {
@@ -226,12 +229,49 @@ final class InternalSyncDownloadProgress {
       : _totalDownloaded = downloaded.map((e) => e.opCount).sum,
         _totalTarget = target.map((e) => e.opCount).sum;
 
+  factory InternalSyncDownloadProgress.fromZero(Checkpoint target) {
+    final totalOpsPerPriority =
+        target.checksums.groupFoldBy<BucketPriority, int>(
+      (cs) => BucketPriority(cs.priority),
+      (prev, cs) => (prev ?? 0) + (cs.count ?? 0),
+    );
+    final downloaded = [
+      for (final involvedPriority in totalOpsPerPriority.keys)
+        (priority: involvedPriority, opCount: 0),
+    ];
+    final targetOps = totalOpsPerPriority.entries
+        .map((e) => (priority: e.key, opCount: e.value))
+        .toList();
+
+    return InternalSyncDownloadProgress(downloaded, targetOps);
+  }
+
   static int sumInPriority(
       List<OperationCounter> counters, BucketPriority priority) {
     return counters
         .where((e) => e.priority >= priority)
         .map((e) => e.opCount)
         .sum;
+  }
+
+  SyncDownloadProgress get asSyncDownloadProgress =>
+      SyncDownloadProgress._(this);
+
+  @override
+  int get hashCode => Object.hash(
+        _statusEquality.hash(downloaded),
+        _statusEquality.hash(target),
+      );
+
+  @override
+  bool operator ==(Object other) {
+    return other is InternalSyncDownloadProgress &&
+        // _totalDownloaded and _totalTarget are derived values, but comparing
+        // them first helps find a difference faster.
+        _totalDownloaded == other._totalDownloaded &&
+        _totalTarget == other._totalTarget &&
+        _statusEquality.equals(downloaded, other.downloaded) &&
+        _statusEquality.equals(target, other.target);
   }
 }
 
@@ -269,16 +309,31 @@ extension type SyncDownloadProgress._(InternalSyncDownloadProgress _internal) {
   /// a number between 0 and 1.
   double get progress => _internal._totalDownloaded / _internal._totalTarget;
 
+  /// Returns how many operations have been downloaded for buckets in
+  /// [priority].
+  ///
+  /// Under the consistency guarantees offered by PowerSync, this will also
+  /// include operations from higher-priority buckets.
   int downloadedFor(BucketPriority priority) {
     return InternalSyncDownloadProgress.sumInPriority(
         _internal.downloaded, priority);
   }
 
+  /// Returns how many operations in total need to be downloaded before the
+  /// client has reached a consistent states for buckets with the given
+  /// [priority].
+  ///
+  /// Under the consistency guarantees offered by PowerSync, this will also
+  /// include operations from higher-priority buckets.
   int totalFor(BucketPriority priority) {
     return InternalSyncDownloadProgress.sumInPriority(
         _internal.target, priority);
   }
 
+  /// The progress towards syncing the given [priority].
+  ///
+  /// Returns the fraction of [downloadedFor] to [totalFor], as a number between
+  /// 0 and 1.
   double progressFor(BucketPriority priority) {
     final downloaded = downloadedFor(priority);
     final total = totalFor(priority);

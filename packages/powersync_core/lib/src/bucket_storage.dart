@@ -7,7 +7,7 @@ import 'package:powersync_core/sqlite3_common.dart';
 
 import 'crud.dart';
 import 'schema_logic.dart';
-import 'sync_types.dart';
+import 'sync/protocol.dart';
 
 const compactOperationInterval = 1000;
 

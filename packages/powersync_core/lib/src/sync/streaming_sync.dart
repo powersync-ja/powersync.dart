@@ -1,24 +1,21 @@
 import 'dart:async';
 import 'dart:convert' as convert;
 
-import 'package:collection/collection.dart';
 import 'package:http/http.dart' as http;
+import 'package:meta/meta.dart';
 import 'package:powersync_core/src/abort_controller.dart';
 import 'package:powersync_core/src/exceptions.dart';
 import 'package:powersync_core/src/log_internal.dart';
 import 'package:powersync_core/src/user_agent/user_agent.dart';
 import 'package:sqlite_async/mutex.dart';
 
-import 'bucket_storage.dart';
-import 'connector.dart';
-import 'crud.dart';
+import '../bucket_storage.dart';
+import '../connector.dart';
+import '../crud.dart';
+import 'mutable_sync_status.dart';
 import 'stream_utils.dart';
-import 'sync_status.dart';
-import 'sync_types.dart';
-
-/// Since we use null to indicate "no change" in status updates, we need
-/// a different value to indicate "no error".
-const _noError = Object();
+import '../sync_status.dart';
+import 'protocol.dart';
 
 abstract interface class StreamingSync {
   Stream<SyncStatus> get statusStream;
@@ -29,13 +26,14 @@ abstract interface class StreamingSync {
   Future<void> abort();
 }
 
+@internal
 class StreamingSyncImplementation implements StreamingSync {
   BucketStorage adapter;
 
   final Future<PowerSyncCredentials?> Function() credentialsCallback;
   final Future<void> Function()? invalidCredentialsCallback;
-
   final Future<void> Function() uploadCrud;
+  final Stream<void> crudUpdateTriggerStream;
 
   // An internal controller which is used to trigger CRUD uploads internally
   // e.g. when reconnecting.
@@ -44,15 +42,8 @@ class StreamingSyncImplementation implements StreamingSync {
   final StreamController<Null> _internalCrudTriggerController =
       StreamController<Null>.broadcast();
 
-  final Stream<void> crudUpdateTriggerStream;
-
-  final StreamController<SyncStatus> _statusStreamController =
-      StreamController<SyncStatus>.broadcast();
-
-  @override
-  late final Stream<SyncStatus> statusStream;
-
-  late final http.Client _client;
+  final http.Client _client;
+  final SyncStatusStateStream _state = SyncStatusStateStream();
 
   final StreamController<Null> _localPingController =
       StreamController.broadcast();
@@ -61,8 +52,6 @@ class StreamingSyncImplementation implements StreamingSync {
 
   final Map<String, dynamic>? syncParameters;
 
-  SyncStatus lastStatus = const SyncStatus();
-
   AbortController? _abort;
 
   bool _safeToClose = true;
@@ -70,7 +59,6 @@ class StreamingSyncImplementation implements StreamingSync {
   final Mutex syncMutex, crudMutex;
 
   final Map<String, String> _userAgentHeaders;
-
   String? clientId;
 
   StreamingSyncImplementation(
@@ -86,12 +74,13 @@ class StreamingSyncImplementation implements StreamingSync {
       /// A unique identifier for this streaming sync implementation
       /// A good value is typically the DB file path which it will mutate when syncing.
       String? identifier = "unknown"})
-      : syncMutex = Mutex(identifier: "sync-$identifier"),
+      : _client = client,
+        syncMutex = Mutex(identifier: "sync-$identifier"),
         crudMutex = Mutex(identifier: "crud-$identifier"),
-        _userAgentHeaders = userAgentHeaders() {
-    _client = client;
-    statusStream = _statusStreamController.stream;
-  }
+        _userAgentHeaders = userAgentHeaders();
+
+  @override
+  Stream<SyncStatus> get statusStream => _state.statusStream;
 
   @override
   Future<void> abort() async {
@@ -119,15 +108,11 @@ class StreamingSyncImplementation implements StreamingSync {
 
     // Now close the client in all cases not covered above
     _client.close();
-    _statusStreamController.close();
+    _state.close();
   }
 
   bool get aborted {
     return _abort?.aborted ?? false;
-  }
-
-  bool get isConnected {
-    return lastStatus.connected;
   }
 
   @override
@@ -138,7 +123,7 @@ class StreamingSyncImplementation implements StreamingSync {
       crudLoop();
       var invalidCredentials = false;
       while (!aborted) {
-        _updateStatus(connecting: true);
+        _state.updateStatus((s) => s.setConnectingIfNotConnected());
         try {
           if (invalidCredentials && invalidCredentialsCallback != null) {
             // This may error. In that case it will be retried again on the next
@@ -160,11 +145,7 @@ class StreamingSyncImplementation implements StreamingSync {
           isolateLogger.warning('Sync error: $message', e, stacktrace);
           invalidCredentials = true;
 
-          _updateStatus(
-              connected: false,
-              connecting: true,
-              downloading: false,
-              downloadError: e);
+          _state.updateStatus((s) => s.applyDownloadError(e));
 
           // On error, wait a little before retrying
           // When aborting, don't wait
@@ -208,7 +189,7 @@ class StreamingSyncImplementation implements StreamingSync {
           // This is the first item in the FIFO CRUD queue.
           CrudEntry? nextCrudItem = await adapter.nextCrudItem();
           if (nextCrudItem != null) {
-            _updateStatus(uploading: true);
+            _state.updateStatus((s) => s.uploading = true);
             if (nextCrudItem.clientId == checkedCrudItem?.clientId) {
               // This will force a higher log level than exceptions which are caught here.
               isolateLogger.warning(
@@ -221,7 +202,7 @@ class StreamingSyncImplementation implements StreamingSync {
 
             checkedCrudItem = nextCrudItem;
             await uploadCrud();
-            _updateStatus(uploadError: _noError);
+            _state.updateStatus((s) => s.uploadError = null);
           } else {
             // Uploading is completed
             await adapter.updateLocalTarget(() => getWriteCheckpoint());
@@ -230,9 +211,10 @@ class StreamingSyncImplementation implements StreamingSync {
         } catch (e, stacktrace) {
           checkedCrudItem = null;
           isolateLogger.warning('Data upload error', e, stacktrace);
-          _updateStatus(uploading: false, uploadError: e);
+          _state.updateStatus((s) => s.applyUploadError(e));
           await _delayRetry();
-          if (!isConnected) {
+
+          if (!_state.status.connected) {
             // Exit the upload loop if the sync stream is no longer connected
             break;
           }
@@ -241,7 +223,7 @@ class StreamingSyncImplementation implements StreamingSync {
               e,
               stacktrace);
         } finally {
-          _updateStatus(uploading: false);
+          _state.updateStatus((s) => s.uploading = false);
         }
       }
     }, timeout: retryDelay);
@@ -276,50 +258,15 @@ class StreamingSyncImplementation implements StreamingSync {
   }
 
   void _updateStatusForPriority(SyncPriorityStatus completed) {
-    // All status entries with a higher priority can be deleted since this
-    // partial sync includes them.
-    _updateStatus(priorityStatusEntries: [
-      for (final entry in lastStatus.priorityStatusEntries)
-        if (entry.priority < completed.priority) entry,
-      completed
-    ]);
-  }
-
-  /// Update sync status based on any non-null parameters.
-  /// To clear errors, use [_noError] instead of null.
-  void _updateStatus({
-    DateTime? lastSyncedAt,
-    bool? hasSynced,
-    bool? connected,
-    bool? connecting,
-    bool? downloading,
-    bool? uploading,
-    Object? uploadError,
-    Object? downloadError,
-    List<SyncPriorityStatus>? priorityStatusEntries,
-  }) {
-    final c = connected ?? lastStatus.connected;
-    var newStatus = SyncStatus(
-      connected: c,
-      connecting: !c && (connecting ?? lastStatus.connecting),
-      lastSyncedAt: lastSyncedAt ?? lastStatus.lastSyncedAt,
-      hasSynced: hasSynced ?? lastStatus.hasSynced,
-      downloading: downloading ?? lastStatus.downloading,
-      uploading: uploading ?? lastStatus.uploading,
-      uploadError: uploadError == _noError
-          ? null
-          : (uploadError ?? lastStatus.uploadError),
-      downloadError: downloadError == _noError
-          ? null
-          : (downloadError ?? lastStatus.downloadError),
-      priorityStatusEntries:
-          priorityStatusEntries ?? lastStatus.priorityStatusEntries,
-    );
-
-    if (!_statusStreamController.isClosed) {
-      lastStatus = newStatus;
-      _statusStreamController.add(newStatus);
-    }
+    _state.updateStatus((s) {
+      // All status entries with a higher priority can be deleted since this
+      // partial sync includes them.
+      s.priorityStatusEntries = [
+        for (final entry in s.priorityStatusEntries)
+          if (entry.priority < completed.priority) entry,
+        completed
+      ];
+    });
   }
 
   Future<(List<BucketRequest>, Map<String, BucketDescription?>)>
@@ -362,7 +309,7 @@ class StreamingSyncImplementation implements StreamingSync {
         break;
       }
 
-      _updateStatus(connected: true, connecting: false);
+      _state.updateStatus((s) => s.setConnected());
       switch (line) {
         case Checkpoint():
           targetCheckpoint = line;
@@ -377,7 +324,7 @@ class StreamingSyncImplementation implements StreamingSync {
           }
           bucketMap = newBuckets;
           await adapter.removeBuckets([...bucketsToDelete]);
-          _updateStatus(downloading: true);
+          _state.updateStatus((s) => s.downloading = true);
         case StreamingSyncCheckpointComplete():
           final result = await adapter.syncLocalDatabase(targetCheckpoint!);
           if (!result.checkpointValid) {
@@ -389,27 +336,9 @@ class StreamingSyncImplementation implements StreamingSync {
             // Checksums valid, but need more data for a consistent checkpoint.
             // Continue waiting.
           } else {
-            appliedCheckpoint = targetCheckpoint;
-
-            final now = DateTime.now();
-            _updateStatus(
-              downloading: false,
-              downloadError: _noError,
-              lastSyncedAt: now,
-              priorityStatusEntries: [
-                if (appliedCheckpoint.checksums.isNotEmpty)
-                  (
-                    hasSynced: true,
-                    lastSyncedAt: now,
-                    priority: maxBy(
-                      appliedCheckpoint.checksums
-                          .map((cs) => BucketPriority(cs.priority)),
-                      (priority) => priority,
-                      compare: BucketPriority.comparator,
-                    )!,
-                  )
-              ],
-            );
+            final thisCheckpoint = appliedCheckpoint = targetCheckpoint;
+            _state
+                .updateStatus((s) => s.applyCheckpointReached(thisCheckpoint));
           }
 
           validatedCheckpoint = targetCheckpoint;
@@ -438,7 +367,7 @@ class StreamingSyncImplementation implements StreamingSync {
             throw PowerSyncProtocolException(
                 'Checkpoint diff without previous checkpoint');
           }
-          _updateStatus(downloading: true);
+          _state.updateStatus((s) => s.downloading = true);
           final diff = line;
           final Map<String, BucketChecksum> newBuckets = {};
           for (var checksum in targetCheckpoint.checksums) {
@@ -462,7 +391,7 @@ class StreamingSyncImplementation implements StreamingSync {
           await adapter.removeBuckets(diff.removedBuckets);
           adapter.setTargetCheckpoint(targetCheckpoint);
         case SyncDataBatch():
-          _updateStatus(downloading: true);
+          _state.updateStatus((s) => s.downloading = true);
           await adapter.saveSyncData(line);
         case StreamingSyncKeepalive(:final tokenExpiresIn):
           if (tokenExpiresIn == 0) {
@@ -489,10 +418,9 @@ class StreamingSyncImplementation implements StreamingSync {
           isolateLogger.fine('Unknown sync line: $rawData');
         case null: // Local ping
           if (targetCheckpoint == appliedCheckpoint) {
-            _updateStatus(
-                downloading: false,
-                downloadError: _noError,
-                lastSyncedAt: DateTime.now());
+            if (appliedCheckpoint case final completed?) {
+              _state.updateStatus((s) => s.applyCheckpointReached(completed));
+            }
           } else if (validatedCheckpoint == targetCheckpoint) {
             final result = await adapter.syncLocalDatabase(targetCheckpoint!);
             if (!result.checkpointValid) {
@@ -504,12 +432,8 @@ class StreamingSyncImplementation implements StreamingSync {
               // Checksums valid, but need more data for a consistent checkpoint.
               // Continue waiting.
             } else {
-              appliedCheckpoint = targetCheckpoint;
-
-              _updateStatus(
-                  downloading: false,
-                  downloadError: _noError,
-                  lastSyncedAt: DateTime.now());
+              final completed = appliedCheckpoint = targetCheckpoint;
+              _state.updateStatus((s) => s.applyCheckpointReached(completed));
             }
           }
       }
