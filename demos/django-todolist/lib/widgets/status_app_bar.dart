@@ -1,62 +1,42 @@
-import 'dart:async';
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:powersync/powersync.dart';
 import 'package:powersync_django_todolist_demo/widgets/fts_search_delegate.dart';
 import '../powersync.dart';
 
-class StatusAppBar extends StatefulWidget implements PreferredSizeWidget {
+class StatusAppBar extends StatelessWidget implements PreferredSizeWidget {
+  final Widget title;
+
   const StatusAppBar({super.key, required this.title});
-
-  final String title;
-
-  @override
-  State<StatusAppBar> createState() => _StatusAppBarState();
 
   @override
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);
-}
-
-class _StatusAppBarState extends State<StatusAppBar> {
-  late SyncStatus _connectionState;
-  StreamSubscription<SyncStatus>? _syncStatusSubscription;
-
-  @override
-  void initState() {
-    super.initState();
-    _connectionState = db.currentStatus;
-    _syncStatusSubscription = db.statusStream.listen((event) {
-      setState(() {
-        _connectionState = db.currentStatus;
-      });
-    });
-  }
-
-  @override
-  void dispose() {
-    super.dispose();
-    _syncStatusSubscription?.cancel();
-  }
 
   @override
   Widget build(BuildContext context) {
-    final statusIcon = _getStatusIcon(_connectionState);
+    return StreamBuilder(
+      stream: db.statusStream,
+      initialData: db.currentStatus,
+      builder: (context, snapshot) {
+        final status = snapshot.data!;
+        final statusIcon = _getStatusIcon(status);
 
-    return AppBar(
-      title: Text(widget.title),
-      actions: <Widget>[
-        IconButton(
-          onPressed: () {
-            showSearch(context: context, delegate: FtsSearchDelegate());
-          },
-          icon: const Icon(Icons.search),
-        ),
-        statusIcon,
-        // Make some space for the "Debug" banner, so that the status
-        // icon isn't hidden
-        if (kDebugMode) _makeIcon('Debug mode', Icons.developer_mode),
-      ],
+        return AppBar(
+          title: title,
+          actions: <Widget>[
+            IconButton(
+              onPressed: () {
+                showSearch(context: context, delegate: FtsSearchDelegate());
+              },
+              icon: const Icon(Icons.search),
+            ),
+            statusIcon,
+            // Make some space for the "Debug" banner, so that the status
+            // icon isn't hidden
+            if (kDebugMode) _makeIcon('Debug mode', Icons.developer_mode),
+          ],
+        );
+      },
     );
   }
 }
