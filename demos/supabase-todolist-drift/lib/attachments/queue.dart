@@ -1,14 +1,24 @@
 import 'dart:async';
 
-import 'package:powersync/powersync.dart';
 import 'package:powersync_attachments_helper/powersync_attachments_helper.dart';
+import 'package:riverpod/riverpod.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:supabase_todolist_drift/app_config.dart';
 import 'package:supabase_todolist_drift/attachments/remote_storage_adapter.dart';
 
 import 'package:supabase_todolist_drift/models/schema.dart';
+import 'package:supabase_todolist_drift/powersync.dart' hide log;
 
-/// Global reference to the queue
-late final PhotoAttachmentQueue attachmentQueue;
+part 'queue.g.dart';
+
+@Riverpod(keepAlive: true)
+Future<PhotoAttachmentQueue> attachmentQueue(Ref ref) async {
+  final db = await ref.read(initializePowerSyncProvider.future);
+  final queue = PhotoAttachmentQueue(db, remoteStorage);
+  await queue.init();
+  return queue;
+}
+
 final remoteStorage = SupabaseStorageAdapter();
 
 /// Function to handle errors when downloading attachments
@@ -82,9 +92,4 @@ class PhotoAttachmentQueue extends AbstractAttachmentQueue {
       syncingService.processIds(relevantIds, fileExtension);
     });
   }
-}
-
-initializeAttachmentQueue(PowerSyncDatabase db) async {
-  attachmentQueue = PhotoAttachmentQueue(db, remoteStorage);
-  await attachmentQueue.init();
 }

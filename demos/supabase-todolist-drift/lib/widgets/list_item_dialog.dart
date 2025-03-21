@@ -1,36 +1,25 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_hooks/flutter_hooks.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:supabase_todolist_drift/powersync.dart';
 
-class ListItemDialog extends StatefulWidget {
+final class ListItemDialog extends HookConsumerWidget {
   const ListItemDialog({super.key});
 
   @override
-  State<StatefulWidget> createState() {
-    return _ListItemDialogState();
-  }
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    final textController = useTextEditingController();
 
-class _ListItemDialogState extends State<ListItemDialog> {
-  final TextEditingController _textFieldController = TextEditingController();
+    Future<void> add() async {
+      await ref
+          .read(driftDatabase)
+          .createList(textController.text, ref.read(userIdProvider));
+    }
 
-  _ListItemDialogState();
-
-  @override
-  void dispose() {
-    super.dispose();
-    _textFieldController.dispose();
-  }
-
-  Future<void> add() async {
-    await appDb.createList(_textFieldController.text);
-  }
-
-  @override
-  Widget build(BuildContext context) {
     return AlertDialog(
       title: const Text('Add a new list'),
       content: TextField(
-        controller: _textFieldController,
+        controller: textController,
         decoration: const InputDecoration(hintText: 'List name'),
         onSubmitted: (value) async {
           Navigator.of(context).pop();
@@ -42,7 +31,7 @@ class _ListItemDialogState extends State<ListItemDialog> {
         OutlinedButton(
           child: const Text('Cancel'),
           onPressed: () {
-            _textFieldController.clear();
+            textController.clear();
             Navigator.of(context).pop();
           },
         ),
