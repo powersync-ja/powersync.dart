@@ -41,7 +41,7 @@ class ListsPage extends StatelessWidget {
   }
 }
 
-final class ListsWidget extends StatelessWidget {
+class ListsWidget extends StatelessWidget {
   const ListsWidget({super.key});
 
   @override
@@ -49,25 +49,23 @@ final class ListsWidget extends StatelessWidget {
     return FutureBuilder(
       future: db.waitForFirstSync(priority: _listsPriority),
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.done) {
-          return StreamBuilder(
-            stream: TodoList.watchListsWithStats(),
-            builder: (context, snapshot) {
-              if (snapshot.data case final todoLists?) {
+        return switch (snapshot.connectionState) {
+          ConnectionState.done => StreamBuilder(
+              stream: TodoList.watchListsWithStats(),
+              builder: (context, snapshot) {
+                final items = snapshot.data ?? const [];
+
                 return ListView(
                   padding: const EdgeInsets.symmetric(vertical: 8.0),
-                  children: todoLists.map((list) {
+                  children: items.map((list) {
                     return ListItemWidget(list: list);
                   }).toList(),
                 );
-              } else {
-                return const CircularProgressIndicator();
-              }
-            },
-          );
-        } else {
-          return const Text('Busy with sync...');
-        }
+              },
+            ),
+          // waitForFirstSync() did not complete yet
+          _ => const Text('Busy with sync...'),
+        };
       },
     );
   }

@@ -1,7 +1,4 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
-import 'package:firebase_nodejs_todolist/models/todo_item.dart';
 
 import './status_app_bar.dart';
 import './todo_item_dialog.dart';
@@ -34,56 +31,31 @@ class TodoListPage extends StatelessWidget {
     );
 
     return Scaffold(
-        appBar: StatusAppBar(title: list.name),
+        appBar: StatusAppBar(title: Text(list.name)),
         floatingActionButton: button,
         body: TodoListWidget(list: list));
   }
 }
 
-class TodoListWidget extends StatefulWidget {
+class TodoListWidget extends StatelessWidget {
   final TodoList list;
 
   const TodoListWidget({super.key, required this.list});
 
   @override
-  State<StatefulWidget> createState() {
-    return TodoListWidgetState();
-  }
-}
-
-class TodoListWidgetState extends State<TodoListWidget> {
-  List<TodoItem> _data = [];
-  StreamSubscription? _subscription;
-
-  TodoListWidgetState();
-
-  @override
-  void initState() {
-    super.initState();
-    final stream = widget.list.watchItems();
-    _subscription = stream.listen((data) {
-      if (!mounted) {
-        return;
-      }
-      setState(() {
-        _data = data;
-      });
-    });
-  }
-
-  @override
-  void dispose() {
-    super.dispose();
-    _subscription?.cancel();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      children: _data.map((todo) {
-        return TodoItemWidget(todo: todo);
-      }).toList(),
+    return StreamBuilder(
+      stream: list.watchItems(),
+      builder: (context, snapshot) {
+        final items = snapshot.data ?? const [];
+
+        return ListView(
+          padding: const EdgeInsets.symmetric(vertical: 8.0),
+          children: items.map((todo) {
+            return TodoItemWidget(todo: todo);
+          }).toList(),
+        );
+      },
     );
   }
 }

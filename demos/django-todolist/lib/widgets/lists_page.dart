@@ -1,7 +1,6 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 
+import '../powersync.dart';
 import './list_item.dart';
 import './list_item_dialog.dart';
 import '../main.dart';
@@ -41,48 +40,32 @@ class ListsPage extends StatelessWidget {
   }
 }
 
-class ListsWidget extends StatefulWidget {
+class ListsWidget extends StatelessWidget {
   const ListsWidget({super.key});
 
   @override
-  State<StatefulWidget> createState() {
-    return _ListsWidgetState();
-  }
-}
-
-class _ListsWidgetState extends State<ListsWidget> {
-  List<TodoList> _data = [];
-  StreamSubscription? _subscription;
-
-  _ListsWidgetState();
-
-  @override
-  void initState() {
-    super.initState();
-    final stream = TodoList.watchListsWithStats();
-    _subscription = stream.listen((data) {
-      if (!context.mounted) {
-        return;
-      }
-      setState(() {
-        _data = data;
-      });
-    });
-  }
-
-  @override
-  void dispose() {
-    super.dispose();
-    _subscription?.cancel();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      children: _data.map((list) {
-        return ListItemWidget(list: list);
-      }).toList(),
+    return FutureBuilder(
+      future: db.waitForFirstSync(),
+      builder: (context, snapshot) {
+        return switch (snapshot.connectionState) {
+          ConnectionState.done => StreamBuilder(
+              stream: TodoList.watchListsWithStats(),
+              builder: (context, snapshot) {
+                final items = snapshot.data ?? const [];
+
+                return ListView(
+                  padding: const EdgeInsets.symmetric(vertical: 8.0),
+                  children: items.map((list) {
+                    return ListItemWidget(list: list);
+                  }).toList(),
+                );
+              },
+            ),
+          // waitForFirstSync() did not complete yet
+          _ => const Text('Busy with sync...'),
+        };
+      },
     );
   }
 }
