@@ -23,7 +23,7 @@ final class PhotoWidget extends ConsumerWidget {
       return Container();
     }
 
-    final data = photoState.value;
+    final data = photoState.requireValue;
     Widget takePhotoButton = ElevatedButton(
       onPressed: () async {
         final camera = await setupCamera();
@@ -50,7 +50,7 @@ final class PhotoWidget extends ConsumerWidget {
       child: const Text('Take Photo'),
     );
 
-    if (data == null) {
+    if (todo.photoId == null) {
       return takePhotoButton;
     }
 

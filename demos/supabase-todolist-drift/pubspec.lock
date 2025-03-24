@@ -301,17 +301,17 @@ packages:
     dependency: "direct main"
     description:
       name: drift
-      sha256: "97d5832657d49f26e7a8e07de397ddc63790b039372878d5117af816d0fdb5cb"
+      sha256: "76f23535e19a9f2be92f954e74d8802e96f526e5195d7408c1a20f6659043941"
       url: "https://pub.dev"
     source: hosted
-    version: "2.25.1"
+    version: "2.24.0"
   drift_dev:
     dependency: "direct dev"
     description:
       path: "/Users/simon/src/drift/drift_dev"
       relative: false
     source: path
-    version: "2.25.2"
+    version: "2.24.0"
   drift_sqlite_async:
     dependency: "direct main"
     description:
