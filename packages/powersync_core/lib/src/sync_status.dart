@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
 
@@ -161,11 +163,11 @@ final class SyncStatus {
   String toString() {
     return "SyncStatus<connected: $connected connecting: $connecting downloading: $downloading uploading: $uploading lastSyncedAt: $lastSyncedAt, hasSynced: $hasSynced, error: $anyError>";
   }
-}
 
-// This should be a ListEquality<SyncPriorityStatus>, but that appears to
-// cause weird type errors with DDC (but only after hot reloads?!)
-const _statusEquality = ListEquality<Object?>();
+  // This should be a ListEquality<SyncPriorityStatus>, but that appears to
+  // cause weird type errors with DDC (but only after hot reloads?!)
+  static const _statusEquality = ListEquality<Object?>();
+}
 
 /// The priority of a PowerSync bucket.
 extension type const BucketPriority._(int priorityNumber) {
@@ -215,33 +217,23 @@ class UploadQueueStats {
 }
 
 @internal
-typedef OperationCounter = ({BucketPriority priority, int opCount});
-
-@internal
 final class InternalSyncDownloadProgress {
-  final List<OperationCounter> downloaded;
-  final List<OperationCounter> target;
+  final Map<BucketPriority, int> downloaded;
+  final Map<BucketPriority, int> target;
 
   final int _totalDownloaded;
   final int _totalTarget;
 
   InternalSyncDownloadProgress(this.downloaded, this.target)
-      : _totalDownloaded = downloaded.map((e) => e.opCount).sum,
-        _totalTarget = target.map((e) => e.opCount).sum;
+      : _totalDownloaded = target.values.sum,
+        _totalTarget = target.values.sum;
 
   factory InternalSyncDownloadProgress.fromZero(Checkpoint target) {
-    final totalOpsPerPriority =
-        target.checksums.groupFoldBy<BucketPriority, int>(
+    final targetOps = target.checksums.groupFoldBy<BucketPriority, int>(
       (cs) => BucketPriority(cs.priority),
       (prev, cs) => (prev ?? 0) + (cs.count ?? 0),
     );
-    final downloaded = [
-      for (final involvedPriority in totalOpsPerPriority.keys)
-        (priority: involvedPriority, opCount: 0),
-    ];
-    final targetOps = totalOpsPerPriority.entries
-        .map((e) => (priority: e.key, opCount: e.value))
-        .toList();
+    final downloaded = targetOps.map((k, v) => MapEntry(k, 0));
 
     return InternalSyncDownloadProgress(downloaded, targetOps);
   }
@@ -251,11 +243,26 @@ final class InternalSyncDownloadProgress {
   }
 
   static int sumInPriority(
-      List<OperationCounter> counters, BucketPriority priority) {
-    return counters
-        .where((e) => e.priority >= priority)
-        .map((e) => e.opCount)
+      Map<BucketPriority, int> counters, BucketPriority priority) {
+    return counters.entries
+        .where((e) => e.key >= priority)
+        .map((e) => e.value)
         .sum;
+  }
+
+  InternalSyncDownloadProgress incrementDownloaded(
+      List<(BucketPriority, int)> opsInPriority) {
+    var downloadedOps = {...downloaded};
+
+    for (final (priority, addedOps) in opsInPriority) {
+      assert(downloaded.containsKey(priority));
+      assert(target.containsKey(priority));
+
+      downloadedOps[priority] =
+          max(downloadedOps[priority]! + addedOps, target[priority]!);
+    }
+
+    return InternalSyncDownloadProgress(downloadedOps, target);
   }
 
   SyncDownloadProgress get asSyncDownloadProgress =>
@@ -263,8 +270,8 @@ final class InternalSyncDownloadProgress {
 
   @override
   int get hashCode => Object.hash(
-        _statusEquality.hash(downloaded),
-        _statusEquality.hash(target),
+        _mapEquality.hash(downloaded),
+        _mapEquality.hash(target),
       );
 
   @override
@@ -274,9 +281,11 @@ final class InternalSyncDownloadProgress {
         // them first helps find a difference faster.
         _totalDownloaded == other._totalDownloaded &&
         _totalTarget == other._totalTarget &&
-        _statusEquality.equals(downloaded, other.downloaded) &&
-        _statusEquality.equals(target, other.target);
+        _mapEquality.equals(downloaded, other.downloaded) &&
+        _mapEquality.equals(target, other.target);
   }
+
+  static const _mapEquality = MapEquality<Object?, Object?>();
 }
 
 /// Provides realtime progress about how PowerSync is downloading rows.

@@ -391,6 +391,9 @@ class StreamingSyncImplementation implements StreamingSync {
           await adapter.removeBuckets(diff.removedBuckets);
           adapter.setTargetCheckpoint(targetCheckpoint);
         case SyncDataBatch():
+          // TODO: This increments the counters before actually saving sync
+          // data. Might be fine though?
+          _state.updateStatus((s) => s.applyBatchReceived(bucketMap, line));
           _state.updateStatus((s) => s.downloading = true);
           await adapter.saveSyncData(line);
         case StreamingSyncKeepalive(:final tokenExpiresIn):

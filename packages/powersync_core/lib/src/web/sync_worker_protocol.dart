@@ -153,22 +153,8 @@ extension type SerializedOperationCounter._(JSObject _) implements JSObject {
     required int opCount,
   });
 
-  factory SerializedOperationCounter.fromDart(OperationCounter progress) {
-    return SerializedOperationCounter(
-      priority: progress.priority.priorityNumber,
-      opCount: progress.opCount,
-    );
-  }
-
   external JSNumber get priority;
   external JSNumber get opCount;
-
-  OperationCounter get toDart {
-    return (
-      priority: BucketPriority(priority.toDartInt),
-      opCount: opCount.toDartInt
-    );
-  }
 }
 
 @anonymous
@@ -197,15 +183,22 @@ extension type SerializedDownloadProgress._(JSObject _) implements JSObject {
   }
 
   static JSArray<SerializedOperationCounter> _serializeCounters(
-      List<OperationCounter> counters) {
+      Map<BucketPriority, int> counters) {
     return [
-      for (final entry in counters) SerializedOperationCounter.fromDart(entry)
+      for (final MapEntry(:key, :value) in counters.entries)
+        SerializedOperationCounter(
+          priority: key.priorityNumber,
+          opCount: value,
+        )
     ].toJS;
   }
 
-  static List<OperationCounter> _deserializeCounters(
+  static Map<BucketPriority, int> _deserializeCounters(
       JSArray<SerializedOperationCounter> counters) {
-    return [for (final entry in counters.toDart) entry.toDart];
+    return {
+      for (final entry in counters.toDart)
+        BucketPriority(entry.priority.toDartInt): entry.opCount.toDartInt,
+    };
   }
 }
 

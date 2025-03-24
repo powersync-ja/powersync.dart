@@ -58,12 +58,25 @@ final class MutableSyncStatus {
 
   void applyCheckpointStarted(Checkpoint target) {
     downloading = true;
+    // TODO: Include pending ops from interrupted download, if any...
     downloadProgress = InternalSyncDownloadProgress.fromZero(target);
   }
 
   void applyUploadError(Object error) {
     uploading = false;
     uploadError = error;
+  }
+
+  void applyBatchReceived(
+      Map<String, BucketDescription?> currentBuckets, SyncDataBatch batch) {
+    downloading = true;
+    if (downloadProgress case final previousProgress?) {
+      downloadProgress = previousProgress.incrementDownloaded([
+        for (final bucket in batch.buckets)
+          if (currentBuckets[bucket.bucket] case final knownBucket?)
+            (BucketPriority(knownBucket.priority), bucket.data.length),
+      ]);
+    }
   }
 
   SyncStatus immutableSnapsot() {
