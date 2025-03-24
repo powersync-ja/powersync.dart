@@ -288,6 +288,12 @@ final class InternalSyncDownloadProgress {
   static const _mapEquality = MapEquality<Object?, Object?>();
 }
 
+typedef ProgressWithOperations = ({
+  int total,
+  int completed,
+  double fraction,
+});
+
 /// Provides realtime progress about how PowerSync is downloading rows.
 ///
 /// The reported progress always reflects the status towards the end of a
@@ -321,6 +327,24 @@ extension type SyncDownloadProgress._(InternalSyncDownloadProgress _internal) {
   /// The fraction of [total] operations that have already been [downloaded], as
   /// a number between 0 and 1.
   double get progress => _internal._totalDownloaded / _internal._totalTarget;
+
+  ProgressWithOperations get untilCompletion => (
+        total: total,
+        completed: downloaded,
+        fraction: progress,
+      );
+
+  ProgressWithOperations untilPriority(BucketPriority priority) {
+    final downloaded = downloadedFor(priority);
+    final total = totalFor(priority);
+    final progress = total == 0 ? 0.0 : downloaded / total;
+
+    return (
+      total: totalFor(priority),
+      completed: downloaded,
+      fraction: progress,
+    );
+  }
 
   /// Returns how many operations have been downloaded for buckets in
   /// [priority].
