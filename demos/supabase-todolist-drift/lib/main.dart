@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:logging/logging.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:supabase_todolist_drift/models/schema.dart';
 import 'package:supabase_todolist_drift/supabase.dart';
 
@@ -63,7 +64,7 @@ class MyApp extends ConsumerWidget {
   }
 }
 
-class MyHomePage extends StatelessWidget {
+class MyHomePage extends ConsumerWidget {
   const MyHomePage(
       {super.key,
       required this.title,
@@ -75,7 +76,7 @@ class MyHomePage extends StatelessWidget {
   final Widget? floatingActionButton;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
       appBar: StatusAppBar(title: title),
       body: Center(child: content),
@@ -110,7 +111,9 @@ class MyHomePage extends StatelessWidget {
               onTap: () async {
                 var navigator = Navigator.of(context);
                 navigator.pop();
-                await logout();
+                await Supabase.instance.client.auth.signOut();
+                await (await ref.read(initializePowerSyncProvider.future))
+                    .disconnectAndClear();
 
                 navigator.pushReplacement(MaterialPageRoute(
                   builder: (context) => loginPage,

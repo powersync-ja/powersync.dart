@@ -229,8 +229,3 @@ Future<String> _getDatabasePath() async {
   final dir = await getApplicationSupportDirectory();
   return join(dir.path, dbFilename);
 }
-
-/// Explicit sign out - clear database and log out.
-Future<void> logout() async {
-  await Supabase.instance.client.auth.signOut();
-}
