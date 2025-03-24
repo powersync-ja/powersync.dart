@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:powersync/powersync.dart';
-import 'package:powersync_flutter_demo/powersync.dart';
+import 'package:powersync_flutter_demo/widgets/guard_by_sync.dart';
 
 import './list_item.dart';
 import './list_item_dialog.dart';
@@ -46,29 +46,23 @@ final class ListsWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder(
-      future: db.waitForFirstSync(priority: _listsPriority),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.done) {
-          return StreamBuilder(
-            stream: TodoList.watchListsWithStats(),
-            builder: (context, snapshot) {
-              if (snapshot.data case final todoLists?) {
-                return ListView(
-                  padding: const EdgeInsets.symmetric(vertical: 8.0),
-                  children: todoLists.map((list) {
-                    return ListItemWidget(list: list);
-                  }).toList(),
-                );
-              } else {
-                return const CircularProgressIndicator();
-              }
-            },
-          );
-        } else {
-          return const Text('Busy with sync...');
-        }
-      },
+    return GuardBySync(
+      priority: _listsPriority,
+      child: StreamBuilder(
+        stream: TodoList.watchListsWithStats(),
+        builder: (context, snapshot) {
+          if (snapshot.data case final todoLists?) {
+            return ListView(
+              padding: const EdgeInsets.symmetric(vertical: 8.0),
+              children: todoLists.map((list) {
+                return ListItemWidget(list: list);
+              }).toList(),
+            );
+          } else {
+            return const CircularProgressIndicator();
+          }
+        },
+      ),
     );
   }
 
