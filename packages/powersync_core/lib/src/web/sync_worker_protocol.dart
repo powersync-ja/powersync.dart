@@ -147,6 +147,69 @@ extension type SerializedCredentials._(JSObject _) implements JSObject {
 }
 
 @anonymous
+extension type SerializedOperationCounter._(JSObject _) implements JSObject {
+  external factory SerializedOperationCounter({
+    required int priority,
+    required int opCount,
+  });
+
+  factory SerializedOperationCounter.fromDart(OperationCounter progress) {
+    return SerializedOperationCounter(
+      priority: progress.priority.priorityNumber,
+      opCount: progress.opCount,
+    );
+  }
+
+  external JSNumber get priority;
+  external JSNumber get opCount;
+
+  OperationCounter get toDart {
+    return (
+      priority: BucketPriority(priority.toDartInt),
+      opCount: opCount.toDartInt
+    );
+  }
+}
+
+@anonymous
+extension type SerializedDownloadProgress._(JSObject _) implements JSObject {
+  external factory SerializedDownloadProgress({
+    required JSArray<SerializedOperationCounter> downloaded,
+    required JSArray<SerializedOperationCounter> target,
+  });
+
+  external JSArray<SerializedOperationCounter> get downloaded;
+  external JSArray<SerializedOperationCounter> get target;
+
+  factory SerializedDownloadProgress.fromDart(
+      InternalSyncDownloadProgress progress) {
+    return SerializedDownloadProgress(
+      downloaded: _serializeCounters(progress.downloaded),
+      target: _serializeCounters(progress.target),
+    );
+  }
+
+  InternalSyncDownloadProgress get toDart {
+    return InternalSyncDownloadProgress(
+      _deserializeCounters(downloaded),
+      _deserializeCounters(target),
+    );
+  }
+
+  static JSArray<SerializedOperationCounter> _serializeCounters(
+      List<OperationCounter> counters) {
+    return [
+      for (final entry in counters) SerializedOperationCounter.fromDart(entry)
+    ].toJS;
+  }
+
+  static List<OperationCounter> _deserializeCounters(
+      JSArray<SerializedOperationCounter> counters) {
+    return [for (final entry in counters.toDart) entry.toDart];
+  }
+}
+
+@anonymous
 extension type SerializedSyncStatus._(JSObject _) implements JSObject {
   external factory SerializedSyncStatus({
     required bool connected,
@@ -158,6 +221,7 @@ extension type SerializedSyncStatus._(JSObject _) implements JSObject {
     required String? uploadError,
     required String? downloadError,
     required JSArray? priorityStatusEntries,
+    required SerializedDownloadProgress? syncProgress,
   });
 
   factory SerializedSyncStatus.from(SyncStatus status) {
@@ -178,6 +242,11 @@ extension type SerializedSyncStatus._(JSObject _) implements JSObject {
             entry.hasSynced?.toJS,
           ].toJS
       ].toJS,
+      syncProgress: switch (status.downloadProgress) {
+        null => null,
+        var other => SerializedDownloadProgress.fromDart(
+            InternalSyncDownloadProgress.ofPublic(other)),
+      },
     );
   }
 
@@ -190,6 +259,7 @@ extension type SerializedSyncStatus._(JSObject _) implements JSObject {
   external String? uploadError;
   external String? downloadError;
   external JSArray? priorityStatusEntries;
+  external SerializedDownloadProgress? syncProgress;
 
   SyncStatus asSyncStatus() {
     return SyncStatus(
@@ -219,6 +289,7 @@ extension type SerializedSyncStatus._(JSObject _) implements JSObject {
             );
           })
       ],
+      downloadProgress: syncProgress?.toDart.asSyncDownloadProgress,
     );
   }
 }

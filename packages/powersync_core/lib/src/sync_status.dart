@@ -246,6 +246,10 @@ final class InternalSyncDownloadProgress {
     return InternalSyncDownloadProgress(downloaded, targetOps);
   }
 
+  static InternalSyncDownloadProgress ofPublic(SyncDownloadProgress public) {
+    return public._internal;
+  }
+
   static int sumInPriority(
       List<OperationCounter> counters, BucketPriority priority) {
     return counters
