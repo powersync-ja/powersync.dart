@@ -216,17 +216,25 @@ class UploadQueueStats {
   }
 }
 
+/// Per-bucket download progress information.
+@internal
+typedef BucketProgress = ({
+  BucketPriority priority,
+  int atLast,
+  int sinceLast,
+  int targetCount,
+});
+
 @internal
 final class InternalSyncDownloadProgress {
-  final Map<BucketPriority, int> downloaded;
-  final Map<BucketPriority, int> target;
+  final Map<String, BucketProgress> buckets;
 
   final int _totalDownloaded;
   final int _totalTarget;
 
-  InternalSyncDownloadProgress(this.downloaded, this.target)
-      : _totalDownloaded = target.values.sum,
-        _totalTarget = target.values.sum;
+  InternalSyncDownloadProgress(this.buckets)
+      : _totalDownloaded = buckets.values.map((e) => e.sinceLast).sum,
+        _totalTarget = buckets.values.map((e) => e.targetCount - e.atLast).sum;
 
   factory InternalSyncDownloadProgress.fromZero(Checkpoint target) {
     final targetOps = target.checksums.groupFoldBy<BucketPriority, int>(
@@ -234,8 +242,6 @@ final class InternalSyncDownloadProgress {
       (prev, cs) => (prev ?? 0) + (cs.count ?? 0),
     );
     final downloaded = targetOps.map((k, v) => MapEntry(k, 0));
-
-    return InternalSyncDownloadProgress(downloaded, targetOps);
   }
 
   static InternalSyncDownloadProgress ofPublic(SyncDownloadProgress public) {
@@ -250,29 +256,26 @@ final class InternalSyncDownloadProgress {
         .sum;
   }
 
-  InternalSyncDownloadProgress incrementDownloaded(
-      List<(BucketPriority, int)> opsInPriority) {
-    var downloadedOps = {...downloaded};
-
-    for (final (priority, addedOps) in opsInPriority) {
-      assert(downloaded.containsKey(priority));
-      assert(target.containsKey(priority));
-
-      downloadedOps[priority] =
-          max(downloadedOps[priority]! + addedOps, target[priority]!);
+  InternalSyncDownloadProgress incrementDownloaded(SyncDataBatch batch) {
+    final newBucketStates = Map.of(buckets);
+    for (final dataForBucket in batch.buckets) {
+      final previous = newBucketStates[dataForBucket.bucket]!;
+      newBucketStates[dataForBucket.bucket] = (
+        priority: previous.priority,
+        atLast: previous.atLast,
+        sinceLast: previous.sinceLast,
+        targetCount: previous.targetCount,
+      );
     }
 
-    return InternalSyncDownloadProgress(downloadedOps, target);
+    return InternalSyncDownloadProgress(newBucketStates);
   }
 
   SyncDownloadProgress get asSyncDownloadProgress =>
       SyncDownloadProgress._(this);
 
   @override
-  int get hashCode => Object.hash(
-        _mapEquality.hash(downloaded),
-        _mapEquality.hash(target),
-      );
+  int get hashCode => _mapEquality.hash(buckets);
 
   @override
   bool operator ==(Object other) {
@@ -281,8 +284,7 @@ final class InternalSyncDownloadProgress {
         // them first helps find a difference faster.
         _totalDownloaded == other._totalDownloaded &&
         _totalTarget == other._totalTarget &&
-        _mapEquality.equals(downloaded, other.downloaded) &&
-        _mapEquality.equals(target, other.target);
+        _mapEquality.equals(buckets, other.buckets);
   }
 
   static const _mapEquality = MapEquality<Object?, Object?>();

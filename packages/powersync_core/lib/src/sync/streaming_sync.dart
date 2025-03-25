@@ -285,8 +285,6 @@ class StreamingSyncImplementation implements StreamingSync {
 
   Future<bool> streamingSyncIteration(
       {AbortController? abortController}) async {
-    adapter.startSession();
-
     var (bucketRequests, bucketMap) = await _collectLocalBucketState();
 
     Checkpoint? targetCheckpoint;

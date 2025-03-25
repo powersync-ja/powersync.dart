@@ -29,8 +29,6 @@ class BucketStorage {
     return await _internalDb.execute(query, parameters);
   }
 
-  void startSession() {}
-
   Future<List<BucketState>> getBucketStates() async {
     final rows = await select(
         'SELECT name as bucket, cast(last_op as TEXT) as op_id FROM ps_buckets WHERE pending_delete = 0 AND name != \'\$local\'');

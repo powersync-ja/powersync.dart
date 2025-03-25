@@ -40,6 +40,7 @@ final class MutableSyncStatus {
 
   void applyCheckpointReached(Checkpoint applied) {
     downloading = false;
+    downloadProgress = null;
     downloadError = null;
     final now = lastSyncedAt = DateTime.now();
     priorityStatusEntries = [
