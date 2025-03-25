@@ -3,8 +3,8 @@ import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:supabase_todolist_drift/powersync.dart';
 
-final class ListItemDialog extends HookConsumerWidget {
-  const ListItemDialog({super.key});
+final class NewListDialog extends HookConsumerWidget {
+  const NewListDialog({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

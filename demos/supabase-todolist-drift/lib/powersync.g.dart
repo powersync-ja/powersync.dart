@@ -6,24 +6,6 @@ part of 'powersync.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$initializePowerSyncHash() =>
-    r'60fd8dfe7bc8e1a41818d8b10cbf0a1a355d2ed8';
-
-/// See also [initializePowerSync].
-@ProviderFor(initializePowerSync)
-final initializePowerSyncProvider = FutureProvider<PowerSyncDatabase>.internal(
-  initializePowerSync,
-  name: r'initializePowerSyncProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$initializePowerSyncHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
-
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef InitializePowerSyncRef = FutureProviderRef<PowerSyncDatabase>;
 String _$isLoggedInHash() => r'4de54b56ee8d5bba766f81dcbcfe033f3c905250';
 
 /// See also [isLoggedIn].
@@ -206,5 +188,22 @@ class _DidCompleteSyncProviderElement extends AutoDisposeProviderElement<bool>
   @override
   BucketPriority? get priority => (origin as DidCompleteSyncProvider).priority;
 }
+
+String _$powerSyncInstanceHash() => r'a32863d59e048c98eacc818387ee902bab8d778c';
+
+/// See also [PowerSyncInstance].
+@ProviderFor(PowerSyncInstance)
+final powerSyncInstanceProvider =
+    AsyncNotifierProvider<PowerSyncInstance, PowerSyncDatabase>.internal(
+  PowerSyncInstance.new,
+  name: r'powerSyncInstanceProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$powerSyncInstanceHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+typedef _$PowerSyncInstance = AsyncNotifier<PowerSyncDatabase>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

@@ -8,7 +8,7 @@ import 'package:supabase_todolist_drift/database.dart';
 import 'package:supabase_todolist_drift/powersync.dart';
 
 import 'status_app_bar.dart';
-import 'todo_item_dialog.dart';
+import 'new_todo_item_dialog.dart';
 import 'todo_item_widget.dart';
 
 part 'todo_list_page.g.dart';
@@ -26,7 +26,7 @@ void _showAddDialog(BuildContext context, ListItem list) async {
     context: context,
     barrierDismissible: false, // user must tap button!
     builder: (BuildContext context) {
-      return TodoItemDialog(list: list);
+      return NewTodoItemDialog(list: list);
     },
   );
 }

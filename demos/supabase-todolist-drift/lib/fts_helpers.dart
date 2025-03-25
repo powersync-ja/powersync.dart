@@ -16,7 +16,7 @@ String _createSearchTermWithOptions(String searchTerm) {
 @riverpod
 Future<List> search(Ref ref, String searchTerm, String tableName) async {
   String searchTermWithOptions = _createSearchTermWithOptions(searchTerm);
-  final db = await ref.read(initializePowerSyncProvider.future);
+  final db = await ref.read(powerSyncInstanceProvider.future);
   return await db.getAll(
       'SELECT * FROM fts_$tableName WHERE fts_$tableName MATCH ? ORDER BY rank',
       [searchTermWithOptions]);

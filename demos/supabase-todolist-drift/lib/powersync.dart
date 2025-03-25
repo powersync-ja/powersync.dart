@@ -140,37 +140,40 @@ class SupabaseConnector extends PowerSyncBackendConnector {
 }
 
 @Riverpod(keepAlive: true)
-Future<PowerSyncDatabase> initializePowerSync(Ref ref) async {
-  final db = PowerSyncDatabase(
-      schema: schema, path: await _getDatabasePath(), logger: attachedLogger);
-  await db.initialize();
+final class PowerSyncInstance extends _$PowerSyncInstance {
+  @override
+  Future<PowerSyncDatabase> build() async {
+    final db = PowerSyncDatabase(
+        schema: schema, path: await _getDatabasePath(), logger: attachedLogger);
+    await db.initialize();
 
-  SupabaseConnector? currentConnector;
-
-  if (ref.read(session) != null) {
-    currentConnector = SupabaseConnector();
-    db.connect(connector: currentConnector);
-  }
-
-  final instance = Supabase.instance.client.auth;
-  final sub = instance.onAuthStateChange.listen((data) async {
-    final event = data.event;
-    if (event == AuthChangeEvent.signedIn) {
-      // Connect to PowerSync when the user is signed in
+    SupabaseConnector? currentConnector;
+    if (ref.read(session) != null) {
       currentConnector = SupabaseConnector();
-      db.connect(connector: currentConnector!);
-    } else if (event == AuthChangeEvent.signedOut) {
-      // Implicit sign out - disconnect, but don't delete data
-      currentConnector = null;
-      await db.disconnect();
-    } else if (event == AuthChangeEvent.tokenRefreshed) {
-      // Supabase token refreshed - trigger token refresh for PowerSync.
-      currentConnector?.prefetchCredentials();
+      db.connect(connector: currentConnector);
     }
-  });
-  ref.onDispose(sub.cancel);
 
-  return db;
+    // Connect and disconnect based on auth changes
+    final instance = Supabase.instance.client.auth;
+    final sub = instance.onAuthStateChange.listen((data) async {
+      final event = data.event;
+      if (event == AuthChangeEvent.signedIn) {
+        // Connect to PowerSync when the user is signed in
+        currentConnector = SupabaseConnector();
+        db.connect(connector: currentConnector!);
+      } else if (event == AuthChangeEvent.signedOut) {
+        // Implicit sign out - disconnect, but don't delete data
+        currentConnector = null;
+        await db.disconnect();
+      } else if (event == AuthChangeEvent.tokenRefreshed) {
+        // Supabase token refreshed - trigger token refresh for PowerSync.
+        currentConnector?.prefetchCredentials();
+      }
+    });
+    ref.onDispose(sub.cancel);
+
+    return db;
+  }
 }
 
 final session = statefulProvider<Session?>((ref, change) {
@@ -185,7 +188,7 @@ final session = statefulProvider<Session?>((ref, change) {
 });
 
 final syncStatus = statefulProvider<SyncStatus>((ref, change) {
-  final status = Stream.fromFuture(ref.read(initializePowerSyncProvider.future))
+  final status = Stream.fromFuture(ref.read(powerSyncInstanceProvider.future))
       .asyncExpand((db) => db.statusStream);
   final sub = status.listen(change);
   ref.onDispose(sub.cancel);
@@ -194,7 +197,7 @@ final syncStatus = statefulProvider<SyncStatus>((ref, change) {
 });
 
 final driftDatabase = Provider<AppDatabase>((ref) {
-  final powerSync = ref.read(initializePowerSyncProvider.future);
+  final powerSync = ref.read(powerSyncInstanceProvider.future);
   return AppDatabase(DatabaseConnection.delayed(Future(() async {
     return SqliteAsyncDriftConnection(await powerSync);
   })));

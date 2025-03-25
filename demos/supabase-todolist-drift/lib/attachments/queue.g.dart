@@ -6,7 +6,7 @@ part of 'queue.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$attachmentQueueHash() => r'1c85cea1ee6968243307e88848ec77efd1622cae';
+String _$attachmentQueueHash() => r'353be28d71ad41994abf783776a99881e0b51383';
 
 /// See also [attachmentQueue].
 @ProviderFor(attachmentQueue)

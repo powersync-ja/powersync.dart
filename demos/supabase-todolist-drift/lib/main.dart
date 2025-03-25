@@ -112,7 +112,7 @@ class MyHomePage extends ConsumerWidget {
                 var navigator = Navigator.of(context);
                 navigator.pop();
                 await Supabase.instance.client.auth.signOut();
-                await (await ref.read(initializePowerSyncProvider.future))
+                await (await ref.read(powerSyncInstanceProvider.future))
                     .disconnectAndClear();
 
                 navigator.pushReplacement(MaterialPageRoute(

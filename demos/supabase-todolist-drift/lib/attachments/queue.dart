@@ -13,7 +13,7 @@ part 'queue.g.dart';
 
 @Riverpod(keepAlive: true)
 Future<PhotoAttachmentQueue> attachmentQueue(Ref ref) async {
-  final db = await ref.read(initializePowerSyncProvider.future);
+  final db = await ref.read(powerSyncInstanceProvider.future);
   final queue = PhotoAttachmentQueue(db, remoteStorage);
   await queue.init();
   return queue;

@@ -13,7 +13,7 @@ part 'query_widget.g.dart';
 
 @riverpod
 Stream<sqlite.ResultSet> _watch(Ref ref, String sql) async* {
-  final db = await ref.read(initializePowerSyncProvider.future);
+  final db = await ref.read(powerSyncInstanceProvider.future);
   yield* db.watch(sql);
 }
 

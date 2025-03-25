@@ -6,7 +6,7 @@ part of 'query_widget.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$watchHash() => r'd9e40928647c0aef884c58d0a41758ab9340c912';
+String _$watchHash() => r'd184cf5e1c494c80f42ad490e989911be7fce98a';
 
 /// Copied from Dart SDK
 class _SystemHash {

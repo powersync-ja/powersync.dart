@@ -4,7 +4,7 @@ import 'package:powersync/powersync.dart';
 import 'package:supabase_todolist_drift/powersync.dart';
 
 import 'list_item.dart';
-import 'list_item_dialog.dart';
+import 'new_list_dialog.dart';
 import '../main.dart';
 
 void _showAddDialog(BuildContext context) async {
@@ -12,7 +12,7 @@ void _showAddDialog(BuildContext context) async {
     context: context,
     barrierDismissible: false, // user must tap button!
     builder: (BuildContext context) {
-      return const ListItemDialog();
+      return const NewListDialog();
     },
   );
 }
