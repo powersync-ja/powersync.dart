@@ -1,50 +1,25 @@
-import 'dart:async';
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:powersync/powersync.dart';
 import 'package:supabase_todolist_drift/widgets/fts_search_delegate.dart';
 import '../powersync.dart';
 
-class StatusAppBar extends StatefulWidget implements PreferredSizeWidget {
-  const StatusAppBar({super.key, required this.title});
-
+final class StatusAppBar extends ConsumerWidget implements PreferredSizeWidget {
   final String title;
 
-  @override
-  State<StatusAppBar> createState() => _StatusAppBarState();
+  const StatusAppBar({super.key, required this.title});
 
   @override
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);
-}
-
-class _StatusAppBarState extends State<StatusAppBar> {
-  late SyncStatus _connectionState;
-  StreamSubscription<SyncStatus>? _syncStatusSubscription;
 
   @override
-  void initState() {
-    super.initState();
-    _connectionState = db.currentStatus;
-    _syncStatusSubscription = db.statusStream.listen((event) {
-      setState(() {
-        _connectionState = db.currentStatus;
-      });
-    });
-  }
-
-  @override
-  void dispose() {
-    super.dispose();
-    _syncStatusSubscription?.cancel();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final statusIcon = _getStatusIcon(_connectionState);
+  Widget build(BuildContext context, WidgetRef ref) {
+    final syncState = ref.watch(syncStatus);
+    final statusIcon = _getStatusIcon(syncState);
 
     return AppBar(
-      title: Text(widget.title),
+      title: Text(title),
       actions: <Widget>[
         IconButton(
           onPressed: () {

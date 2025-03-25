@@ -1,11 +1,10 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
-import 'package:supabase_todolist_drift/database.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:powersync/powersync.dart';
 import 'package:supabase_todolist_drift/powersync.dart';
 
 import 'list_item.dart';
-import 'list_item_dialog.dart';
+import 'new_list_dialog.dart';
 import '../main.dart';
 
 void _showAddDialog(BuildContext context) async {
@@ -13,7 +12,7 @@ void _showAddDialog(BuildContext context) async {
     context: context,
     barrierDismissible: false, // user must tap button!
     builder: (BuildContext context) {
-      return const ListItemDialog();
+      return const NewListDialog();
     },
   );
 }
@@ -42,61 +41,34 @@ class ListsPage extends StatelessWidget {
   }
 }
 
-class ListsWidget extends StatefulWidget {
+final _listsWithStats = StreamProvider((ref) {
+  final database = ref.watch(driftDatabase);
+  return database.listsWithStats().watch();
+});
+
+final class ListsWidget extends ConsumerWidget {
   const ListsWidget({super.key});
 
   @override
-  State<StatefulWidget> createState() {
-    return _ListsWidgetState();
-  }
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    final lists = ref.watch(_listsWithStats);
+    final didSync = ref.watch(didCompleteSyncProvider(BucketPriority(1)));
 
-class _ListsWidgetState extends State<ListsWidget> {
-  List<ListItemWithStats> _data = [];
-  bool hasSynced = false;
-  StreamSubscription? _subscription;
-  StreamSubscription? _syncStatusSubscription;
+    if (!didSync) {
+      return const Text('Busy with sync...');
+    }
 
-  _ListsWidgetState();
-
-  @override
-  void initState() {
-    super.initState();
-    final stream = appDb.watchListsWithStats();
-    _subscription = stream.listen((data) {
-      if (!context.mounted) {
-        return;
-      }
-      setState(() {
-        _data = data;
-      });
-    });
-    _syncStatusSubscription = db.statusStream.listen((status) {
-      if (!context.mounted) {
-        return;
-      }
-      setState(() {
-        hasSynced = status.hasSynced ?? false;
-      });
-    });
-  }
-
-  @override
-  void dispose() {
-    super.dispose();
-    _subscription?.cancel();
-    _syncStatusSubscription?.cancel();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return !hasSynced
-        ? const Text("Busy with sync...")
-        : ListView(
-            padding: const EdgeInsets.symmetric(vertical: 8.0),
-            children: _data.map((list) {
-              return ListItemWidget(list: list);
-            }).toList(),
-          );
+    return lists.map(
+      data: (data) {
+        return ListView(
+          padding: const EdgeInsets.symmetric(vertical: 8.0),
+          children: data.value.map((list) {
+            return ListItemWidget(list: list);
+          }).toList(),
+        );
+      },
+      error: (_) => const Text('Error loading lists'),
+      loading: (_) => const CircularProgressIndicator(),
+    );
   }
 }
