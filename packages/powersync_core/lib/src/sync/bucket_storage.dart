@@ -181,6 +181,21 @@ class BucketStorage {
       final rs = await tx.execute('SELECT last_insert_rowid() as result');
       final result = rs[0]['result'];
       if (result == 1) {
+        if (forPartialPriority == null) {
+          // Reset progress counters. We only do this for a complete sync, as we
+          // want a download progress to always cover a complete checkpoint
+          // instead of resetting for partial completions.
+          await tx.execute('''
+UPDATE ps_buckets SET count_since_last = 0, count_at_last = ?1->name
+  WHERE ?1->name IS NOT NULL
+''', [
+            json.encode({
+              for (final bucket in checkpoint.checksums)
+                if (bucket.count case final count?) bucket.bucket: count,
+            }),
+          ]);
+        }
+
         return true;
       } else {
         // can_update_local(db) == false
