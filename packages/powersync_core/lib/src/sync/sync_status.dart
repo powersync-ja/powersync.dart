@@ -1,9 +1,8 @@
-import 'dart:math';
-
 import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
 
-import 'sync/protocol.dart';
+import 'bucket_storage.dart';
+import 'protocol.dart';
 
 final class SyncStatus {
   /// true if currently connected.
@@ -173,6 +172,13 @@ final class SyncStatus {
 extension type const BucketPriority._(int priorityNumber) {
   static const _highest = 0;
 
+  /// The a bucket priority lower than the lowest priority that will ever be
+  /// allowed by the sync service.
+  ///
+  /// This can be used as a priority that tracks complete syncs instead of
+  /// partial completions.
+  static const _sentinel = BucketPriority._(2147483647);
+
   factory BucketPriority(int i) {
     assert(i >= _highest);
     return BucketPriority._(i);
@@ -236,24 +242,35 @@ final class InternalSyncDownloadProgress {
       : _totalDownloaded = buckets.values.map((e) => e.sinceLast).sum,
         _totalTarget = buckets.values.map((e) => e.targetCount - e.atLast).sum;
 
-  factory InternalSyncDownloadProgress.fromZero(Checkpoint target) {
-    final targetOps = target.checksums.groupFoldBy<BucketPriority, int>(
-      (cs) => BucketPriority(cs.priority),
-      (prev, cs) => (prev ?? 0) + (cs.count ?? 0),
-    );
-    final downloaded = targetOps.map((k, v) => MapEntry(k, 0));
+  factory InternalSyncDownloadProgress.forNewCheckpoint(
+      Map<String, LocalOperationCounters> localProgress, Checkpoint target) {
+    final buckets = <String, BucketProgress>{};
+    for (final bucket in target.checksums) {
+      final savedProgress = localProgress[bucket.bucket];
+
+      buckets[bucket.bucket] = (
+        priority: BucketPriority._(bucket.priority),
+        atLast: savedProgress?.atLast ?? 0,
+        sinceLast: savedProgress?.sinceLast ?? 0,
+        targetCount: bucket.count ?? 0,
+      );
+    }
+
+    return InternalSyncDownloadProgress(buckets);
   }
 
   static InternalSyncDownloadProgress ofPublic(SyncDownloadProgress public) {
     return public._internal;
   }
 
-  static int sumInPriority(
-      Map<BucketPriority, int> counters, BucketPriority priority) {
-    return counters.entries
-        .where((e) => e.key >= priority)
-        .map((e) => e.value)
-        .sum;
+  /// Sums the total target and completed operations for all buckets up until
+  /// the given [priority] (inclusive).
+  (int, int) targetAndCompletedCounts(BucketPriority priority) {
+    return buckets.values.fold((0, 0), (prev, entry) {
+      final downloaded = entry.sinceLast;
+      final total = entry.targetCount - entry.atLast;
+      return (prev.$1 + total, prev.$2 + downloaded);
+    });
   }
 
   InternalSyncDownloadProgress incrementDownloaded(SyncDataBatch batch) {
@@ -290,6 +307,11 @@ final class InternalSyncDownloadProgress {
   static const _mapEquality = MapEquality<Object?, Object?>();
 }
 
+/// Information about a progressing download.
+///
+/// This reports the `total` amount of operations to download, how many of them
+/// have alreaady been `completed` and finally a `fraction` indicating relative
+/// progress (as a number between `0.0` and `1.0`)
 typedef ProgressWithOperations = ({
   int total,
   int completed,
@@ -300,87 +322,37 @@ typedef ProgressWithOperations = ({
 ///
 /// The reported progress always reflects the status towards the end of a
 /// sync iteration (after which a consistent snapshot of all buckets is
-/// available locally). Note that [downloaded] starts at `0` every time an
-/// iteration begins.
-/// This has an effect when iterations are interrupted. Consider this flow
-/// as an example:
+/// available locally).
 ///
-///   1. The client comes online for the first time and has to synchronize a
-///      large amount of rows (say 100k). Here, [downloaded] starts at `0` and
-///      [total] would be the `100,000` rows.
-///   2. The client makes some progress, so that [downloaded] is perhaps
-///      `60,000`.
-///   3. The client briefly looses connectivity.
-///   4. Back online, a new sync iteration starts. This means that [downloaded]
-///      is reset to `0`. However, since half of the target has already been
-///      downloaded in the earlier iteration, [total] is now set to `40,000` to
-///      reflect the remaining rows to download in the new iteration.
+/// In rare cases (in particular, when a [compacting] operation takes place
+/// between syncs), it's possible for the returned numbers to be slightly
+/// inaccurate. For this reason, [SyncDownloadProgress] should be seen as an
+/// approximation of progress. The information returned is good enough to build
+/// progress bars, but not exact enough to track individual download counts.
+///
+/// Also note that data is downloaded in bulk, which means that individual
+/// counters are unlikely to be updated one-by-one.
+///
+/// [compacting]: https://docs.powersync.com/usage/lifecycle-maintenance/compacting-buckets
 extension type SyncDownloadProgress._(InternalSyncDownloadProgress _internal) {
-  /// The amount of operations that have been downloaded in the current sync
-  /// iteration.
+  /// Returns download progress towards a complete checkpoint being received.
   ///
-  /// This number always starts at zero as [SyncStatus.downloading] changes
-  /// from `false` to `true`.
-  int get downloaded => _internal._totalDownloaded;
+  /// The returned [ProgressWithOperations] tracks the target amount of
+  /// operations that need to be downloaded in total and how many of them have
+  /// already been received.
+  ProgressWithOperations get untilCompletion =>
+      untilPriority(BucketPriority._sentinel);
 
-  /// The total amount of operations expected for this sync operation.
-  int get total => _internal._totalTarget;
-
-  /// The fraction of [total] operations that have already been [downloaded], as
-  /// a number between 0 and 1.
-  double get progress => _internal._totalDownloaded / _internal._totalTarget;
-
-  ProgressWithOperations get untilCompletion => (
-        total: total,
-        completed: downloaded,
-        fraction: progress,
-      );
-
+  /// Returns download progress towards all data up until the specified
+  /// [priority] being received.
+  ///
+  /// The returned [ProgressWithOperations] tracks the target amount of
+  /// operations that need to be downloaded in total and how many of them have
+  /// already been received.
   ProgressWithOperations untilPriority(BucketPriority priority) {
-    final downloaded = downloadedFor(priority);
-    final total = totalFor(priority);
+    final (total, downloaded) = _internal.targetAndCompletedCounts(priority);
     final progress = total == 0 ? 0.0 : downloaded / total;
 
-    return (
-      total: totalFor(priority),
-      completed: downloaded,
-      fraction: progress,
-    );
-  }
-
-  /// Returns how many operations have been downloaded for buckets in
-  /// [priority].
-  ///
-  /// Under the consistency guarantees offered by PowerSync, this will also
-  /// include operations from higher-priority buckets.
-  int downloadedFor(BucketPriority priority) {
-    return InternalSyncDownloadProgress.sumInPriority(
-        _internal.downloaded, priority);
-  }
-
-  /// Returns how many operations in total need to be downloaded before the
-  /// client has reached a consistent states for buckets with the given
-  /// [priority].
-  ///
-  /// Under the consistency guarantees offered by PowerSync, this will also
-  /// include operations from higher-priority buckets.
-  int totalFor(BucketPriority priority) {
-    return InternalSyncDownloadProgress.sumInPriority(
-        _internal.target, priority);
-  }
-
-  /// The progress towards syncing the given [priority].
-  ///
-  /// Returns the fraction of [downloadedFor] to [totalFor], as a number between
-  /// 0 and 1.
-  double progressFor(BucketPriority priority) {
-    final downloaded = downloadedFor(priority);
-    final total = totalFor(priority);
-
-    if (total == 0) {
-      return 0;
-    }
-
-    return downloaded / total;
+    return (total: total, completed: downloaded, fraction: progress);
   }
 }

@@ -1,15 +1,21 @@
+@internal
+library;
+
 import 'dart:async';
 import 'dart:convert';
 
 import 'package:collection/collection.dart';
+import 'package:meta/meta.dart';
 import 'package:powersync_core/sqlite_async.dart';
 import 'package:powersync_core/sqlite3_common.dart';
 
-import 'crud.dart';
-import 'schema_logic.dart';
-import 'sync/protocol.dart';
+import '../crud.dart';
+import '../schema_logic.dart';
+import 'protocol.dart';
 
 const compactOperationInterval = 1000;
+
+typedef LocalOperationCounters = ({int atLast, int sinceLast});
 
 class BucketStorage {
   final SqliteConnection _internalDb;
@@ -31,12 +37,28 @@ class BucketStorage {
 
   Future<List<BucketState>> getBucketStates() async {
     final rows = await select(
-        'SELECT name as bucket, cast(last_op as TEXT) as op_id FROM ps_buckets WHERE pending_delete = 0 AND name != \'\$local\'');
+        "SELECT name, cast(last_op as TEXT) FROM ps_buckets WHERE pending_delete = 0 AND name != '\$local'");
     return [
       for (var row in rows)
         BucketState(
-            bucket: row['bucket'] as String, opId: row['op_id'] as String)
+          bucket: row.columnAt(0) as String,
+          opId: row.columnAt(1) as String,
+        )
     ];
+  }
+
+  Future<Map<String, LocalOperationCounters>>
+      getBucketOperationProgress() async {
+    final rows = await select(
+        "SELECT name, count_at_last, count_since_last FROM ps_buckets");
+
+    return {
+      for (final row in rows)
+        (row.columnAt(0) as String): (
+          atLast: row.columnAt(1) as int,
+          sinceLast: row.columnAt(2) as int,
+        )
+    };
   }
 
   Future<String> getClientId() async {

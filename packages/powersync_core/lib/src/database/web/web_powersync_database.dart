@@ -3,7 +3,7 @@ import 'package:meta/meta.dart';
 import 'package:fetch_client/fetch_client.dart';
 import 'package:logging/logging.dart';
 import 'package:powersync_core/src/abort_controller.dart';
-import 'package:powersync_core/src/bucket_storage.dart';
+import 'package:powersync_core/src/sync/bucket_storage.dart';
 import 'package:powersync_core/src/connector.dart';
 import 'package:powersync_core/src/database/powersync_database.dart';
 import 'package:powersync_core/src/database/powersync_db_mixin.dart';

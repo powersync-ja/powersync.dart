@@ -7,7 +7,7 @@ import 'package:web/web.dart';
 
 import '../connector.dart';
 import '../log.dart';
-import '../sync_status.dart';
+import '../sync/sync_status.dart';
 
 /// Names used in [SyncWorkerMessage]
 enum SyncWorkerMessageType {
@@ -147,57 +147,45 @@ extension type SerializedCredentials._(JSObject _) implements JSObject {
 }
 
 @anonymous
-extension type SerializedOperationCounter._(JSObject _) implements JSObject {
-  external factory SerializedOperationCounter({
+extension type SerializedBucketProgress._(JSObject _) implements JSObject {
+  external factory SerializedBucketProgress({
+    required String name,
     required int priority,
-    required int opCount,
+    required int atLast,
+    required int sinceLast,
+    required int targetCount,
   });
 
-  external JSNumber get priority;
-  external JSNumber get opCount;
-}
+  external String name;
+  external int priority;
+  external int atLast;
+  external int sinceLast;
+  external int targetCount;
 
-@anonymous
-extension type SerializedDownloadProgress._(JSObject _) implements JSObject {
-  external factory SerializedDownloadProgress({
-    required JSArray<SerializedOperationCounter> downloaded,
-    required JSArray<SerializedOperationCounter> target,
-  });
-
-  external JSArray<SerializedOperationCounter> get downloaded;
-  external JSArray<SerializedOperationCounter> get target;
-
-  factory SerializedDownloadProgress.fromDart(
-      InternalSyncDownloadProgress progress) {
-    return SerializedDownloadProgress(
-      downloaded: _serializeCounters(progress.downloaded),
-      target: _serializeCounters(progress.target),
-    );
-  }
-
-  InternalSyncDownloadProgress get toDart {
-    return InternalSyncDownloadProgress(
-      _deserializeCounters(downloaded),
-      _deserializeCounters(target),
-    );
-  }
-
-  static JSArray<SerializedOperationCounter> _serializeCounters(
-      Map<BucketPriority, int> counters) {
-    return [
-      for (final MapEntry(:key, :value) in counters.entries)
-        SerializedOperationCounter(
-          priority: key.priorityNumber,
-          opCount: value,
-        )
+  static JSArray<SerializedBucketProgress> serialize(
+      Map<String, BucketProgress> buckets) {
+    return <SerializedBucketProgress>[
+      for (final MapEntry(:key, :value) in buckets.entries)
+        SerializedBucketProgress(
+          name: key,
+          priority: value.priority.priorityNumber,
+          atLast: value.atLast,
+          sinceLast: value.sinceLast,
+          targetCount: value.targetCount,
+        ),
     ].toJS;
   }
 
-  static Map<BucketPriority, int> _deserializeCounters(
-      JSArray<SerializedOperationCounter> counters) {
+  static Map<String, BucketProgress> deserialize(
+      JSArray<SerializedBucketProgress> array) {
     return {
-      for (final entry in counters.toDart)
-        BucketPriority(entry.priority.toDartInt): entry.opCount.toDartInt,
+      for (final entry in array.toDart)
+        entry.name: (
+          priority: BucketPriority(entry.priority),
+          atLast: entry.atLast,
+          sinceLast: entry.sinceLast,
+          targetCount: entry.targetCount,
+        ),
     };
   }
 }
@@ -214,7 +202,7 @@ extension type SerializedSyncStatus._(JSObject _) implements JSObject {
     required String? uploadError,
     required String? downloadError,
     required JSArray? priorityStatusEntries,
-    required SerializedDownloadProgress? syncProgress,
+    required JSArray<SerializedBucketProgress>? syncProgress,
   });
 
   factory SerializedSyncStatus.from(SyncStatus status) {
@@ -237,8 +225,8 @@ extension type SerializedSyncStatus._(JSObject _) implements JSObject {
       ].toJS,
       syncProgress: switch (status.downloadProgress) {
         null => null,
-        var other => SerializedDownloadProgress.fromDart(
-            InternalSyncDownloadProgress.ofPublic(other)),
+        var other => SerializedBucketProgress.serialize(
+            InternalSyncDownloadProgress.ofPublic(other).buckets),
       },
     );
   }
@@ -252,7 +240,7 @@ extension type SerializedSyncStatus._(JSObject _) implements JSObject {
   external String? uploadError;
   external String? downloadError;
   external JSArray? priorityStatusEntries;
-  external SerializedDownloadProgress? syncProgress;
+  external JSArray<SerializedBucketProgress>? syncProgress;
 
   SyncStatus asSyncStatus() {
     return SyncStatus(
@@ -282,7 +270,12 @@ extension type SerializedSyncStatus._(JSObject _) implements JSObject {
             );
           })
       ],
-      downloadProgress: syncProgress?.toDart.asSyncDownloadProgress,
+      downloadProgress: switch (syncProgress) {
+        null => null,
+        final serializedProgress => InternalSyncDownloadProgress(
+                SerializedBucketProgress.deserialize(serializedProgress))
+            .asSyncDownloadProgress,
+      },
     );
   }
 }

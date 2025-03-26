@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
-import '../bucket_storage.dart';
+import 'bucket_storage.dart';
 
 /// Messages sent from the sync service.
 sealed class StreamingSyncLine {
@@ -145,8 +145,6 @@ final class Checkpoint extends StreamingSyncLine {
     };
   }
 }
-
-typedef BucketDescription = ({String name, int priority});
 
 class BucketChecksum {
   final String bucket;

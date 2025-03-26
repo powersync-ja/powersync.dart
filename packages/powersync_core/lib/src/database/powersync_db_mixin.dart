@@ -11,7 +11,7 @@ import 'package:powersync_core/src/database/core_version.dart';
 import 'package:powersync_core/src/powersync_update_notification.dart';
 import 'package:powersync_core/src/schema.dart';
 import 'package:powersync_core/src/schema_logic.dart';
-import 'package:powersync_core/src/sync_status.dart';
+import 'package:powersync_core/src/sync/sync_status.dart';
 
 mixin PowerSyncDatabaseMixin implements SqliteConnection {
   /// Schema used for the local database.

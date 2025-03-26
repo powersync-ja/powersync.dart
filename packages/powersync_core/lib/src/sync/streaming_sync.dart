@@ -9,12 +9,12 @@ import 'package:powersync_core/src/log_internal.dart';
 import 'package:powersync_core/src/user_agent/user_agent.dart';
 import 'package:sqlite_async/mutex.dart';
 
-import '../bucket_storage.dart';
+import 'bucket_storage.dart';
 import '../connector.dart';
 import '../crud.dart';
 import 'mutable_sync_status.dart';
 import 'stream_utils.dart';
-import '../sync_status.dart';
+import 'sync_status.dart';
 import 'protocol.dart';
 
 abstract interface class StreamingSync {
@@ -28,7 +28,7 @@ abstract interface class StreamingSync {
 
 @internal
 class StreamingSyncImplementation implements StreamingSync {
-  BucketStorage adapter;
+  final BucketStorage adapter;
 
   final Future<PowerSyncCredentials?> Function() credentialsCallback;
   final Future<void> Function()? invalidCredentialsCallback;
@@ -322,7 +322,9 @@ class StreamingSyncImplementation implements StreamingSync {
           }
           bucketMap = newBuckets;
           await adapter.removeBuckets([...bucketsToDelete]);
-          _state.updateStatus((s) => s.downloading = true);
+          final initialProgress = await adapter.getBucketOperationProgress();
+          _state.updateStatus(
+              (s) => s.applyCheckpointStarted(initialProgress, line));
         case StreamingSyncCheckpointComplete():
           final result = await adapter.syncLocalDatabase(targetCheckpoint!);
           if (!result.checkpointValid) {
@@ -391,7 +393,7 @@ class StreamingSyncImplementation implements StreamingSync {
         case SyncDataBatch():
           // TODO: This increments the counters before actually saving sync
           // data. Might be fine though?
-          _state.updateStatus((s) => s.applyBatchReceived(bucketMap, line));
+          _state.updateStatus((s) => s.applyBatchReceived(line));
           _state.updateStatus((s) => s.downloading = true);
           await adapter.saveSyncData(line);
         case StreamingSyncKeepalive(:final tokenExpiresIn):
@@ -520,3 +522,8 @@ String _syncErrorMessage(Object? error) {
     return '${error.runtimeType}';
   }
 }
+
+typedef BucketDescription = ({
+  String name,
+  int priority,
+});

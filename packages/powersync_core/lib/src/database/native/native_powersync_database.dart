@@ -5,7 +5,7 @@ import 'package:meta/meta.dart';
 import 'package:http/http.dart' as http;
 import 'package:logging/logging.dart';
 import 'package:powersync_core/src/abort_controller.dart';
-import 'package:powersync_core/src/bucket_storage.dart';
+import 'package:powersync_core/src/sync/bucket_storage.dart';
 import 'package:powersync_core/src/connector.dart';
 import 'package:powersync_core/src/database/powersync_database.dart';
 import 'package:powersync_core/src/database/powersync_db_mixin.dart';
@@ -17,7 +17,7 @@ import 'package:powersync_core/src/open_factory/native/native_open_factory.dart'
 import 'package:powersync_core/src/schema.dart';
 import 'package:powersync_core/src/schema_logic.dart';
 import 'package:powersync_core/src/sync/streaming_sync.dart';
-import 'package:powersync_core/src/sync_status.dart';
+import 'package:powersync_core/src/sync/sync_status.dart';
 import 'package:sqlite_async/sqlite3_common.dart';
 import 'package:sqlite_async/sqlite_async.dart';
 

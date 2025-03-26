@@ -2,7 +2,8 @@ import 'dart:async';
 
 import 'package:collection/collection.dart';
 
-import '../sync_status.dart';
+import 'sync_status.dart';
+import 'bucket_storage.dart';
 import 'protocol.dart';
 
 final class MutableSyncStatus {
@@ -57,10 +58,13 @@ final class MutableSyncStatus {
     ];
   }
 
-  void applyCheckpointStarted(Checkpoint target) {
+  void applyCheckpointStarted(
+    Map<String, LocalOperationCounters> localProgress,
+    Checkpoint target,
+  ) {
     downloading = true;
-    // TODO: Include pending ops from interrupted download, if any...
-    downloadProgress = InternalSyncDownloadProgress.fromZero(target);
+    downloadProgress =
+        InternalSyncDownloadProgress.forNewCheckpoint(localProgress, target);
   }
 
   void applyUploadError(Object error) {
@@ -68,15 +72,10 @@ final class MutableSyncStatus {
     uploadError = error;
   }
 
-  void applyBatchReceived(
-      Map<String, BucketDescription?> currentBuckets, SyncDataBatch batch) {
+  void applyBatchReceived(SyncDataBatch batch) {
     downloading = true;
     if (downloadProgress case final previousProgress?) {
-      downloadProgress = previousProgress.incrementDownloaded([
-        for (final bucket in batch.buckets)
-          if (currentBuckets[bucket.bucket] case final knownBucket?)
-            (BucketPriority(knownBucket.priority), bucket.data.length),
-      ]);
+      downloadProgress = previousProgress.incrementDownloaded(batch);
     }
   }
 
