@@ -77,9 +77,11 @@ final class SyncStatus {
         other.lastSyncedAt == lastSyncedAt &&
         other.hasSynced == hasSynced &&
         _statusEquality.equals(
-            other.priorityStatusEntries, priorityStatusEntries));
+            other.priorityStatusEntries, priorityStatusEntries) &&
+        other.downloadProgress == downloadProgress);
   }
 
+  // Deprecated because it can't set fields back to null
   @Deprecated('Should not be used in user code')
   SyncStatus copyWith({
     bool? connected,
@@ -148,19 +150,21 @@ final class SyncStatus {
   @override
   int get hashCode {
     return Object.hash(
-        connected,
-        downloading,
-        uploading,
-        connecting,
-        uploadError,
-        downloadError,
-        lastSyncedAt,
-        _statusEquality.hash(priorityStatusEntries));
+      connected,
+      downloading,
+      uploading,
+      connecting,
+      uploadError,
+      downloadError,
+      lastSyncedAt,
+      _statusEquality.hash(priorityStatusEntries),
+      downloadProgress,
+    );
   }
 
   @override
   String toString() {
-    return "SyncStatus<connected: $connected connecting: $connecting downloading: $downloading uploading: $uploading lastSyncedAt: $lastSyncedAt, hasSynced: $hasSynced, error: $anyError>";
+    return "SyncStatus<connected: $connected connecting: $connecting downloading: $downloading (progress: $downloadProgress) uploading: $uploading lastSyncedAt: $lastSyncedAt, hasSynced: $hasSynced, error: $anyError>";
   }
 
   // This should be a ListEquality<SyncPriorityStatus>, but that appears to
@@ -266,11 +270,14 @@ final class InternalSyncDownloadProgress {
   /// Sums the total target and completed operations for all buckets up until
   /// the given [priority] (inclusive).
   (int, int) targetAndCompletedCounts(BucketPriority priority) {
-    return buckets.values.fold((0, 0), (prev, entry) {
-      final downloaded = entry.sinceLast;
-      final total = entry.targetCount - entry.atLast;
-      return (prev.$1 + total, prev.$2 + downloaded);
-    });
+    return buckets.values.where((e) => e.priority >= priority).fold(
+      (0, 0),
+      (prev, entry) {
+        final downloaded = entry.sinceLast;
+        final total = entry.targetCount - entry.atLast;
+        return (prev.$1 + total, prev.$2 + downloaded);
+      },
+    );
   }
 
   InternalSyncDownloadProgress incrementDownloaded(SyncDataBatch batch) {
@@ -280,7 +287,7 @@ final class InternalSyncDownloadProgress {
       newBucketStates[dataForBucket.bucket] = (
         priority: previous.priority,
         atLast: previous.atLast,
-        sinceLast: previous.sinceLast,
+        sinceLast: previous.sinceLast + dataForBucket.data.length,
         targetCount: previous.targetCount,
       );
     }
@@ -302,6 +309,13 @@ final class InternalSyncDownloadProgress {
         _totalDownloaded == other._totalDownloaded &&
         _totalTarget == other._totalTarget &&
         _mapEquality.equals(buckets, other.buckets);
+  }
+
+  @override
+  String toString() {
+    final asView = asSyncDownloadProgress;
+    final all = asView.untilCompletion;
+    return 'for total: ${all.completed} / ${all.total}';
   }
 
   static const _mapEquality = MapEquality<Object?, Object?>();

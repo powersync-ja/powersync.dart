@@ -394,7 +394,6 @@ class StreamingSyncImplementation implements StreamingSync {
           // TODO: This increments the counters before actually saving sync
           // data. Might be fine though?
           _state.updateStatus((s) => s.applyBatchReceived(line));
-          _state.updateStatus((s) => s.downloading = true);
           await adapter.saveSyncData(line);
         case StreamingSyncKeepalive(:final tokenExpiresIn):
           if (tokenExpiresIn == 0) {

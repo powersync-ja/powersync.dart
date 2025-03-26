@@ -140,6 +140,7 @@ final class Checkpoint extends StreamingSyncLine {
                 'bucket': c.bucket,
                 'checksum': c.checksum,
                 'priority': c.priority,
+                'count': c.count,
               })
           .toList(growable: false)
     };

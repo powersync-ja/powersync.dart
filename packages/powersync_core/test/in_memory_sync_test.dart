@@ -20,18 +20,13 @@ void main() {
     late CommonDatabase raw;
     late PowerSyncDatabase database;
     late MockSyncService syncService;
+
     late StreamingSync syncClient;
     var credentialsCallbackCount = 0;
 
-    setUp(() async {
-      credentialsCallbackCount = 0;
+    void createSyncClient() {
       final (client, server) = inMemoryServer();
-      syncService = MockSyncService();
       server.mount(syncService.router.call);
-
-      factory = await testUtils.testFactory();
-      (raw, database) = await factory.openInMemoryDatabase();
-      await database.initialize();
 
       syncClient = database.connectWithMockService(
         client,
@@ -44,6 +39,16 @@ void main() {
           );
         }),
       );
+    }
+
+    setUp(() async {
+      credentialsCallbackCount = 0;
+      syncService = MockSyncService();
+
+      factory = await testUtils.testFactory();
+      (raw, database) = await factory.openInMemoryDatabase();
+      await database.initialize();
+      createSyncClient();
     });
 
     tearDown(() async {
@@ -222,7 +227,8 @@ void main() {
 
           await expectLater(
             status,
-            emits(isSyncStatus(downloading: true, hasSynced: false).having(
+            emitsThrough(
+                isSyncStatus(downloading: true, hasSynced: false).having(
               (e) => e.statusForPriority(BucketPriority(0)).hasSynced,
               'status for $prio',
               isTrue,
@@ -240,8 +246,8 @@ void main() {
           'checkpoint_complete': {'last_op_id': operationId.toString()}
         });
 
-        await expectLater(
-            status, emits(isSyncStatus(downloading: false, hasSynced: true)));
+        await expectLater(status,
+            emitsThrough(isSyncStatus(downloading: false, hasSynced: true)));
         await database.waitForFirstSync();
         expect(await database.getAll('SELECT * FROM customers'), hasLength(4));
       });
@@ -329,14 +335,238 @@ void main() {
       expect(nextRequest.headers['Authorization'], 'Token token2');
       expect(credentialsCallbackCount, 2);
     });
+
+    group('reports progress', () {
+      var lastOpId = 0;
+
+      setUp(() => lastOpId = 0);
+
+      BucketChecksum bucket(String name, int count, {int priority = 3}) {
+        return BucketChecksum(
+            bucket: name, priority: priority, checksum: 0, count: count);
+      }
+
+      void addDataLine(String bucket, int amount) {
+        syncService.addLine({
+          'data': {
+            'bucket': bucket,
+            'data': <Map<String, Object?>>[
+              for (var i = 0; i < amount; i++)
+                {
+                  'op_id': '${++lastOpId}',
+                  'op': 'PUT',
+                  'object_type': bucket,
+                  'object_id': '$lastOpId',
+                  'checksum': 0,
+                  'data': {},
+                }
+            ],
+          }
+        });
+      }
+
+      void addCheckpointComplete([int? priority]) {
+        if (priority case final partial?) {
+          syncService.addLine({
+            'partial_checkpoint_complete': {
+              'last_op_id': '$lastOpId',
+              'priority': partial,
+            }
+          });
+        } else {
+          syncService.addLine({
+            'checkpoint_complete': {
+              'last_op_id': '$lastOpId',
+            }
+          });
+        }
+      }
+
+      Future<void> expectProgress(
+        StreamQueue<SyncStatus> status, {
+        required Object total,
+        Map<BucketPriority, Object> priorities = const {},
+      }) async {
+        await expectLater(
+          status,
+          emits(isSyncStatus(
+            downloading: true,
+            downloadProgress: isSyncDownloadProgress(
+              progress: total,
+              priorities: priorities,
+            ),
+          )),
+        );
+      }
+
+      test('without priorities', () async {
+        final status = await waitForConnection();
+        syncService.addLine({
+          'checkpoint': Checkpoint(
+            lastOpId: '10',
+            checksums: [bucket('a', 10)],
+          )
+        });
+        await expectProgress(status, total: progress(0, 10));
+
+        addDataLine('a', 10);
+        await expectProgress(status, total: progress(10, 10));
+
+        addCheckpointComplete();
+        await expectLater(status,
+            emits(isSyncStatus(downloading: false, downloadProgress: isNull)));
+
+        // Emit new data, progress should be 0/2 instead of 10/12
+        syncService.addLine({
+          'checkpoint': Checkpoint(
+            lastOpId: '12',
+            checksums: [bucket('a', 12)],
+          )
+        });
+        await expectProgress(status, total: progress(0, 2));
+        addDataLine('a', 2);
+        await expectProgress(status, total: progress(2, 2));
+        addCheckpointComplete();
+        await expectLater(status,
+            emits(isSyncStatus(downloading: false, downloadProgress: isNull)));
+      });
+
+      test('interrupted sync', () async {
+        var status = await waitForConnection();
+        syncService.addLine({
+          'checkpoint': Checkpoint(
+            lastOpId: '10',
+            checksums: [bucket('a', 10)],
+          )
+        });
+        await expectProgress(status, total: progress(0, 10));
+        addDataLine('a', 5);
+        await expectProgress(status, total: progress(5, 10));
+
+        // Emulate the app closing - create a new independent sync client.
+        await syncClient.abort();
+        syncService.endCurrentListener();
+
+        createSyncClient();
+        status = await waitForConnection();
+
+        // Send same checkpoint again
+        syncService.addLine({
+          'checkpoint': Checkpoint(
+            lastOpId: '10',
+            checksums: [bucket('a', 10)],
+          )
+        });
+
+        // Progress should be restored instead of saying e.g 0/5 now.
+        await expectProgress(status, total: progress(5, 10));
+        addCheckpointComplete();
+        await expectLater(status,
+            emits(isSyncStatus(downloading: false, downloadProgress: isNull)));
+      });
+
+      test('interrupted sync with new checkpoint', () async {
+        var status = await waitForConnection();
+        syncService.addLine({
+          'checkpoint': Checkpoint(
+            lastOpId: '10',
+            checksums: [bucket('a', 10)],
+          )
+        });
+        await expectProgress(status, total: progress(0, 10));
+        addDataLine('a', 5);
+        await expectProgress(status, total: progress(5, 10));
+
+        // Emulate the app closing - create a new independent sync client.
+        await syncClient.abort();
+        syncService.endCurrentListener();
+
+        createSyncClient();
+        status = await waitForConnection();
+
+        // Send checkpoint with additional data
+        syncService.addLine({
+          'checkpoint': Checkpoint(
+            lastOpId: '12',
+            checksums: [bucket('a', 12)],
+          )
+        });
+
+        await expectProgress(status, total: progress(5, 12));
+        addCheckpointComplete();
+        await expectLater(status,
+            emits(isSyncStatus(downloading: false, downloadProgress: isNull)));
+      });
+
+      test('different priorities', () async {
+        var status = await waitForConnection();
+        Future<void> checkProgress(Object prio0, Object prio2) async {
+          await expectProgress(
+            status,
+            priorities: {
+              BucketPriority(0): prio0,
+              BucketPriority(2): prio2,
+            },
+            total: prio2,
+          );
+        }
+
+        syncService.addLine({
+          'checkpoint': Checkpoint(
+            lastOpId: '10',
+            checksums: [
+              bucket('a', 5, priority: 0),
+              bucket('b', 5, priority: 2)
+            ],
+          ),
+        });
+        await checkProgress(progress(0, 5), progress(0, 10));
+
+        addDataLine('a', 5);
+        await checkProgress(progress(5, 5), progress(5, 10));
+
+        addCheckpointComplete(0);
+        await checkProgress(progress(5, 5), progress(5, 10));
+
+        addDataLine('b', 2);
+        await checkProgress(progress(5, 5), progress(7, 10));
+
+        // Before syncing b fully, send a new checkpoint
+        syncService.addLine({
+          'checkpoint': Checkpoint(
+            lastOpId: '14',
+            checksums: [
+              bucket('a', 8, priority: 0),
+              bucket('b', 6, priority: 2)
+            ],
+          ),
+        });
+        await checkProgress(progress(5, 8), progress(7, 14));
+
+        addDataLine('a', 3);
+        await checkProgress(progress(8, 8), progress(10, 14));
+
+        addCheckpointComplete(0);
+        await checkProgress(progress(8, 8), progress(10, 14));
+
+        addDataLine('b', 4);
+        await checkProgress(progress(8, 8), progress(14, 14));
+
+        addCheckpointComplete();
+        await expectLater(status,
+            emits(isSyncStatus(downloading: false, downloadProgress: isNull)));
+      });
+    });
   });
 }
 
-TypeMatcher<SyncStatus> isSyncStatus(
-    {Object? downloading,
-    Object? connected,
-    Object? connecting,
-    Object? hasSynced}) {
+TypeMatcher<SyncStatus> isSyncStatus({
+  Object? downloading,
+  Object? connected,
+  Object? connecting,
+  Object? hasSynced,
+  Object? downloadProgress,
+}) {
   var matcher = isA<SyncStatus>();
   if (downloading != null) {
     matcher = matcher.having((e) => e.downloading, 'downloading', downloading);
@@ -350,6 +580,30 @@ TypeMatcher<SyncStatus> isSyncStatus(
   if (hasSynced != null) {
     matcher = matcher.having((e) => e.hasSynced, 'hasSynced', hasSynced);
   }
+  if (downloadProgress != null) {
+    matcher = matcher.having(
+        (e) => e.downloadProgress, 'downloadProgress', downloadProgress);
+  }
 
   return matcher;
+}
+
+TypeMatcher<SyncDownloadProgress> isSyncDownloadProgress({
+  required Object progress,
+  Map<BucketPriority, Object> priorities = const {},
+}) {
+  var matcher = isA<SyncDownloadProgress>()
+      .having((e) => e.untilCompletion, 'untilCompletion', progress);
+  priorities.forEach((priority, expected) {
+    matcher = matcher.having(
+        (e) => e.untilPriority(priority), 'untilPriority($priority)', expected);
+  });
+
+  return matcher;
+}
+
+TypeMatcher<ProgressWithOperations> progress(int completed, int total) {
+  return isA<ProgressWithOperations>()
+      .having((e) => e.completed, 'completed', completed)
+      .having((e) => e.total, 'total', total);
 }
