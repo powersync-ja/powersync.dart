@@ -326,6 +326,9 @@ final class InternalSyncDownloadProgress {
 /// This reports the `total` amount of operations to download, how many of them
 /// have alreaady been `completed` and finally a `fraction` indicating relative
 /// progress (as a number between `0.0` and `1.0`)
+///
+/// To obtain these values, use [SyncDownloadProgress] available through
+/// [SyncStatus.downloadProgress].
 typedef ProgressWithOperations = ({
   int total,
   int completed,
