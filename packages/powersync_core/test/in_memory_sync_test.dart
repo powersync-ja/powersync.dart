@@ -418,10 +418,11 @@ void main() {
 
         // Emit new data, progress should be 0/2 instead of 10/12
         syncService.addLine({
-          'checkpoint': Checkpoint(
-            lastOpId: '12',
-            checksums: [bucket('a', 12)],
-          )
+          'checkpoint_diff': {
+            'last_op_id': '12',
+            'updated_buckets': [bucket('a', 12)],
+            'removed_buckets': const <Object?>[],
+          },
         });
         await expectProgress(status, total: progress(0, 2));
         addDataLine('a', 2);

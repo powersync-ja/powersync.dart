@@ -335,7 +335,7 @@ typedef ProgressWithOperations = ({
   double fraction,
 });
 
-/// Provides realtime progress about how PowerSync is downloading rows.
+/// Provides realtime progress on how PowerSync is downloading rows.
 ///
 /// The reported progress always reflects the status towards the end of a
 /// sync iteration (after which a consistent snapshot of all buckets is

@@ -136,12 +136,7 @@ final class Checkpoint extends StreamingSyncLine {
       'write_checkpoint': writeCheckpoint,
       'buckets': checksums
           .where((c) => priority == null || c.priority <= priority)
-          .map((c) => {
-                'bucket': c.bucket,
-                'checksum': c.checksum,
-                'priority': c.priority,
-                'count': c.count,
-              })
+          .map((c) => c.toJson())
           .toList(growable: false)
     };
   }
@@ -172,6 +167,15 @@ class BucketChecksum {
         checksum = json['checksum'] as int,
         count = json['count'] as int?,
         lastOpId = json['last_op_id'] as String?;
+
+  Map<String, Object?> toJson() {
+    return {
+      'bucket': bucket,
+      'checksum': checksum,
+      'priority': priority,
+      'count': count,
+    };
+  }
 }
 
 /// A variant of [Checkpoint] that may be sent when the server has already sent

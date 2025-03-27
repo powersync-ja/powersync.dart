@@ -367,7 +367,6 @@ class StreamingSyncImplementation implements StreamingSync {
             throw PowerSyncProtocolException(
                 'Checkpoint diff without previous checkpoint');
           }
-          _state.updateStatus((s) => s.downloading = true);
           final diff = line;
           final Map<String, BucketChecksum> newBuckets = {};
           for (var checksum in targetCheckpoint.checksums) {
@@ -385,6 +384,9 @@ class StreamingSyncImplementation implements StreamingSync {
               checksums: [...newBuckets.values],
               writeCheckpoint: diff.writeCheckpoint);
           targetCheckpoint = newCheckpoint;
+          final initialProgress = await adapter.getBucketOperationProgress();
+          _state.updateStatus(
+              (s) => s.applyCheckpointStarted(initialProgress, newCheckpoint));
 
           bucketMap = newBuckets.map((name, checksum) =>
               MapEntry(name, (name: name, priority: checksum.priority)));
