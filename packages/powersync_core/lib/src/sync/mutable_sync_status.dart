@@ -79,7 +79,7 @@ final class MutableSyncStatus {
     }
   }
 
-  SyncStatus immutableSnapsot() {
+  SyncStatus immutableSnapshot() {
     return SyncStatus(
       connected: connected,
       connecting: connecting,
@@ -111,7 +111,7 @@ final class SyncStatusStateStream {
       return;
     }
 
-    final current = status.immutableSnapsot();
+    final current = status.immutableSnapshot();
     if (current != _lastPublishedStatus) {
       _statusStreamController.add(current);
       _lastPublishedStatus = current;
