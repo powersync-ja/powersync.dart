@@ -1,6 +1,5 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
+import 'package:powersync_django_todolist_demo/widgets/guard_by_sync.dart';
 
 import './list_item.dart';
 import './list_item_dialog.dart';
@@ -41,48 +40,27 @@ class ListsPage extends StatelessWidget {
   }
 }
 
-class ListsWidget extends StatefulWidget {
+final class ListsWidget extends StatelessWidget {
   const ListsWidget({super.key});
 
   @override
-  State<StatefulWidget> createState() {
-    return _ListsWidgetState();
-  }
-}
-
-class _ListsWidgetState extends State<ListsWidget> {
-  List<TodoList> _data = [];
-  StreamSubscription? _subscription;
-
-  _ListsWidgetState();
-
-  @override
-  void initState() {
-    super.initState();
-    final stream = TodoList.watchListsWithStats();
-    _subscription = stream.listen((data) {
-      if (!context.mounted) {
-        return;
-      }
-      setState(() {
-        _data = data;
-      });
-    });
-  }
-
-  @override
-  void dispose() {
-    super.dispose();
-    _subscription?.cancel();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      children: _data.map((list) {
-        return ListItemWidget(list: list);
-      }).toList(),
+    return GuardBySync(
+      child: StreamBuilder(
+        stream: TodoList.watchListsWithStats(),
+        builder: (context, snapshot) {
+          if (snapshot.data case final todoLists?) {
+            return ListView(
+              padding: const EdgeInsets.symmetric(vertical: 8.0),
+              children: todoLists.map((list) {
+                return ListItemWidget(list: list);
+              }).toList(),
+            );
+          } else {
+            return const CircularProgressIndicator();
+          }
+        },
+      ),
     );
   }
 }
