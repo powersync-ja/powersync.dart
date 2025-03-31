@@ -88,7 +88,7 @@ final class MutableSyncStatus {
       downloadProgress: downloadProgress?.asSyncDownloadProgress,
       priorityStatusEntries: UnmodifiableListView(priorityStatusEntries),
       lastSyncedAt: lastSyncedAt,
-      hasSynced: lastSyncedAt != null,
+      hasSynced: null, // Stream client is not supposed to set this value.
       uploadError: uploadError,
       downloadError: downloadError,
     );

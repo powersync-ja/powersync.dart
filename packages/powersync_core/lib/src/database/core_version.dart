@@ -60,7 +60,7 @@ extension type const PowerSyncCoreVersion((int, int, int) _tuple) {
   // Note: When updating this, also update the download URL in
   // scripts/init_powersync_core_binary.dart and the version ref in
   // packages/sqlite3_wasm_build/build.sh
-  static const minimum = PowerSyncCoreVersion((0, 3, 11));
+  static const minimum = PowerSyncCoreVersion((0, 3, 12));
 
   /// The first version of the core extensions that this version of the Dart
   /// SDK doesn't support.
