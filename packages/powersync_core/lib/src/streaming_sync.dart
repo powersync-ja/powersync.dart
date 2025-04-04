@@ -136,7 +136,7 @@ class StreamingSyncImplementation implements StreamingSync {
     try {
       _abort = AbortController();
       clientId = await adapter.getClientId();
-      crudLoop();
+      _crudLoop();
       var invalidCredentials = false;
       while (!aborted) {
         _updateStatus(connecting: true);
@@ -177,7 +177,7 @@ class StreamingSyncImplementation implements StreamingSync {
     }
   }
 
-  Future<void> crudLoop() async {
+  Future<void> _crudLoop() async {
     await _uploadAllCrud();
 
     // Trigger a CRUD upload whenever the upstream trigger fires
