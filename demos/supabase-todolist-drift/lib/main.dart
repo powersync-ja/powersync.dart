@@ -1,9 +1,10 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:logging/logging.dart';
-import 'package:supabase_todolist_drift/app_config.dart';
-import 'package:supabase_todolist_drift/attachments/queue.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:supabase_todolist_drift/models/schema.dart';
+import 'package:supabase_todolist_drift/supabase.dart';
 
 import 'powersync.dart';
 import 'widgets/lists_page.dart';
@@ -28,16 +29,11 @@ void main() async {
     }
   });
 
-  WidgetsFlutterBinding
-      .ensureInitialized(); //required to get sqlite filepath from path_provider before UI has initialized
-  await openDatabase();
+  //required to get sqlite filepath from path_provider before UI has initialized
+  WidgetsFlutterBinding.ensureInitialized();
+  await loadSupabase();
 
-  if (AppConfig.supabaseStorageBucket.isNotEmpty) {
-    initializeAttachmentQueue(db);
-  }
-
-  final loggedIn = isLoggedIn();
-  runApp(MyApp(loggedIn: loggedIn));
+  runApp(const ProviderScope(child: MyApp()));
 }
 
 const defaultQuery = 'SELECT * from $todosTable';
@@ -53,23 +49,22 @@ const loginPage = LoginPage();
 
 const signupPage = SignupPage();
 
-class MyApp extends StatelessWidget {
-  final bool loggedIn;
-
-  const MyApp({super.key, required this.loggedIn});
+class MyApp extends ConsumerWidget {
+  const MyApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return MaterialApp(
-        title: 'PowerSync Flutter Demo',
-        theme: ThemeData(
-          primarySwatch: Colors.blue,
-        ),
-        home: loggedIn ? homePage : loginPage);
+      title: 'PowerSync Flutter Demo',
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
+      ),
+      home: ref.watch(isLoggedInProvider) ? homePage : loginPage,
+    );
   }
 }
 
-class MyHomePage extends StatelessWidget {
+class MyHomePage extends ConsumerWidget {
   const MyHomePage(
       {super.key,
       required this.title,
@@ -81,7 +76,7 @@ class MyHomePage extends StatelessWidget {
   final Widget? floatingActionButton;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
       appBar: StatusAppBar(title: title),
       body: Center(child: content),
@@ -116,7 +111,9 @@ class MyHomePage extends StatelessWidget {
               onTap: () async {
                 var navigator = Navigator.of(context);
                 navigator.pop();
-                await logout();
+                await Supabase.instance.client.auth.signOut();
+                await (await ref.read(powerSyncInstanceProvider.future))
+                    .disconnectAndClear();
 
                 navigator.pushReplacement(MaterialPageRoute(
                   builder: (context) => loginPage,

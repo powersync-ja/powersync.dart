@@ -2,11 +2,12 @@ import 'dart:async';
 
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:powersync/powersync.dart' as powersync;
 import 'package:supabase_todolist_drift/attachments/queue.dart';
 import 'package:supabase_todolist_drift/powersync.dart';
 
-class TakePhotoWidget extends StatefulWidget {
+class TakePhotoWidget extends ConsumerStatefulWidget {
   final String todoId;
   final CameraDescription camera;
 
@@ -14,12 +15,12 @@ class TakePhotoWidget extends StatefulWidget {
       {super.key, required this.todoId, required this.camera});
 
   @override
-  State<StatefulWidget> createState() {
+  ConsumerState<TakePhotoWidget> createState() {
     return _TakePhotoWidgetState();
   }
 }
 
-class _TakePhotoWidgetState extends State<TakePhotoWidget> {
+class _TakePhotoWidgetState extends ConsumerState<TakePhotoWidget> {
   late CameraController _cameraController;
   late Future<void> _initializeControllerFuture;
 
@@ -50,14 +51,15 @@ class _TakePhotoWidgetState extends State<TakePhotoWidget> {
       final XFile photo = await _cameraController.takePicture();
       // copy photo to new directory with ID as name
       String photoId = powersync.uuid.v4();
-      String storageDirectory = await attachmentQueue.getStorageDirectory();
-      await attachmentQueue.localStorage
+      final queue = await ref.read(attachmentQueueProvider.future);
+      String storageDirectory = await queue.getStorageDirectory();
+      await queue.localStorage
           .copyFile(photo.path, '$storageDirectory/$photoId.jpg');
 
       int photoSize = await photo.length();
 
-      await appDb.addTodoPhoto(widget.todoId, photoId);
-      await attachmentQueue.saveFile(photoId, photoSize);
+      await ref.read(driftDatabase).addTodoPhoto(widget.todoId, photoId);
+      await queue.saveFile(photoId, photoSize);
     } catch (e) {
       log.info('Error taking photo: $e');
     }
