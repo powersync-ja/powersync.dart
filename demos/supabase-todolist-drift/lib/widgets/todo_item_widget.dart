@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_todolist_drift/app_config.dart';
 import 'package:supabase_todolist_drift/attachments/photo_widget.dart';
 import 'package:supabase_todolist_drift/attachments/queue.dart';
-import 'package:supabase_todolist_drift/database.dart';
+import 'package:supabase_todolist_drift/powersync/database.dart';
 import 'package:supabase_todolist_drift/powersync.dart';
 
 class TodoItemWidget extends ConsumerWidget {

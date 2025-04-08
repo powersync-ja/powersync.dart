@@ -2,11 +2,15 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:powersync/powersync.dart';
-import 'package:supabase_todolist_drift/widgets/fts_search_delegate.dart';
-import '../powersync.dart';
+
+import '../powersync/powersync.dart';
+
+final appBar = AppBar(
+  title: const Text('PowerSync Flutter Demo'),
+);
 
 final class StatusAppBar extends ConsumerWidget implements PreferredSizeWidget {
-  final String title;
+  final Widget title;
 
   const StatusAppBar({super.key, required this.title});
 
@@ -19,11 +23,11 @@ final class StatusAppBar extends ConsumerWidget implements PreferredSizeWidget {
     final statusIcon = _getStatusIcon(syncState);
 
     return AppBar(
-      title: Text(title),
+      title: title,
       actions: <Widget>[
         IconButton(
           onPressed: () {
-            showSearch(context: context, delegate: FtsSearchDelegate());
+//            showSearch(context: context, delegate: FtsSearchDelegate());
           },
           icon: const Icon(Icons.search),
         ),

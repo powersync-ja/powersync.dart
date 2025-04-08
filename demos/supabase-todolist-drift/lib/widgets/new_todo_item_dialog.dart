@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:supabase_todolist_drift/database.dart';
+import 'package:supabase_todolist_drift/powersync/database.dart';
 import 'package:supabase_todolist_drift/powersync.dart';
 
 final class NewTodoItemDialog extends HookConsumerWidget {

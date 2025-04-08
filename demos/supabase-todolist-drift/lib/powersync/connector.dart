@@ -1,25 +1,10 @@
-// This file performs setup of the PowerSync database
-import 'dart:async';
-
-import 'package:drift/drift.dart';
-import 'package:drift_sqlite_async/drift_sqlite_async.dart';
-import 'package:flutter/foundation.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:logging/logging.dart';
-import 'package:path/path.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:powersync/powersync.dart';
-import 'package:riverpod_annotation/riverpod_annotation.dart';
-import 'package:supabase_todolist_drift/database.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:supabase_todolist_drift/utils/stateful_provider.dart';
 
-import 'app_config.dart';
-import 'models/schema.dart';
+import '../app_config.dart';
 
-part 'powersync.g.dart';
-
-final log = Logger('powersync-supabase');
+final _log = Logger('powersync-supabase');
 
 /// Postgres Response codes that we cannot recover from by retrying.
 final List<RegExp> fatalResponseCodes = [
@@ -128,7 +113,7 @@ class SupabaseConnector extends PowerSyncBackendConnector {
         /// Note that these errors typically indicate a bug in the application.
         /// If protecting against data loss is important, save the failing records
         /// elsewhere instead of discarding, and/or notify the user.
-        log.severe('Data upload error - discarding $lastOp', e);
+        _log.severe('Data upload error - discarding $lastOp', e);
         await transaction.complete();
       } else {
         // Error may be retryable - e.g. network error or temporary server error.
@@ -137,98 +122,4 @@ class SupabaseConnector extends PowerSyncBackendConnector {
       }
     }
   }
-}
-
-@Riverpod(keepAlive: true)
-final class PowerSyncInstance extends _$PowerSyncInstance {
-  @override
-  Future<PowerSyncDatabase> build() async {
-    final db = PowerSyncDatabase(
-        schema: schema, path: await _getDatabasePath(), logger: attachedLogger);
-    await db.initialize();
-
-    SupabaseConnector? currentConnector;
-    if (ref.read(session) != null) {
-      currentConnector = SupabaseConnector();
-      db.connect(connector: currentConnector);
-    }
-
-    // Connect and disconnect based on auth changes
-    final instance = Supabase.instance.client.auth;
-    final sub = instance.onAuthStateChange.listen((data) async {
-      final event = data.event;
-      if (event == AuthChangeEvent.signedIn) {
-        // Connect to PowerSync when the user is signed in
-        currentConnector = SupabaseConnector();
-        db.connect(connector: currentConnector!);
-      } else if (event == AuthChangeEvent.signedOut) {
-        // Implicit sign out - disconnect, but don't delete data
-        currentConnector = null;
-        await db.disconnect();
-      } else if (event == AuthChangeEvent.tokenRefreshed) {
-        // Supabase token refreshed - trigger token refresh for PowerSync.
-        currentConnector?.prefetchCredentials();
-      }
-    });
-    ref.onDispose(sub.cancel);
-
-    return db;
-  }
-}
-
-final session = statefulProvider<Session?>((ref, change) {
-  final instance = Supabase.instance.client.auth;
-
-  final sub = instance.onAuthStateChange.listen((data) {
-    change(instance.currentSession);
-  });
-  ref.onDispose(sub.cancel);
-
-  return instance.currentSession;
-});
-
-final syncStatus = statefulProvider<SyncStatus>((ref, change) {
-  final status = Stream.fromFuture(ref.read(powerSyncInstanceProvider.future))
-      .asyncExpand((db) => db.statusStream);
-  final sub = status.listen(change);
-  ref.onDispose(sub.cancel);
-
-  return const SyncStatus();
-});
-
-final driftDatabase = Provider<AppDatabase>((ref) {
-  final powerSync = ref.read(powerSyncInstanceProvider.future);
-  return AppDatabase(DatabaseConnection.delayed(Future(() async {
-    return SqliteAsyncDriftConnection(await powerSync);
-  })));
-});
-
-@riverpod
-bool isLoggedIn(Ref ref) {
-  return ref.watch(session) != null;
-}
-
-@riverpod
-String? userId(Ref ref) {
-  return ref.watch(session)?.user.id;
-}
-
-@riverpod
-bool didCompleteSync(Ref ref, [BucketPriority? priority]) {
-  final status = ref.watch(syncStatus);
-  if (priority != null) {
-    return status.statusForPriority(priority).hasSynced ?? false;
-  } else {
-    return status.hasSynced ?? false;
-  }
-}
-
-Future<String> _getDatabasePath() async {
-  const dbFilename = 'powersync-demo.db';
-  // getApplicationSupportDirectory is not supported on Web
-  if (kIsWeb) {
-    return dbFilename;
-  }
-  final dir = await getApplicationSupportDirectory();
-  return join(dir.path, dbFilename);
 }

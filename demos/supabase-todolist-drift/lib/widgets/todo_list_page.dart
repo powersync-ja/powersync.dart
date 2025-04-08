@@ -4,7 +4,7 @@ import 'package:drift/drift.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
-import 'package:supabase_todolist_drift/database.dart';
+import 'package:supabase_todolist_drift/powersync/database.dart';
 import 'package:supabase_todolist_drift/powersync.dart';
 
 import 'status_app_bar.dart';

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:logging/logging.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
-import 'package:supabase_todolist_drift/database.dart';
+import 'package:supabase_todolist_drift/powersync/database.dart';
 import 'package:supabase_todolist_drift/fts_helpers.dart' as fts_helpers;
 import 'package:supabase_todolist_drift/powersync.dart';
 

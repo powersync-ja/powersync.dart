@@ -1,3 +1,7 @@
 include: package:flutter_lints/flutter.yaml
 analyzer:
   exclude: [lib/**.g.dart]
+
+linter:
+  rules:
+    - prefer_relative_imports

@@ -994,8 +994,7 @@ class $$ListItemsTableTableManager extends RootTableManager<
               getPrefetchedDataCallback: (items) async {
                 return [
                   if (todoItemsRefs)
-                    await $_getPrefetchedData<ListItem, $ListItemsTable,
-                            TodoItem>(
+                    await $_getPrefetchedData(
                         currentTable: table,
                         referencedTable:
                             $$ListItemsTableReferences._todoItemsRefsTable(db),
