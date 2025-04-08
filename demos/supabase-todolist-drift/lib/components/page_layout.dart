@@ -1,6 +1,8 @@
+import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
+import '../navigation.gr.dart';
 import '../supabase.dart';
 import 'app_bar.dart';
 
@@ -43,7 +45,12 @@ final class PageLayout extends ConsumerWidget {
                   ),
                   ListTile(
                     title: const Text('SQL Console'),
-                    onTap: () {},
+                    onTap: () {
+                      final route = context.topRoute;
+                      if (route.name != SqlConsoleRoute.name) {
+                        context.pushRoute(const SqlConsoleRoute());
+                      }
+                    },
                   ),
                   ListTile(
                     title: const Text('Sign Out'),

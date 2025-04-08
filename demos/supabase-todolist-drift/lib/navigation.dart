@@ -31,8 +31,9 @@ final class AppRouter extends RootStackRouter {
             page: ListsRoute.page,
           ),
           _dialogRoute(AddListRoute.page),
-          CustomRoute(page: ListsDetailsRoute.page),
+          AutoRoute(page: ListsDetailsRoute.page),
           _dialogRoute(AddItemRoute.page),
+          AutoRoute(page: SqlConsoleRoute.page),
         ],
       ),
     ];
