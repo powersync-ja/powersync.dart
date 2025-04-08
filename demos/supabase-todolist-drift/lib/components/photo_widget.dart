@@ -1,13 +1,16 @@
 import 'dart:io';
 
+import 'package:auto_route/auto_route.dart';
+import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:logging/logging.dart';
 import 'package:powersync_attachments_helper/powersync_attachments_helper.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
-import 'package:supabase_todolist_drift/attachments/camera_helpers.dart';
-import 'package:supabase_todolist_drift/attachments/photo_capture_widget.dart';
-import 'package:supabase_todolist_drift/attachments/queue.dart';
-import 'package:supabase_todolist_drift/powersync/database.dart';
+
+import '../navigation.dart';
+import '../powersync/attachments/queue.dart';
+import '../powersync/database.dart';
 
 part 'photo_widget.g.dart';
 
@@ -39,13 +42,7 @@ final class PhotoWidget extends ConsumerWidget {
           return;
         }
 
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) =>
-                TakePhotoWidget(todoId: todo.id, camera: camera),
-          ),
-        );
+        context.pushRoute(TakePhotoRoute(todoId: todo.id, camera: camera));
       },
       child: const Text('Take Photo'),
     );
@@ -120,4 +117,23 @@ Future<_ResolvedPhotoState> _getPhotoState(Ref ref, String? photoId) async {
 
   return _ResolvedPhotoState(
       photoPath: photoPath, fileExists: fileExists, attachment: null);
+}
+
+final _log = Logger('setupCamera');
+
+Future<CameraDescription?> setupCamera() async {
+  // Ensure that plugin services are initialized so that `availableCameras()`
+  // can be called before `runApp()`
+  WidgetsFlutterBinding.ensureInitialized();
+  // Obtain a list of the available cameras on the device.
+  try {
+    final cameras = await availableCameras();
+    // Get a specific camera from the list of available cameras.
+    final camera = cameras.isNotEmpty ? cameras.first : null;
+    return camera;
+  } catch (e) {
+    // Camera is not supported on all platforms
+    _log.warning('Failed to setup camera: $e');
+    return null;
+  }
 }

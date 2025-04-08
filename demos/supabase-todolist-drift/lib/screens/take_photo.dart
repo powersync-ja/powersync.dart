@@ -1,26 +1,31 @@
 import 'dart:async';
 
+import 'package:auto_route/auto_route.dart';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:logging/logging.dart';
 import 'package:powersync/powersync.dart' as powersync;
-import 'package:supabase_todolist_drift/attachments/queue.dart';
-import 'package:supabase_todolist_drift/powersync.dart';
 
-class TakePhotoWidget extends ConsumerStatefulWidget {
+import '../powersync/attachments/queue.dart';
+import '../powersync/database.dart';
+
+final _log = Logger('TakePhotoWidget');
+
+@RoutePage()
+class TakePhotoPage extends ConsumerStatefulWidget {
   final String todoId;
   final CameraDescription camera;
 
-  const TakePhotoWidget(
-      {super.key, required this.todoId, required this.camera});
+  const TakePhotoPage({super.key, required this.todoId, required this.camera});
 
   @override
-  ConsumerState<TakePhotoWidget> createState() {
+  ConsumerState<TakePhotoPage> createState() {
     return _TakePhotoWidgetState();
   }
 }
 
-class _TakePhotoWidgetState extends ConsumerState<TakePhotoWidget> {
+class _TakePhotoWidgetState extends ConsumerState<TakePhotoPage> {
   late CameraController _cameraController;
   late Future<void> _initializeControllerFuture;
 
@@ -61,7 +66,7 @@ class _TakePhotoWidgetState extends ConsumerState<TakePhotoWidget> {
       await ref.read(driftDatabase).addTodoPhoto(widget.todoId, photoId);
       await queue.saveFile(photoId, photoSize);
     } catch (e) {
-      log.info('Error taking photo: $e');
+      _log.info('Error taking photo: $e');
     }
 
     // After taking the photo, navigate back to the previous screen

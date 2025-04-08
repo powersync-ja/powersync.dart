@@ -4,6 +4,7 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 import '../app_config.dart';
 import '../components/page_layout.dart';
+import '../components/photo_widget.dart';
 import '../navigation.dart';
 import '../powersync/database.dart';
 import '../stores/items.dart';
@@ -107,7 +108,7 @@ final class _TodoItemWidget extends ConsumerWidget {
           ),
           AppConfig.supabaseStorageBucket.isEmpty
               ? Container()
-              : Placeholder(), //PhotoWidget(todo: todo),
+              : PhotoWidget(todo: todo),
         ],
       ),
     );

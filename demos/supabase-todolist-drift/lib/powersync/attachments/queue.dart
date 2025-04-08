@@ -3,11 +3,11 @@ import 'dart:async';
 import 'package:powersync_attachments_helper/powersync_attachments_helper.dart';
 import 'package:riverpod/riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
-import 'package:supabase_todolist_drift/app_config.dart';
-import 'package:supabase_todolist_drift/attachments/remote_storage_adapter.dart';
 
-import 'package:supabase_todolist_drift/models/schema.dart';
-import 'package:supabase_todolist_drift/powersync.dart' hide log;
+import '../../app_config.dart';
+import '../powersync.dart';
+import '../schema.dart';
+import 'remote_storage_adapter.dart';
 
 part 'queue.g.dart';
 

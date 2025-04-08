@@ -33,6 +33,7 @@ final class AppRouter extends RootStackRouter {
           _dialogRoute(AddListRoute.page),
           AutoRoute(page: ListsDetailsRoute.page),
           _dialogRoute(AddItemRoute.page),
+          AutoRoute(page: TakePhotoRoute.page),
           AutoRoute(page: SqlConsoleRoute.page),
         ],
       ),

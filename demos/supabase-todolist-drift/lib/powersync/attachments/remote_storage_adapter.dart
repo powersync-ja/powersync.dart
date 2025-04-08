@@ -1,9 +1,10 @@
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:powersync_attachments_helper/powersync_attachments_helper.dart';
-import 'package:supabase_todolist_drift/app_config.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:image/image.dart' as img;
+
+import '../../app_config.dart';
 
 class SupabaseStorageAdapter implements AbstractRemoteStorageAdapter {
   @override

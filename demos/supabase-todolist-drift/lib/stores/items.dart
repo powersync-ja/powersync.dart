@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import '../powersync/attachments/queue.dart';
 import '../powersync/database.dart';
 import '../supabase.dart';
 
@@ -38,8 +39,8 @@ final class ItemsNotifier extends _$ItemsNotifier {
   Future<void> deleteItem(TodoItem item) async {
     final db = ref.read(driftDatabase);
     if (item.photoId case final photo?) {
-//      final queue = await ref.read(attachmentQueueProvider.future);
-//      queue.deleteFile(todo.photoId!);
+      final queue = await ref.read(attachmentQueueProvider.future);
+      queue.deleteFile(photo);
     }
 
     await (db.delete(db.todoItems)..where((t) => t.id.equals(item.id))).go();
