@@ -42,6 +42,7 @@ Future<PowerSyncDatabase> powerSyncInstance(Ref ref) async {
     }
   });
   ref.onDispose(sub.cancel);
+  ref.onDispose(db.close);
 
   return db;
 }

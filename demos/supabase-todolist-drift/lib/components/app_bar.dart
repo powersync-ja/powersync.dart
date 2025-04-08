@@ -1,3 +1,4 @@
+import 'package:auto_route/auto_route.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -23,6 +24,7 @@ final class StatusAppBar extends ConsumerWidget implements PreferredSizeWidget {
     final statusIcon = _getStatusIcon(syncState);
 
     return AppBar(
+      leading: const AutoLeadingButton(),
       title: title,
       actions: <Widget>[
         IconButton(

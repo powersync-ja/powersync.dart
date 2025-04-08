@@ -6,7 +6,7 @@ part of 'powersync.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$powerSyncInstanceHash() => r'0023ca83020d4176fa3b29affc1071b4fb102de6';
+String _$powerSyncInstanceHash() => r'd4ccd204e3e5b32f7e6111601de19179cbdd9f41';
 
 /// See also [powerSyncInstance].
 @ProviderFor(powerSyncInstance)

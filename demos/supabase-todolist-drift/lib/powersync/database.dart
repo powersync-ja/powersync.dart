@@ -1,5 +1,9 @@
 import 'package:drift/drift.dart';
+import 'package:drift_sqlite_async/drift_sqlite_async.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:powersync/powersync.dart' show uuid;
+
+import 'powersync.dart';
 
 part 'database.g.dart';
 
@@ -52,58 +56,6 @@ class AppDatabase extends _$AppDatabase {
   @override
   int get schemaVersion => 1;
 
-  Stream<List<ListItem>> watchLists() {
-    return (select(listItems)
-          ..orderBy([(l) => OrderingTerm(expression: l.createdAt)]))
-        .watch();
-  }
-
-  Future<ListItem> createList(String name, String? userId) async {
-    return into(listItems).insertReturning(
-        ListItemsCompanion.insert(name: name, ownerId: Value(userId)));
-  }
-
-  Future<void> deleteList(ListItem list) async {
-    await (delete(listItems)..where((t) => t.id.equals(list.id))).go();
-  }
-
-  Stream<List<TodoItem>> watchTodoItems(ListItem list) {
-    return (select(todoItems)
-          ..where((t) => t.listId.equals(list.id))
-          ..orderBy([(t) => OrderingTerm(expression: t.createdAt)]))
-        .watch();
-  }
-
-  Future<void> deleteTodo(TodoItem todo) async {
-    await (delete(todoItems)..where((t) => t.id.equals(todo.id))).go();
-  }
-
-  Future<TodoItem> addTodo(
-      ListItem list, String description, String? creator) async {
-    return into(todoItems).insertReturning(TodoItemsCompanion.insert(
-      listId: list.id,
-      description: description,
-      completed: const Value(false),
-      createdBy: Value(creator),
-    ));
-  }
-
-  Future<void> toggleTodo(TodoItem todo, String? userId) async {
-    if (todo.completed != true) {
-      await (update(todoItems)..where((t) => t.id.equals(todo.id))).write(
-          TodoItemsCompanion(
-              completed: const Value(true),
-              completedAt: Value(DateTime.now()),
-              completedBy: Value(userId)));
-    } else {
-      await (update(todoItems)..where((t) => t.id.equals(todo.id))).write(
-          const TodoItemsCompanion(
-              completed: Value(false),
-              completedAt: Value.absent(),
-              completedBy: Value.absent()));
-    }
-  }
-
   Future<void> addTodoPhoto(String todoId, String photoId) async {
     await (update(todoItems)..where((t) => t.id.equals(todoId)))
         .write(TodoItemsCompanion(photoId: Value(photoId)));
@@ -113,3 +65,10 @@ class AppDatabase extends _$AppDatabase {
     return (select(listItems)..where((t) => t.id.equals(id))).getSingle();
   }
 }
+
+final driftDatabase = Provider((ref) {
+  return AppDatabase(DatabaseConnection.delayed(Future(() async {
+    final database = await ref.read(powerSyncInstanceProvider.future);
+    return SqliteAsyncDriftConnection(database);
+  })));
+});

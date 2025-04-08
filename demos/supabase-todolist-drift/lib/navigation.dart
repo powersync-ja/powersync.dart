@@ -1,4 +1,5 @@
 import 'package:auto_route/auto_route.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'navigation.gr.dart';
@@ -16,15 +17,49 @@ final class AppRouter extends RootStackRouter {
   RouteType get defaultRouteType => const RouteType.material();
 
   @override
-  List<AutoRoute> get routes => [
-        AutoRoute(page: LoginRoute.page),
-        AutoRoute(page: SignupRoute.page),
-        AutoRoute(
-          initial: true,
-          page: ListsRoute.page,
-          guards: [_authGuard],
-        ),
-      ];
+  List<AutoRoute> get routes {
+    return [
+      AutoRoute(page: LoginRoute.page),
+      AutoRoute(page: SignupRoute.page),
+      AutoRoute(
+        page: LoggedInRoot.page,
+        initial: true,
+        guards: [_authGuard],
+        children: [
+          AutoRoute(
+            initial: true,
+            page: ListsRoute.page,
+          ),
+          _dialogRoute(AddListRoute.page),
+          CustomRoute(page: ListsDetailsRoute.page),
+          _dialogRoute(AddItemRoute.page),
+        ],
+      ),
+    ];
+  }
+
+  static CustomRoute _dialogRoute(PageInfo page) {
+    return CustomRoute(
+      page: page,
+      customRouteBuilder: <T>(context, child, page) {
+        return DialogRoute(
+          context: context,
+          builder: (_) => child,
+          settings: page,
+        );
+      },
+    );
+  }
+}
+
+@RoutePage(name: 'LoggedInRoot')
+final class LoggedInContents extends StatelessWidget {
+  const LoggedInContents({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const AutoRouter();
+  }
 }
 
 final class _AuthGuard extends AutoRouteGuard {
