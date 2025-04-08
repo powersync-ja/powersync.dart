@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:powersync/powersync.dart';
 
 import '../powersync/powersync.dart';
+import '../screens/search.dart';
 
 final appBar = AppBar(
   title: const Text('PowerSync Flutter Demo'),
@@ -29,7 +30,7 @@ final class StatusAppBar extends ConsumerWidget implements PreferredSizeWidget {
       actions: <Widget>[
         IconButton(
           onPressed: () {
-//            showSearch(context: context, delegate: FtsSearchDelegate());
+            showSearch(context: context, delegate: FtsSearchDelegate());
           },
           icon: const Icon(Icons.search),
         ),

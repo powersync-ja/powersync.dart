@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'fts_search_delegate.dart';
+part of 'search.dart';
 
 // **************************************************************************
 // RiverpodGenerator

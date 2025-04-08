@@ -1,14 +1,14 @@
+import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:logging/logging.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
-import 'package:supabase_todolist_drift/powersync/database.dart';
-import 'package:supabase_todolist_drift/fts_helpers.dart' as fts_helpers;
-import 'package:supabase_todolist_drift/powersync.dart';
 
-import 'todo_list_page.dart';
+import '../navigation.dart';
+import '../powersync/database.dart';
+import '../powersync/fts_helpers.dart' as fts_helpers;
 
-part 'fts_search_delegate.g.dart';
+part 'search.g.dart';
 
 final log = Logger('powersync-supabase');
 
@@ -63,8 +63,6 @@ class FtsSearchDelegate extends SearchDelegate {
 
   @override
   Widget buildSuggestions(BuildContext context) {
-    NavigatorState navigator = Navigator.of(context);
-
     return Consumer(
       builder: (context, ref, _) {
         final results = ref.watch(_searchProvider(query));
@@ -78,9 +76,9 @@ class FtsSearchDelegate extends SearchDelegate {
                   title: Text(rows[index]['name'] ?? ''),
                   onTap: () async {
                     ListItem list = await appDb.findList(rows[index]['id']);
-                    navigator.push(MaterialPageRoute(
-                      builder: (context) => TodoListPage(list: list),
-                    ));
+                    if (context.mounted) {
+                      context.pushRoute(ListsDetailsRoute(list: list.id));
+                    }
                   },
                 );
               },

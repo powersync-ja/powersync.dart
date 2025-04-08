@@ -3,6 +3,7 @@ import 'package:drift_sqlite_async/drift_sqlite_async.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:powersync/powersync.dart' show uuid;
 
+import 'fts5.dart';
 import 'powersync.dart';
 
 part 'database.g.dart';
@@ -54,7 +55,36 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration {
+    return MigrationStrategy(
+      onCreate: (m) async {
+        // We don't have to call createAll(), PowerSync instantiates the schema
+        // for us. We can use the opportunity to create fts5 indexes though.
+        await createFts5Tables(
+          db: this,
+          tableName: 'lists',
+          columns: ['name'],
+        );
+        await createFts5Tables(
+          db: this,
+          tableName: 'todos',
+          columns: ['description', 'list_id'],
+        );
+      },
+      onUpgrade: (m, from, to) async {
+        if (from == 1) {
+          await createFts5Tables(
+            db: this,
+            tableName: 'todos',
+            columns: ['description', 'list_id'],
+          );
+        }
+      },
+    );
+  }
 
   Future<void> addTodoPhoto(String todoId, String photoId) async {
     await (update(todoItems)..where((t) => t.id.equals(todoId)))
