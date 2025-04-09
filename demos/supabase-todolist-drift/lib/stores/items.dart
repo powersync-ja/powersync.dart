@@ -50,7 +50,7 @@ final class ItemsNotifier extends _$ItemsNotifier {
     final db = ref.read(driftDatabase);
     final userId = ref.read(userIdProvider);
 
-    db.into(db.todoItems).insertReturning(
+    await db.into(db.todoItems).insertReturning(
           TodoItemsCompanion.insert(
             listId: list,
             description: description,
