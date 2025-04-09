@@ -30,10 +30,10 @@ class AddItemRoute extends _i10.PageRouteInfo<AddItemRouteArgs> {
     required String list,
     List<_i10.PageRouteInfo>? children,
   }) : super(
-         AddItemRoute.name,
-         args: AddItemRouteArgs(key: key, list: list),
-         initialChildren: children,
-       );
+          AddItemRoute.name,
+          args: AddItemRouteArgs(key: key, list: list),
+          initialChildren: children,
+        );
 
   static const String name = 'AddItemRoute';
 
@@ -63,7 +63,7 @@ class AddItemRouteArgs {
 /// [_i2.AddListDialog]
 class AddListRoute extends _i10.PageRouteInfo<void> {
   const AddListRoute({List<_i10.PageRouteInfo>? children})
-    : super(AddListRoute.name, initialChildren: children);
+      : super(AddListRoute.name, initialChildren: children);
 
   static const String name = 'AddListRoute';
 
@@ -83,10 +83,10 @@ class ListsDetailsRoute extends _i10.PageRouteInfo<ListsDetailsRouteArgs> {
     required String list,
     List<_i10.PageRouteInfo>? children,
   }) : super(
-         ListsDetailsRoute.name,
-         args: ListsDetailsRouteArgs(key: key, list: list),
-         initialChildren: children,
-       );
+          ListsDetailsRoute.name,
+          args: ListsDetailsRouteArgs(key: key, list: list),
+          initialChildren: children,
+        );
 
   static const String name = 'ListsDetailsRoute';
 
@@ -116,7 +116,7 @@ class ListsDetailsRouteArgs {
 /// [_i4.ListsPage]
 class ListsRoute extends _i10.PageRouteInfo<void> {
   const ListsRoute({List<_i10.PageRouteInfo>? children})
-    : super(ListsRoute.name, initialChildren: children);
+      : super(ListsRoute.name, initialChildren: children);
 
   static const String name = 'ListsRoute';
 
@@ -132,7 +132,7 @@ class ListsRoute extends _i10.PageRouteInfo<void> {
 /// [_i5.LoggedInContents]
 class LoggedInRoot extends _i10.PageRouteInfo<void> {
   const LoggedInRoot({List<_i10.PageRouteInfo>? children})
-    : super(LoggedInRoot.name, initialChildren: children);
+      : super(LoggedInRoot.name, initialChildren: children);
 
   static const String name = 'LoggedInRoot';
 
@@ -148,7 +148,7 @@ class LoggedInRoot extends _i10.PageRouteInfo<void> {
 /// [_i6.LoginPage]
 class LoginRoute extends _i10.PageRouteInfo<void> {
   const LoginRoute({List<_i10.PageRouteInfo>? children})
-    : super(LoginRoute.name, initialChildren: children);
+      : super(LoginRoute.name, initialChildren: children);
 
   static const String name = 'LoginRoute';
 
@@ -164,7 +164,7 @@ class LoginRoute extends _i10.PageRouteInfo<void> {
 /// [_i7.SignupPage]
 class SignupRoute extends _i10.PageRouteInfo<void> {
   const SignupRoute({List<_i10.PageRouteInfo>? children})
-    : super(SignupRoute.name, initialChildren: children);
+      : super(SignupRoute.name, initialChildren: children);
 
   static const String name = 'SignupRoute';
 
@@ -180,7 +180,7 @@ class SignupRoute extends _i10.PageRouteInfo<void> {
 /// [_i8.SqlConsolePage]
 class SqlConsoleRoute extends _i10.PageRouteInfo<void> {
   const SqlConsoleRoute({List<_i10.PageRouteInfo>? children})
-    : super(SqlConsoleRoute.name, initialChildren: children);
+      : super(SqlConsoleRoute.name, initialChildren: children);
 
   static const String name = 'SqlConsoleRoute';
 
@@ -201,10 +201,10 @@ class TakePhotoRoute extends _i10.PageRouteInfo<TakePhotoRouteArgs> {
     required _i12.CameraDescription camera,
     List<_i10.PageRouteInfo>? children,
   }) : super(
-         TakePhotoRoute.name,
-         args: TakePhotoRouteArgs(key: key, todoId: todoId, camera: camera),
-         initialChildren: children,
-       );
+          TakePhotoRoute.name,
+          args: TakePhotoRouteArgs(key: key, todoId: todoId, camera: camera),
+          initialChildren: children,
+        );
 
   static const String name = 'TakePhotoRoute';
 
