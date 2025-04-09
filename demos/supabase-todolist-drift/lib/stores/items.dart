@@ -46,7 +46,7 @@ final class ItemsNotifier extends _$ItemsNotifier {
     await (db.delete(db.todoItems)..where((t) => t.id.equals(item.id))).go();
   }
 
-  Future<void> addItem(String list, String description) async {
+  Future<void> addItem(String description) async {
     final db = ref.read(driftDatabase);
     final userId = ref.read(userIdProvider);
 
