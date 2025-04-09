@@ -8,6 +8,7 @@ import 'package:logging/logging.dart';
 
 import 'navigation.dart';
 import 'supabase.dart';
+import 'utils/provider_observer.dart';
 
 void main() async {
   Logger.root.level = Level.INFO;
@@ -29,7 +30,10 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await loadSupabase();
 
-  runApp(const ProviderScope(child: MyApp()));
+  runApp(const ProviderScope(
+    observers: [LoggingProviderObserver()],
+    child: MyApp(),
+  ));
 }
 
 class MyApp extends HookConsumerWidget {

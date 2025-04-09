@@ -46,14 +46,15 @@ final class SqlConsolePage extends HookConsumerWidget {
               ),
             ),
           ),
-          Expanded(
+          if (rows case AsyncData(:final value))
+            Expanded(
+                child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
               child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: SingleChildScrollView(
-              scrollDirection: Axis.vertical,
-              child: ResultSetTable(data: rows.value),
-            ),
-          ))
+                scrollDirection: Axis.vertical,
+                child: ResultSetTable(data: value),
+              ),
+            ))
         ],
       ),
     );
