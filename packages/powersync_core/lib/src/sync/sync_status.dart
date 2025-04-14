@@ -176,13 +176,6 @@ final class SyncStatus {
 extension type const BucketPriority._(int priorityNumber) {
   static const _highest = 0;
 
-  /// The a bucket priority lower than the lowest priority that will ever be
-  /// allowed by the sync service.
-  ///
-  /// This can be used as a priority that tracks complete syncs instead of
-  /// partial completions.
-  static const _sentinel = BucketPriority._(2147483647);
-
   factory BucketPriority(int i) {
     assert(i >= _highest);
     return BucketPriority._(i);
@@ -236,15 +229,14 @@ typedef BucketProgress = ({
 });
 
 @internal
-final class InternalSyncDownloadProgress {
+final class InternalSyncDownloadProgress extends ProgressWithOperations {
   final Map<String, BucketProgress> buckets;
 
-  final int _totalDownloaded;
-  final int _totalTarget;
-
   InternalSyncDownloadProgress(this.buckets)
-      : _totalDownloaded = buckets.values.map((e) => e.sinceLast).sum,
-        _totalTarget = buckets.values.map((e) => e.targetCount - e.atLast).sum;
+      : super._(
+          buckets.values.map((e) => e.targetCount - e.atLast).sum,
+          buckets.values.map((e) => e.sinceLast).sum,
+        );
 
   factory InternalSyncDownloadProgress.forNewCheckpoint(
       Map<String, LocalOperationCounters> localProgress, Checkpoint target) {
@@ -269,8 +261,9 @@ final class InternalSyncDownloadProgress {
 
   /// Sums the total target and completed operations for all buckets up until
   /// the given [priority] (inclusive).
-  (int, int) targetAndCompletedCounts(BucketPriority priority) {
-    return buckets.values.where((e) => e.priority >= priority).fold(
+  ProgressWithOperations untilPriority(BucketPriority priority) {
+    final (total, downloaded) =
+        buckets.values.where((e) => e.priority >= priority).fold(
       (0, 0),
       (prev, entry) {
         final downloaded = entry.sinceLast;
@@ -278,6 +271,8 @@ final class InternalSyncDownloadProgress {
         return (prev.$1 + total, prev.$2 + downloaded);
       },
     );
+
+    return ProgressWithOperations._(total, downloaded);
   }
 
   InternalSyncDownloadProgress incrementDownloaded(SyncDataBatch batch) {
@@ -304,18 +299,17 @@ final class InternalSyncDownloadProgress {
   @override
   bool operator ==(Object other) {
     return other is InternalSyncDownloadProgress &&
-        // _totalDownloaded and _totalTarget are derived values, but comparing
-        // them first helps find a difference faster.
-        _totalDownloaded == other._totalDownloaded &&
-        _totalTarget == other._totalTarget &&
+        // totalOperations and downloadedOperations are derived values, but
+        // comparing them first helps find a difference faster.
+        totalOperations == other.totalOperations &&
+        downloadedOperations == other.downloadedOperations &&
         _mapEquality.equals(buckets, other.buckets);
   }
 
   @override
   String toString() {
-    final asView = asSyncDownloadProgress;
-    final all = asView.untilCompletion;
-    return 'for total: ${all.completed} / ${all.total}';
+    final all = asSyncDownloadProgress;
+    return 'for total: ${all.downloadedOperations} / ${all.totalOperations}';
   }
 
   static const _mapEquality = MapEquality<Object?, Object?>();
@@ -329,13 +323,31 @@ final class InternalSyncDownloadProgress {
 ///
 /// To obtain these values, use [SyncDownloadProgress] available through
 /// [SyncStatus.downloadProgress].
-typedef ProgressWithOperations = ({
-  int total,
-  int completed,
-  double fraction,
-});
+final class ProgressWithOperations {
+  /// How many operations need to be downloaded in total until the current
+  /// download is complete.
+  final int totalOperations;
+
+  /// How many operations have already been downloaded since the last complete
+  /// download.
+  final int downloadedOperations;
+
+  ProgressWithOperations._(this.totalOperations, this.downloadedOperations);
+
+  /// Relative progress (as a number between `0.0` and `1.0`).
+  double get downloadedFraction {
+    return totalOperations == 0 ? 0.0 : downloadedOperations / totalOperations;
+  }
+}
 
 /// Provides realtime progress on how PowerSync is downloading rows.
+///
+/// This type reports progress by implementing [ProgressWithOperations], meaning
+/// that [downloadedOperations], [totalOperations] and [downloadedFraction] are
+/// available on instances of [SyncDownloadProgress].
+/// Additionally, it's possible to obtain the progress towards a specific
+/// priority only (instead of tracking progress for the entire download) by
+/// using [untilPriority].
 ///
 /// The reported progress always reflects the status towards the end of a
 /// sync iteration (after which a consistent snapshot of all buckets is
@@ -351,15 +363,8 @@ typedef ProgressWithOperations = ({
 /// counters are unlikely to be updated one-by-one.
 ///
 /// [compacting]: https://docs.powersync.com/usage/lifecycle-maintenance/compacting-buckets
-extension type SyncDownloadProgress._(InternalSyncDownloadProgress _internal) {
-  /// Returns download progress towards a complete checkpoint being received.
-  ///
-  /// The returned [ProgressWithOperations] tracks the target amount of
-  /// operations that need to be downloaded in total and how many of them have
-  /// already been received.
-  ProgressWithOperations get untilCompletion =>
-      untilPriority(BucketPriority._sentinel);
-
+extension type SyncDownloadProgress._(InternalSyncDownloadProgress _internal)
+    implements ProgressWithOperations {
   /// Returns download progress towards all data up until the specified
   /// [priority] being received.
   ///
@@ -367,9 +372,6 @@ extension type SyncDownloadProgress._(InternalSyncDownloadProgress _internal) {
   /// operations that need to be downloaded in total and how many of them have
   /// already been received.
   ProgressWithOperations untilPriority(BucketPriority priority) {
-    final (total, downloaded) = _internal.targetAndCompletedCounts(priority);
-    final progress = total == 0 ? 0.0 : downloaded / total;
-
-    return (total: total, completed: downloaded, fraction: progress);
+    return _internal.untilPriority(priority);
   }
 }

@@ -593,8 +593,8 @@ TypeMatcher<SyncDownloadProgress> isSyncDownloadProgress({
   required Object progress,
   Map<BucketPriority, Object> priorities = const {},
 }) {
-  var matcher = isA<SyncDownloadProgress>()
-      .having((e) => e.untilCompletion, 'untilCompletion', progress);
+  var matcher =
+      isA<SyncDownloadProgress>().having((e) => e, 'untilCompletion', progress);
   priorities.forEach((priority, expected) {
     matcher = matcher.having(
         (e) => e.untilPriority(priority), 'untilPriority($priority)', expected);
@@ -605,6 +605,6 @@ TypeMatcher<SyncDownloadProgress> isSyncDownloadProgress({
 
 TypeMatcher<ProgressWithOperations> progress(int completed, int total) {
   return isA<ProgressWithOperations>()
-      .having((e) => e.completed, 'completed', completed)
-      .having((e) => e.total, 'total', total);
+      .having((e) => e.downloadedOperations, 'completed', completed)
+      .having((e) => e.totalOperations, 'total', total);
 }
