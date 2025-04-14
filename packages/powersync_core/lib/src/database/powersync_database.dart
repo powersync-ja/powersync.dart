@@ -73,6 +73,6 @@ abstract class PowerSyncDatabase
       required SqliteDatabase database,
       Logger? loggers}) {
     return PowerSyncDatabaseImpl.withDatabase(
-        schema: schema, database: database);
+        schema: schema, database: database, logger: loggers);
   }
 }

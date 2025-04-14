@@ -80,7 +80,7 @@ class PowerSyncDatabaseImpl
   factory PowerSyncDatabaseImpl.withDatabase(
       {required Schema schema,
       required SqliteDatabase database,
-      Logger? loggers}) {
+      Logger? logger}) {
     throw UnimplementedError();
   }
 

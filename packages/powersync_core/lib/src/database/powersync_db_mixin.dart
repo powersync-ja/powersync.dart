@@ -7,6 +7,7 @@ import 'package:powersync_core/sqlite_async.dart';
 import 'package:powersync_core/src/abort_controller.dart';
 import 'package:powersync_core/src/connector.dart';
 import 'package:powersync_core/src/crud.dart';
+import 'package:powersync_core/src/database/active_instances.dart';
 import 'package:powersync_core/src/database/core_version.dart';
 import 'package:powersync_core/src/powersync_update_notification.dart';
 import 'package:powersync_core/src/schema.dart';
@@ -45,8 +46,7 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
   StreamController<SyncStatus> statusStreamController =
       StreamController<SyncStatus>.broadcast();
 
-  /// Use to prevent multiple connections from being opened concurrently
-  final Mutex _connectMutex = Mutex();
+  late final ActiveDatabaseGroup _activeGroup;
 
   @override
 
@@ -71,6 +71,22 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
 
   @protected
   Future<void> baseInit() async {
+    String identifier = 'memory';
+    try {
+      identifier = database.openFactory.path;
+    } catch (ignore) {
+      // The in-memory database used in some tests doesn't have an open factory.
+    }
+
+    _activeGroup = ActiveDatabaseGroup.referenceDatabase(identifier);
+    if (_activeGroup.refCount > 1) {
+      logger.warning(
+        'Multiple instances for the same database have been detected. '
+        'This can cause unexpected results, please check your PowerSync client '
+        'instantiation logic if this is not intentional',
+      );
+    }
+
     statusStream = statusStreamController.stream;
     updates = powerSyncUpdateNotifications(database.updates);
 
@@ -209,12 +225,16 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
     await isInitialized;
     // Disconnect any active sync connection.
     await disconnect();
-    // Now we can close the database
-    await database.close();
 
-    // If there are paused subscriptionso n the status stream, don't delay
-    // closing the database because of that.
-    unawaited(statusStreamController.close());
+    if (!database.closed) {
+      // Now we can close the database
+      await database.close();
+
+      // If there are paused subscriptionso n the status stream, don't delay
+      // closing the database because of that.
+      unawaited(statusStreamController.close());
+      _activeGroup.close();
+    }
   }
 
   /// Connect to the PowerSync service, and keep the databases in sync.
@@ -233,7 +253,7 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
     Zone current = Zone.current;
 
     Future<void> reconnect() {
-      return _connectMutex.lock(() => baseConnect(
+      return _activeGroup.syncConnectMutex.lock(() => baseConnect(
           connector: connector,
           crudThrottleTime: crudThrottleTime,
           // The reconnect function needs to run in the original zone,
