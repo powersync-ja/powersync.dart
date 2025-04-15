@@ -274,28 +274,27 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
         abort: thisConnectAborter,
       );
 
-      retryHandler();
+      thisConnectAborter.onCompletion.whenComplete(retryHandler);
     }
 
     // If the sync encounters a failure without being aborted, retry
-    retryHandler = () {
-      thisConnectAborter.onCompletion.then((_) async {
-        _activeGroup.syncConnectMutex.lock(() async {
-          // Still supposed to be active? (abort is only called within mutex)
-          if (!thisConnectAborter.aborted) {
-            // We only change _abortActiveSync after disconnecting, which resets
-            // the abort controller.
-            assert(identical(_abortActiveSync, thisConnectAborter));
+    retryHandler = Zone.current.bindCallback(() async {
+      _activeGroup.syncConnectMutex.lock(() async {
+        // Is this still supposed to be active? (abort is only called within
+        // mutex)
+        if (!thisConnectAborter.aborted) {
+          // We only change _abortActiveSync after disconnecting, which resets
+          // the abort controller.
+          assert(identical(_abortActiveSync, thisConnectAborter));
 
-            // We need a new abort controller for this attempt
-            _abortActiveSync = thisConnectAborter = AbortController();
+          // We need a new abort controller for this attempt
+          _abortActiveSync = thisConnectAborter = AbortController();
 
-            logger.warning('Sync client failed, retrying...');
-            await connectWithSyncLock();
-          }
-        });
+          logger.warning('Sync client failed, retrying...');
+          await connectWithSyncLock();
+        }
       });
-    };
+    });
 
     await _activeGroup.syncConnectMutex.lock(() async {
       // Disconnect a previous sync client, if one is active.

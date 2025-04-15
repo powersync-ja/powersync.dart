@@ -282,6 +282,8 @@ Future<void> _syncIsolate(_PowerSyncDatabaseIsolateArgs args) async {
   StreamSubscription<void>? localUpdatesSubscription;
 
   Future<void> shutdown() async {
+    await openedStreamingSync?.abort();
+
     localUpdatesSubscription?.cancel();
     db?.dispose();
     crudUpdateController.close();
@@ -291,9 +293,10 @@ Future<void> _syncIsolate(_PowerSyncDatabaseIsolateArgs args) async {
     // It needs to be closed before killing the isolate
     // in order to free the mutex for other operations.
     await mutex.close();
-    await openedStreamingSync?.abort();
-
     rPort.close();
+
+    // TODO: If we closed our resources properly, this wouldn't be necessary...
+    Isolate.current.kill();
   }
 
   rPort.listen((message) async {
@@ -377,12 +380,12 @@ Future<void> _syncIsolate(_PowerSyncDatabaseIsolateArgs args) async {
       updateDebouncer ??=
           Timer(const Duration(milliseconds: 1), maybeFireUpdates);
     });
-  }, (error, stack) async {
+  }, (error, stack) {
     // Properly dispose the database if an uncaught error occurs.
     // Unfortunately, this does not handle disposing while the database is opening.
     // This should be rare - any uncaught error is a bug. And in most cases,
     // it should occur after the database is already open.
-    await shutdown();
+    shutdown();
     throw error;
   });
 }
