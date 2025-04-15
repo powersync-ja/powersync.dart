@@ -123,7 +123,7 @@ class PowerSyncDatabaseImpl
     await initialize();
     final dbRef = database.isolateConnectionFactory();
 
-    Isolate? isolate;
+    bool triedSpawningIsolate = false;
     StreamSubscription<UpdateNotification>? crudUpdateSubscription;
     final receiveMessages = ReceivePort();
     final receiveUnhandledErrors = ReceivePort();
@@ -136,7 +136,7 @@ class PowerSyncDatabaseImpl
     Future<void> waitForShutdown() async {
       // Only complete the abortion signal after the isolate shuts down. This
       // ensures absolutely no trace of this sync iteration remains.
-      if (isolate != null) {
+      if (triedSpawningIsolate) {
         await receivedIsolateExit.future;
       }
 
@@ -220,7 +220,8 @@ class PowerSyncDatabaseImpl
     });
 
     // Spawning the isolate can't be interrupted
-    isolate = await Isolate.spawn(
+    triedSpawningIsolate = true;
+    await Isolate.spawn(
       _syncIsolate,
       _PowerSyncDatabaseIsolateArgs(
           receiveMessages.sendPort, dbRef, retryDelay, clientParams),
