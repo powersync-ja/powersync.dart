@@ -14,6 +14,10 @@ class AbortController {
     return _abortRequested.future;
   }
 
+  Future<void> get onCompletion {
+    return _abortCompleter.future;
+  }
+
   /// Abort, and wait until aborting is complete.
   Future<void> abort() async {
     aborted = true;
