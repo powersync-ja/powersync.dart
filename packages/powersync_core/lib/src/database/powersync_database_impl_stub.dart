@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:logging/logging.dart';
 import 'package:meta/meta.dart';
 import 'package:powersync_core/sqlite_async.dart';
+import 'package:powersync_core/src/abort_controller.dart';
 import 'package:powersync_core/src/database/powersync_db_mixin.dart';
 import 'package:powersync_core/src/open_factory/abstract_powersync_open_factory.dart';
 import 'powersync_database.dart';
@@ -23,6 +24,9 @@ class PowerSyncDatabaseImpl
 
   @override
   Schema get schema => throw UnimplementedError();
+
+  @override
+  set schema(Schema s) => throw UnimplementedError();
 
   @override
   SqliteDatabase get database => throw UnimplementedError();
@@ -102,19 +106,14 @@ class PowerSyncDatabaseImpl
   }
 
   @override
-  Future<void> updateSchema(Schema schema) {
-    throw UnimplementedError();
-  }
-
-  @override
   Logger get logger => throw UnimplementedError();
 
   @override
   @internal
-  Future<void> baseConnect(
+  Future<void> connectInternal(
       {required PowerSyncBackendConnector connector,
       required Duration crudThrottleTime,
-      required Future<void> Function() reconnect,
+      required AbortController abort,
       Map<String, dynamic>? params}) {
     throw UnimplementedError();
   }

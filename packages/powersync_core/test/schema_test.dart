@@ -176,14 +176,11 @@ void main() {
         ]),
       ]);
 
-      try {
-        powersync.updateSchema(schema2);
-      } catch (e) {
-        expect(
-            e,
-            isA<AssertionError>().having((e) => e.message, 'message',
-                'Invalid characters in table name: #notworking'));
-      }
+      await expectLater(
+        () => powersync.updateSchema(schema2),
+        throwsA(isA<AssertionError>().having((e) => e.message, 'message',
+            'Invalid characters in table name: #notworking')),
+      );
     });
   });
 

@@ -46,13 +46,10 @@ class PortCompleter<T> {
     sendPort.send(PortResult<void>.error(error, stackTrace));
   }
 
-  void addExitHandler() {
-    Isolate.current.addOnExitListener(sendPort, response: abortedResponse);
-  }
-
   Future<void> handle(FutureOr<T> Function() callback,
       {bool ignoreStackTrace = false}) async {
-    addExitHandler();
+    Isolate.current.addOnExitListener(sendPort, response: abortedResponse);
+
     try {
       final result = await callback();
       complete(result);
@@ -62,6 +59,8 @@ class PortCompleter<T> {
       } else {
         completeError(error, stacktrace);
       }
+    } finally {
+      Isolate.current.removeOnExitListener(sendPort);
     }
   }
 }
