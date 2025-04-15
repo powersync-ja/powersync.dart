@@ -5,6 +5,7 @@ import 'package:powersync_core/src/bucket_storage.dart';
 import 'package:powersync_core/src/streaming_sync.dart';
 import 'package:sqlite_async/sqlite3_common.dart';
 import 'package:sqlite_async/sqlite_async.dart';
+import 'package:test/test.dart';
 import 'package:test_api/src/backend/invoker.dart';
 
 const schema = Schema([
@@ -63,11 +64,15 @@ abstract mixin class TestPowerSyncFactory implements PowerSyncOpenFactory {
     return (raw, wrapRaw(raw));
   }
 
-  PowerSyncDatabase wrapRaw(CommonDatabase raw) {
+  PowerSyncDatabase wrapRaw(
+    CommonDatabase raw, {
+    Logger? logger,
+  }) {
     return PowerSyncDatabase.withDatabase(
       schema: schema,
       database: SqliteDatabase.singleConnection(
           SqliteConnection.synchronousWrapper(raw)),
+      loggers: logger,
     );
   }
 }
@@ -95,6 +100,7 @@ abstract class AbstractTestUtils {
         schema: schema ?? defaultSchema,
         logger: logger ?? _makeTestLogger(name: _testName));
     await db.initialize();
+    addTearDown(db.close);
     return db;
   }
 

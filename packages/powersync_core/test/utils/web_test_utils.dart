@@ -78,7 +78,7 @@ class TestUtils extends AbstractTestUtils {
   Future<PowerSyncDatabase> setupPowerSync(
       {String? path, Schema? schema, Logger? logger}) async {
     await _isInitialized;
-    return super.setupPowerSync(path: path, schema: schema);
+    return super.setupPowerSync(path: path, schema: schema, logger: logger);
   }
 
   @override

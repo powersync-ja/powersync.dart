@@ -1,3 +1,4 @@
+import 'package:logging/logging.dart';
 import 'package:powersync_core/powersync_core.dart';
 import 'package:sqlite_async/mutex.dart';
 import 'package:test/test.dart';
@@ -18,6 +19,33 @@ void main() {
 
     tearDown(() async {
       await testUtils.cleanDb(path: path);
+    });
+
+    test('warns on duplicate database', () async {
+      final logger = Logger.detached('powersync.test')..level = Level.WARNING;
+      final events = <LogRecord>[];
+      final subscription = logger.onRecord.listen(events.add);
+      addTearDown(subscription.cancel);
+
+      final firstInstance =
+          await testUtils.setupPowerSync(path: path, logger: logger);
+      await firstInstance.initialize();
+      expect(events, isEmpty);
+
+      final secondInstance =
+          await testUtils.setupPowerSync(path: path, logger: logger);
+      await secondInstance.initialize();
+      expect(
+        events,
+        contains(
+          isA<LogRecord>().having(
+            (e) => e.message,
+            'message',
+            contains(
+                'Multiple instances for the same database have been detected.'),
+          ),
+        ),
+      );
     });
 
     test('should not allow direct db calls within a transaction callback',

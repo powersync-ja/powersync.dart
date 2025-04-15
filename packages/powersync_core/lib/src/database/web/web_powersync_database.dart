@@ -37,8 +37,6 @@ class PowerSyncDatabaseImpl
   @override
   SqliteDatabase database;
 
-  late final DefaultSqliteOpenFactory openFactory;
-
   @override
   @protected
   late Future<void> isInitialized;
@@ -95,8 +93,7 @@ class PowerSyncDatabaseImpl
       Logger? logger}) {
     final db = SqliteDatabase.withFactory(openFactory, maxReaders: 1);
     return PowerSyncDatabaseImpl.withDatabase(
-        schema: schema, logger: logger, database: db)
-      ..openFactory = openFactory;
+        schema: schema, logger: logger, database: db);
   }
 
   /// Open a PowerSyncDatabase on an existing [SqliteDatabase].

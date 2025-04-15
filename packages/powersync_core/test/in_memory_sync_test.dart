@@ -15,6 +15,8 @@ import 'utils/in_memory_http.dart';
 import 'utils/test_utils_impl.dart';
 
 void main() {
+  final ignoredLogger = Logger.detached('powersync.test')..level = Level.OFF;
+
   group('in-memory sync tests', () {
     late final testUtils = TestUtils();
 
@@ -100,7 +102,8 @@ void main() {
       await expectLater(
           status, emits(isSyncStatus(downloading: false, hasSynced: true)));
 
-      final independentDb = factory.wrapRaw(raw);
+      final independentDb = factory.wrapRaw(raw, logger: ignoredLogger);
+      addTearDown(independentDb.close);
       // Even though this database doesn't have a sync client attached to it,
       // is should reconstruct hasSynced from the database.
       await independentDb.initialize();
@@ -272,7 +275,8 @@ void main() {
         await database.waitForFirstSync(priority: BucketPriority(1));
         expect(database.currentStatus.hasSynced, isFalse);
 
-        final independentDb = factory.wrapRaw(raw);
+        final independentDb = factory.wrapRaw(raw, logger: ignoredLogger);
+        addTearDown(independentDb.close);
         await independentDb.initialize();
         expect(independentDb.currentStatus.hasSynced, isFalse);
         // Completing a sync for prio 1 implies a completed sync for prio 0
