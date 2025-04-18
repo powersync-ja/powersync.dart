@@ -5,6 +5,7 @@ import 'package:path_provider/path_provider.dart';
 /// Storage adapter for local storage
 class LocalStorageAdapter {
   Future<File> saveFile(String fileUri, Uint8List data) async {
+    await makeDir(fileUri);
     final file = File(fileUri);
     return await file.writeAsBytes(data);
   }
@@ -36,6 +37,7 @@ class LocalStorageAdapter {
   }
 
   Future<void> copyFile(String sourceUri, String targetUri) async {
+    await makeDir(targetUri);
     File file = File(sourceUri);
     await file.copy(targetUri);
   }
