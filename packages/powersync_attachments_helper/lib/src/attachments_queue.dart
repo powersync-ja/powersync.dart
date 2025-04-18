@@ -59,7 +59,7 @@ abstract class AbstractAttachmentQueue {
 
   /// Create watcher to get list of ID's from a table to be used for syncing in the attachment queue.
   /// Set the file extension if you are using a different file type
-  StreamSubscription<void> watchIds({String fileExtension = 'jpg'});
+  StreamSubscription<void> watchIds({String? fileExtension});
 
   /// Create a function to save files using the attachment queue
   Future<Attachment> saveFile(String fileId, int size);
@@ -82,7 +82,7 @@ abstract class AbstractAttachmentQueue {
       }
     }
 
-    watchIds();
+    watchIds(fileExtension: 'jpg');
     syncingService.watchAttachments();
     syncingService.startPeriodicSync(intervalInMinutes);
 

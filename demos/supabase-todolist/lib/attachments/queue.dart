@@ -68,7 +68,7 @@ class PhotoAttachmentQueue extends AbstractAttachmentQueue {
   }
 
   @override
-  StreamSubscription<void> watchIds({String fileExtension = 'jpg'}) {
+  StreamSubscription<void> watchIds({String? fileExtension}) {
     log.info('Watching photos in $todosTable...');
     return db.watch('''
       SELECT photo_id FROM $todosTable

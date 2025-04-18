@@ -165,11 +165,12 @@ class SyncingService {
   }
 
   /// Process ID's to be included in the attachment queue.
-  Future<void> processIds(List<String> ids, String fileExtension) async {
+  Future<void> processIds(List<String> ids, String? fileExtension) async {
     List<Attachment> attachments = List.empty(growable: true);
 
     for (String id in ids) {
-      String path = await getLocalUri('$id.$fileExtension');
+      String filename = fileExtension != null ? '$id.$fileExtension' : id;
+      String path = await getLocalUri(filename);
       File file = File(path);
       bool fileExists = await file.exists();
 
@@ -180,7 +181,7 @@ class SyncingService {
       log.info('Adding $id to queue');
       attachments.add(Attachment(
           id: id,
-          filename: '$id.$fileExtension',
+          filename: filename,
           state: AttachmentState.queuedDownload.index));
     }
 
