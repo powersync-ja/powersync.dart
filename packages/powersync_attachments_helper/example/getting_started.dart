@@ -46,7 +46,7 @@ class PhotoAttachmentQueue extends AbstractAttachmentQueue {
   }
 
   @override
-  StreamSubscription<void> watchIds({String fileExtension = 'jpg'}) {
+  StreamSubscription<void> watchIds({String? fileExtension}) {
     return db.watch('''
       SELECT photo_id FROM users
       WHERE photo_id IS NOT NULL
