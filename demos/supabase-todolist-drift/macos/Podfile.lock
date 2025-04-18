@@ -19,6 +19,8 @@ PODS:
     - sqlite3/common
   - sqlite3/fts5 (3.49.1):
     - sqlite3/common
+  - sqlite3/math (3.49.1):
+    - sqlite3/common
   - sqlite3/perf-threadsafe (3.49.1):
     - sqlite3/common
   - sqlite3/rtree (3.49.1):
@@ -29,6 +31,7 @@ PODS:
     - sqlite3 (~> 3.49.1)
     - sqlite3/dbstatvtab
     - sqlite3/fts5
+    - sqlite3/math
     - sqlite3/perf-threadsafe
     - sqlite3/rtree
   - url_launcher_macos (0.0.1):
@@ -72,7 +75,7 @@ SPEC CHECKSUMS:
   powersync_flutter_libs: 011c1704766d154faf2373bb9c973d26910d322b
   shared_preferences_foundation: 9e1978ff2562383bd5676f64ec4e9aa8fa06a6f7
   sqlite3: fc1400008a9b3525f5914ed715a5d1af0b8f4983
-  sqlite3_flutter_libs: f8fc13346870e73fe35ebf6dbb997fbcd156b241
+  sqlite3_flutter_libs: f6acaa2172e6bb3e2e70c771661905080e8ebcf2
   url_launcher_macos: 0fba8ddabfc33ce0a9afe7c5fef5aab3d8d2d673
 
 PODFILE CHECKSUM: 236401fc2c932af29a9fcf0e97baeeb2d750d367
