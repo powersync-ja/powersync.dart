@@ -31,8 +31,8 @@ class LocalStorageAdapter {
   Future<void> makeDir(String fileUri) async {
     bool exists = await fileExists(fileUri);
     if (!exists) {
-      Directory newDirectory = Directory(fileUri);
-      await newDirectory.create(recursive: true);
+      Directory parentDirectories = File(fileUri).parent;
+      await parentDirectories.create(recursive: true);
     }
   }
 
