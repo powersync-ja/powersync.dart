@@ -74,21 +74,23 @@ class StreamingSyncImplementation implements StreamingSync {
 
   String? clientId;
 
-  StreamingSyncImplementation(
-      {required this.adapter,
-      required this.credentialsCallback,
-      this.invalidCredentialsCallback,
-      required this.uploadCrud,
-      required this.crudUpdateTriggerStream,
-      required this.retryDelay,
-      this.syncParameters,
-      required http.Client client,
+  StreamingSyncImplementation({
+    required this.adapter,
+    required this.credentialsCallback,
+    this.invalidCredentialsCallback,
+    required this.uploadCrud,
+    required this.crudUpdateTriggerStream,
+    required this.retryDelay,
+    this.syncParameters,
+    required http.Client client,
+    Mutex? syncMutex,
+    Mutex? crudMutex,
 
-      /// A unique identifier for this streaming sync implementation
-      /// A good value is typically the DB file path which it will mutate when syncing.
-      String? identifier = "unknown"})
-      : syncMutex = Mutex(identifier: "sync-$identifier"),
-        crudMutex = Mutex(identifier: "crud-$identifier"),
+    /// A unique identifier for this streaming sync implementation
+    /// A good value is typically the DB file path which it will mutate when syncing.
+    String? identifier = "unknown",
+  })  : syncMutex = syncMutex ?? Mutex(identifier: "sync-$identifier"),
+        crudMutex = crudMutex ?? Mutex(identifier: "crud-$identifier"),
         _userAgentHeaders = userAgentHeaders() {
     _client = client;
     statusStream = _statusStreamController.stream;

@@ -19,6 +19,8 @@ import 'package:powersync_core/src/streaming_sync.dart';
 import 'package:powersync_core/src/sync_status.dart';
 import 'package:sqlite_async/sqlite3_common.dart';
 import 'package:sqlite_async/sqlite_async.dart';
+// ignore: implementation_imports
+import 'package:sqlite_async/src/native/native_isolate_mutex.dart';
 
 /// A PowerSync managed database.
 ///
@@ -43,6 +45,8 @@ class PowerSyncDatabaseImpl
   @override
   @protected
   late Future<void> isInitialized;
+
+  final SimpleMutex _syncMutex = SimpleMutex(), _crudMutex = SimpleMutex();
 
   @override
 
@@ -224,7 +228,13 @@ class PowerSyncDatabaseImpl
     await Isolate.spawn(
       _syncIsolate,
       _PowerSyncDatabaseIsolateArgs(
-          receiveMessages.sendPort, dbRef, retryDelay, clientParams),
+        receiveMessages.sendPort,
+        dbRef,
+        retryDelay,
+        clientParams,
+        _crudMutex.shared,
+        _syncMutex.shared,
+      ),
       debugName: 'Sync ${database.openFactory.path}',
       onError: receiveUnhandledErrors.sendPort,
       errorsAreFatal: true,
@@ -259,6 +269,14 @@ class PowerSyncDatabaseImpl
     return database.writeLock(callback,
         debugContext: debugContext, lockTimeout: lockTimeout);
   }
+
+  @override
+  Future<void> close() async {
+    await super.close();
+
+    await _crudMutex.close();
+    await _crudMutex.close();
+  }
 }
 
 class _PowerSyncDatabaseIsolateArgs {
@@ -266,9 +284,17 @@ class _PowerSyncDatabaseIsolateArgs {
   final IsolateConnectionFactory dbRef;
   final Duration retryDelay;
   final Map<String, dynamic>? parameters;
+  final SerializedMutex crudMutex;
+  final SerializedMutex syncMutex;
 
   _PowerSyncDatabaseIsolateArgs(
-      this.sPort, this.dbRef, this.retryDelay, this.parameters);
+    this.sPort,
+    this.dbRef,
+    this.retryDelay,
+    this.parameters,
+    this.crudMutex,
+    this.syncMutex,
+  );
 }
 
 Future<void> _syncIsolate(_PowerSyncDatabaseIsolateArgs args) async {
@@ -276,6 +302,9 @@ Future<void> _syncIsolate(_PowerSyncDatabaseIsolateArgs args) async {
   final rPort = ReceivePort();
   StreamController<String> crudUpdateController = StreamController.broadcast();
   final upstreamDbClient = args.dbRef.upstreamPort.open();
+
+  final crudMutex = args.crudMutex.open();
+  final syncMutex = args.syncMutex.open();
 
   CommonDatabase? db;
   final Mutex mutex = args.dbRef.mutex.open();
@@ -294,6 +323,8 @@ Future<void> _syncIsolate(_PowerSyncDatabaseIsolateArgs args) async {
     // It needs to be closed before killing the isolate
     // in order to free the mutex for other operations.
     await mutex.close();
+    await crudMutex.close();
+    await syncMutex.close();
     rPort.close();
 
     // TODO: If we closed our resources properly, this wouldn't be necessary...
@@ -348,14 +379,17 @@ Future<void> _syncIsolate(_PowerSyncDatabaseIsolateArgs args) async {
 
     final storage = BucketStorage(connection);
     final sync = StreamingSyncImplementation(
-        adapter: storage,
-        credentialsCallback: loadCredentials,
-        invalidCredentialsCallback: invalidateCredentials,
-        uploadCrud: uploadCrud,
-        crudUpdateTriggerStream: crudUpdateController.stream,
-        retryDelay: args.retryDelay,
-        client: http.Client(),
-        syncParameters: args.parameters);
+      adapter: storage,
+      credentialsCallback: loadCredentials,
+      invalidCredentialsCallback: invalidateCredentials,
+      uploadCrud: uploadCrud,
+      crudUpdateTriggerStream: crudUpdateController.stream,
+      retryDelay: args.retryDelay,
+      client: http.Client(),
+      syncParameters: args.parameters,
+      crudMutex: crudMutex,
+      syncMutex: syncMutex,
+    );
     openedStreamingSync = sync;
     sync.streamingSync();
     sync.statusStream.listen((event) {
