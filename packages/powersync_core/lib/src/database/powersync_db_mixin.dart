@@ -52,6 +52,14 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
 
   late final ActiveDatabaseGroup _activeGroup;
 
+  /// An [ActiveDatabaseGroup] sharing mutexes for the sync client.
+  ///
+  /// This is used to ensure that, even if two databases to the same file are
+  /// open concurrently, they won't both open a sync stream. Doing so would
+  /// waste resources.
+  @internal
+  ActiveDatabaseGroup get group => _activeGroup;
+
   @override
 
   /// Broadcast stream that is notified of any table updates.
@@ -242,7 +250,7 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
       // If there are paused subscriptionso n the status stream, don't delay
       // closing the database because of that.
       unawaited(statusStreamController.close());
-      _activeGroup.close();
+      await _activeGroup.close();
     }
   }
 

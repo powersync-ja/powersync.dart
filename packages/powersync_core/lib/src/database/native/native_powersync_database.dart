@@ -46,8 +46,6 @@ class PowerSyncDatabaseImpl
   @protected
   late Future<void> isInitialized;
 
-  final SimpleMutex _syncMutex = SimpleMutex(), _crudMutex = SimpleMutex();
-
   @override
 
   /// The Logger used by this [PowerSyncDatabase].
@@ -223,6 +221,9 @@ class PowerSyncDatabaseImpl
       receivedIsolateExit.complete();
     });
 
+    final crudMutex = group.crudMutex as SimpleMutex;
+    final syncMutex = group.syncMutex as SimpleMutex;
+
     // Spawning the isolate can't be interrupted
     triedSpawningIsolate = true;
     await Isolate.spawn(
@@ -232,8 +233,8 @@ class PowerSyncDatabaseImpl
         dbRef,
         retryDelay,
         clientParams,
-        _crudMutex.shared,
-        _syncMutex.shared,
+        crudMutex.shared,
+        syncMutex.shared,
       ),
       debugName: 'Sync ${database.openFactory.path}',
       onError: receiveUnhandledErrors.sendPort,
@@ -269,14 +270,6 @@ class PowerSyncDatabaseImpl
     return database.writeLock(callback,
         debugContext: debugContext, lockTimeout: lockTimeout);
   }
-
-  @override
-  Future<void> close() async {
-    await super.close();
-
-    await _crudMutex.close();
-    await _crudMutex.close();
-  }
 }
 
 class _PowerSyncDatabaseIsolateArgs {
@@ -311,24 +304,32 @@ Future<void> _syncIsolate(_PowerSyncDatabaseIsolateArgs args) async {
   StreamingSyncImplementation? openedStreamingSync;
   StreamSubscription<void>? localUpdatesSubscription;
 
-  Future<void> shutdown() async {
-    await openedStreamingSync?.abort();
+  Completer<void> shutdownCompleter = Completer();
 
-    localUpdatesSubscription?.cancel();
-    db?.dispose();
-    crudUpdateController.close();
-    upstreamDbClient.close();
+  Future<void> shutdown() {
+    if (!shutdownCompleter.isCompleted) {
+      shutdownCompleter.complete(Future(() async {
+        await openedStreamingSync?.abort();
 
-    // The SyncSqliteConnection uses this mutex
-    // It needs to be closed before killing the isolate
-    // in order to free the mutex for other operations.
-    await mutex.close();
-    await crudMutex.close();
-    await syncMutex.close();
-    rPort.close();
+        localUpdatesSubscription?.cancel();
+        db?.dispose();
+        crudUpdateController.close();
+        upstreamDbClient.close();
 
-    // TODO: If we closed our resources properly, this wouldn't be necessary...
-    Isolate.current.kill();
+        // The SyncSqliteConnection uses this mutex
+        // It needs to be closed before killing the isolate
+        // in order to free the mutex for other operations.
+        await mutex.close();
+        await crudMutex.close();
+        await syncMutex.close();
+        rPort.close();
+
+        // TODO: If we closed our resources properly, this wouldn't be necessary...
+        Isolate.current.kill();
+      }));
+    }
+
+    return shutdownCompleter.future;
   }
 
   rPort.listen((message) async {
@@ -415,12 +416,12 @@ Future<void> _syncIsolate(_PowerSyncDatabaseIsolateArgs args) async {
       updateDebouncer ??=
           Timer(const Duration(milliseconds: 1), maybeFireUpdates);
     });
-  }, (error, stack) {
+  }, (error, stack) async {
     // Properly dispose the database if an uncaught error occurs.
     // Unfortunately, this does not handle disposing while the database is opening.
     // This should be rare - any uncaught error is a bug. And in most cases,
     // it should occur after the database is already open.
-    shutdown();
+    await shutdown();
     throw error;
   });
 }
