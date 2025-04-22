@@ -74,21 +74,23 @@ class StreamingSyncImplementation implements StreamingSync {
 
   String? clientId;
 
-  StreamingSyncImplementation(
-      {required this.adapter,
-      required this.credentialsCallback,
-      this.invalidCredentialsCallback,
-      required this.uploadCrud,
-      required this.crudUpdateTriggerStream,
-      required this.retryDelay,
-      this.syncParameters,
-      required http.Client client,
+  StreamingSyncImplementation({
+    required this.adapter,
+    required this.credentialsCallback,
+    this.invalidCredentialsCallback,
+    required this.uploadCrud,
+    required this.crudUpdateTriggerStream,
+    required this.retryDelay,
+    this.syncParameters,
+    required http.Client client,
+    Mutex? syncMutex,
+    Mutex? crudMutex,
 
-      /// A unique identifier for this streaming sync implementation
-      /// A good value is typically the DB file path which it will mutate when syncing.
-      String? identifier = "unknown"})
-      : syncMutex = Mutex(identifier: "sync-$identifier"),
-        crudMutex = Mutex(identifier: "crud-$identifier"),
+    /// A unique identifier for this streaming sync implementation
+    /// A good value is typically the DB file path which it will mutate when syncing.
+    String? identifier = "unknown",
+  })  : syncMutex = syncMutex ?? Mutex(identifier: "sync-$identifier"),
+        crudMutex = crudMutex ?? Mutex(identifier: "crud-$identifier"),
         _userAgentHeaders = userAgentHeaders() {
     _client = client;
     statusStream = _statusStreamController.stream;
@@ -148,8 +150,7 @@ class StreamingSyncImplementation implements StreamingSync {
             invalidCredentials = false;
           }
           // Protect sync iterations with exclusivity (if a valid Mutex is provided)
-          await syncMutex.lock(
-              () => streamingSyncIteration(abortController: _abort),
+          await syncMutex.lock(() => streamingSyncIteration(),
               timeout: retryDelay);
         } catch (e, stacktrace) {
           if (aborted && e is http.ClientException) {
@@ -343,11 +344,13 @@ class StreamingSyncImplementation implements StreamingSync {
     return (initialRequests, localDescriptions);
   }
 
-  Future<void> streamingSyncIteration(
-      {AbortController? abortController}) async {
+  Future<void> streamingSyncIteration() async {
     adapter.startSession();
 
     var (bucketRequests, bucketMap) = await _collectLocalBucketState();
+    if (aborted) {
+      return;
+    }
 
     Checkpoint? targetCheckpoint;
     Checkpoint? validatedCheckpoint;
@@ -386,8 +389,7 @@ class StreamingSyncImplementation implements StreamingSync {
           await adapter.removeBuckets([...bucketsToDelete]);
           _updateStatus(downloading: true);
         case StreamingSyncCheckpointComplete():
-          final result =
-              await _applyCheckpoint(targetCheckpoint!, abortController);
+          final result = await _applyCheckpoint(targetCheckpoint!, _abort);
           if (result.abort) {
             return;
           }
@@ -477,8 +479,7 @@ class StreamingSyncImplementation implements StreamingSync {
                 downloadError: _noError,
                 lastSyncedAt: DateTime.now());
           } else if (validatedCheckpoint == targetCheckpoint) {
-            final result =
-                await _applyCheckpoint(targetCheckpoint!, abortController);
+            final result = await _applyCheckpoint(targetCheckpoint!, _abort);
             if (result.abort) {
               return;
             }

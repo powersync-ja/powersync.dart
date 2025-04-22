@@ -5,6 +5,7 @@ library;
 import 'dart:async';
 import 'dart:math';
 
+import 'package:logging/logging.dart';
 import 'package:powersync_core/powersync_core.dart';
 import 'package:test/test.dart';
 
@@ -25,6 +26,39 @@ void main() {
 
     tearDown(() async {
       await testUtils.cleanDb(path: path);
+    });
+
+    test('repeated connect and disconnect calls', () async {
+      final random = Random();
+      final server = await createServer();
+      final ignoreLogger = Logger.detached('powersync.test');
+
+      final pdb =
+          await testUtils.setupPowerSync(path: path, logger: ignoreLogger);
+      pdb.retryDelay = Duration(milliseconds: 5000);
+      final connector = TestConnector(() async {
+        return PowerSyncCredentials(endpoint: server.endpoint, token: 'token');
+      });
+
+      Duration nextDelay() {
+        return Duration(milliseconds: random.nextInt(100));
+      }
+
+      Future<void> connectAndDisconnect() async {
+        for (var i = 0; i < 10; i++) {
+          await Future<void>.delayed(nextDelay());
+          await pdb.connect(connector: connector);
+
+          await Future<void>.delayed(nextDelay());
+          await pdb.disconnect();
+        }
+      }
+
+      // Create a bunch of tasks calling connect and disconnect() concurrently.
+      await Future.wait([for (var i = 0; i < 10; i++) connectAndDisconnect()]);
+
+      expect(server.maxConnectionCount, lessThanOrEqualTo(1));
+      server.close();
     });
 
     test('full powersync reconnect', () async {
