@@ -3,6 +3,42 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 2025-04-22
+
+### Changes
+
+---
+
+Packages with breaking changes:
+
+ - There are no breaking changes in this release.
+
+Packages with other changes:
+
+ - [`powersync_core` - `v1.2.3`](#powersync_core---v123)
+ - [`powersync_attachments_helper` - `v0.6.18+5`](#powersync_attachments_helper---v06185)
+ - [`powersync_sqlcipher` - `v0.1.5+3`](#powersync_sqlcipher---v0153)
+ - [`powersync` - `v1.12.3`](#powersync---v1123)
+
+Packages with dependency updates only:
+
+> Packages listed below depend on other packages in this workspace that have had changes. Their versions have been incremented to bump the minimum dependency versions of the packages they depend upon in this project.
+
+ - `powersync_attachments_helper` - `v0.6.18+5`
+ - `powersync_sqlcipher` - `v0.1.5+3`
+ - `powersync` - `v1.12.3`
+
+---
+
+#### `powersync_core` - `v1.2.3`
+
+ - Introduce locks to avoid duplicate sync streams when multiple instances of the same database are opened.
+ - Refactor connect / disconnect internally.
+ - Warn when multiple instances of the same database are opened.
+ - Fix race condition causing data not to be applied while an upload is in progress.
+ - Web: Fix token invalidation logic when a sync worker is used.
+
+
 ## 2025-03-11
 
 ### Changes
