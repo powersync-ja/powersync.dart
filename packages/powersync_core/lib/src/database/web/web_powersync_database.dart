@@ -118,8 +118,6 @@ class PowerSyncDatabaseImpl
     required AbortController abort,
     Map<String, dynamic>? params,
   }) async {
-    await initialize();
-
     final crudStream =
         database.onChange(['ps_crud'], throttle: crudThrottleTime);
 
