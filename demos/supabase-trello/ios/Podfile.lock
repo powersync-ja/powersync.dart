@@ -41,10 +41,10 @@ PODS:
   - path_provider_foundation (0.0.1):
     - Flutter
     - FlutterMacOS
-  - powersync-sqlite-core (0.3.12)
+  - powersync-sqlite-core (0.3.13)
   - powersync_flutter_libs (0.0.1):
     - Flutter
-    - powersync-sqlite-core (~> 0.3.12)
+    - powersync-sqlite-core (~> 0.3.13)
   - SDWebImage (5.21.0):
     - SDWebImage/Core (= 5.21.0)
   - SDWebImage/Core (5.21.0)
@@ -122,8 +122,8 @@ SPEC CHECKSUMS:
   Flutter: e0871f40cf51350855a761d2e70bf5af5b9b5de7
   image_picker_ios: 7fe1ff8e34c1790d6fff70a32484959f563a928a
   path_provider_foundation: 080d55be775b7414fd5a5ef3ac137b97b097e564
-  powersync-sqlite-core: fcc32da5528fca9d50b185fcd777705c034e255b
-  powersync_flutter_libs: 23a227cf1aca676e605548a4857da261b06d9421
+  powersync-sqlite-core: 117027bd6ddb3d6186b865f3aa10cb65619ecdcf
+  powersync_flutter_libs: 0dc56f009ce235568d04a0f599f591be07749faf
   SDWebImage: f84b0feeb08d2d11e6a9b843cb06d75ebf5b8868
   shared_preferences_foundation: 9e1978ff2562383bd5676f64ec4e9aa8fa06a6f7
   sqlite3: fc1400008a9b3525f5914ed715a5d1af0b8f4983
