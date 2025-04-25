@@ -61,6 +61,25 @@ void main() {
       server.close();
     });
 
+    test('can connect as initial operation', () async {
+      final server = await createServer();
+      final ignoreLogger = Logger.detached('powersync.test');
+
+      final pdb = await testUtils.setupPowerSync(
+          path: path, logger: ignoreLogger, initialize: false);
+      pdb.retryDelay = Duration(milliseconds: 5000);
+
+      await pdb.connect(connector: TestConnector(() async {
+        return PowerSyncCredentials(endpoint: server.endpoint, token: 'token');
+      }));
+
+      await expectLater(
+        pdb.statusStream,
+        emitsThrough(
+            isA<SyncStatus>().having((e) => e.connected, 'connected', isTrue)),
+      );
+    });
+
     test('full powersync reconnect', () async {
       // Test repeatedly creating new PowerSync connections, then disconnect
       // and close the connection.

@@ -264,6 +264,11 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
     Duration crudThrottleTime = const Duration(milliseconds: 10),
     Map<String, dynamic>? params,
   }) async {
+    // The initialization process acquires a sync connect lock (through
+    // updateSchema), so ensure the database is ready before we try to acquire
+    // the lock for the connection.
+    await initialize();
+
     clientParams = params;
     var thisConnectAborter = AbortController();
 

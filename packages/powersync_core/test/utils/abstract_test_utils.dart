@@ -94,12 +94,18 @@ abstract class AbstractTestUtils {
       SqliteOptions options = const SqliteOptions.defaults()});
 
   /// Creates a SqliteDatabaseConnection
-  Future<PowerSyncDatabase> setupPowerSync(
-      {String? path, Schema? schema, Logger? logger}) async {
+  Future<PowerSyncDatabase> setupPowerSync({
+    String? path,
+    Schema? schema,
+    Logger? logger,
+    bool initialize = true,
+  }) async {
     final db = PowerSyncDatabase.withFactory(await testFactory(path: path),
         schema: schema ?? defaultSchema,
         logger: logger ?? _makeTestLogger(name: _testName));
-    await db.initialize();
+    if (initialize) {
+      await db.initialize();
+    }
     addTearDown(db.close);
     return db;
   }

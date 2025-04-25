@@ -3,6 +3,38 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 2025-04-24
+
+### Changes
+
+---
+
+Packages with breaking changes:
+
+ - There are no breaking changes in this release.
+
+Packages with other changes:
+
+ - [`powersync_core` - `v1.2.4`](#powersync_core---v124)
+ - [`powersync_attachments_helper` - `v0.6.18+6`](#powersync_attachments_helper---v06186)
+ - [`powersync_sqlcipher` - `v0.1.5+4`](#powersync_sqlcipher---v0154)
+ - [`powersync` - `v1.12.4`](#powersync---v1124)
+
+Packages with dependency updates only:
+
+> Packages listed below depend on other packages in this workspace that have had changes. Their versions have been incremented to bump the minimum dependency versions of the packages they depend upon in this project.
+
+ - `powersync_attachments_helper` - `v0.6.18+6`
+ - `powersync_sqlcipher` - `v0.1.5+4`
+ - `powersync` - `v1.12.4`
+
+---
+
+#### `powersync_core` - `v1.2.4`
+
+ - Fix deadlock when `connect()` is called immediately after opening a database.
+
+
 ## 2025-04-22
 
 ### Changes

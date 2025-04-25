@@ -1,3 +1,7 @@
+## 1.2.4
+
+ - Fix deadlock when `connect()` is called immediately after opening a database.
+
 ## 1.2.3
 
  - Introduce locks to avoid duplicate sync streams when multiple instances of the same database are opened.

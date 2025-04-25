@@ -122,7 +122,6 @@ class PowerSyncDatabaseImpl
     required AbortController abort,
     Map<String, dynamic>? params,
   }) async {
-    await initialize();
     final dbRef = database.isolateConnectionFactory();
 
     bool triedSpawningIsolate = false;

@@ -1,3 +1,7 @@
+## 0.1.5+4
+
+ - Update a dependency to the latest release.
+
 ## 0.1.5+3
 
 This updates `powersync_core` to version `1.2.3`, which includes these changes:
