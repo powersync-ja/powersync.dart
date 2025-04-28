@@ -1,3 +1,4 @@
+import 'crud.dart';
 import 'schema_logic.dart';
 
 /// The schema used by the database.
@@ -26,8 +27,27 @@ class Schema {
   }
 }
 
+/// Options to include old values in [CrudEntry] for update statements.
+///
+/// This options are enabled by passing it to a non-local [Table] constructor.
+final class IncludeOldOptions {
+  /// A filter of column names for which updates should be tracked.
+  ///
+  /// When set to a non-null value, olumns not included in this list will not
+  /// appear in [CrudEntry.oldData]. By default, all columns are included.
+  final List<String>? columnFilter;
+
+  /// Whether to only include old values when they were changed by an update,
+  /// instead of always including all old values.
+  final bool onlyWhenChanged;
+
+  const IncludeOldOptions({this.columnFilter, this.onlyWhenChanged = false});
+}
+
 /// A single table in the schema.
 class Table {
+  static const _maxNumberOfColumns = 1999;
+
   /// The synced table name, matching sync rules.
   final String name;
 
@@ -37,11 +57,25 @@ class Table {
   /// List of indexes.
   final List<Index> indexes;
 
-  /// Whether the table only exists only.
+  /// Whether to add a hidden `_metadata` column that will be enabled for
+  /// updates to attach custom information about writes that will be reported
+  /// through [CrudEntry.metadata].
+  final bool includeMetadata;
+
+  /// Whether to track old values of columns for [CrudEntry.oldData].
+  ///
+  /// See [IncludeOldOptions] for details.
+  final IncludeOldOptions? includeOld;
+
+  /// Whether the table only exists locally.
   final bool localOnly;
 
   /// Whether this is an insert-only table.
   final bool insertOnly;
+
+  /// Whether an `UPDATE` statement that doesn't change any values should be
+  /// ignored when creating CRUD entries.
+  final bool ignoreEmptyUpdate;
 
   /// Override the name for the view
   final String? _viewNameOverride;
@@ -50,7 +84,7 @@ class Table {
   /// per table to 1999, due to internal SQLite limits.
   ///
   /// In earlier versions this was limited to 63.
-  final int maxNumberOfColumns = 1999;
+  final int maxNumberOfColumns = _maxNumberOfColumns;
 
   /// Internal use only.
   ///
@@ -66,9 +100,16 @@ class Table {
   /// Create a synced table.
   ///
   /// Local changes are recorded, and remote changes are synced to the local table.
-  const Table(this.name, this.columns,
-      {this.indexes = const [], String? viewName, this.localOnly = false})
-      : insertOnly = false,
+  const Table(
+    this.name,
+    this.columns, {
+    this.indexes = const [],
+    String? viewName,
+    this.localOnly = false,
+    this.ignoreEmptyUpdate = false,
+    this.includeMetadata = false,
+    this.includeOld,
+  })  : insertOnly = false,
         _viewNameOverride = viewName;
 
   /// Create a table that only exists locally.
@@ -78,6 +119,9 @@ class Table {
       {this.indexes = const [], String? viewName})
       : localOnly = true,
         insertOnly = false,
+        includeMetadata = false,
+        includeOld = null,
+        ignoreEmptyUpdate = false,
         _viewNameOverride = viewName;
 
   /// Create a table that only supports inserts.
@@ -88,8 +132,14 @@ class Table {
   ///
   /// SELECT queries on the table will always return 0 rows.
   ///
-  const Table.insertOnly(this.name, this.columns, {String? viewName})
-      : localOnly = false,
+  const Table.insertOnly(
+    this.name,
+    this.columns, {
+    String? viewName,
+    this.ignoreEmptyUpdate = false,
+    this.includeMetadata = false,
+    this.includeOld,
+  })  : localOnly = false,
         insertOnly = true,
         indexes = const [],
         _viewNameOverride = viewName;
@@ -106,9 +156,9 @@ class Table {
 
   /// Check that there are no issues in the table definition.
   void validate() {
-    if (columns.length > maxNumberOfColumns) {
+    if (columns.length > _maxNumberOfColumns) {
       throw AssertionError(
-          "Table $name has more than $maxNumberOfColumns columns, which is not supported");
+          "Table $name has more than $_maxNumberOfColumns columns, which is not supported");
     }
 
     if (invalidSqliteCharacters.hasMatch(name)) {
@@ -119,6 +169,14 @@ class Table {
         invalidSqliteCharacters.hasMatch(_viewNameOverride)) {
       throw AssertionError(
           "Invalid characters in view name: $_viewNameOverride");
+    }
+
+    if (includeMetadata && localOnly) {
+      throw AssertionError("Local-only tables can't track metadata");
+    }
+
+    if (includeOld != null && localOnly) {
+      throw AssertionError("Local-only tables can't track old values");
     }
 
     Set<String> columnNames = {"id"};
@@ -168,7 +226,13 @@ class Table {
         'local_only': localOnly,
         'insert_only': insertOnly,
         'columns': columns,
-        'indexes': indexes.map((e) => e.toJson(this)).toList(growable: false)
+        'indexes': indexes.map((e) => e.toJson(this)).toList(growable: false),
+        'ignore_empty_update': ignoreEmptyUpdate,
+        'include_metadata': includeMetadata,
+        if (includeOld case final includeOld?) ...{
+          'include_old': includeOld.columnFilter ?? true,
+          'include_old_only_when_changed': includeOld.onlyWhenChanged,
+        },
       };
 }
 
