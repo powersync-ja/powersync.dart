@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:async/async.dart';
 import 'package:logging/logging.dart';
 import 'package:powersync_core/powersync_core.dart';
@@ -13,6 +15,8 @@ import 'utils/in_memory_http.dart';
 import 'utils/test_utils_impl.dart';
 
 void main() {
+  final ignoredLogger = Logger.detached('powersync.test')..level = Level.OFF;
+
   group('in-memory sync tests', () {
     late final testUtils = TestUtils();
 
@@ -23,6 +27,7 @@ void main() {
 
     late StreamingSync syncClient;
     var credentialsCallbackCount = 0;
+    Future<void> Function(PowerSyncDatabase) uploadData = (db) async {};
 
     void createSyncClient() {
       final (client, server) = inMemoryServer();
@@ -37,7 +42,7 @@ void main() {
             token: 'token$credentialsCallbackCount',
             expiresAt: DateTime.now(),
           );
-        }),
+        }, uploadData: (db) => uploadData(db)),
       );
     }
 
@@ -102,7 +107,8 @@ void main() {
       await expectLater(
           status, emits(isSyncStatus(downloading: false, hasSynced: true)));
 
-      final independentDb = factory.wrapRaw(raw);
+      final independentDb = factory.wrapRaw(raw, logger: ignoredLogger);
+      addTearDown(independentDb.close);
       // Even though this database doesn't have a sync client attached to it,
       // is should reconstruct hasSynced from the database.
       await independentDb.initialize();
@@ -275,7 +281,8 @@ void main() {
         await database.waitForFirstSync(priority: BucketPriority(1));
         expect(database.currentStatus.hasSynced, isFalse);
 
-        final independentDb = factory.wrapRaw(raw);
+        final independentDb = factory.wrapRaw(raw, logger: ignoredLogger);
+        addTearDown(independentDb.close);
         await independentDb.initialize();
         expect(independentDb.currentStatus.hasSynced, isFalse);
         // Completing a sync for prio 1 implies a completed sync for prio 0
@@ -334,6 +341,94 @@ void main() {
       final nextRequest = await syncService.waitForListener;
       expect(nextRequest.headers['Authorization'], 'Token token2');
       expect(credentialsCallbackCount, 2);
+    });
+
+    test('handles checkpoints during the upload process', () async {
+      final status = await waitForConnection();
+
+      Future<void> expectCustomerRows(dynamic matcher) async {
+        final rows = await database.getAll('SELECT * FROM customers');
+        expect(rows, matcher);
+      }
+
+      final uploadStarted = Completer<void>();
+      final uploadFinished = Completer<void>();
+
+      uploadData = (db) async {
+        if (await db.getCrudBatch() case final batch?) {
+          uploadStarted.complete();
+          await uploadFinished.future;
+          batch.complete();
+        }
+      };
+
+      // Trigger an upload
+      await database.execute(
+          'INSERT INTO customers (id, name, email) VALUES (uuid(), ?, ?)',
+          ['local', 'local@example.org']);
+      await expectCustomerRows(hasLength(1));
+      await uploadStarted.future;
+
+      // Pretend that the connector takes forever in uploadData, but the data
+      // gets uploaded before the method returns.
+      syncService.addLine({
+        'checkpoint': Checkpoint(
+          writeCheckpoint: '1',
+          lastOpId: '2',
+          checksums: [BucketChecksum(bucket: 'a', priority: 3, checksum: 0)],
+        )
+      });
+      await expectLater(status, emitsThrough(isSyncStatus(downloading: true)));
+
+      syncService
+        ..addLine({
+          'data': {
+            'bucket': 'a',
+            'data': [
+              {
+                'checksum': 0,
+                'data': {'name': 'from local', 'email': 'local@example.org'},
+                'op': 'PUT',
+                'op_id': '1',
+                'object_id': '1',
+                'object_type': 'customers'
+              },
+              {
+                'checksum': 0,
+                'data': {'name': 'additional', 'email': ''},
+                'op': 'PUT',
+                'op_id': '2',
+                'object_id': '2',
+                'object_type': 'customers'
+              }
+            ]
+          }
+        })
+        ..addLine({
+          'checkpoint_complete': {'last_op_id': '2'}
+        });
+
+      // Despite receiving a valid checkpoint with two rows, it should not be
+      // visible because we have local data pending.
+      await expectCustomerRows(hasLength(1));
+
+      // Mark the upload as completed, this should trigger a write_checkpoint
+      // request.
+      final sentCheckpoint = Completer<void>();
+      syncService.writeCheckpoint = () {
+        sentCheckpoint.complete();
+        return {
+          'data': {'write_checkpoint': '1'}
+        };
+      };
+      uploadFinished.complete();
+      await sentCheckpoint.future;
+
+      // This should apply the checkpoint.
+      await expectLater(status, emitsThrough(isSyncStatus(downloading: false)));
+
+      // Meaning that the two rows are now visible.
+      await expectCustomerRows(hasLength(2));
     });
 
     group('reports progress', () {

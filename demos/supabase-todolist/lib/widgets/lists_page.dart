@@ -41,7 +41,7 @@ class ListsPage extends StatelessWidget {
   }
 }
 
-final class ListsWidget extends StatelessWidget {
+class ListsWidget extends StatelessWidget {
   const ListsWidget({super.key});
 
   @override

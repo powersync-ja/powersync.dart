@@ -1,3 +1,15 @@
+## 1.2.4
+
+ - Fix deadlock when `connect()` is called immediately after opening a database.
+
+## 1.2.3
+
+ - Introduce locks to avoid duplicate sync streams when multiple instances of the same database are opened.
+ - Refactor connect / disconnect internally.
+ - Warn when multiple instances of the same database are opened.
+ - Fix race condition causing data not to be applied while an upload is in progress.
+ - Web: Fix token invalidation logic when a sync worker is used.
+
 ## 1.2.2
 
  - Fix handling token invalidation on the web.

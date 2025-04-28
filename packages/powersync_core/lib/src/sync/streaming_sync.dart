@@ -57,26 +57,29 @@ class StreamingSyncImplementation implements StreamingSync {
   bool _safeToClose = true;
 
   final Mutex syncMutex, crudMutex;
+  Completer<void>? _activeCrudUpload;
 
   final Map<String, String> _userAgentHeaders;
   String? clientId;
 
-  StreamingSyncImplementation(
-      {required this.adapter,
-      required this.credentialsCallback,
-      this.invalidCredentialsCallback,
-      required this.uploadCrud,
-      required this.crudUpdateTriggerStream,
-      required this.retryDelay,
-      this.syncParameters,
-      required http.Client client,
+  StreamingSyncImplementation({
+    required this.adapter,
+    required this.credentialsCallback,
+    this.invalidCredentialsCallback,
+    required this.uploadCrud,
+    required this.crudUpdateTriggerStream,
+    required this.retryDelay,
+    this.syncParameters,
+    required http.Client client,
+    Mutex? syncMutex,
+    Mutex? crudMutex,
 
-      /// A unique identifier for this streaming sync implementation
-      /// A good value is typically the DB file path which it will mutate when syncing.
-      String? identifier = "unknown"})
-      : _client = client,
-        syncMutex = Mutex(identifier: "sync-$identifier"),
-        crudMutex = Mutex(identifier: "crud-$identifier"),
+    /// A unique identifier for this streaming sync implementation
+    /// A good value is typically the DB file path which it will mutate when syncing.
+    String? identifier = "unknown",
+  })  : _client = client,
+        syncMutex = syncMutex ?? Mutex(identifier: "sync-$identifier"),
+        crudMutex = crudMutex ?? Mutex(identifier: "crud-$identifier"),
         _userAgentHeaders = userAgentHeaders();
 
   @override
@@ -120,7 +123,7 @@ class StreamingSyncImplementation implements StreamingSync {
     try {
       _abort = AbortController();
       clientId = await adapter.getClientId();
-      crudLoop();
+      _crudLoop();
       var invalidCredentials = false;
       while (!aborted) {
         _state.updateStatus((s) => s.setConnectingIfNotConnected());
@@ -132,8 +135,7 @@ class StreamingSyncImplementation implements StreamingSync {
             invalidCredentials = false;
           }
           // Protect sync iterations with exclusivity (if a valid Mutex is provided)
-          await syncMutex.lock(
-              () => streamingSyncIteration(abortController: _abort),
+          await syncMutex.lock(() => streamingSyncIteration(),
               timeout: retryDelay);
         } catch (e, stacktrace) {
           if (aborted && e is http.ClientException) {
@@ -157,8 +159,8 @@ class StreamingSyncImplementation implements StreamingSync {
     }
   }
 
-  Future<void> crudLoop() async {
-    await uploadAllCrud();
+  Future<void> _crudLoop() async {
+    await _uploadAllCrud();
 
     // Trigger a CRUD upload whenever the upstream trigger fires
     // as-well-as whenever the sync stream reconnects.
@@ -168,11 +170,13 @@ class StreamingSyncImplementation implements StreamingSync {
     // The stream here is closed on abort.
     await for (var _ in mergeStreams(
         [crudUpdateTriggerStream, _internalCrudTriggerController.stream])) {
-      await uploadAllCrud();
+      await _uploadAllCrud();
     }
   }
 
-  Future<void> uploadAllCrud() async {
+  Future<void> _uploadAllCrud() {
+    assert(_activeCrudUpload == null);
+    final completer = _activeCrudUpload = Completer();
     return crudMutex.lock(() async {
       // Keep track of the first item in the CRUD queue for the last `uploadCrud` iteration.
       CrudEntry? checkedCrudItem;
@@ -226,7 +230,11 @@ class StreamingSyncImplementation implements StreamingSync {
           _state.updateStatus((s) => s.uploading = false);
         }
       }
-    }, timeout: retryDelay);
+    }, timeout: retryDelay).whenComplete(() {
+      assert(identical(_activeCrudUpload, completer));
+      _activeCrudUpload = null;
+      completer.complete();
+    });
   }
 
   Future<String> getWriteCheckpoint() async {
@@ -283,9 +291,11 @@ class StreamingSyncImplementation implements StreamingSync {
     return (initialRequests, localDescriptions);
   }
 
-  Future<bool> streamingSyncIteration(
-      {AbortController? abortController}) async {
+  Future<void> streamingSyncIteration() async {
     var (bucketRequests, bucketMap) = await _collectLocalBucketState();
+    if (aborted) {
+      return;
+    }
 
     Checkpoint? targetCheckpoint;
     Checkpoint? validatedCheckpoint;
@@ -326,22 +336,14 @@ class StreamingSyncImplementation implements StreamingSync {
           _state.updateStatus(
               (s) => s.applyCheckpointStarted(initialProgress, line));
         case StreamingSyncCheckpointComplete():
-          final result = await adapter.syncLocalDatabase(targetCheckpoint!);
-          if (!result.checkpointValid) {
-            // This means checksums failed. Start again with a new checkpoint.
-            // TODO: better back-off
-            // await new Promise((resolve) => setTimeout(resolve, 50));
-            return false;
-          } else if (!result.ready) {
-            // Checksums valid, but need more data for a consistent checkpoint.
-            // Continue waiting.
-          } else {
-            final thisCheckpoint = appliedCheckpoint = targetCheckpoint;
-            _state
-                .updateStatus((s) => s.applyCheckpointReached(thisCheckpoint));
+          final result = await _applyCheckpoint(targetCheckpoint!, _abort);
+          if (result.abort) {
+            return;
           }
-
           validatedCheckpoint = targetCheckpoint;
+          if (result.didApply) {
+            appliedCheckpoint = targetCheckpoint;
+          }
         case StreamingSyncCheckpointPartiallyComplete(:final bucketPriority):
           final result = await adapter.syncLocalDatabase(targetCheckpoint!,
               forPriority: bucketPriority);
@@ -349,10 +351,11 @@ class StreamingSyncImplementation implements StreamingSync {
             // This means checksums failed. Start again with a new checkpoint.
             // TODO: better back-off
             // await new Promise((resolve) => setTimeout(resolve, 50));
-            return false;
+            return;
           } else if (!result.ready) {
-            // Checksums valid, but need more data for a consistent checkpoint.
-            // Continue waiting.
+            // If we have pending uploads, we can't complete new checkpoints
+            // outside of priority 0. We'll resolve this for a complete
+            // checkpoint later.
           } else {
             _updateStatusForPriority((
               priority: BucketPriority(bucketPriority),
@@ -426,18 +429,12 @@ class StreamingSyncImplementation implements StreamingSync {
               _state.updateStatus((s) => s.applyCheckpointReached(completed));
             }
           } else if (validatedCheckpoint == targetCheckpoint) {
-            final result = await adapter.syncLocalDatabase(targetCheckpoint!);
-            if (!result.checkpointValid) {
-              // This means checksums failed. Start again with a new checkpoint.
-              // TODO: better back-off
-              // await new Promise((resolve) => setTimeout(resolve, 50));
-              return false;
-            } else if (!result.ready) {
-              // Checksums valid, but need more data for a consistent checkpoint.
-              // Continue waiting.
-            } else {
-              final completed = appliedCheckpoint = targetCheckpoint;
-              _state.updateStatus((s) => s.applyCheckpointReached(completed));
+            final result = await _applyCheckpoint(targetCheckpoint!, _abort);
+            if (result.abort) {
+              return;
+            }
+            if (result.didApply) {
+              appliedCheckpoint = targetCheckpoint;
             }
           }
       }
@@ -447,7 +444,48 @@ class StreamingSyncImplementation implements StreamingSync {
         break;
       }
     }
-    return true;
+  }
+
+  Future<({bool abort, bool didApply})> _applyCheckpoint(
+      Checkpoint targetCheckpoint, AbortController? abortController) async {
+    var result = await adapter.syncLocalDatabase(targetCheckpoint);
+    final pendingUpload = _activeCrudUpload;
+
+    if (!result.checkpointValid) {
+      // This means checksums failed. Start again with a new checkpoint.
+      // TODO: better back-off
+      // await new Promise((resolve) => setTimeout(resolve, 50));
+      return const (abort: true, didApply: false);
+    } else if (!result.ready && pendingUpload != null) {
+      // We have pending entries in the local upload queue or are waiting to
+      // confirm a write checkpoint, which prevented this checkpoint from
+      // applying. Wait for that to complete and try again.
+      isolateLogger.fine('Could not apply checkpoint due to local data. '
+          'Waiting for in-progress upload before retrying...');
+      await Future.any([
+        pendingUpload.future,
+        if (abortController case final controller?) controller.onAbort,
+      ]);
+
+      if (abortController?.aborted == true) {
+        return const (abort: true, didApply: false);
+      }
+
+      // Try again now that uploads have completed.
+      result = await adapter.syncLocalDatabase(targetCheckpoint);
+    }
+
+    if (result.checkpointValid && result.ready) {
+      isolateLogger.fine('validated checkpoint: $targetCheckpoint');
+
+      _state.updateStatus((s) => s.applyCheckpointReached(targetCheckpoint));
+
+      return const (abort: false, didApply: true);
+    } else {
+      isolateLogger.fine(
+          'Could not apply checkpoint. Waiting for next sync complete line');
+      return const (abort: false, didApply: false);
+    }
   }
 
   Stream<StreamingSyncLine> streamingSyncRequest(

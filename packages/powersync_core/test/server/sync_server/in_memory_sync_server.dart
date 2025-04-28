@@ -10,6 +10,11 @@ final class MockSyncService {
   Completer<Request> _listener = Completer();
 
   final router = Router();
+  Object? Function() writeCheckpoint = () {
+    return {
+      'data': {'write_checkpoint': '10'}
+    };
+  };
 
   MockSyncService() {
     router
@@ -27,7 +32,7 @@ final class MockSyncService {
             });
       })
       ..get('/write-checkpoint2.json', (request) {
-        return Response.ok('{"data": {"write_checkpoint": "10"}}', headers: {
+        return Response.ok(json.encode(writeCheckpoint()), headers: {
           'Content-Type': 'application/json',
         });
       });

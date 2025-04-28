@@ -185,9 +185,9 @@ class BucketStorage {
           // Reset progress counters. We only do this for a complete sync, as we
           // want a download progress to always cover a complete checkpoint
           // instead of resetting for partial completions.
-          await tx.execute('''
+          await tx.execute(r'''
 UPDATE ps_buckets SET count_since_last = 0, count_at_last = ?1->name
-  WHERE ?1->name IS NOT NULL
+  WHERE name != '$local' AND ?1->name IS NOT NULL
 ''', [
             json.encode({
               for (final bucket in checkpoint.checksums)
