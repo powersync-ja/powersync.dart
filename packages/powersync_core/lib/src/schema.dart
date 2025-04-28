@@ -29,7 +29,8 @@ class Schema {
 
 /// Options to include old values in [CrudEntry] for update statements.
 ///
-/// These options are enabled by passing it to a non-local [Table] constructor.
+/// These options are enabled by passing them to a non-local [Table]
+/// constructor.
 final class IncludeOldOptions {
   /// A filter of column names for which updates should be tracked.
   ///
