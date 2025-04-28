@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:powersync/powersync.dart';
-import 'package:powersync_flutter_demo/widgets/guard_by_sync.dart';
 
 import './list_item.dart';
 import './list_item_dialog.dart';
 import '../main.dart';
 import '../models/todo_list.dart';
+import 'guard_by_sync.dart';
 
 void _showAddDialog(BuildContext context) async {
   return showDialog<void>(
