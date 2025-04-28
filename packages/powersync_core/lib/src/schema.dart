@@ -34,7 +34,7 @@ class Schema {
 final class IncludeOldOptions {
   /// A filter of column names for which updates should be tracked.
   ///
-  /// When set to a non-null value, olumns not included in this list will not
+  /// When set to a non-null value, columns not included in this list will not
   /// appear in [CrudEntry.oldData]. By default, all columns are included.
   final List<String>? columnFilter;
 
