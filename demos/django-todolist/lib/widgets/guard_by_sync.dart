@@ -25,10 +25,7 @@ class GuardBySync extends StatelessWidget {
       builder: (context, snapshot) {
         final status = snapshot.requireData;
         final (didSync, progress) = switch (priority) {
-          null => (
-              status.hasSynced ?? false,
-              status.downloadProgress?.untilCompletion
-            ),
+          null => (status.hasSynced ?? false, status.downloadProgress),
           var priority? => (
               status.statusForPriority(priority).hasSynced ?? false,
               status.downloadProgress?.untilPriority(priority)
@@ -42,9 +39,10 @@ class GuardBySync extends StatelessWidget {
             child: Column(
               children: [
                 const Text('Busy with sync...'),
-                LinearProgressIndicator(value: progress?.fraction),
+                LinearProgressIndicator(value: progress?.downloadedFraction),
                 if (progress case final progress?)
-                  Text('${progress.completed} out of ${progress.total}')
+                  Text(
+                      '${progress.downloadedOperations} out of ${progress.totalOperations}')
               ],
             ),
           );
