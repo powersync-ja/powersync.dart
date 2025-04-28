@@ -318,8 +318,8 @@ final class InternalSyncDownloadProgress extends ProgressWithOperations {
 /// Information about a progressing download.
 ///
 /// This reports the `total` amount of operations to download, how many of them
-/// have alreaady been `completed` and finally a `fraction` indicating relative
-/// progress (as a number between `0.0` and `1.0`)
+/// have already been `completed` and finally a `fraction` indicating relative
+/// progress (as a number between `0.0` and `1.0`, inclusive)
 ///
 /// To obtain these values, use [SyncDownloadProgress] available through
 /// [SyncStatus.downloadProgress].
@@ -335,6 +335,11 @@ final class ProgressWithOperations {
   ProgressWithOperations._(this.totalOperations, this.downloadedOperations);
 
   /// Relative progress (as a number between `0.0` and `1.0`).
+  ///
+  /// When this number reaches `1.0`, all changes have been received from the
+  /// sync service. Actually applying these changes happens before the
+  /// [SyncStatus.downloadProgress] flag is cleared though, so progress can stay
+  /// at `1.0` for a short while before completing.
   double get downloadedFraction {
     return totalOperations == 0 ? 0.0 : downloadedOperations / totalOperations;
   }
