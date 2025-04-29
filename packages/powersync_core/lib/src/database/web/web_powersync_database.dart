@@ -13,7 +13,6 @@ import 'package:powersync_core/src/open_factory/web/web_open_factory.dart';
 import 'package:powersync_core/src/schema.dart';
 import 'package:powersync_core/src/streaming_sync.dart';
 import 'package:sqlite_async/sqlite_async.dart';
-import 'package:powersync_core/src/schema_logic.dart' as schema_logic;
 
 import '../../web/sync_controller.dart';
 
@@ -36,8 +35,6 @@ class PowerSyncDatabaseImpl
 
   @override
   SqliteDatabase database;
-
-  late final DefaultSqliteOpenFactory openFactory;
 
   @override
   @protected
@@ -95,8 +92,7 @@ class PowerSyncDatabaseImpl
       Logger? logger}) {
     final db = SqliteDatabase.withFactory(openFactory, maxReaders: 1);
     return PowerSyncDatabaseImpl.withDatabase(
-        schema: schema, logger: logger, database: db)
-      ..openFactory = openFactory;
+        schema: schema, logger: logger, database: db);
   }
 
   /// Open a PowerSyncDatabase on an existing [SqliteDatabase].
@@ -116,29 +112,12 @@ class PowerSyncDatabaseImpl
 
   @override
   @internal
-
-  /// Connect to the PowerSync service, and keep the databases in sync.
-  ///
-  /// The connection is automatically re-opened if it fails for any reason.
-  ///
-  /// Status changes are reported on [statusStream].
-  baseConnect({
+  Future<void> connectInternal({
     required PowerSyncBackendConnector connector,
-
-    /// Throttle time between CRUD operations
-    /// Defaults to 10 milliseconds.
     required Duration crudThrottleTime,
-    required Future<void> Function() reconnect,
+    required AbortController abort,
     Map<String, dynamic>? params,
   }) async {
-    await initialize();
-
-    // Disconnect if connected
-    await disconnect();
-    disconnecter = AbortController();
-
-    await isInitialized;
-
     final crudStream =
         database.onChange(['ps_crud'], throttle: crudThrottleTime);
 
@@ -148,11 +127,12 @@ class PowerSyncDatabaseImpl
     // duplicating work across tabs.
     try {
       sync = await SyncWorkerHandle.start(
-          database: this,
-          connector: connector,
-          crudThrottleTimeMs: crudThrottleTime.inMilliseconds,
-          workerUri: Uri.base.resolve('/powersync_sync.worker.js'),
-          syncParams: params);
+        database: this,
+        connector: connector,
+        crudThrottleTimeMs: crudThrottleTime.inMilliseconds,
+        workerUri: Uri.base.resolve('/powersync_sync.worker.js'),
+        syncParams: params,
+      );
     } catch (e) {
       logger.warning(
         'Could not use shared worker for synchronization, falling back to locks.',
@@ -178,9 +158,10 @@ class PowerSyncDatabaseImpl
       setStatus(event);
     });
     sync.streamingSync();
-    disconnecter?.onAbort.then((_) async {
+
+    abort.onAbort.then((_) async {
       await sync.abort();
-      disconnecter?.completeAbort();
+      abort.completeAbort();
     }).ignore();
   }
 
@@ -225,15 +206,5 @@ class PowerSyncDatabaseImpl
       String? debugContext}) async {
     await isInitialized;
     return database.writeTransaction(callback, lockTimeout: lockTimeout);
-  }
-
-  @override
-  Future<void> updateSchema(Schema schema) {
-    if (disconnecter != null) {
-      throw AssertionError('Cannot update schema while connected');
-    }
-    schema.validate();
-    this.schema = schema;
-    return database.writeLock((tx) => schema_logic.updateSchema(tx, schema));
   }
 }

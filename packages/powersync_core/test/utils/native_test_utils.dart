@@ -19,7 +19,8 @@ class TestOpenFactory extends PowerSyncOpenFactory with TestPowerSyncFactory {
       return DynamicLibrary.open('libsqlite3.so.0');
     });
     sqlite_open.open.overrideFor(sqlite_open.OperatingSystem.macOS, () {
-      return DynamicLibrary.open('libsqlite3.dylib');
+      return DynamicLibrary.open(
+          '/opt/homebrew/opt/sqlite/lib/libsqlite3.dylib');
     });
   }
 

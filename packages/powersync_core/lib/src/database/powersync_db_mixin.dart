@@ -7,15 +7,20 @@ import 'package:powersync_core/sqlite_async.dart';
 import 'package:powersync_core/src/abort_controller.dart';
 import 'package:powersync_core/src/connector.dart';
 import 'package:powersync_core/src/crud.dart';
+import 'package:powersync_core/src/database/active_instances.dart';
 import 'package:powersync_core/src/database/core_version.dart';
 import 'package:powersync_core/src/powersync_update_notification.dart';
 import 'package:powersync_core/src/schema.dart';
 import 'package:powersync_core/src/schema_logic.dart';
+import 'package:powersync_core/src/schema_logic.dart' as schema_logic;
 import 'package:powersync_core/src/sync_status.dart';
 
 mixin PowerSyncDatabaseMixin implements SqliteConnection {
   /// Schema used for the local database.
   Schema get schema;
+
+  @internal
+  set schema(Schema schema);
 
   /// The underlying database.
   ///
@@ -45,8 +50,15 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
   StreamController<SyncStatus> statusStreamController =
       StreamController<SyncStatus>.broadcast();
 
-  /// Use to prevent multiple connections from being opened concurrently
-  final Mutex _connectMutex = Mutex();
+  late final ActiveDatabaseGroup _activeGroup;
+
+  /// An [ActiveDatabaseGroup] sharing mutexes for the sync client.
+  ///
+  /// This is used to ensure that, even if two databases to the same file are
+  /// open concurrently, they won't both open a sync stream. Doing so would
+  /// waste resources.
+  @internal
+  ActiveDatabaseGroup get group => _activeGroup;
 
   @override
 
@@ -65,12 +77,33 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
   @protected
   Future<void> get isInitialized;
 
-  /// null when disconnected, present when connecting or connected
+  /// The abort controller for the current sync iteration.
+  ///
+  /// null when disconnected, present when connecting or connected.
+  ///
+  /// The controller must only be accessed from within a critical section of the
+  /// sync mutex.
   @protected
-  AbortController? disconnecter;
+  AbortController? _abortActiveSync;
 
   @protected
   Future<void> baseInit() async {
+    String identifier = 'memory';
+    try {
+      identifier = database.openFactory.path;
+    } catch (ignore) {
+      // The in-memory database used in some tests doesn't have an open factory.
+    }
+
+    _activeGroup = ActiveDatabaseGroup.referenceDatabase(identifier);
+    if (_activeGroup.refCount > 1) {
+      logger.warning(
+        'Multiple instances for the same database have been detected. '
+        'This can cause unexpected results, please check your PowerSync client '
+        'instantiation logic if this is not intentional',
+      );
+    }
+
     statusStream = statusStreamController.stream;
     updates = powerSyncUpdateNotifications(database.updates);
 
@@ -209,12 +242,16 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
     await isInitialized;
     // Disconnect any active sync connection.
     await disconnect();
-    // Now we can close the database
-    await database.close();
 
-    // If there are paused subscriptionso n the status stream, don't delay
-    // closing the database because of that.
-    unawaited(statusStreamController.close());
+    if (!database.closed) {
+      // Now we can close the database
+      await database.close();
+
+      // If there are paused subscriptionso n the status stream, don't delay
+      // closing the database because of that.
+      unawaited(statusStreamController.close());
+      await _activeGroup.close();
+    }
   }
 
   /// Connect to the PowerSync service, and keep the databases in sync.
@@ -222,61 +259,111 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
   /// The connection is automatically re-opened if it fails for any reason.
   ///
   /// Status changes are reported on [statusStream].
-  Future<void> connect(
-      {required PowerSyncBackendConnector connector,
+  Future<void> connect({
+    required PowerSyncBackendConnector connector,
+    Duration crudThrottleTime = const Duration(milliseconds: 10),
+    Map<String, dynamic>? params,
+  }) async {
+    // The initialization process acquires a sync connect lock (through
+    // updateSchema), so ensure the database is ready before we try to acquire
+    // the lock for the connection.
+    await initialize();
 
-      /// Throttle time between CRUD operations
-      /// Defaults to 10 milliseconds.
-      Duration crudThrottleTime = const Duration(milliseconds: 10),
-      Map<String, dynamic>? params}) async {
     clientParams = params;
-    Zone current = Zone.current;
+    var thisConnectAborter = AbortController();
 
-    Future<void> reconnect() {
-      return _connectMutex.lock(() => baseConnect(
-          connector: connector,
-          crudThrottleTime: crudThrottleTime,
-          // The reconnect function needs to run in the original zone,
-          // to avoid recursive lock errors.
-          reconnect: current.bindCallback(reconnect),
-          params: params));
+    late void Function() retryHandler;
+
+    Future<void> connectWithSyncLock() async {
+      // Ensure there has not been a subsequent connect() call installing a new
+      // sync client.
+      assert(identical(_abortActiveSync, thisConnectAborter));
+      assert(!thisConnectAborter.aborted);
+
+      await connectInternal(
+        connector: connector,
+        crudThrottleTime: crudThrottleTime,
+        params: params,
+        abort: thisConnectAborter,
+      );
+
+      thisConnectAborter.onCompletion.whenComplete(retryHandler);
     }
 
-    await reconnect();
+    // If the sync encounters a failure without being aborted, retry
+    retryHandler = Zone.current.bindCallback(() async {
+      _activeGroup.syncConnectMutex.lock(() async {
+        // Is this still supposed to be active? (abort is only called within
+        // mutex)
+        if (!thisConnectAborter.aborted) {
+          // We only change _abortActiveSync after disconnecting, which resets
+          // the abort controller.
+          assert(identical(_abortActiveSync, thisConnectAborter));
+
+          // We need a new abort controller for this attempt
+          _abortActiveSync = thisConnectAborter = AbortController();
+
+          logger.warning('Sync client failed, retrying...');
+          await connectWithSyncLock();
+        }
+      });
+    });
+
+    await _activeGroup.syncConnectMutex.lock(() async {
+      // Disconnect a previous sync client, if one is active.
+      await _abortCurrentSync();
+      assert(_abortActiveSync == null);
+
+      // Install the abort controller for this particular connect call, allowing
+      // it to be disconnected.
+      _abortActiveSync = thisConnectAborter;
+      await connectWithSyncLock();
+    });
   }
 
-  /// Abstract connection method to be implemented by platform specific
-  /// classes. This is wrapped inside an exclusive mutex in the [connect]
-  /// method.
+  /// Internal method to establish a sync client connection.
+  ///
+  /// This method will always be wrapped in an exclusive mutex through the
+  /// [connect] method and should not be called elsewhere.
+  /// This method will only be called internally when no other sync client is
+  /// active, so the method should not call [disconnect] itself.
+  ///
+  /// The [crudThrottleTime] is the throttle time between CRUD operations, it
+  /// defaults to 10 milliseconds in [connect].
   @protected
   @internal
-  Future<void> baseConnect(
-      {required PowerSyncBackendConnector connector,
-
-      /// Throttle time between CRUD operations
-      /// Defaults to 10 milliseconds.
-      required Duration crudThrottleTime,
-      required Future<void> Function() reconnect,
-      Map<String, dynamic>? params});
+  Future<void> connectInternal({
+    required PowerSyncBackendConnector connector,
+    required Duration crudThrottleTime,
+    required AbortController abort,
+    Map<String, dynamic>? params,
+  });
 
   /// Close the sync connection.
   ///
   /// Use [connect] to connect again.
   Future<void> disconnect() async {
-    if (disconnecter != null) {
+    // Also wrap this in the sync mutex to ensure there's no race between us
+    // connecting and disconnecting.
+    await _activeGroup.syncConnectMutex.lock(_abortCurrentSync);
+
+    setStatus(
+        SyncStatus(connected: false, lastSyncedAt: currentStatus.lastSyncedAt));
+  }
+
+  Future<void> _abortCurrentSync() async {
+    if (_abortActiveSync case final disconnector?) {
       /// Checking `disconnecter.aborted` prevents race conditions
       /// where multiple calls to `disconnect` can attempt to abort
       /// the controller more than once before it has finished aborting.
-      if (disconnecter!.aborted == false) {
-        await disconnecter!.abort();
-        disconnecter = null;
+      if (disconnector.aborted == false) {
+        await disconnector.abort();
+        _abortActiveSync = null;
       } else {
         /// Wait for the abort to complete. Continue updating the sync status after completed
-        await disconnecter!.onAbort;
+        await disconnector.onAbort;
       }
     }
-    setStatus(
-        SyncStatus(connected: false, lastSyncedAt: currentStatus.lastSyncedAt));
   }
 
   /// Disconnect and clear the database.
@@ -313,7 +400,18 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
   /// specified once in the constructor.
   ///
   /// Cannot be used while connected - this should only be called before [connect].
-  Future<void> updateSchema(Schema schema);
+  Future<void> updateSchema(Schema schema) async {
+    schema.validate();
+
+    await _activeGroup.syncConnectMutex.lock(() async {
+      if (_abortActiveSync != null) {
+        throw AssertionError('Cannot update schema while connected');
+      }
+
+      this.schema = schema;
+      await database.writeLock((tx) => schema_logic.updateSchema(tx, schema));
+    });
+  }
 
   /// A connection factory that can be passed to different isolates.
   ///
