@@ -22,7 +22,7 @@ A new Flutter FFI plugin project.
   s.dependency 'Flutter'
   s.platform = :ios, '11.0'
 
-  s.dependency "powersync-sqlite-core", "~> 0.3.13"
+  s.dependency "powersync-sqlite-core", "~> 0.3.14"
 
   # Flutter.framework does not contain a i386 slice.
   s.pod_target_xcconfig = { 'DEFINES_MODULE' => 'YES', 'EXCLUDED_ARCHS[sdk=iphonesimulator*]' => 'i386' }
