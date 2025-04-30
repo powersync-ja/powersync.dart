@@ -320,7 +320,7 @@ void main() {
 
     test('local-only with metadata', () {
       final table = Table('foo', [Column.text('bar')],
-          localOnly: true, includeMetadata: true);
+          localOnly: true, trackMetadata: true);
 
       expect(
           table.validate,
@@ -328,9 +328,9 @@ void main() {
               "Local-only tables can't track metadata")));
     });
 
-    test('local-only with includeOld', () {
+    test('local-only with trackPreviousValues', () {
       final table = Table('foo', [Column.text('bar')],
-          localOnly: true, includeOld: IncludeOldOptions());
+          localOnly: true, trackPreviousValues: TrackPreviousValuesOptions());
 
       expect(
           table.validate,
@@ -395,14 +395,15 @@ void main() {
     });
 
     test('handles options', () {
-      expect(Table('foo', [], includeMetadata: true).toJson(),
+      expect(Table('foo', [], trackMetadata: true).toJson(),
           containsPair('include_metadata', isTrue));
 
-      expect(Table('foo', [], ignoreEmptyUpdate: true).toJson(),
+      expect(Table('foo', [], ignoreEmptyUpdates: true).toJson(),
           containsPair('ignore_empty_update', isTrue));
 
       expect(
-        Table('foo', [], includeOld: IncludeOldOptions()).toJson(),
+        Table('foo', [], trackPreviousValues: TrackPreviousValuesOptions())
+            .toJson(),
         allOf(
           containsPair('include_old', isTrue),
           containsPair('include_old_only_when_changed', isFalse),
@@ -411,7 +412,8 @@ void main() {
 
       expect(
         Table('foo', [],
-                includeOld: IncludeOldOptions(columnFilter: ['foo', 'bar']))
+                trackPreviousValues:
+                    TrackPreviousValuesOptions(columnFilter: ['foo', 'bar']))
             .toJson(),
         allOf(
           containsPair('include_old', ['foo', 'bar']),
@@ -420,7 +422,9 @@ void main() {
       );
 
       expect(
-        Table('foo', [], includeOld: IncludeOldOptions(onlyWhenChanged: true))
+        Table('foo', [],
+                trackPreviousValues:
+                    TrackPreviousValuesOptions(onlyWhenChanged: true))
             .toJson(),
         allOf(
           containsPair('include_old', isTrue),

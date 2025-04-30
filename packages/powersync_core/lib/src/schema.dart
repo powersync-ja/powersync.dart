@@ -31,7 +31,7 @@ class Schema {
 ///
 /// These options are enabled by passing them to a non-local [Table]
 /// constructor.
-final class IncludeOldOptions {
+final class TrackPreviousValuesOptions {
   /// A filter of column names for which updates should be tracked.
   ///
   /// When set to a non-null value, columns not included in this list will not
@@ -42,7 +42,8 @@ final class IncludeOldOptions {
   /// instead of always including all old values.
   final bool onlyWhenChanged;
 
-  const IncludeOldOptions({this.columnFilter, this.onlyWhenChanged = false});
+  const TrackPreviousValuesOptions(
+      {this.columnFilter, this.onlyWhenChanged = false});
 }
 
 /// A single table in the schema.
@@ -61,12 +62,12 @@ class Table {
   /// Whether to add a hidden `_metadata` column that will be enabled for
   /// updates to attach custom information about writes that will be reported
   /// through [CrudEntry.metadata].
-  final bool includeMetadata;
+  final bool trackMetadata;
 
   /// Whether to track old values of columns for [CrudEntry.oldData].
   ///
-  /// See [IncludeOldOptions] for details.
-  final IncludeOldOptions? includeOld;
+  /// See [TrackPreviousValuesOptions] for details.
+  final TrackPreviousValuesOptions? trackPreviousValues;
 
   /// Whether the table only exists locally.
   final bool localOnly;
@@ -76,7 +77,7 @@ class Table {
 
   /// Whether an `UPDATE` statement that doesn't change any values should be
   /// ignored when creating CRUD entries.
-  final bool ignoreEmptyUpdate;
+  final bool ignoreEmptyUpdates;
 
   /// Override the name for the view
   final String? _viewNameOverride;
@@ -107,9 +108,9 @@ class Table {
     this.indexes = const [],
     String? viewName,
     this.localOnly = false,
-    this.ignoreEmptyUpdate = false,
-    this.includeMetadata = false,
-    this.includeOld,
+    this.ignoreEmptyUpdates = false,
+    this.trackMetadata = false,
+    this.trackPreviousValues,
   })  : insertOnly = false,
         _viewNameOverride = viewName;
 
@@ -120,9 +121,9 @@ class Table {
       {this.indexes = const [], String? viewName})
       : localOnly = true,
         insertOnly = false,
-        includeMetadata = false,
-        includeOld = null,
-        ignoreEmptyUpdate = false,
+        trackMetadata = false,
+        trackPreviousValues = null,
+        ignoreEmptyUpdates = false,
         _viewNameOverride = viewName;
 
   /// Create a table that only supports inserts.
@@ -137,9 +138,9 @@ class Table {
     this.name,
     this.columns, {
     String? viewName,
-    this.ignoreEmptyUpdate = false,
-    this.includeMetadata = false,
-    this.includeOld,
+    this.ignoreEmptyUpdates = false,
+    this.trackMetadata = false,
+    this.trackPreviousValues,
   })  : localOnly = false,
         insertOnly = true,
         indexes = const [],
@@ -172,11 +173,11 @@ class Table {
           "Invalid characters in view name: $_viewNameOverride");
     }
 
-    if (includeMetadata && localOnly) {
+    if (trackMetadata && localOnly) {
       throw AssertionError("Local-only tables can't track metadata");
     }
 
-    if (includeOld != null && localOnly) {
+    if (trackPreviousValues != null && localOnly) {
       throw AssertionError("Local-only tables can't track old values");
     }
 
@@ -228,11 +229,11 @@ class Table {
         'insert_only': insertOnly,
         'columns': columns,
         'indexes': indexes.map((e) => e.toJson(this)).toList(growable: false),
-        'ignore_empty_update': ignoreEmptyUpdate,
-        'include_metadata': includeMetadata,
-        if (includeOld case final includeOld?) ...{
-          'include_old': includeOld.columnFilter ?? true,
-          'include_old_only_when_changed': includeOld.onlyWhenChanged,
+        'ignore_empty_update': ignoreEmptyUpdates,
+        'include_metadata': trackMetadata,
+        if (trackPreviousValues case final trackPreviousValues?) ...{
+          'include_old': trackPreviousValues.columnFilter ?? true,
+          'include_old_only_when_changed': trackPreviousValues.onlyWhenChanged,
         },
       };
 }

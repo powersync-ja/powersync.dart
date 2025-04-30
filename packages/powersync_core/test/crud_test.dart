@@ -276,7 +276,7 @@ void main() {
         Table(
           'lists',
           [Column.text('name')],
-          includeMetadata: true,
+          trackMetadata: true,
         )
       ]));
 
@@ -293,7 +293,7 @@ void main() {
         Table(
           'lists',
           [Column.text('name'), Column.text('content')],
-          includeOld: IncludeOldOptions(),
+          trackPreviousValues: TrackPreviousValuesOptions(),
         )
       ]));
 
@@ -312,7 +312,8 @@ void main() {
         Table(
           'lists',
           [Column.text('name'), Column.text('content')],
-          includeOld: IncludeOldOptions(columnFilter: ['name']),
+          trackPreviousValues:
+              TrackPreviousValuesOptions(columnFilter: ['name']),
         )
       ]));
 
@@ -332,7 +333,8 @@ void main() {
         Table(
           'lists',
           [Column.text('name'), Column.text('content')],
-          includeOld: IncludeOldOptions(onlyWhenChanged: true),
+          trackPreviousValues:
+              TrackPreviousValuesOptions(onlyWhenChanged: true),
         )
       ]));
 
@@ -351,7 +353,7 @@ void main() {
         Table(
           'lists',
           [Column.text('name')],
-          ignoreEmptyUpdate: true,
+          ignoreEmptyUpdates: true,
         )
       ]));
 

@@ -73,7 +73,7 @@ class CrudEntry {
   /// An optional metadata string attached to this entry at the time the write
   /// has been issued.
   ///
-  /// For tables where [Table.includeMetadata] is enabled, a hidden `_metadata`
+  /// For tables where [Table.trackMetadata] is enabled, a hidden `_metadata`
   /// column is added to this table that can be used during updates to attach
   /// a hint to the update thas is preserved here.
   final String? metadata;
@@ -90,7 +90,7 @@ class CrudEntry {
   /// Old values before an update.
   ///
   /// This is only tracked for tables for which this has been enabled by setting
-  /// the [Table.includeOld].
+  /// the [Table.trackPreviousValues].
   final Map<String, dynamic>? oldData;
 
   CrudEntry(
