@@ -1,6 +1,7 @@
 # PowerSync + Supabase + Drift Flutter Demo: Todo List App
 
 This demo app is an extension of the [Supabase Todo List App](../supabase-todolist/README.md) and showcases how to set up and use the [drift_sqlite_async](https://pub.dev/packages/drift_sqlite_async) library (Drift ORM) with PowerSync.
+This demo also uses [riverpod](https://riverpod.dev) to highlight best practices for state management.
 
 Notes about the Drift usage are [further below](#drift).
 
@@ -52,5 +53,5 @@ Insert the credentials of your new Supabase and PowerSync projects into `lib/app
 The `database.g.dart` file containing the \_$AppDatabase class has to be generated if there are changes made to the `database.dart` file.
 
 - `dart run build_runner build` generates all the required code once.
-- `dart run build_runner build --delete-conflicting-outputs` deletes previously generated files and generates the required code once.
+- `dart run build_runner build -d` deletes previously generated files and generates the required code once.
 - `dart run build_runner watch` watches for changes in your sources and generates code with incremental rebuilds. This is better for development.
