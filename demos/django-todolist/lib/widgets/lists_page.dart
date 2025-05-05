@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 
-import '../powersync.dart';
 import './list_item.dart';
 import './list_item_dialog.dart';
 import '../main.dart';
 import '../models/todo_list.dart';
+import 'guard_by_sync.dart';
 
 void _showAddDialog(BuildContext context) async {
   return showDialog<void>(
@@ -40,32 +40,27 @@ class ListsPage extends StatelessWidget {
   }
 }
 
-class ListsWidget extends StatelessWidget {
+final class ListsWidget extends StatelessWidget {
   const ListsWidget({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder(
-      future: db.waitForFirstSync(),
-      builder: (context, snapshot) {
-        return switch (snapshot.connectionState) {
-          ConnectionState.done => StreamBuilder(
-              stream: TodoList.watchListsWithStats(),
-              builder: (context, snapshot) {
-                final items = snapshot.data ?? const [];
-
-                return ListView(
-                  padding: const EdgeInsets.symmetric(vertical: 8.0),
-                  children: items.map((list) {
-                    return ListItemWidget(list: list);
-                  }).toList(),
-                );
-              },
-            ),
-          // waitForFirstSync() did not complete yet
-          _ => const Text('Busy with sync...'),
-        };
-      },
+    return GuardBySync(
+      child: StreamBuilder(
+        stream: TodoList.watchListsWithStats(),
+        builder: (context, snapshot) {
+          if (snapshot.data case final todoLists?) {
+            return ListView(
+              padding: const EdgeInsets.symmetric(vertical: 8.0),
+              children: todoLists.map((list) {
+                return ListItemWidget(list: list);
+              }).toList(),
+            );
+          } else {
+            return const CircularProgressIndicator();
+          }
+        },
+      ),
     );
   }
 }

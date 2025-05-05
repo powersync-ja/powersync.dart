@@ -3,7 +3,7 @@ import 'package:meta/meta.dart';
 import 'package:fetch_client/fetch_client.dart';
 import 'package:logging/logging.dart';
 import 'package:powersync_core/src/abort_controller.dart';
-import 'package:powersync_core/src/bucket_storage.dart';
+import 'package:powersync_core/src/sync/bucket_storage.dart';
 import 'package:powersync_core/src/connector.dart';
 import 'package:powersync_core/src/database/powersync_database.dart';
 import 'package:powersync_core/src/database/powersync_db_mixin.dart';
@@ -11,7 +11,7 @@ import 'package:powersync_core/src/log.dart';
 import 'package:powersync_core/src/open_factory/abstract_powersync_open_factory.dart';
 import 'package:powersync_core/src/open_factory/web/web_open_factory.dart';
 import 'package:powersync_core/src/schema.dart';
-import 'package:powersync_core/src/streaming_sync.dart';
+import 'package:powersync_core/src/sync/streaming_sync.dart';
 import 'package:sqlite_async/sqlite_async.dart';
 
 import '../../web/sync_controller.dart';

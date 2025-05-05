@@ -6,7 +6,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:http/http.dart';
-import 'package:powersync_core/src/stream_utils.dart';
+import 'package:powersync_core/src/sync/stream_utils.dart';
 import 'package:test/test.dart';
 
 void main() {

@@ -1,15 +1,21 @@
+@internal
+library;
+
 import 'dart:async';
 import 'dart:convert';
 
 import 'package:collection/collection.dart';
+import 'package:meta/meta.dart';
 import 'package:powersync_core/sqlite_async.dart';
 import 'package:powersync_core/sqlite3_common.dart';
 
-import 'crud.dart';
-import 'schema_logic.dart';
-import 'sync_types.dart';
+import '../crud.dart';
+import '../schema_logic.dart';
+import 'protocol.dart';
 
 const compactOperationInterval = 1000;
+
+typedef LocalOperationCounters = ({int atLast, int sinceLast});
 
 class BucketStorage {
   final SqliteConnection _internalDb;
@@ -29,16 +35,30 @@ class BucketStorage {
     return await _internalDb.execute(query, parameters);
   }
 
-  void startSession() {}
-
   Future<List<BucketState>> getBucketStates() async {
     final rows = await select(
-        'SELECT name as bucket, cast(last_op as TEXT) as op_id FROM ps_buckets WHERE pending_delete = 0 AND name != \'\$local\'');
+        "SELECT name, cast(last_op as TEXT) FROM ps_buckets WHERE pending_delete = 0 AND name != '\$local'");
     return [
       for (var row in rows)
         BucketState(
-            bucket: row['bucket'] as String, opId: row['op_id'] as String)
+          bucket: row.columnAt(0) as String,
+          opId: row.columnAt(1) as String,
+        )
     ];
+  }
+
+  Future<Map<String, LocalOperationCounters>>
+      getBucketOperationProgress() async {
+    final rows = await select(
+        "SELECT name, count_at_last, count_since_last FROM ps_buckets");
+
+    return {
+      for (final row in rows)
+        (row.columnAt(0) as String): (
+          atLast: row.columnAt(1) as int,
+          sinceLast: row.columnAt(2) as int,
+        )
+    };
   }
 
   Future<String> getClientId() async {
@@ -161,6 +181,21 @@ class BucketStorage {
       final rs = await tx.execute('SELECT last_insert_rowid() as result');
       final result = rs[0]['result'];
       if (result == 1) {
+        if (forPartialPriority == null) {
+          // Reset progress counters. We only do this for a complete sync, as we
+          // want a download progress to always cover a complete checkpoint
+          // instead of resetting for partial completions.
+          await tx.execute(r'''
+UPDATE ps_buckets SET count_since_last = 0, count_at_last = ?1->name
+  WHERE name != '$local' AND ?1->name IS NOT NULL
+''', [
+            json.encode({
+              for (final bucket in checkpoint.checksums)
+                if (bucket.count case final count?) bucket.bucket: count,
+            }),
+          ]);
+        }
+
         return true;
       } else {
         // can_update_local(db) == false

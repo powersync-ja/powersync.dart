@@ -13,7 +13,7 @@ import 'package:logging/logging.dart';
 import 'package:powersync_core/powersync_core.dart';
 import 'package:powersync_core/sqlite_async.dart';
 import 'package:powersync_core/src/database/powersync_db_mixin.dart';
-import 'package:powersync_core/src/streaming_sync.dart';
+import 'package:powersync_core/src/sync/streaming_sync.dart';
 import 'package:sqlite_async/web.dart';
 import 'package:web/web.dart' hide RequestMode;
 
