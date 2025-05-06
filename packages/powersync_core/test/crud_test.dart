@@ -304,7 +304,8 @@ void main() {
       await powersync.execute('UPDATE lists SET name = ?;', ['new name']);
 
       final batch = await powersync.getNextCrudTransaction();
-      expect(batch!.crud[0].oldData, {'name': 'entry', 'content': 'content'});
+      expect(batch!.crud[0].previousValues,
+          {'name': 'entry', 'content': 'content'});
     });
 
     test('include old values with column filter', () async {
@@ -325,7 +326,7 @@ void main() {
           ['new name', 'new content']);
 
       final batch = await powersync.getNextCrudTransaction();
-      expect(batch!.crud[0].oldData, {'name': 'name'});
+      expect(batch!.crud[0].previousValues, {'name': 'name'});
     });
 
     test('include old values when changed', () async {
@@ -345,7 +346,7 @@ void main() {
       await powersync.execute('UPDATE lists SET name = ?', ['new name']);
 
       final batch = await powersync.getNextCrudTransaction();
-      expect(batch!.crud[0].oldData, {'name': 'name'});
+      expect(batch!.crud[0].previousValues, {'name': 'name'});
     });
 
     test('ignore empty update', () async {

@@ -91,7 +91,7 @@ class CrudEntry {
   ///
   /// This is only tracked for tables for which this has been enabled by setting
   /// the [Table.trackPreviousValues].
-  final Map<String, dynamic>? oldData;
+  final Map<String, dynamic>? previousValues;
 
   CrudEntry(
     this.clientId,
@@ -100,7 +100,7 @@ class CrudEntry {
     this.id,
     this.transactionId,
     this.opData, {
-    this.oldData,
+    this.previousValues,
     this.metadata,
   });
 
@@ -113,7 +113,7 @@ class CrudEntry {
       data['id'] as String,
       row['tx_id'] as int,
       data['data'] as Map<String, Object?>?,
-      oldData: data['old'] as Map<String, Object?>?,
+      previousValues: data['old'] as Map<String, Object?>?,
       metadata: data['metadata'] as String?,
     );
   }
@@ -128,7 +128,7 @@ class CrudEntry {
       'tx_id': transactionId,
       'data': opData,
       'metadata': metadata,
-      'old': oldData,
+      'old': previousValues,
     };
   }
 

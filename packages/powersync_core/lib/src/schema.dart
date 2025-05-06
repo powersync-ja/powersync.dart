@@ -35,7 +35,8 @@ final class TrackPreviousValuesOptions {
   /// A filter of column names for which updates should be tracked.
   ///
   /// When set to a non-null value, columns not included in this list will not
-  /// appear in [CrudEntry.oldData]. By default, all columns are included.
+  /// appear in [CrudEntry.previousValues]. By default, all columns are
+  /// included.
   final List<String>? columnFilter;
 
   /// Whether to only include old values when they were changed by an update,
@@ -64,7 +65,7 @@ class Table {
   /// through [CrudEntry.metadata].
   final bool trackMetadata;
 
-  /// Whether to track old values of columns for [CrudEntry.oldData].
+  /// Whether to track old values of columns for [CrudEntry.previousValues].
   ///
   /// See [TrackPreviousValuesOptions] for details.
   final TrackPreviousValuesOptions? trackPreviousValues;
