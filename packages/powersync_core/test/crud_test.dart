@@ -139,6 +139,7 @@ void main() {
 
     test('INSERT-only tables', () async {
       await powersync.disconnectAndClear();
+      await powersync.close();
       powersync = await testUtils.setupPowerSync(
           path: path,
           schema: const Schema([
@@ -268,6 +269,100 @@ void main() {
           ]));
       await tx2.complete();
       expect(await powersync.getNextCrudTransaction(), equals(null));
+    });
+
+    test('include metadata', () async {
+      await powersync.updateSchema(Schema([
+        Table(
+          'lists',
+          [Column.text('name')],
+          trackMetadata: true,
+        )
+      ]));
+
+      await powersync.execute(
+          'INSERT INTO lists (id, name, _metadata) VALUES (uuid(), ?, ?)',
+          ['entry', 'so meta']);
+
+      final batch = await powersync.getNextCrudTransaction();
+      expect(batch!.crud[0].metadata, 'so meta');
+    });
+
+    test('include old values', () async {
+      await powersync.updateSchema(Schema([
+        Table(
+          'lists',
+          [Column.text('name'), Column.text('content')],
+          trackPreviousValues: TrackPreviousValuesOptions(),
+        )
+      ]));
+
+      await powersync.execute(
+          'INSERT INTO lists (id, name, content) VALUES (uuid(), ?, ?)',
+          ['entry', 'content']);
+      await powersync.execute('DELETE FROM ps_crud;');
+      await powersync.execute('UPDATE lists SET name = ?;', ['new name']);
+
+      final batch = await powersync.getNextCrudTransaction();
+      expect(batch!.crud[0].previousValues,
+          {'name': 'entry', 'content': 'content'});
+    });
+
+    test('include old values with column filter', () async {
+      await powersync.updateSchema(Schema([
+        Table(
+          'lists',
+          [Column.text('name'), Column.text('content')],
+          trackPreviousValues:
+              TrackPreviousValuesOptions(columnFilter: ['name']),
+        )
+      ]));
+
+      await powersync.execute(
+          'INSERT INTO lists (id, name, content) VALUES (uuid(), ?, ?)',
+          ['name', 'content']);
+      await powersync.execute('DELETE FROM ps_crud;');
+      await powersync.execute('UPDATE lists SET name = ?, content = ?',
+          ['new name', 'new content']);
+
+      final batch = await powersync.getNextCrudTransaction();
+      expect(batch!.crud[0].previousValues, {'name': 'name'});
+    });
+
+    test('include old values when changed', () async {
+      await powersync.updateSchema(Schema([
+        Table(
+          'lists',
+          [Column.text('name'), Column.text('content')],
+          trackPreviousValues:
+              TrackPreviousValuesOptions(onlyWhenChanged: true),
+        )
+      ]));
+
+      await powersync.execute(
+          'INSERT INTO lists (id, name, content) VALUES (uuid(), ?, ?)',
+          ['name', 'content']);
+      await powersync.execute('DELETE FROM ps_crud;');
+      await powersync.execute('UPDATE lists SET name = ?', ['new name']);
+
+      final batch = await powersync.getNextCrudTransaction();
+      expect(batch!.crud[0].previousValues, {'name': 'name'});
+    });
+
+    test('ignore empty update', () async {
+      await powersync.updateSchema(Schema([
+        Table(
+          'lists',
+          [Column.text('name')],
+          ignoreEmptyUpdates: true,
+        )
+      ]));
+
+      await powersync
+          .execute('INSERT INTO lists (id, name) VALUES (uuid(), ?)', ['name']);
+      await powersync.execute('DELETE FROM ps_crud;');
+      await powersync.execute('UPDATE lists SET name = ?;', ['name']);
+      expect(await powersync.getNextCrudTransaction(), isNull);
     });
   });
 }

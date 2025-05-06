@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'package:collection/collection.dart';
 import 'package:powersync_core/sqlite3_common.dart' as sqlite;
 
+import 'schema.dart';
+
 /// A batch of client-side changes.
 class CrudBatch {
   /// List of client-side changes.
@@ -68,6 +70,14 @@ class CrudEntry {
   /// ID of the changed row.
   final String id;
 
+  /// An optional metadata string attached to this entry at the time the write
+  /// has been issued.
+  ///
+  /// For tables where [Table.trackMetadata] is enabled, a hidden `_metadata`
+  /// column is added to this table that can be used during updates to attach
+  /// a hint to the update thas is preserved here.
+  final String? metadata;
+
   /// Data associated with the change.
   ///
   /// For PUT, this is contains all non-null columns of the row.
@@ -77,8 +87,22 @@ class CrudEntry {
   /// For DELETE, this is null.
   final Map<String, dynamic>? opData;
 
-  CrudEntry(this.clientId, this.op, this.table, this.id, this.transactionId,
-      this.opData);
+  /// Old values before an update.
+  ///
+  /// This is only tracked for tables for which this has been enabled by setting
+  /// the [Table.trackPreviousValues].
+  final Map<String, dynamic>? previousValues;
+
+  CrudEntry(
+    this.clientId,
+    this.op,
+    this.table,
+    this.id,
+    this.transactionId,
+    this.opData, {
+    this.previousValues,
+    this.metadata,
+  });
 
   factory CrudEntry.fromRow(sqlite.Row row) {
     final data = jsonDecode(row['data'] as String);
@@ -89,6 +113,8 @@ class CrudEntry {
       data['id'] as String,
       row['tx_id'] as int,
       data['data'] as Map<String, Object?>?,
+      previousValues: data['old'] as Map<String, Object?>?,
+      metadata: data['metadata'] as String?,
     );
   }
 
@@ -100,7 +126,9 @@ class CrudEntry {
       'type': table,
       'id': id,
       'tx_id': transactionId,
-      'data': opData
+      'data': opData,
+      'metadata': metadata,
+      'old': previousValues,
     };
   }
 

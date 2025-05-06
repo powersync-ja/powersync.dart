@@ -318,6 +318,26 @@ void main() {
       );
     });
 
+    test('local-only with metadata', () {
+      final table = Table('foo', [Column.text('bar')],
+          localOnly: true, trackMetadata: true);
+
+      expect(
+          table.validate,
+          throwsA(isA<AssertionError>().having((e) => e.message, 'emssage',
+              "Local-only tables can't track metadata")));
+    });
+
+    test('local-only with trackPreviousValues', () {
+      final table = Table('foo', [Column.text('bar')],
+          localOnly: true, trackPreviousValues: TrackPreviousValuesOptions());
+
+      expect(
+          table.validate,
+          throwsA(isA<AssertionError>().having((e) => e.message, 'emssage',
+              "Local-only tables can't track old values")));
+    });
+
     test('Schema without duplicate table names', () {
       final schema = Schema([
         Table('duplicate', [
@@ -362,13 +382,55 @@ void main() {
       ]);
 
       final json = table.toJson();
+      expect(json, {
+        'name': 'users',
+        'view_name': null,
+        'local_only': false,
+        'insert_only': false,
+        'columns': hasLength(2),
+        'indexes': hasLength(1),
+        'ignore_empty_update': false,
+        'include_metadata': false,
+      });
+    });
 
-      expect(json['name'], equals('users'));
-      expect(json['view_name'], isNull);
-      expect(json['local_only'], isFalse);
-      expect(json['insert_only'], isFalse);
-      expect(json['columns'].length, equals(2));
-      expect(json['indexes'].length, equals(1));
+    test('handles options', () {
+      expect(Table('foo', [], trackMetadata: true).toJson(),
+          containsPair('include_metadata', isTrue));
+
+      expect(Table('foo', [], ignoreEmptyUpdates: true).toJson(),
+          containsPair('ignore_empty_update', isTrue));
+
+      expect(
+        Table('foo', [], trackPreviousValues: TrackPreviousValuesOptions())
+            .toJson(),
+        allOf(
+          containsPair('include_old', isTrue),
+          containsPair('include_old_only_when_changed', isFalse),
+        ),
+      );
+
+      expect(
+        Table('foo', [],
+                trackPreviousValues:
+                    TrackPreviousValuesOptions(columnFilter: ['foo', 'bar']))
+            .toJson(),
+        allOf(
+          containsPair('include_old', ['foo', 'bar']),
+          containsPair('include_old_only_when_changed', isFalse),
+        ),
+      );
+
+      expect(
+        Table('foo', [],
+                trackPreviousValues:
+                    TrackPreviousValuesOptions(onlyWhenChanged: true))
+            .toJson(),
+        allOf(
+          containsPair('include_old', isTrue),
+          containsPair('include_old_only_when_changed', isTrue),
+        ),
+      );
     });
   });
 }
