@@ -390,21 +390,21 @@ packages:
       path: "../../packages/powersync"
       relative: true
     source: path
-    version: "1.11.2"
+    version: "1.12.4"
   powersync_core:
     dependency: "direct overridden"
     description:
       path: "../../packages/powersync_core"
       relative: true
     source: path
-    version: "1.1.2"
+    version: "1.2.4"
   powersync_flutter_libs:
     dependency: "direct overridden"
     description:
       path: "../../packages/powersync_flutter_libs"
       relative: true
     source: path
-    version: "0.4.4"
+    version: "0.4.7"
   pub_semver:
     dependency: transitive
     description:
@@ -542,10 +542,10 @@ packages:
     dependency: transitive
     description:
       name: sqlite3_web
-      sha256: "870f287c2375117af1f769893c5ea0941882ee820444af5c3dcceec3b217aab1"
+      sha256: "967e076442f7e1233bd7241ca61f3efe4c7fc168dac0f38411bdb3bdf471eb3c"
       url: "https://pub.dev"
     source: hosted
-    version: "0.3.0"
+    version: "0.3.1"
   sqlite_async:
     dependency: "direct main"
     description:

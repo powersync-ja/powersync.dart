@@ -12,8 +12,10 @@ dependencies:
   flutter:
     sdk: flutter
 
-  powersync_core: ^1.2.4
-  powersync_flutter_libs: ^0.4.7
+  # We use an exact version dependency on our workspace packages becaus melos
+  # will update this package when these are updated.
+  powersync_core: 1.2.4
+  powersync_flutter_libs: 0.4.7
   sqlcipher_flutter_libs: ^0.6.4
   sqlite3_web: ^0.3.0
 
