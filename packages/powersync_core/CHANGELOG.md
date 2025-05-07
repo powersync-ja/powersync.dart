@@ -1,3 +1,7 @@
+## 1.3.0
+
+ - __todo__
+
 ## 1.2.4
 
  - Fix deadlock when `connect()` is called immediately after opening a database.
