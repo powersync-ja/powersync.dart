@@ -8,7 +8,7 @@ import 'dart:convert';
 import 'dart:js_interop';
 
 import 'package:async/async.dart';
-import 'package:fetch_client/fetch_client.dart';
+import 'package:http/browser_client.dart';
 import 'package:logging/logging.dart';
 import 'package:powersync_core/powersync_core.dart';
 import 'package:powersync_core/sqlite_async.dart';
@@ -265,7 +265,7 @@ class _SyncRunner {
         uploadCrud: client.channel.uploadCrud,
         crudUpdateTriggerStream: crudStream,
         retryDelay: Duration(seconds: 3),
-        client: FetchClient(mode: RequestMode.cors),
+        client: BrowserClient(),
         identifier: identifier,
         syncParameters: syncParams);
     sync!.statusStream.listen((event) {
