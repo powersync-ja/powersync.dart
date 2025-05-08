@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:meta/meta.dart';
-import 'package:fetch_client/fetch_client.dart';
+import 'package:http/browser_client.dart';
 import 'package:logging/logging.dart';
 import 'package:powersync_core/src/abort_controller.dart';
 import 'package:powersync_core/src/sync/bucket_storage.dart';
@@ -146,7 +146,7 @@ class PowerSyncDatabaseImpl
         uploadCrud: () => connector.uploadData(this),
         crudUpdateTriggerStream: crudStream,
         retryDelay: Duration(seconds: 3),
-        client: FetchClient(mode: RequestMode.cors),
+        client: BrowserClient(),
         syncParameters: params,
         // Only allows 1 sync implementation to run at a time per database
         // This should be global (across tabs) when using Navigator locks.
