@@ -3,6 +3,47 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 2025-05-07
+
+### Changes
+
+---
+
+Packages with breaking changes:
+
+ - There are no breaking changes in this release.
+
+Packages with other changes:
+
+ - [`powersync_core` - `v1.3.0`](#powersync_core---v130)
+ - [`powersync` - `v1.13.0`](#powersync---v1130)
+ - [`powersync_sqlcipher` - `v0.1.6`](#powersync_sqlcipher---v016)
+ - [`powersync_flutter_libs` - `v0.4.8`](#powersync_flutter_libs---v048)
+ - [`powersync_attachments_helper` - `v0.6.18+7`](#powersync_attachments_helper---v06187)
+
+Packages with dependency updates only:
+
+> Packages listed below depend on other packages in this workspace that have had changes. Their versions have been incremented to bump the minimum dependency versions of the packages they depend upon in this project.
+
+ - `powersync_attachments_helper` - `v0.6.18+7`
+
+---
+
+#### `powersync_core` - `v1.3.0`
+#### `powersync` - `v1.13.0`
+#### `powersync_sqlcipher` - `v0.1.6`
+
+* Report real-time progress information about downloads through `SyncStatus.downloadProgress`.
+* Add `trackPreviousValues` option on `Table` which sets `CrudEntry.previousValues` to previous values on updates.
+* Add `trackMetadata` option on `Table` which adds a `_metadata` column that can be used for updates.
+  The configured metadata is available through `CrudEntry.metadata`.
+* Add `ignoreEmptyUpdates` option which skips creating CRUD entries for updates that don't change any values.
+
+#### `powersync_flutter_libs` - `v0.4.8`
+
+ - Update PowerSync core extension to version 0.3.14.
+
+
 ## 2025-04-24
 
 ### Changes
