@@ -13,6 +13,7 @@ import 'package:logging/logging.dart';
 import 'package:powersync_core/powersync_core.dart';
 import 'package:powersync_core/sqlite_async.dart';
 import 'package:powersync_core/src/database/powersync_db_mixin.dart';
+import 'package:powersync_core/src/sync/options.dart';
 import 'package:powersync_core/src/sync/streaming_sync.dart';
 import 'package:sqlite_async/web.dart';
 import 'package:web/web.dart' hide RequestMode;
@@ -44,14 +45,11 @@ class _SyncWorker {
   }
 
   _SyncRunner referenceSyncTask(
-      String databaseIdentifier,
-      int crudThrottleTimeMs,
-      String? syncParamsEncoded,
-      _ConnectedClient client) {
+      String databaseIdentifier, SyncOptions options, _ConnectedClient client) {
     return _requestedSyncTasks.putIfAbsent(databaseIdentifier, () {
       return _SyncRunner(databaseIdentifier);
     })
-      ..registerClient(client, crudThrottleTimeMs, syncParamsEncoded);
+      ..registerClient(client, options);
   }
 }
 
@@ -69,8 +67,21 @@ class _ConnectedClient {
         switch (type) {
           case SyncWorkerMessageType.startSynchronization:
             final request = payload as StartSynchronization;
-            _runner = _worker.referenceSyncTask(request.databaseName,
-                request.crudThrottleTimeMs, request.syncParamsEncoded, this);
+            final recoveredOptions = SyncOptions(
+              crudThrottleTime:
+                  Duration(milliseconds: request.crudThrottleTimeMs),
+              retryDelay: Duration(milliseconds: request.retryDelayMs),
+              params: switch (request.syncParamsEncoded) {
+                null => null,
+                final encodedParams =>
+                  jsonDecode(encodedParams) as Map<String, Object?>,
+              },
+              syncImplementation: SyncClientImplementation.values
+                  .byName(request.clientImplementationName),
+            );
+
+            _runner = _worker.referenceSyncTask(
+                request.databaseName, recoveredOptions, this);
             return (JSObject(), null);
           case SyncWorkerMessageType.abortSynchronization:
             _runner?.disconnectClient(this);
@@ -110,8 +121,7 @@ class _ConnectedClient {
 
 class _SyncRunner {
   final String identifier;
-  int crudThrottleTimeMs = 1;
-  String? syncParamsEncoded;
+  ResolvedSyncOptions options = ResolvedSyncOptions(SyncOptions());
 
   final StreamGroup<_RunnerEvent> _group = StreamGroup();
   final StreamController<_RunnerEvent> _mainEvents = StreamController();
@@ -129,19 +139,12 @@ class _SyncRunner {
           switch (event) {
             case _AddConnection(
                 :final client,
-                :final crudThrottleTimeMs,
-                :final syncParamsEncoded
+                :final options,
               ):
               connections.add(client);
-              var reconnect = false;
-              if (this.crudThrottleTimeMs != crudThrottleTimeMs) {
-                this.crudThrottleTimeMs = crudThrottleTimeMs;
-                reconnect = true;
-              }
-              if (this.syncParamsEncoded != syncParamsEncoded) {
-                this.syncParamsEncoded = syncParamsEncoded;
-                reconnect = true;
-              }
+              final (newOptions, reconnect) = this.options.applyFrom(options);
+              this.options = newOptions;
+
               if (sync == null) {
                 await _requestDatabase(client);
               } else if (reconnect) {
@@ -241,7 +244,6 @@ class _SyncRunner {
     });
 
     final tables = ['ps_crud'];
-    final crudThrottleTime = Duration(milliseconds: crudThrottleTimeMs);
     Stream<UpdateNotification> crudStream =
         powerSyncUpdateNotifications(Stream.empty());
     if (database.updates != null) {
@@ -249,25 +251,21 @@ class _SyncRunner {
           .transform(UpdateNotification.filterTablesTransformer(tables));
       crudStream = UpdateNotification.throttleStream(
         filteredStream,
-        crudThrottleTime,
+        options.crudThrottleTime,
         addOne: UpdateNotification.empty(),
       );
     }
 
-    final syncParams = syncParamsEncoded == null
-        ? null
-        : jsonDecode(syncParamsEncoded!) as Map<String, dynamic>;
-
     sync = StreamingSyncImplementation(
-        adapter: WebBucketStorage(database),
-        credentialsCallback: client.channel.credentialsCallback,
-        invalidCredentialsCallback: client.channel.invalidCredentialsCallback,
-        uploadCrud: client.channel.uploadCrud,
-        crudUpdateTriggerStream: crudStream,
-        retryDelay: Duration(seconds: 3),
-        client: BrowserClient(),
-        identifier: identifier,
-        syncParameters: syncParams);
+      adapter: WebBucketStorage(database),
+      credentialsCallback: client.channel.credentialsCallback,
+      invalidCredentialsCallback: client.channel.invalidCredentialsCallback,
+      uploadCrud: client.channel.uploadCrud,
+      crudUpdateTriggerStream: crudStream,
+      options: options,
+      client: BrowserClient(),
+      identifier: identifier,
+    );
     sync!.statusStream.listen((event) {
       _logger.fine('Broadcasting sync event: $event');
       for (final client in connections) {
@@ -278,10 +276,8 @@ class _SyncRunner {
     sync!.streamingSync();
   }
 
-  void registerClient(_ConnectedClient client, int currentCrudThrottleTimeMs,
-      String? currentSyncParamsEncoded) {
-    _mainEvents.add(_AddConnection(
-        client, currentCrudThrottleTimeMs, currentSyncParamsEncoded));
+  void registerClient(_ConnectedClient client, SyncOptions options) {
+    _mainEvents.add(_AddConnection(client, options));
   }
 
   /// Remove a client, disconnecting if no clients remain..
@@ -299,10 +295,9 @@ sealed class _RunnerEvent {}
 
 final class _AddConnection implements _RunnerEvent {
   final _ConnectedClient client;
-  final int crudThrottleTimeMs;
-  final String? syncParamsEncoded;
+  final SyncOptions options;
 
-  _AddConnection(this.client, this.crudThrottleTimeMs, this.syncParamsEncoded);
+  _AddConnection(this.client, this.options);
 }
 
 final class _RemoveConnection implements _RunnerEvent {

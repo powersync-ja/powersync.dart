@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:js_interop';
 
 import 'package:logging/logging.dart';
+import 'package:powersync_core/src/sync/options.dart';
 import 'package:web/web.dart';
 
 import '../connector.dart';
@@ -64,15 +65,20 @@ extension type SyncWorkerMessage._(JSObject _) implements JSObject {
 
 @anonymous
 extension type StartSynchronization._(JSObject _) implements JSObject {
-  external factory StartSynchronization(
-      {required String databaseName,
-      required int crudThrottleTimeMs,
-      required int requestId,
-      String? syncParamsEncoded});
+  external factory StartSynchronization({
+    required String databaseName,
+    required int crudThrottleTimeMs,
+    required int requestId,
+    required int retryDelayMs,
+    required String clientImplementationName,
+    String? syncParamsEncoded,
+  });
 
   external String get databaseName;
   external int get requestId;
   external int get crudThrottleTimeMs;
+  external int get retryDelayMs;
+  external String get clientImplementationName;
   external String? get syncParamsEncoded;
 }
 
@@ -403,17 +409,22 @@ final class WorkerCommunicationChannel {
     await _numericRequest(SyncWorkerMessageType.ping);
   }
 
-  Future<void> startSynchronization(String databaseName, int crudThrottleTimeMs,
-      Map<String, dynamic>? syncParams) async {
+  Future<void> startSynchronization(
+      String databaseName, ResolvedSyncOptions options) async {
     final (id, completion) = _newRequest();
     port.postMessage(SyncWorkerMessage(
       type: SyncWorkerMessageType.startSynchronization.name,
       payload: StartSynchronization(
-          databaseName: databaseName,
-          crudThrottleTimeMs: crudThrottleTimeMs,
-          requestId: id,
-          syncParamsEncoded:
-              syncParams == null ? null : jsonEncode(syncParams)),
+        databaseName: databaseName,
+        crudThrottleTimeMs: options.crudThrottleTime.inMilliseconds,
+        clientImplementationName: options.source.syncImplementation.name,
+        retryDelayMs: options.retryDelay.inMilliseconds,
+        requestId: id,
+        syncParamsEncoded: switch (options.source.params) {
+          null => null,
+          final params => jsonEncode(params),
+        },
+      ),
     ));
     await completion;
   }

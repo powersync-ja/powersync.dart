@@ -15,6 +15,7 @@ import 'package:powersync_core/src/log_internal.dart';
 import 'package:powersync_core/src/open_factory/abstract_powersync_open_factory.dart';
 import 'package:powersync_core/src/open_factory/native/native_open_factory.dart';
 import 'package:powersync_core/src/schema.dart';
+import 'package:powersync_core/src/sync/options.dart';
 import 'package:powersync_core/src/sync/streaming_sync.dart';
 import 'package:powersync_core/src/sync/sync_status.dart';
 import 'package:sqlite_async/sqlite3_common.dart';
@@ -118,10 +119,9 @@ class PowerSyncDatabaseImpl
   @internal
   Future<void> connectInternal({
     required PowerSyncBackendConnector connector,
-    required Duration crudThrottleTime,
+    required SyncOptions options,
     required AbortController abort,
     required Zone asyncWorkZone,
-    Map<String, dynamic>? params,
   }) async {
     final dbRef = database.isolateConnectionFactory();
 
@@ -134,6 +134,7 @@ class PowerSyncDatabaseImpl
     SendPort? initPort;
     final hasInitPort = Completer<void>();
     final receivedIsolateExit = Completer<void>();
+    final resolved = ResolvedSyncOptions(options);
 
     Future<void> waitForShutdown() async {
       // Only complete the abortion signal after the isolate shuts down. This
@@ -175,8 +176,8 @@ class PowerSyncDatabaseImpl
         } else if (action == 'init') {
           final port = initPort = data[1] as SendPort;
           hasInitPort.complete();
-          var crudStream =
-              database.onChange(['ps_crud'], throttle: crudThrottleTime);
+          var crudStream = database
+              .onChange(['ps_crud'], throttle: resolved.crudThrottleTime);
           crudUpdateSubscription = crudStream.listen((event) {
             port.send(['update']);
           });
@@ -238,8 +239,7 @@ class PowerSyncDatabaseImpl
       _PowerSyncDatabaseIsolateArgs(
         receiveMessages.sendPort,
         dbRef,
-        retryDelay,
-        clientParams,
+        resolved,
         crudMutex.shared,
         syncMutex.shared,
       ),
@@ -282,16 +282,14 @@ class PowerSyncDatabaseImpl
 class _PowerSyncDatabaseIsolateArgs {
   final SendPort sPort;
   final IsolateConnectionFactory dbRef;
-  final Duration retryDelay;
-  final Map<String, dynamic>? parameters;
+  final ResolvedSyncOptions options;
   final SerializedMutex crudMutex;
   final SerializedMutex syncMutex;
 
   _PowerSyncDatabaseIsolateArgs(
     this.sPort,
     this.dbRef,
-    this.retryDelay,
-    this.parameters,
+    this.options,
     this.crudMutex,
     this.syncMutex,
   );
@@ -392,9 +390,8 @@ Future<void> _syncIsolate(_PowerSyncDatabaseIsolateArgs args) async {
       invalidCredentialsCallback: invalidateCredentials,
       uploadCrud: uploadCrud,
       crudUpdateTriggerStream: crudUpdateController.stream,
-      retryDelay: args.retryDelay,
+      options: args.options,
       client: http.Client(),
-      syncParameters: args.parameters,
       crudMutex: crudMutex,
       syncMutex: syncMutex,
     );

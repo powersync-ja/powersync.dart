@@ -6,6 +6,7 @@ import 'package:meta/meta.dart';
 import 'package:powersync_core/src/abort_controller.dart';
 import 'package:powersync_core/src/exceptions.dart';
 import 'package:powersync_core/src/log_internal.dart';
+import 'package:powersync_core/src/sync/options.dart';
 import 'package:powersync_core/src/user_agent/user_agent.dart';
 import 'package:sqlite_async/mutex.dart';
 
@@ -29,6 +30,7 @@ abstract interface class StreamingSync {
 @internal
 class StreamingSyncImplementation implements StreamingSync {
   final BucketStorage adapter;
+  final ResolvedSyncOptions options;
 
   final Future<PowerSyncCredentials?> Function() credentialsCallback;
   final Future<void> Function()? invalidCredentialsCallback;
@@ -48,10 +50,6 @@ class StreamingSyncImplementation implements StreamingSync {
   final StreamController<Null> _localPingController =
       StreamController.broadcast();
 
-  final Duration retryDelay;
-
-  final Map<String, dynamic>? syncParameters;
-
   AbortController? _abort;
 
   bool _safeToClose = true;
@@ -68,8 +66,7 @@ class StreamingSyncImplementation implements StreamingSync {
     this.invalidCredentialsCallback,
     required this.uploadCrud,
     required this.crudUpdateTriggerStream,
-    required this.retryDelay,
-    this.syncParameters,
+    required this.options,
     required http.Client client,
     Mutex? syncMutex,
     Mutex? crudMutex,
@@ -81,6 +78,8 @@ class StreamingSyncImplementation implements StreamingSync {
         syncMutex = syncMutex ?? Mutex(identifier: "sync-$identifier"),
         crudMutex = crudMutex ?? Mutex(identifier: "crud-$identifier"),
         _userAgentHeaders = userAgentHeaders();
+
+  Duration get _retryDelay => options.retryDelay;
 
   @override
   Stream<SyncStatus> get statusStream => _state.statusStream;
@@ -136,7 +135,7 @@ class StreamingSyncImplementation implements StreamingSync {
           }
           // Protect sync iterations with exclusivity (if a valid Mutex is provided)
           await syncMutex.lock(() => streamingSyncIteration(),
-              timeout: retryDelay);
+              timeout: _retryDelay);
         } catch (e, stacktrace) {
           if (aborted && e is http.ClientException) {
             // Explicit abort requested - ignore. Example error:
@@ -230,7 +229,7 @@ class StreamingSyncImplementation implements StreamingSync {
           _state.updateStatus((s) => s.uploading = false);
         }
       }
-    }, timeout: retryDelay).whenComplete(() {
+    }, timeout: _retryDelay).whenComplete(() {
       assert(identical(_activeCrudUpload, completer));
       _activeCrudUpload = null;
       completer.complete();
@@ -302,7 +301,7 @@ class StreamingSyncImplementation implements StreamingSync {
     Checkpoint? appliedCheckpoint;
 
     var requestStream = streamingSyncRequest(
-        StreamingSyncRequest(bucketRequests, syncParameters, clientId!));
+        StreamingSyncRequest(bucketRequests, options.params, clientId!));
 
     var merged = addBroadcast(requestStream, _localPingController.stream);
 
@@ -534,7 +533,7 @@ class StreamingSyncImplementation implements StreamingSync {
   /// Delays the standard `retryDelay` Duration, but exits early if
   /// an abort has been requested.
   Future<void> _delayRetry() async {
-    await Future.any([Future<void>.delayed(retryDelay), _abort!.onAbort]);
+    await Future.any([Future<void>.delayed(_retryDelay), _abort!.onAbort]);
   }
 }
 

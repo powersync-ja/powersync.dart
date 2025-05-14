@@ -10,6 +10,7 @@ export 'src/exceptions.dart';
 export 'src/log.dart';
 export 'src/open_factory.dart';
 export 'src/schema.dart';
+export 'src/sync/options.dart' hide ResolvedSyncOptions;
 export 'src/sync/sync_status.dart'
     hide BucketProgress, InternalSyncDownloadProgress;
 export 'src/uuid.dart';

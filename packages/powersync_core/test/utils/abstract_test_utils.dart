@@ -2,6 +2,7 @@ import 'package:http/http.dart';
 import 'package:logging/logging.dart';
 import 'package:powersync_core/powersync_core.dart';
 import 'package:powersync_core/src/sync/bucket_storage.dart';
+import 'package:powersync_core/src/sync/options.dart';
 import 'package:powersync_core/src/sync/streaming_sync.dart';
 import 'package:sqlite_async/sqlite3_common.dart';
 import 'package:sqlite_async/sqlite_async.dart';
@@ -149,7 +150,9 @@ extension MockSync on PowerSyncDatabase {
     final impl = StreamingSyncImplementation(
       adapter: BucketStorage(this),
       client: client,
-      retryDelay: const Duration(seconds: 5),
+      options: ResolvedSyncOptions(SyncOptions(
+        retryDelay: const Duration(seconds: 5),
+      )),
       credentialsCallback: connector.getCredentialsCached,
       invalidCredentialsCallback: connector.prefetchCredentials,
       uploadCrud: () => connector.uploadData(this),
