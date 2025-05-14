@@ -120,6 +120,7 @@ class PowerSyncDatabaseImpl
     required PowerSyncBackendConnector connector,
     required Duration crudThrottleTime,
     required AbortController abort,
+    required Zone asyncWorkZone,
     Map<String, dynamic>? params,
   }) async {
     final dbRef = database.isolateConnectionFactory();
@@ -157,7 +158,7 @@ class PowerSyncDatabaseImpl
       await waitForShutdown();
     }
 
-    receiveMessages.listen((data) async {
+    Future<void> handleMessage(Object? data) async {
       if (data is List) {
         String action = data[0] as String;
         if (action == "getCredentials") {
@@ -192,7 +193,14 @@ class PowerSyncDatabaseImpl
               record.level, record.message, record.error, record.stackTrace);
         }
       }
-    });
+    }
+
+    // This function is called in a Zone marking the connection lock as locked.
+    // This is used to prevent reentrant calls to the lock (which would be a
+    // deadlock). However, the lock is returned as soon as this function
+    // returns - and handleMessage may run later. So, make sure we run those
+    // callbacks in the parent zone.
+    receiveMessages.listen(asyncWorkZone.bindUnaryCallback(handleMessage));
 
     receiveUnhandledErrors.listen((message) async {
       // Sample error:

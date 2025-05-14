@@ -282,6 +282,7 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
 
     clientParams = params;
     var thisConnectAborter = AbortController();
+    final zone = Zone.current;
 
     late void Function() retryHandler;
 
@@ -296,6 +297,9 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
         crudThrottleTime: crudThrottleTime,
         params: params,
         abort: thisConnectAborter,
+        // Run follow-up async tasks in the parent zone, a new one is introduced
+        // while we hold the lock (and async tasks won't hold the sync lock).
+        asyncWorkZone: zone,
       );
 
       thisConnectAborter.onCompletion.whenComplete(retryHandler);
@@ -347,6 +351,7 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
     required PowerSyncBackendConnector connector,
     required Duration crudThrottleTime,
     required AbortController abort,
+    required Zone asyncWorkZone,
     Map<String, dynamic>? params,
   });
 

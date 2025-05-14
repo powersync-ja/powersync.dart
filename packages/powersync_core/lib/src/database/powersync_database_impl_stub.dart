@@ -114,6 +114,7 @@ class PowerSyncDatabaseImpl
       {required PowerSyncBackendConnector connector,
       required Duration crudThrottleTime,
       required AbortController abort,
+      required Zone asyncWorkZone,
       Map<String, dynamic>? params}) {
     throw UnimplementedError();
   }

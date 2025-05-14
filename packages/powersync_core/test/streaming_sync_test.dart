@@ -84,9 +84,7 @@ void main() {
       final didDisconnect = Completer<void>();
 
       connector.fetchCredentialsCallback = expectAsync0(() async {
-        Zone.current.parent!.scheduleMicrotask(() {
-          didDisconnect.complete(pdb.disconnect());
-        });
+        didDisconnect.complete(pdb.disconnect());
 
         throw 'deliberate disconnect';
       });
@@ -94,6 +92,13 @@ void main() {
       service.addKeepAlive(0);
       await didDisconnect.future;
       expect(pdb.currentStatus.connected, isFalse);
+      // The error should be cleared after calling disconnect
+      expect(pdb.currentStatus.downloadError, isNull);
+
+      // Wait for a short while to make sure the database doesn't reconnect.
+      for (var i = 0; i < 10; i++) {
+        expect(pdb.currentStatus.connecting, isFalse);
+      }
     });
 
     test('can connect as initial operation', () async {
