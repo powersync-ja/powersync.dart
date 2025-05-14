@@ -9,6 +9,7 @@ import 'package:logging/logging.dart';
 import 'package:powersync_core/powersync_core.dart';
 import 'package:test/test.dart';
 
+import 'server/sync_server/in_memory_sync_server.dart';
 import 'test_server.dart';
 import 'utils/abstract_test_utils.dart';
 import 'utils/test_utils_impl.dart';
@@ -59,6 +60,45 @@ void main() {
 
       expect(server.maxConnectionCount, lessThanOrEqualTo(1));
       server.close();
+    });
+
+    test('can disconnect in fetchCredentials', () async {
+      final service = MockSyncService();
+      final server = await createServer(mockSyncService: service);
+      final ignoreLogger = Logger.detached('powersync.test');
+
+      final pdb =
+          await testUtils.setupPowerSync(path: path, logger: ignoreLogger);
+      pdb.retryDelay = Duration(milliseconds: 50);
+      final connector = TestConnector(expectAsync0(() async {
+        return PowerSyncCredentials(endpoint: server.endpoint, token: 'token');
+      }));
+
+      await pdb.connect(connector: connector);
+      while (server.connectionCount != 1) {
+        await Future<void>.delayed(const Duration(milliseconds: 100));
+      }
+
+      service.addKeepAlive(60);
+
+      final didDisconnect = Completer<void>();
+
+      connector.fetchCredentialsCallback = expectAsync0(() async {
+        didDisconnect.complete(pdb.disconnect());
+
+        throw 'deliberate disconnect';
+      });
+
+      service.addKeepAlive(0);
+      await didDisconnect.future;
+      expect(pdb.currentStatus.connected, isFalse);
+      // The error should be cleared after calling disconnect
+      expect(pdb.currentStatus.downloadError, isNull);
+
+      // Wait for a short while to make sure the database doesn't reconnect.
+      for (var i = 0; i < 10; i++) {
+        expect(pdb.currentStatus.connecting, isFalse);
+      }
     });
 
     test('can connect as initial operation', () async {
