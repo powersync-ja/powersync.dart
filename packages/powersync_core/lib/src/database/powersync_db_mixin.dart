@@ -372,7 +372,7 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
         _abortActiveSync = null;
       } else {
         /// Wait for the abort to complete. Continue updating the sync status after completed
-        await disconnector.onAbort;
+        await disconnector.onCompletion;
       }
     }
   }

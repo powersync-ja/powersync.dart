@@ -8,7 +8,9 @@ import 'package:shelf/shelf.dart';
 import 'package:shelf/shelf_io.dart' as shelf_io;
 import 'package:shelf_router/shelf_router.dart';
 
-class TestServer {
+import 'server/sync_server/in_memory_sync_server.dart';
+
+final class TestServer {
   late HttpServer server;
   Router app = Router();
   int maxConnectionCount = 0;
@@ -16,10 +18,11 @@ class TestServer {
 
   TestServer({this.tokenExpiresIn = 65});
 
-  Future<void> init() async {
+  Future<void> init({MockSyncService? mockSyncService}) async {
     app.post('/sync/stream', handleSyncStream);
     // Open on an arbitrary open port
-    server = await shelf_io.serve(app.call, 'localhost', 0);
+    server = await shelf_io.serve(
+        mockSyncService?.router.call ?? app.call, 'localhost', 0);
   }
 
   String get endpoint {
@@ -34,6 +37,9 @@ class TestServer {
     return server.connectionsInfo();
   }
 
+  /// The default response if no [MockSyncService] has been passed to [init].
+  ///
+  /// This will emit keepalive messages frequently.
   Future<Response> handleSyncStream(Request request) async {
     maxConnectionCount = max(connectionCount, maxConnectionCount);
 
@@ -61,9 +67,9 @@ class TestServer {
   }
 }
 
-Future<TestServer> createServer() async {
+Future<TestServer> createServer({MockSyncService? mockSyncService}) async {
   var server = TestServer();
-  await server.init();
+  await server.init(mockSyncService: mockSyncService);
   return server;
 }
 

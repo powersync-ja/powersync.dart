@@ -25,7 +25,7 @@ class AbortController {
       _abortRequested.complete();
     }
 
-    await _abortCompleter.future;
+    await onCompletion;
   }
 
   /// Signal that an abort has completed.

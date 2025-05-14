@@ -125,21 +125,21 @@ abstract class AbstractTestUtils {
 }
 
 class TestConnector extends PowerSyncBackendConnector {
-  final Future<PowerSyncCredentials> Function() _fetchCredentials;
-  final Future<void> Function(PowerSyncDatabase)? _uploadData;
+  Future<PowerSyncCredentials> Function() fetchCredentialsCallback;
+  Future<void> Function(PowerSyncDatabase)? uploadDataCallback;
 
-  TestConnector(this._fetchCredentials,
+  TestConnector(this.fetchCredentialsCallback,
       {Future<void> Function(PowerSyncDatabase)? uploadData})
-      : _uploadData = uploadData;
+      : uploadDataCallback = uploadData;
 
   @override
   Future<PowerSyncCredentials?> fetchCredentials() {
-    return _fetchCredentials();
+    return fetchCredentialsCallback();
   }
 
   @override
   Future<void> uploadData(PowerSyncDatabase database) async {
-    await _uploadData?.call(database);
+    await uploadDataCallback?.call(database);
   }
 }
 
