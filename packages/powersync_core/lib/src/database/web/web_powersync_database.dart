@@ -11,6 +11,7 @@ import 'package:powersync_core/src/log.dart';
 import 'package:powersync_core/src/open_factory/abstract_powersync_open_factory.dart';
 import 'package:powersync_core/src/open_factory/web/web_open_factory.dart';
 import 'package:powersync_core/src/schema.dart';
+import 'package:powersync_core/src/sync/internal_connector.dart';
 import 'package:powersync_core/src/sync/streaming_sync.dart';
 import 'package:sqlite_async/sqlite_async.dart';
 
@@ -142,9 +143,7 @@ class PowerSyncDatabaseImpl
 
       sync = StreamingSyncImplementation(
         adapter: storage,
-        credentialsCallback: connector.getCredentialsCached,
-        invalidCredentialsCallback: connector.prefetchCredentials,
-        uploadCrud: () => connector.uploadData(this),
+        connector: InternalConnector.wrap(connector, this),
         crudUpdateTriggerStream: crudStream,
         options: resolved,
         client: BrowserClient(),

@@ -13,6 +13,7 @@ import 'package:logging/logging.dart';
 import 'package:powersync_core/powersync_core.dart';
 import 'package:powersync_core/sqlite_async.dart';
 import 'package:powersync_core/src/database/powersync_db_mixin.dart';
+import 'package:powersync_core/src/sync/internal_connector.dart';
 import 'package:powersync_core/src/sync/options.dart';
 import 'package:powersync_core/src/sync/streaming_sync.dart';
 import 'package:sqlite_async/web.dart';
@@ -70,14 +71,15 @@ class _ConnectedClient {
             final recoveredOptions = SyncOptions(
               crudThrottleTime:
                   Duration(milliseconds: request.crudThrottleTimeMs),
-              retryDelay: Duration(milliseconds: request.retryDelayMs),
+              retryDelay: switch (request.retryDelayMs) {
+                null => null,
+                final retryDelay => Duration(milliseconds: retryDelay),
+              },
               params: switch (request.syncParamsEncoded) {
                 null => null,
                 final encodedParams =>
                   jsonDecode(encodedParams) as Map<String, Object?>,
               },
-              syncImplementation: SyncClientImplementation.values
-                  .byName(request.clientImplementationName),
             );
 
             _runner = _worker.referenceSyncTask(
@@ -258,9 +260,13 @@ class _SyncRunner {
 
     sync = StreamingSyncImplementation(
       adapter: WebBucketStorage(database),
-      credentialsCallback: client.channel.credentialsCallback,
-      invalidCredentialsCallback: client.channel.invalidCredentialsCallback,
-      uploadCrud: client.channel.uploadCrud,
+      connector: InternalConnector(
+        getCredentialsCached: client.channel.credentialsCallback,
+        prefetchCredentials: ({required bool invalidate}) async {
+          return await client.channel.invalidCredentialsCallback();
+        },
+        uploadCrud: client.channel.uploadCrud,
+      ),
       crudUpdateTriggerStream: crudStream,
       options: options,
       client: BrowserClient(),

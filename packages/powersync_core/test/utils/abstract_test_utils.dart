@@ -2,6 +2,7 @@ import 'package:http/http.dart';
 import 'package:logging/logging.dart';
 import 'package:powersync_core/powersync_core.dart';
 import 'package:powersync_core/src/sync/bucket_storage.dart';
+import 'package:powersync_core/src/sync/internal_connector.dart';
 import 'package:powersync_core/src/sync/options.dart';
 import 'package:powersync_core/src/sync/streaming_sync.dart';
 import 'package:sqlite_async/sqlite3_common.dart';
@@ -146,16 +147,15 @@ class TestConnector extends PowerSyncBackendConnector {
 
 extension MockSync on PowerSyncDatabase {
   StreamingSyncImplementation connectWithMockService(
-      Client client, PowerSyncBackendConnector connector) {
+    Client client,
+    PowerSyncBackendConnector connector, {
+    SyncOptions options = const SyncOptions(retryDelay: Duration(seconds: 5)),
+  }) {
     final impl = StreamingSyncImplementation(
       adapter: BucketStorage(this),
       client: client,
-      options: ResolvedSyncOptions(SyncOptions(
-        retryDelay: const Duration(seconds: 5),
-      )),
-      credentialsCallback: connector.getCredentialsCached,
-      invalidCredentialsCallback: connector.prefetchCredentials,
-      uploadCrud: () => connector.uploadData(this),
+      options: ResolvedSyncOptions(options),
+      connector: InternalConnector.wrap(connector, this),
       crudUpdateTriggerStream: database
           .onChange(['ps_crud'], throttle: const Duration(milliseconds: 10)),
     );

@@ -24,19 +24,10 @@ final class SyncOptions {
   /// When set to null, PowerSync defaults to a delay of 5 seconds.
   final Duration? retryDelay;
 
-  /// The client implementation to use.
-  ///
-  /// This allows switching between the existing [SyncClientImplementation.dart]
-  /// implementation and a newer one ([SyncClientImplementation.rust]).
-  ///
-  /// Note that not setting this field to the default value is experimental.
-  final SyncClientImplementation syncImplementation;
-
   const SyncOptions({
     this.crudThrottleTime,
     this.retryDelay,
     this.params,
-    this.syncImplementation = SyncClientImplementation.dart,
   });
 }
 
@@ -47,44 +38,20 @@ extension type ResolvedSyncOptions(SyncOptions source) {
 
   Duration get retryDelay => source.retryDelay ?? const Duration(seconds: 5);
 
-  Map<String, dynamic>? get params => source.params ?? const {};
+  Map<String, dynamic> get params => source.params ?? const {};
 
   (ResolvedSyncOptions, bool) applyFrom(SyncOptions other) {
     final newOptions = SyncOptions(
       crudThrottleTime: other.crudThrottleTime ?? crudThrottleTime,
       retryDelay: other.retryDelay ?? retryDelay,
       params: other.params ?? params,
-      syncImplementation: other.syncImplementation,
     );
 
     final didChange = !_mapEquality.equals(other.params, params) ||
         other.crudThrottleTime != crudThrottleTime ||
-        other.retryDelay != retryDelay ||
-        other.syncImplementation != source.syncImplementation;
+        other.retryDelay != retryDelay;
     return (ResolvedSyncOptions(newOptions), didChange);
   }
 
   static const _mapEquality = MapEquality<String, dynamic>();
-}
-
-/// Supported sync client implementations.
-///
-/// Not using the default implementation (currently [dart], but this may change
-/// in the future) is experimental.
-@experimental
-enum SyncClientImplementation {
-  /// Decode and handle data received from the sync service in Dart.
-  ///
-  /// This is the default option.
-  dart,
-
-  /// An _experimental_ implementation of the sync client that is written in
-  /// Rust and shared across the PowerSync SDKs.
-  ///
-  /// Since this client decodes sync lines in Rust instead of parsing them in
-  /// Dart, it can be more performant than the the default [dart]
-  /// implementation. Since this option has not seen as much real-world testing,
-  /// it is marked as __experimental__ at the moment!
-  @experimental
-  rust,
 }

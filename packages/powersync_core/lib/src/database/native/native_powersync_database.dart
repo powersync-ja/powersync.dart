@@ -15,6 +15,7 @@ import 'package:powersync_core/src/log_internal.dart';
 import 'package:powersync_core/src/open_factory/abstract_powersync_open_factory.dart';
 import 'package:powersync_core/src/open_factory/native/native_open_factory.dart';
 import 'package:powersync_core/src/schema.dart';
+import 'package:powersync_core/src/sync/internal_connector.dart';
 import 'package:powersync_core/src/sync/options.dart';
 import 'package:powersync_core/src/sync/streaming_sync.dart';
 import 'package:powersync_core/src/sync/sync_status.dart';
@@ -162,16 +163,21 @@ class PowerSyncDatabaseImpl
     Future<void> handleMessage(Object? data) async {
       if (data is List) {
         String action = data[0] as String;
-        if (action == "getCredentials") {
+        if (action == "getCredentialsCached") {
           await (data[1] as PortCompleter).handle(() async {
             final token = await connector.getCredentialsCached();
             logger.fine('Credentials: $token');
             return token;
           });
-        } else if (action == "invalidateCredentials") {
+        } else if (action == "prefetchCredentials") {
           logger.fine('Refreshing credentials');
+          final invalidate = data[2] as bool;
+
           await (data[1] as PortCompleter).handle(() async {
-            await connector.prefetchCredentials();
+            if (invalidate) {
+              connector.invalidateCredentials();
+            }
+            return await connector.prefetchCredentials();
           });
         } else if (action == 'init') {
           final port = initPort = data[1] as SendPort;
@@ -360,15 +366,16 @@ Future<void> _syncIsolate(_PowerSyncDatabaseIsolateArgs args) async {
     sPort.send(['log', copy]);
   });
 
-  Future<PowerSyncCredentials?> loadCredentials() async {
+  Future<PowerSyncCredentials?> getCredentialsCached() async {
     final r = IsolateResult<PowerSyncCredentials?>();
-    sPort.send(['getCredentials', r.completer]);
+    sPort.send(['getCredentialsCached', r.completer]);
     return r.future;
   }
 
-  Future<void> invalidateCredentials() async {
-    final r = IsolateResult<void>();
-    sPort.send(['invalidateCredentials', r.completer]);
+  Future<PowerSyncCredentials?> prefetchCredentials(
+      {required bool invalidate}) async {
+    final r = IsolateResult<PowerSyncCredentials?>();
+    sPort.send(['prefetchCredentials', r.completer, invalidate]);
     return r.future;
   }
 
@@ -386,9 +393,11 @@ Future<void> _syncIsolate(_PowerSyncDatabaseIsolateArgs args) async {
     final storage = BucketStorage(connection);
     final sync = StreamingSyncImplementation(
       adapter: storage,
-      credentialsCallback: loadCredentials,
-      invalidCredentialsCallback: invalidateCredentials,
-      uploadCrud: uploadCrud,
+      connector: InternalConnector(
+        getCredentialsCached: getCredentialsCached,
+        prefetchCredentials: prefetchCredentials,
+        uploadCrud: uploadCrud,
+      ),
       crudUpdateTriggerStream: crudUpdateController.stream,
       options: args.options,
       client: http.Client(),
@@ -426,6 +435,6 @@ Future<void> _syncIsolate(_PowerSyncDatabaseIsolateArgs args) async {
     // This should be rare - any uncaught error is a bug. And in most cases,
     // it should occur after the database is already open.
     await shutdown();
-    throw error;
+    Error.throwWithStackTrace(error, stack);
   });
 }
