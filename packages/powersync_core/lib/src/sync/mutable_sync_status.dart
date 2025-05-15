@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:collection/collection.dart';
+import 'package:powersync_core/src/sync/instruction.dart';
 
 import 'sync_status.dart';
 import 'bucket_storage.dart';
@@ -77,6 +78,20 @@ final class MutableSyncStatus {
     if (downloadProgress case final previousProgress?) {
       downloadProgress = previousProgress.incrementDownloaded(batch);
     }
+  }
+
+  void applyFromCore(CoreSyncStatus status) {
+    connected = status.connected;
+    connecting = status.connecting;
+    downloading = status.downloading != null;
+    priorityStatusEntries = status.priorityStatus;
+    downloadProgress = switch (status.downloading) {
+      null => null,
+      final downloading => InternalSyncDownloadProgress(downloading.progress),
+    };
+    lastSyncedAt = status.priorityStatus
+        .firstWhereOrNull((s) => s.priority == BucketPriority.fullSyncPriority)
+        ?.lastSyncedAt;
   }
 
   SyncStatus immutableSnapshot() {

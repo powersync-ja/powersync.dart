@@ -365,6 +365,22 @@ UPDATE ps_buckets SET count_since_last = 0, count_at_last = ?1->name
         });
   }
 
+  Future<String> control(String op, [Object? payload]) async {
+    return await writeTransaction(
+      (tx) async {
+        final [row] =
+            await tx.execute('SELECT powersync_control(?, ?)', [op, payload]);
+        return row.columnAt(0) as String;
+      },
+      // We flush when powersync_control yields an instruction to do so.
+      flush: false,
+    );
+  }
+
+  Future<void> flushFileSystem() async {
+    // Noop outside of web.
+  }
+
   /// Note: The asynchronous nature of this is due to this needing a global
   /// lock. The actual database operations are still synchronous, and it
   /// is assumed that multiple functions on this instance won't be called
