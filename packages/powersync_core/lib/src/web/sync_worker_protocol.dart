@@ -69,7 +69,8 @@ extension type StartSynchronization._(JSObject _) implements JSObject {
     required String databaseName,
     required int crudThrottleTimeMs,
     required int requestId,
-    required int? retryDelayMs,
+    required int retryDelayMs,
+    required String implementationName,
     String? syncParamsEncoded,
   });
 
@@ -77,6 +78,7 @@ extension type StartSynchronization._(JSObject _) implements JSObject {
   external int get requestId;
   external int get crudThrottleTimeMs;
   external int? get retryDelayMs;
+  external String? get implementationName;
   external String? get syncParamsEncoded;
 }
 
@@ -417,6 +419,7 @@ final class WorkerCommunicationChannel {
         crudThrottleTimeMs: options.crudThrottleTime.inMilliseconds,
         retryDelayMs: options.retryDelay.inMilliseconds,
         requestId: id,
+        implementationName: options.source.syncImplementation.name,
         syncParamsEncoded: switch (options.source.params) {
           null => null,
           final params => jsonEncode(params),
