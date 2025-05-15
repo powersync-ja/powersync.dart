@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:js_interop';
 
 import 'package:powersync_core/powersync_core.dart';
+import 'package:powersync_core/src/sync/options.dart';
 import 'package:sqlite_async/web.dart';
 import 'package:web/web.dart';
 
@@ -12,20 +13,18 @@ import 'sync_worker_protocol.dart';
 class SyncWorkerHandle implements StreamingSync {
   final PowerSyncDatabaseImpl database;
   final PowerSyncBackendConnector connector;
-  final int crudThrottleTimeMs;
-  final Map<String, dynamic>? syncParams;
-
+  final SyncOptions options;
   late final WorkerCommunicationChannel _channel;
 
   final StreamController<SyncStatus> _status = StreamController.broadcast();
 
-  SyncWorkerHandle._(
-      {required this.database,
-      required this.connector,
-      required this.crudThrottleTimeMs,
-      required MessagePort sendToWorker,
-      required SharedWorker worker,
-      this.syncParams}) {
+  SyncWorkerHandle._({
+    required this.database,
+    required this.connector,
+    required this.options,
+    required MessagePort sendToWorker,
+    required SharedWorker worker,
+  }) {
     _channel = WorkerCommunicationChannel(
       port: sendToWorker,
       errors: EventStreamProviders.errorEvent.forTarget(worker),
@@ -77,20 +76,19 @@ class SyncWorkerHandle implements StreamingSync {
     });
   }
 
-  static Future<SyncWorkerHandle> start(
-      {required PowerSyncDatabaseImpl database,
-      required PowerSyncBackendConnector connector,
-      required int crudThrottleTimeMs,
-      required Uri workerUri,
-      Map<String, dynamic>? syncParams}) async {
+  static Future<SyncWorkerHandle> start({
+    required PowerSyncDatabaseImpl database,
+    required PowerSyncBackendConnector connector,
+    required Uri workerUri,
+    required SyncOptions options,
+  }) async {
     final worker = SharedWorker(workerUri.toString().toJS);
     final handle = SyncWorkerHandle._(
+      options: options,
       database: database,
       connector: connector,
-      crudThrottleTimeMs: crudThrottleTimeMs,
       sendToWorker: worker.port,
       worker: worker,
-      syncParams: syncParams,
     );
 
     // Make sure that the worker is working, or throw immediately.
@@ -115,6 +113,6 @@ class SyncWorkerHandle implements StreamingSync {
   @override
   Future<void> streamingSync() async {
     await _channel.startSynchronization(
-        database.database.openFactory.path, crudThrottleTimeMs, syncParams);
+        database.database.openFactory.path, ResolvedSyncOptions(options));
   }
 }

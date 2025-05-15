@@ -5,6 +5,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:async/async.dart';
 import 'package:http/http.dart';
 import 'package:powersync_core/src/sync/stream_utils.dart';
 import 'package:test/test.dart';
@@ -131,11 +132,29 @@ void main() {
       expect(countS2, greaterThanOrEqualTo(0));
     });
 
+    test('addBroadcast - done', () async {
+      final a = StreamController<String>();
+      final b = StreamController<String>.broadcast();
+
+      final stream = StreamQueue(addBroadcast(a.stream, b.stream));
+      a.add('a1');
+      await expectLater(stream, emits('a1'));
+
+      expect(a.hasListener, isTrue);
+      expect(b.hasListener, isTrue);
+
+      b.close();
+      await expectLater(stream, emitsDone);
+
+      expect(a.hasListener, isFalse);
+      expect(b.hasListener, isFalse);
+    });
+
     test('ndjson', () async {
       var sourceData = '{"line": 1}\n{"line": 2}\n';
       var sourceBytes = Utf8Codec().encode(sourceData);
       var sourceStream = ByteStream.fromBytes(sourceBytes);
-      var parsedStream = ndjson(sourceStream);
+      var parsedStream = sourceStream.lines.parseJson;
       var data = await parsedStream.toList();
       expect(
           data,
@@ -156,7 +175,7 @@ void main() {
       }
 
       writer();
-      var parsedStream = ndjson(ByteStream(pipe.read));
+      var parsedStream = ByteStream(pipe.read).lines.parseJson;
       var data = await parsedStream.toList();
       expect(
           data,
@@ -175,7 +194,7 @@ void main() {
       }
 
       writer();
-      var parsedStream = ndjson(ByteStream(pipe.read));
+      var parsedStream = ByteStream(pipe.read).lines.parseJson;
 
       List<Object?> result = [];
       Object? error;
@@ -204,7 +223,7 @@ void main() {
       }
 
       writer();
-      var parsedStream = ndjson(ByteStream(pipe.read));
+      var parsedStream = ByteStream(pipe.read).lines.parseJson;
 
       Stream<String> stream2 =
           genStream('S2:', Duration(milliseconds: 50)).asBroadcastStream();

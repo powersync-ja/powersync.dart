@@ -29,6 +29,7 @@ void main() {
             expiresAt: DateTime.now());
       }
 
+      // ignore: deprecated_member_use_from_same_package
       db.retryDelay = Duration(milliseconds: 5000);
       var connector = TestConnector(credentialsCallback);
       await db.connect(connector: connector);

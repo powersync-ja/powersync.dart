@@ -36,7 +36,7 @@ void main() {
 
       final pdb =
           await testUtils.setupPowerSync(path: path, logger: ignoreLogger);
-      pdb.retryDelay = Duration(milliseconds: 5000);
+      const options = SyncOptions(retryDelay: Duration(seconds: 5));
       final connector = TestConnector(() async {
         return PowerSyncCredentials(endpoint: server.endpoint, token: 'token');
       });
@@ -48,7 +48,7 @@ void main() {
       Future<void> connectAndDisconnect() async {
         for (var i = 0; i < 10; i++) {
           await Future<void>.delayed(nextDelay());
-          await pdb.connect(connector: connector);
+          await pdb.connect(connector: connector, options: options);
 
           await Future<void>.delayed(nextDelay());
           await pdb.disconnect();
@@ -69,12 +69,12 @@ void main() {
 
       final pdb =
           await testUtils.setupPowerSync(path: path, logger: ignoreLogger);
-      pdb.retryDelay = Duration(milliseconds: 50);
+      const options = SyncOptions(retryDelay: Duration(seconds: 5));
       final connector = TestConnector(expectAsync0(() async {
         return PowerSyncCredentials(endpoint: server.endpoint, token: 'token');
       }));
 
-      await pdb.connect(connector: connector);
+      await pdb.connect(connector: connector, options: options);
       while (server.connectionCount != 1) {
         await Future<void>.delayed(const Duration(milliseconds: 100));
       }
@@ -107,11 +107,15 @@ void main() {
 
       final pdb = await testUtils.setupPowerSync(
           path: path, logger: ignoreLogger, initialize: false);
-      pdb.retryDelay = Duration(milliseconds: 5000);
+      const options = SyncOptions(retryDelay: Duration(seconds: 5));
 
-      await pdb.connect(connector: TestConnector(() async {
-        return PowerSyncCredentials(endpoint: server.endpoint, token: 'token');
-      }));
+      await pdb.connect(
+        connector: TestConnector(() async {
+          return PowerSyncCredentials(
+              endpoint: server.endpoint, token: 'token');
+        }),
+        options: options,
+      );
 
       await expectLater(
         pdb.statusStream,
@@ -134,9 +138,9 @@ void main() {
         }
 
         final pdb = await testUtils.setupPowerSync(path: path);
-        pdb.retryDelay = Duration(milliseconds: 5000);
+        const options = SyncOptions(retryDelay: Duration(seconds: 5));
         var connector = TestConnector(credentialsCallback);
-        pdb.connect(connector: connector);
+        pdb.connect(connector: connector, options: options);
 
         await Future<void>.delayed(Duration(milliseconds: random.nextInt(100)));
         if (random.nextBool()) {
@@ -182,9 +186,9 @@ void main() {
       }
 
       final pdb = await testUtils.setupPowerSync(path: path);
-      pdb.retryDelay = const Duration(milliseconds: 5);
+      const options = SyncOptions(retryDelay: Duration(seconds: 5));
       var connector = TestConnector(credentialsCallback);
-      pdb.connect(connector: connector);
+      pdb.connect(connector: connector, options: options);
 
       for (var i = 0; i < 10; i++) {
         server = await createServer();
@@ -209,10 +213,10 @@ void main() {
       }
 
       final pdb = await testUtils.setupPowerSync(path: path);
-      pdb.retryDelay = Duration(milliseconds: 5000);
+      const options = SyncOptions(retryDelay: Duration(seconds: 5));
       var connector = TestConnector(credentialsCallback);
-      pdb.connect(connector: connector);
-      pdb.connect(connector: connector);
+      pdb.connect(connector: connector, options: options);
+      pdb.connect(connector: connector, options: options);
 
       final watch = Stopwatch()..start();
 

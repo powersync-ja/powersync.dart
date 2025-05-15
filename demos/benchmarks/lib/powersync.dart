@@ -88,13 +88,15 @@ Future<String> getDatabasePath() async {
 
 var currentConnector = BackendConnector();
 
+const options = SyncOptions(
+  params: {'size_bucket': AppConfig.sizeBucket},
+  crudThrottleTime: Duration(milliseconds: 1),
+);
+
 Future<void> resync() async {
   await db.disconnectAndClear();
   timer.start(db);
-  db.connect(
-      connector: currentConnector,
-      params: {'size_bucket': AppConfig.sizeBucket},
-      crudThrottleTime: const Duration(milliseconds: 1));
+  db.connect(connector: currentConnector, options: options);
 }
 
 Future<void> openDatabase() async {
@@ -106,8 +108,5 @@ Future<void> openDatabase() async {
   BenchmarkItem.updateItemBenchmarks();
 
   timer.start(db);
-  db.connect(
-      connector: currentConnector,
-      params: {'size_bucket': AppConfig.sizeBucket},
-      crudThrottleTime: const Duration(milliseconds: 1));
+  db.connect(connector: currentConnector, options: options);
 }

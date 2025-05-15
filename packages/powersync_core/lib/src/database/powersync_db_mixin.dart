@@ -13,6 +13,7 @@ import 'package:powersync_core/src/powersync_update_notification.dart';
 import 'package:powersync_core/src/schema.dart';
 import 'package:powersync_core/src/schema_logic.dart';
 import 'package:powersync_core/src/schema_logic.dart' as schema_logic;
+import 'package:powersync_core/src/sync/options.dart';
 import 'package:powersync_core/src/sync/sync_status.dart';
 
 mixin PowerSyncDatabaseMixin implements SqliteConnection {
@@ -72,6 +73,7 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
   /// Delay between retrying failed requests.
   /// Defaults to 5 seconds.
   /// Only has an effect if changed before calling [connect].
+  @Deprecated('Set option when calling connect() instead')
   Duration retryDelay = const Duration(seconds: 5);
 
   @protected
@@ -269,16 +271,29 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
   ///
   /// The connection is automatically re-opened if it fails for any reason.
   ///
+  /// To set sync parameters used in your sync rules (if any), use
+  /// [SyncOptions.params]. [SyncOptions] can also be used to tune the behavior
+  /// of the sync client, see that class for more information.
+  ///
   /// Status changes are reported on [statusStream].
   Future<void> connect({
     required PowerSyncBackendConnector connector,
-    Duration crudThrottleTime = const Duration(milliseconds: 10),
-    Map<String, dynamic>? params,
+    SyncOptions? options,
+    @Deprecated('Use SyncOptions.crudThrottleTime instead')
+    Duration? crudThrottleTime,
+    @Deprecated('Use SyncOptions.params instead') Map<String, dynamic>? params,
   }) async {
     // The initialization process acquires a sync connect lock (through
     // updateSchema), so ensure the database is ready before we try to acquire
     // the lock for the connection.
     await initialize();
+
+    final resolvedOptions = SyncOptions(
+      crudThrottleTime: options?.crudThrottleTime ?? crudThrottleTime,
+      // ignore: deprecated_member_use_from_same_package
+      retryDelay: options?.retryDelay ?? retryDelay,
+      params: options?.params ?? params,
+    );
 
     clientParams = params;
     var thisConnectAborter = AbortController();
@@ -294,8 +309,7 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
 
       await connectInternal(
         connector: connector,
-        crudThrottleTime: crudThrottleTime,
-        params: params,
+        options: resolvedOptions,
         abort: thisConnectAborter,
         // Run follow-up async tasks in the parent zone, a new one is introduced
         // while we hold the lock (and async tasks won't hold the sync lock).
@@ -342,17 +356,13 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
   /// [connect] method and should not be called elsewhere.
   /// This method will only be called internally when no other sync client is
   /// active, so the method should not call [disconnect] itself.
-  ///
-  /// The [crudThrottleTime] is the throttle time between CRUD operations, it
-  /// defaults to 10 milliseconds in [connect].
   @protected
   @internal
   Future<void> connectInternal({
     required PowerSyncBackendConnector connector,
-    required Duration crudThrottleTime,
+    required SyncOptions options,
     required AbortController abort,
     required Zone asyncWorkZone,
-    Map<String, dynamic>? params,
   });
 
   /// Close the sync connection.

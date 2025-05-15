@@ -52,6 +52,7 @@ void main() {
           await testUtils.setupPowerSync(path: path, logger: testWarningLogger);
       // Use a short retry delay here.
       // A zero retry delay makes this test unstable, since it expects `2` error logs later.
+      // ignore: deprecated_member_use_from_same_package
       powersync.retryDelay = Duration(milliseconds: 100);
       var connector =
           TestConnector(credentialsCallback, uploadData: uploadData);
