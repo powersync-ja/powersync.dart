@@ -4,7 +4,6 @@ import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
 import 'package:logging/logging.dart';
-import 'package:logging/logging.dart';
 import 'package:meta/meta.dart';
 import 'package:powersync_core/src/abort_controller.dart';
 import 'package:powersync_core/src/exceptions.dart';
@@ -444,6 +443,7 @@ class StreamingSyncImplementation implements StreamingSync {
         case UploadCompleted():
           // Only relevant for the Rust sync implementation.
           break;
+        case AbortCurrentIteration():
         case TokenRefreshComplete():
           // We have a new token, so stop the iteration.
           haveInvalidated = true;
@@ -579,6 +579,7 @@ typedef BucketDescription = ({
 
 final class _ActiveRustStreamingIteration {
   final StreamingSyncImplementation sync;
+  var _isActive = true;
 
   StreamSubscription<void>? _completedUploads;
   final Completer<void> _completedStream = Completer();
@@ -591,6 +592,7 @@ final class _ActiveRustStreamingIteration {
       assert(_completedStream.isCompleted, 'Should have started streaming');
       await _completedStream.future;
     } finally {
+      _isActive = true;
       _completedUploads?.cancel();
       await _stop();
     }
@@ -604,7 +606,7 @@ final class _ActiveRustStreamingIteration {
     final events = addBroadcast(
         _receiveLines(request.request), sync._nonLineSyncEvents.stream);
 
-    listen:
+    loop:
     await for (final event in events) {
       switch (event) {
         case ReceivedLine(line: final Uint8List line):
@@ -613,10 +615,10 @@ final class _ActiveRustStreamingIteration {
           await _control('line_text', line);
         case UploadCompleted():
           await _control('completed_upload');
+        case AbortCurrentIteration():
+          break loop;
         case TokenRefreshComplete():
           await _control('refreshed_token');
-        case AbortRequested():
-          break listen;
       }
     }
   }
@@ -647,11 +649,20 @@ final class _ActiveRustStreamingIteration {
         _completedStream.complete(_handleLines(instruction));
       case UpdateSyncStatus(:final status):
         sync._state.updateStatus((m) => m.applyFromCore(status));
-      case FetchCredentials():
-        // TODO: Handle this case.
-        throw UnimplementedError();
+      case FetchCredentials(:final didExpire):
+        if (didExpire) {
+          await sync.connector.prefetchCredentials(invalidate: true);
+        } else {
+          sync.connector.prefetchCredentials().then((_) {
+            if (_isActive && !sync.aborted) {
+              sync._nonLineSyncEvents.add(const TokenRefreshComplete());
+            }
+          }, onError: (Object e, StackTrace s) {
+            sync.logger.warning('Could not prefetch credentials', e, s);
+          });
+        }
       case CloseSyncStream():
-        sync._nonLineSyncEvents.add(AbortRequested());
+        sync._nonLineSyncEvents.add(const AbortCurrentIteration());
       case FlushFileSystem():
         await sync.adapter.flushFileSystem();
       case DidCompleteSync():
@@ -676,4 +687,8 @@ final class UploadCompleted implements SyncEvent {
 
 final class TokenRefreshComplete implements SyncEvent {
   const TokenRefreshComplete();
+}
+
+final class AbortCurrentIteration implements SyncEvent {
+  const AbortCurrentIteration();
 }
