@@ -99,13 +99,19 @@ final class CoreSyncStatus {
 }
 
 final class DownloadProgress {
-  final Map<String, BucketProgress> progress;
+  final Map<String, BucketProgress> buckets;
 
-  DownloadProgress(this.progress);
+  DownloadProgress(this.buckets);
 
   factory DownloadProgress.fromJson(Map<String, Object?> line) {
-    return DownloadProgress(line.map((k, v) =>
-        MapEntry(k, _bucketProgressFromJson(v as Map<String, Object?>))));
+    final rawBuckets = line['buckets'] as Map<String, Object?>;
+
+    return DownloadProgress(rawBuckets.map((k, v) {
+      return MapEntry(
+        k,
+        _bucketProgressFromJson(v as Map<String, Object?>),
+      );
+    }));
   }
 
   static BucketProgress _bucketProgressFromJson(Map<String, Object?> json) {

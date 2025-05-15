@@ -87,7 +87,7 @@ final class MutableSyncStatus {
     priorityStatusEntries = status.priorityStatus;
     downloadProgress = switch (status.downloading) {
       null => null,
-      final downloading => InternalSyncDownloadProgress(downloading.progress),
+      final downloading => InternalSyncDownloadProgress(downloading.buckets),
     };
     lastSyncedAt = status.priorityStatus
         .firstWhereOrNull((s) => s.priority == BucketPriority.fullSyncPriority)
