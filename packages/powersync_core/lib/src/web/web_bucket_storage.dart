@@ -17,4 +17,9 @@ class WebBucketStorage extends BucketStorage {
     return _webDb.writeTransaction(callback,
         lockTimeout: lockTimeout, flush: flush);
   }
+
+  @override
+  Future<void> flushFileSystem() {
+    return _webDb.flush();
+  }
 }
