@@ -142,6 +142,7 @@ class StreamingSyncImplementation implements StreamingSync {
           // Protect sync iterations with exclusivity (if a valid Mutex is provided)
           await syncMutex.lock(() {
             switch (options.source.syncImplementation) {
+              // ignore: deprecated_member_use_from_same_package
               case SyncClientImplementation.dart:
                 return _dartStreamingSyncIteration();
               case SyncClientImplementation.rust:
@@ -574,7 +575,7 @@ String _syncErrorMessage(Object? error) {
   } else if (error is PowerSyncProtocolException) {
     return 'Protocol error';
   } else {
-    return '${error.runtimeType}';
+    return '${error.runtimeType}: $error';
   }
 }
 
@@ -598,7 +599,7 @@ final class _ActiveRustStreamingIteration {
       assert(_completedStream.isCompleted, 'Should have started streaming');
       await _completedStream.future;
     } finally {
-      _isActive = true;
+      _isActive = false;
       _completedUploads?.cancel();
       await _stop();
     }
@@ -614,6 +615,10 @@ final class _ActiveRustStreamingIteration {
 
     loop:
     await for (final event in events) {
+      if (!_isActive || sync.aborted) {
+        break;
+      }
+
       switch (event) {
         case ReceivedLine(line: final Uint8List line):
           await _control('line_binary', line);
@@ -629,7 +634,9 @@ final class _ActiveRustStreamingIteration {
     }
   }
 
-  Future<void> _stop() => _control('stop');
+  Future<void> _stop() {
+    return _control('stop');
+  }
 
   Future<void> _control(String operation, [Object? payload]) async {
     final rawResponse = await sync.adapter.control(operation, payload);
@@ -668,7 +675,10 @@ final class _ActiveRustStreamingIteration {
           });
         }
       case CloseSyncStream():
-        sync._nonLineSyncEvents.add(const AbortCurrentIteration());
+        if (!sync.aborted) {
+          _isActive = false;
+          sync._nonLineSyncEvents.add(const AbortCurrentIteration());
+        }
       case FlushFileSystem():
         await sync.adapter.flushFileSystem();
       case DidCompleteSync():

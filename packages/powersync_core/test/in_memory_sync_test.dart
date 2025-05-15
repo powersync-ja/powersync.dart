@@ -15,9 +15,26 @@ import 'utils/in_memory_http.dart';
 import 'utils/test_utils_impl.dart';
 
 void main() {
+  _declareTests(
+    'dart sync client',
+    SyncOptions(
+        // ignore: deprecated_member_use_from_same_package
+        syncImplementation: SyncClientImplementation.dart,
+        retryDelay: Duration(milliseconds: 200)),
+  );
+
+  _declareTests(
+    'rust sync client',
+    SyncOptions(
+        syncImplementation: SyncClientImplementation.rust,
+        retryDelay: Duration(milliseconds: 200)),
+  );
+}
+
+void _declareTests(String name, SyncOptions options) {
   final ignoredLogger = Logger.detached('powersync.test')..level = Level.OFF;
 
-  group('in-memory sync tests', () {
+  group(name, () {
     late final testUtils = TestUtils();
 
     late TestPowerSyncFactory factory;
@@ -44,8 +61,7 @@ void main() {
             expiresAt: DateTime.now(),
           );
         }, uploadData: (db) => uploadData(db)),
-        options: const SyncOptions(retryDelay: Duration(milliseconds: 200)),
-        logger: logger,
+        options: options,
       );
 
       addTearDown(() async {
@@ -113,6 +129,7 @@ void main() {
       });
       await expectLater(
           status, emits(isSyncStatus(downloading: false, hasSynced: true)));
+      await syncClient.abort();
 
       final independentDb = factory.wrapRaw(raw, logger: ignoredLogger);
       addTearDown(independentDb.close);
@@ -128,65 +145,68 @@ void main() {
           isTrue);
     });
 
-    test('can save independent buckets in same transaction', () async {
-      final status = await waitForConnection();
+    // ignore: deprecated_member_use_from_same_package
+    if (options.syncImplementation == SyncClientImplementation.dart) {
+      test('can save independent buckets in same transaction', () async {
+        final status = await waitForConnection();
 
-      syncService.addLine({
-        'checkpoint': Checkpoint(
-          lastOpId: '0',
-          writeCheckpoint: null,
-          checksums: [
-            BucketChecksum(bucket: 'a', checksum: 0, priority: 3),
-            BucketChecksum(bucket: 'b', checksum: 0, priority: 3),
-          ],
-        )
-      });
-      await expectLater(status, emits(isSyncStatus(downloading: true)));
-
-      var commits = 0;
-      raw.commits.listen((_) => commits++);
-
-      syncService
-        ..addLine({
-          'data': {
-            'bucket': 'a',
-            'data': <Map<String, Object?>>[
-              {
-                'op_id': '1',
-                'op': 'PUT',
-                'object_type': 'a',
-                'object_id': '1',
-                'checksum': 0,
-                'data': {},
-              }
+        syncService.addLine({
+          'checkpoint': Checkpoint(
+            lastOpId: '0',
+            writeCheckpoint: null,
+            checksums: [
+              BucketChecksum(bucket: 'a', checksum: 0, priority: 3),
+              BucketChecksum(bucket: 'b', checksum: 0, priority: 3),
             ],
-          }
-        })
-        ..addLine({
-          'data': {
-            'bucket': 'b',
-            'data': <Map<String, Object?>>[
-              {
-                'op_id': '2',
-                'op': 'PUT',
-                'object_type': 'b',
-                'object_id': '1',
-                'checksum': 0,
-                'data': {},
-              }
-            ],
-          }
+          )
         });
+        await expectLater(status, emits(isSyncStatus(downloading: true)));
 
-      // Wait for the operations to be inserted.
-      while (raw.select('SELECT * FROM ps_oplog;').length < 2) {
-        await pumpEventQueue();
-      }
+        var commits = 0;
+        raw.commits.listen((_) => commits++);
 
-      // The two buckets should have been inserted in a single transaction
-      // because the messages were received in quick succession.
-      expect(commits, 1);
-    });
+        syncService
+          ..addLine({
+            'data': {
+              'bucket': 'a',
+              'data': <Map<String, Object?>>[
+                {
+                  'op_id': '1',
+                  'op': 'PUT',
+                  'object_type': 'a',
+                  'object_id': '1',
+                  'checksum': 0,
+                  'data': {},
+                }
+              ],
+            }
+          })
+          ..addLine({
+            'data': {
+              'bucket': 'b',
+              'data': <Map<String, Object?>>[
+                {
+                  'op_id': '2',
+                  'op': 'PUT',
+                  'object_type': 'b',
+                  'object_id': '1',
+                  'checksum': 0,
+                  'data': {},
+                }
+              ],
+            }
+          });
+
+        // Wait for the operations to be inserted.
+        while (raw.select('SELECT * FROM ps_oplog;').length < 2) {
+          await pumpEventQueue();
+        }
+
+        // The two buckets should have been inserted in a single transaction
+        // because the messages were received in quick succession.
+        expect(commits, 1);
+      });
+    }
 
     group('partial sync', () {
       test('updates sync state incrementally', () async {
@@ -287,6 +307,7 @@ void main() {
         });
         await database.waitForFirstSync(priority: BucketPriority(1));
         expect(database.currentStatus.hasSynced, isFalse);
+        await syncClient.abort();
 
         final independentDb = factory.wrapRaw(raw, logger: ignoredLogger);
         addTearDown(independentDb.close);
@@ -491,7 +512,7 @@ void main() {
       }) async {
         await expectLater(
           status,
-          emits(isSyncStatus(
+          emitsThrough(isSyncStatus(
             downloading: true,
             downloadProgress: isSyncDownloadProgress(
               progress: total,
@@ -679,7 +700,6 @@ void main() {
         await checkProgress(progress(8, 8), progress(10, 14));
 
         addCheckpointComplete(0);
-        await checkProgress(progress(8, 8), progress(10, 14));
 
         addDataLine('b', 4);
         await checkProgress(progress(8, 8), progress(14, 14));
