@@ -9,6 +9,7 @@ import 'package:powersync_core/src/sync/streaming_sync.dart';
 import 'package:powersync_core/src/sync/protocol.dart';
 import 'package:test/test.dart';
 
+import 'bucket_storage_test.dart';
 import 'server/sync_server/in_memory_sync_server.dart';
 import 'utils/abstract_test_utils.dart';
 import 'utils/in_memory_http.dart';
@@ -652,6 +653,23 @@ void main() {
         await expectLater(status,
             emits(isSyncStatus(downloading: false, downloadProgress: isNull)));
       });
+    });
+
+    test('stopping closes connections', () async {
+      final status = await waitForConnection();
+
+      syncService.addLine({
+        'checkpoint': Checkpoint(
+          lastOpId: '4',
+          writeCheckpoint: null,
+          checksums: [checksum(bucket: 'a', checksum: 0)],
+        )
+      });
+
+      await expectLater(status, emits(isSyncStatus(downloading: true)));
+      await syncClient.abort();
+
+      expect(syncService.controller.hasListener, isFalse);
     });
   });
 }
