@@ -38,6 +38,7 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
   /// Use [attachedLogger] to propagate logs to [Logger.root] for custom logging.
   Logger get logger;
 
+  @Deprecated("This field is unused, pass params to connect() instead")
   Map<String, dynamic>? clientParams;
 
   /// Current connection status.
@@ -281,7 +282,7 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
     SyncOptions? options,
     @Deprecated('Use SyncOptions.crudThrottleTime instead')
     Duration? crudThrottleTime,
-    @Deprecated('Use SyncOptions.params instead') Map<String, dynamic>? params,
+    Map<String, dynamic>? params,
   }) async {
     // The initialization process acquires a sync connect lock (through
     // updateSchema), so ensure the database is ready before we try to acquire
@@ -295,6 +296,7 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
       params: options?.params ?? params,
     );
 
+    // ignore: deprecated_member_use_from_same_package
     clientParams = params;
     var thisConnectAborter = AbortController();
     final zone = Zone.current;
