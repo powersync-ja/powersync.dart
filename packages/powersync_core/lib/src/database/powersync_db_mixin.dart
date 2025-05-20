@@ -289,11 +289,10 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
     // the lock for the connection.
     await initialize();
 
-    final resolvedOptions = SyncOptions(
-      crudThrottleTime: options?.crudThrottleTime ?? crudThrottleTime,
-      // ignore: deprecated_member_use_from_same_package
-      retryDelay: options?.retryDelay ?? retryDelay,
-      params: options?.params ?? params,
+    final resolvedOptions = ResolvedSyncOptions.resolve(
+      options,
+      crudThrottleTime: crudThrottleTime,
+      params: params,
     );
 
     // ignore: deprecated_member_use_from_same_package
@@ -362,7 +361,7 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
   @internal
   Future<void> connectInternal({
     required PowerSyncBackendConnector connector,
-    required SyncOptions options,
+    required ResolvedSyncOptions options,
     required AbortController abort,
     required Zone asyncWorkZone,
   });

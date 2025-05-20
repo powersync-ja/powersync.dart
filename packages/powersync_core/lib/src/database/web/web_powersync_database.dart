@@ -118,10 +118,8 @@ class PowerSyncDatabaseImpl
     required PowerSyncBackendConnector connector,
     required AbortController abort,
     required Zone asyncWorkZone,
-    required SyncOptions options,
+    required ResolvedSyncOptions options,
   }) async {
-    final resolved = ResolvedSyncOptions(options);
-
     final storage = BucketStorage(database);
     StreamingSync sync;
     // Try using a shared worker for the synchronization implementation to avoid
@@ -130,7 +128,7 @@ class PowerSyncDatabaseImpl
       sync = await SyncWorkerHandle.start(
         database: this,
         connector: connector,
-        options: options,
+        options: options.source,
         workerUri: Uri.base.resolve('/powersync_sync.worker.js'),
       );
     } catch (e) {
@@ -139,13 +137,13 @@ class PowerSyncDatabaseImpl
         e,
       );
       final crudStream =
-          database.onChange(['ps_crud'], throttle: resolved.crudThrottleTime);
+          database.onChange(['ps_crud'], throttle: options.crudThrottleTime);
 
       sync = StreamingSyncImplementation(
         adapter: storage,
         connector: InternalConnector.wrap(connector, this),
         crudUpdateTriggerStream: crudStream,
-        options: resolved,
+        options: options,
         client: BrowserClient(),
         // Only allows 1 sync implementation to run at a time per database
         // This should be global (across tabs) when using Navigator locks.
