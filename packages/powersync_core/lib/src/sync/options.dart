@@ -33,6 +33,18 @@ final class SyncOptions {
     this.params,
     this.syncImplementation = SyncClientImplementation.defaultClient,
   });
+
+  SyncOptions _copyWith({
+    Duration? crudThrottleTime,
+    Map<String, dynamic>? params,
+  }) {
+    return SyncOptions(
+      crudThrottleTime: crudThrottleTime ?? this.crudThrottleTime,
+      retryDelay: retryDelay,
+      params: params ?? this.params,
+      syncImplementation: syncImplementation,
+    );
+  }
 }
 
 /// The PowerSync SDK offers two different implementations for receiving sync
@@ -63,6 +75,17 @@ enum SyncClientImplementation {
 
 @internal
 extension type ResolvedSyncOptions(SyncOptions source) {
+  factory ResolvedSyncOptions.resolve(
+    SyncOptions? source, {
+    Duration? crudThrottleTime,
+    Map<String, dynamic>? params,
+  }) {
+    return ResolvedSyncOptions((source ?? SyncOptions())._copyWith(
+      crudThrottleTime: crudThrottleTime,
+      params: params,
+    ));
+  }
+
   Duration get crudThrottleTime =>
       source.crudThrottleTime ?? const Duration(milliseconds: 10);
 
