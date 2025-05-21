@@ -292,6 +292,8 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
     final resolvedOptions = ResolvedSyncOptions.resolve(
       options,
       crudThrottleTime: crudThrottleTime,
+      // ignore: deprecated_member_use_from_same_package
+      retryDelay: retryDelay,
       params: params,
     );
 
