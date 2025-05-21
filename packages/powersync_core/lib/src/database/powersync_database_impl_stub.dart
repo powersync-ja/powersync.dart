@@ -6,6 +6,7 @@ import 'package:powersync_core/sqlite_async.dart';
 import 'package:powersync_core/src/abort_controller.dart';
 import 'package:powersync_core/src/database/powersync_db_mixin.dart';
 import 'package:powersync_core/src/open_factory/abstract_powersync_open_factory.dart';
+import '../sync/options.dart';
 import 'powersync_database.dart';
 
 import '../connector.dart';
@@ -110,12 +111,12 @@ class PowerSyncDatabaseImpl
 
   @override
   @internal
-  Future<void> connectInternal(
-      {required PowerSyncBackendConnector connector,
-      required Duration crudThrottleTime,
-      required AbortController abort,
-      required Zone asyncWorkZone,
-      Map<String, dynamic>? params}) {
+  Future<void> connectInternal({
+    required PowerSyncBackendConnector connector,
+    required AbortController abort,
+    required Zone asyncWorkZone,
+    required SyncOptions options,
+  }) {
     throw UnimplementedError();
   }
 

@@ -11,9 +11,11 @@ import 'package:powersync_core/src/log.dart';
 import 'package:powersync_core/src/open_factory/abstract_powersync_open_factory.dart';
 import 'package:powersync_core/src/open_factory/web/web_open_factory.dart';
 import 'package:powersync_core/src/schema.dart';
+import 'package:powersync_core/src/sync/internal_connector.dart';
 import 'package:powersync_core/src/sync/streaming_sync.dart';
 import 'package:sqlite_async/sqlite_async.dart';
 
+import '../../sync/options.dart';
 import '../../web/sync_controller.dart';
 
 /// A PowerSync managed database.
@@ -114,13 +116,11 @@ class PowerSyncDatabaseImpl
   @internal
   Future<void> connectInternal({
     required PowerSyncBackendConnector connector,
-    required Duration crudThrottleTime,
     required AbortController abort,
     required Zone asyncWorkZone,
-    Map<String, dynamic>? params,
+    required SyncOptions options,
   }) async {
-    final crudStream =
-        database.onChange(['ps_crud'], throttle: crudThrottleTime);
+    final resolved = ResolvedSyncOptions(options);
 
     final storage = BucketStorage(database);
     StreamingSync sync;
@@ -130,25 +130,23 @@ class PowerSyncDatabaseImpl
       sync = await SyncWorkerHandle.start(
         database: this,
         connector: connector,
-        crudThrottleTimeMs: crudThrottleTime.inMilliseconds,
+        options: options,
         workerUri: Uri.base.resolve('/powersync_sync.worker.js'),
-        syncParams: params,
       );
     } catch (e) {
       logger.warning(
         'Could not use shared worker for synchronization, falling back to locks.',
         e,
       );
+      final crudStream =
+          database.onChange(['ps_crud'], throttle: resolved.crudThrottleTime);
 
       sync = StreamingSyncImplementation(
         adapter: storage,
-        credentialsCallback: connector.getCredentialsCached,
-        invalidCredentialsCallback: connector.prefetchCredentials,
-        uploadCrud: () => connector.uploadData(this),
+        connector: InternalConnector.wrap(connector, this),
         crudUpdateTriggerStream: crudStream,
-        retryDelay: Duration(seconds: 3),
+        options: resolved,
         client: BrowserClient(),
-        syncParameters: params,
         // Only allows 1 sync implementation to run at a time per database
         // This should be global (across tabs) when using Navigator locks.
         identifier: database.openFactory.path,

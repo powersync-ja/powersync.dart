@@ -86,6 +86,7 @@ void main() {
           schema: defaultSchema,
           maxReaders: 3);
       // Shorter retry delay, to speed up tests
+      // ignore: deprecated_member_use_from_same_package
       db.retryDelay = Duration(milliseconds: 10);
       addTearDown(() => {db.close()});
       await db.initialize();

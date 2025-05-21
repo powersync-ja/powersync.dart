@@ -1,10 +1,10 @@
 import 'dart:async';
 
-import 'package:http/http.dart';
 import 'dart:convert' as convert;
 
 /// Inject a broadcast stream into a normal stream.
 Stream<T> addBroadcast<T>(Stream<T> a, Stream<T> broadcast) {
+  assert(broadcast.isBroadcast);
   return mergeStreams([a, broadcast]);
 }
 
@@ -18,19 +18,34 @@ Stream<T> mergeStreams<T>(List<Stream<T>> streams) {
   final controller = StreamController<T>(sync: true);
 
   List<StreamSubscription<T>>? subscriptions;
+  var isClosing = false;
 
   controller.onListen = () {
     subscriptions = streams.map((stream) {
-      return stream.listen((event) {
-        return controller.add(event);
-      }, onDone: () {
-        controller.close();
-      }, onError: controller.addError);
+      return stream.listen(
+        (event) {
+          return controller.add(event);
+        },
+        onError: controller.addError,
+        onDone: () async {
+          if (!isClosing) {
+            isClosing = true;
+
+            try {
+              await cancelAll(subscriptions!);
+            } catch (e, s) {
+              controller.addError(e, s);
+            } finally {
+              controller.close();
+            }
+          }
+        },
+      );
     }).toList();
   };
 
   controller.onCancel = () {
-    if (subscriptions != null) {
+    if (subscriptions != null && !isClosing) {
       // Important: The Future must be returned here.
       // Since calling cancel on one of the subscriptions may error,
       // not returning the Future may result in an unhandled error.
@@ -53,19 +68,19 @@ Stream<T> mergeStreams<T>(List<Stream<T>> streams) {
   return controller.stream;
 }
 
-/// Given a raw ByteStream, parse each line as JSON.
-Stream<Object?> ndjson(ByteStream input) {
-  final textInput = input.transform(convert.utf8.decoder);
-  final lineInput = textInput.transform(const convert.LineSplitter());
-  final jsonInput = lineInput.transform(
-      StreamTransformer.fromHandlers(handleError: (error, stackTrace, sink) {
-    /// On Web if the connection is closed, this error will throw, but
-    /// the stream is never closed. This closes the stream on error.
-    sink.close();
-  }, handleData: (String data, EventSink<dynamic> sink) {
-    sink.add(convert.jsonDecode(data));
-  }));
-  return jsonInput;
+extension ByteStreamToLines on Stream<List<int>> {
+  /// Decodes this stream using UTF8 and then splits the text stream by
+  /// newlines.
+  Stream<String> get lines {
+    final textInput = transform(convert.utf8.decoder);
+    return textInput.transform(const convert.LineSplitter());
+  }
+}
+
+extension StreamToJson on Stream<String> {
+  Stream<Object?> get parseJson {
+    return map(convert.jsonDecode);
+  }
 }
 
 void pauseAll(List<StreamSubscription<void>> subscriptions) {

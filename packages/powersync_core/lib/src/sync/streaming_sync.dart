@@ -2,16 +2,19 @@ import 'dart:async';
 import 'dart:convert' as convert;
 
 import 'package:http/http.dart' as http;
+import 'package:logging/logging.dart';
 import 'package:meta/meta.dart';
 import 'package:powersync_core/src/abort_controller.dart';
 import 'package:powersync_core/src/exceptions.dart';
 import 'package:powersync_core/src/log_internal.dart';
+import 'package:powersync_core/src/sync/options.dart';
 import 'package:powersync_core/src/user_agent/user_agent.dart';
 import 'package:sqlite_async/mutex.dart';
 
 import 'bucket_storage.dart';
-import '../connector.dart';
 import '../crud.dart';
+
+import 'internal_connector.dart';
 import 'mutable_sync_status.dart';
 import 'stream_utils.dart';
 import 'sync_status.dart';
@@ -29,10 +32,11 @@ abstract interface class StreamingSync {
 @internal
 class StreamingSyncImplementation implements StreamingSync {
   final BucketStorage adapter;
+  final InternalConnector connector;
+  final ResolvedSyncOptions options;
 
-  final Future<PowerSyncCredentials?> Function() credentialsCallback;
-  final Future<void> Function()? invalidCredentialsCallback;
-  final Future<void> Function() uploadCrud;
+  final Logger logger = isolateLogger;
+
   final Stream<void> crudUpdateTriggerStream;
 
   // An internal controller which is used to trigger CRUD uploads internally
@@ -43,33 +47,24 @@ class StreamingSyncImplementation implements StreamingSync {
       StreamController<Null>.broadcast();
 
   final http.Client _client;
+
   final SyncStatusStateStream _state = SyncStatusStateStream();
-
-  final StreamController<Null> _localPingController =
-      StreamController.broadcast();
-
-  final Duration retryDelay;
-
-  final Map<String, dynamic>? syncParameters;
 
   AbortController? _abort;
 
-  bool _safeToClose = true;
-
   final Mutex syncMutex, crudMutex;
   Completer<void>? _activeCrudUpload;
+  final StreamController<SyncEvent> _nonLineSyncEvents =
+      StreamController.broadcast();
 
   final Map<String, String> _userAgentHeaders;
   String? clientId;
 
   StreamingSyncImplementation({
     required this.adapter,
-    required this.credentialsCallback,
-    this.invalidCredentialsCallback,
-    required this.uploadCrud,
+    required this.connector,
     required this.crudUpdateTriggerStream,
-    required this.retryDelay,
-    this.syncParameters,
+    required this.options,
     required http.Client client,
     Mutex? syncMutex,
     Mutex? crudMutex,
@@ -82,36 +77,42 @@ class StreamingSyncImplementation implements StreamingSync {
         crudMutex = crudMutex ?? Mutex(identifier: "crud-$identifier"),
         _userAgentHeaders = userAgentHeaders();
 
+  Duration get _retryDelay => options.retryDelay;
+
   @override
   Stream<SyncStatus> get statusStream => _state.statusStream;
 
   @override
   Future<void> abort() async {
     // If streamingSync() hasn't been called yet, _abort will be null.
-    var future = _abort?.abort();
-    // This immediately triggers a new iteration in the merged stream, allowing us
-    // to break immediately.
-    // However, we still need to close the underlying stream explicitly, otherwise
-    // the break will wait for the next line of data received on the stream.
-    _localPingController.add(null);
-    // According to the documentation, the behavior is undefined when calling
-    // close() while requests are pending. However, this is no other
-    // known way to cancel open streams, and this appears to end the stream with
-    // a consistent ClientException if a request is open.
-    // We avoid closing the client while opening a request, as that does cause
-    // unpredicable uncaught errors.
-    if (_safeToClose) {
+    if (_abort case final abort?) {
+      final future = abort.abort();
+      _internalCrudTriggerController.close();
+
+      // If a sync iteration is active, the control flow to abort is:
+      //
+      //  1. We close the non-line sync event stream here.
+      //  2. This emits a done event.
+      //  3. `addBroadcastStream` will cancel all source subscriptions in
+      //      response to that, and then emit a done event too. If there is an
+      //      error while cancelling the stream, it's forwarded by emitting an
+      //      error before closing.
+      //  4. We break out of the sync loop (either due to an error or because
+      //     all resources have been closed correctly).
+      //  5. `streamingSync` completes the abort controller, which we await
+      //     here.
+      await _nonLineSyncEvents.close();
+
+      // Wait for the abort to complete, which also guarantees that no requests
+      // are pending.
+      await Future.wait([
+        future,
+        if (_activeCrudUpload case final activeUpload?) activeUpload.future,
+      ]);
+
       _client.close();
+      _state.close();
     }
-
-    await _internalCrudTriggerController.close();
-
-    // wait for completeAbort() to be called
-    await future;
-
-    // Now close the client in all cases not covered above
-    _client.close();
-    _state.close();
   }
 
   bool get aborted {
@@ -128,15 +129,16 @@ class StreamingSyncImplementation implements StreamingSync {
       while (!aborted) {
         _state.updateStatus((s) => s.setConnectingIfNotConnected());
         try {
-          if (invalidCredentials && invalidCredentialsCallback != null) {
+          if (invalidCredentials) {
             // This may error. In that case it will be retried again on the next
             // iteration.
-            await invalidCredentialsCallback!();
+            await connector.prefetchCredentials();
             invalidCredentials = false;
           }
           // Protect sync iterations with exclusivity (if a valid Mutex is provided)
-          await syncMutex.lock(() => streamingSyncIteration(),
-              timeout: retryDelay);
+          await syncMutex.lock(() {
+            return _streamingSyncIteration();
+          }, timeout: _retryDelay);
         } catch (e, stacktrace) {
           if (aborted && e is http.ClientException) {
             // Explicit abort requested - ignore. Example error:
@@ -144,7 +146,7 @@ class StreamingSyncImplementation implements StreamingSync {
             return;
           }
           final message = _syncErrorMessage(e);
-          isolateLogger.warning('Sync error: $message', e, stacktrace);
+          logger.warning('Sync error: $message', e, stacktrace);
           invalidCredentials = true;
 
           _state.updateStatus((s) => s.applyDownloadError(e));
@@ -196,7 +198,7 @@ class StreamingSyncImplementation implements StreamingSync {
             _state.updateStatus((s) => s.uploading = true);
             if (nextCrudItem.clientId == checkedCrudItem?.clientId) {
               // This will force a higher log level than exceptions which are caught here.
-              isolateLogger.warning(
+              logger.warning(
                   """Potentially previously uploaded CRUD entries are still present in the upload queue. 
                 Make sure to handle uploads and complete CRUD transactions or batches by calling and awaiting their [.complete()] method.
                 The next upload iteration will be delayed.""");
@@ -205,7 +207,7 @@ class StreamingSyncImplementation implements StreamingSync {
             }
 
             checkedCrudItem = nextCrudItem;
-            await uploadCrud();
+            await connector.uploadCrud();
             _state.updateStatus((s) => s.uploadError = null);
           } else {
             // Uploading is completed
@@ -214,7 +216,7 @@ class StreamingSyncImplementation implements StreamingSync {
           }
         } catch (e, stacktrace) {
           checkedCrudItem = null;
-          isolateLogger.warning('Data upload error', e, stacktrace);
+          logger.warning('Data upload error', e, stacktrace);
           _state.updateStatus((s) => s.applyUploadError(e));
           await _delayRetry();
 
@@ -222,7 +224,7 @@ class StreamingSyncImplementation implements StreamingSync {
             // Exit the upload loop if the sync stream is no longer connected
             break;
           }
-          isolateLogger.warning(
+          logger.warning(
               "Caught exception when uploading. Upload will retry after a delay",
               e,
               stacktrace);
@@ -230,7 +232,11 @@ class StreamingSyncImplementation implements StreamingSync {
           _state.updateStatus((s) => s.uploading = false);
         }
       }
-    }, timeout: retryDelay).whenComplete(() {
+    }, timeout: _retryDelay).whenComplete(() {
+      if (!aborted) {
+        _nonLineSyncEvents.add(const UploadCompleted());
+      }
+
       assert(identical(_activeCrudUpload, completer));
       _activeCrudUpload = null;
       completer.complete();
@@ -238,7 +244,7 @@ class StreamingSyncImplementation implements StreamingSync {
   }
 
   Future<String> getWriteCheckpoint() async {
-    final credentials = await credentialsCallback();
+    final credentials = await connector.getCredentialsCached();
     if (credentials == null) {
       throw CredentialsException("Not logged in");
     }
@@ -253,9 +259,7 @@ class StreamingSyncImplementation implements StreamingSync {
 
     final response = await _client.get(uri, headers: headers);
     if (response.statusCode == 401) {
-      if (invalidCredentialsCallback != null) {
-        await invalidCredentialsCallback!();
-      }
+      await connector.prefetchCredentials();
     }
     if (response.statusCode != 200) {
       throw SyncResponseException.fromResponse(response);
@@ -291,20 +295,19 @@ class StreamingSyncImplementation implements StreamingSync {
     return (initialRequests, localDescriptions);
   }
 
-  Future<void> streamingSyncIteration() async {
+  Future<void> _streamingSyncIteration() async {
     var (bucketRequests, bucketMap) = await _collectLocalBucketState();
     if (aborted) {
       return;
     }
 
     Checkpoint? targetCheckpoint;
-    Checkpoint? validatedCheckpoint;
-    Checkpoint? appliedCheckpoint;
 
-    var requestStream = streamingSyncRequest(
-        StreamingSyncRequest(bucketRequests, syncParameters, clientId!));
+    var requestStream = _streamingSyncRequest(
+            StreamingSyncRequest(bucketRequests, options.params, clientId!))
+        .map(ReceivedLine.new);
 
-    var merged = addBroadcast(requestStream, _localPingController.stream);
+    var merged = addBroadcast(requestStream, _nonLineSyncEvents.stream);
 
     Future<void>? credentialsInvalidation;
     bool haveInvalidated = false;
@@ -312,12 +315,7 @@ class StreamingSyncImplementation implements StreamingSync {
     // Trigger a CRUD upload on reconnect
     _internalCrudTriggerController.add(null);
 
-    await for (var line in merged) {
-      if (aborted) {
-        break;
-      }
-
-      _state.updateStatus((s) => s.setConnected());
+    Future<void> handleLine(StreamingSyncLine line) async {
       switch (line) {
         case Checkpoint():
           targetCheckpoint = line;
@@ -339,10 +337,6 @@ class StreamingSyncImplementation implements StreamingSync {
           final result = await _applyCheckpoint(targetCheckpoint!, _abort);
           if (result.abort) {
             return;
-          }
-          validatedCheckpoint = targetCheckpoint;
-          if (result.didApply) {
-            appliedCheckpoint = targetCheckpoint;
           }
         case StreamingSyncCheckpointPartiallyComplete(:final bucketPriority):
           final result = await adapter.syncLocalDatabase(targetCheckpoint!,
@@ -372,7 +366,7 @@ class StreamingSyncImplementation implements StreamingSync {
           }
           final diff = line;
           final Map<String, BucketChecksum> newBuckets = {};
-          for (var checksum in targetCheckpoint.checksums) {
+          for (var checksum in targetCheckpoint!.checksums) {
             newBuckets[checksum.bucket] = checksum;
           }
           for (var checksum in diff.updatedBuckets) {
@@ -394,7 +388,7 @@ class StreamingSyncImplementation implements StreamingSync {
           bucketMap = newBuckets.map((name, checksum) =>
               MapEntry(name, (name: name, priority: checksum.priority)));
           await adapter.removeBuckets(diff.removedBuckets);
-          adapter.setTargetCheckpoint(targetCheckpoint);
+          adapter.setTargetCheckpoint(targetCheckpoint!);
         case SyncDataBatch():
           // TODO: This increments the counters before actually saving sync
           // data. Might be fine though?
@@ -403,40 +397,44 @@ class StreamingSyncImplementation implements StreamingSync {
         case StreamingSyncKeepalive(:final tokenExpiresIn):
           if (tokenExpiresIn == 0) {
             // Token expired already - stop the connection immediately
-            invalidCredentialsCallback?.call().ignore();
+            connector.prefetchCredentials(invalidate: true).ignore();
             break;
           } else if (tokenExpiresIn <= 30) {
             // Token expires soon - refresh it in the background
-            if (credentialsInvalidation == null &&
-                invalidCredentialsCallback != null) {
-              credentialsInvalidation = invalidCredentialsCallback!().then((_) {
-                // Token has been refreshed - we should restart the connection.
-                haveInvalidated = true;
-                // trigger next loop iteration ASAP, don't wait for another
-                // message from the server.
-                _localPingController.add(null);
-              }, onError: (_) {
-                // Token refresh failed - retry on next keepalive.
-                credentialsInvalidation = null;
-              });
-            }
+            credentialsInvalidation ??=
+                connector.prefetchCredentials().then((_) {
+              // Token has been refreshed - we should restart the connection.
+              haveInvalidated = true;
+              // trigger next loop iteration ASAP, don't wait for another
+              // message from the server.
+              if (!aborted) {
+                _nonLineSyncEvents.add(TokenRefreshComplete());
+              }
+            }, onError: (_) {
+              // Token refresh failed - retry on next keepalive.
+              credentialsInvalidation = null;
+            });
           }
         case UnknownSyncLine(:final rawData):
-          isolateLogger.fine('Unknown sync line: $rawData');
-        case null: // Local ping
-          if (targetCheckpoint == appliedCheckpoint) {
-            if (appliedCheckpoint case final completed?) {
-              _state.updateStatus((s) => s.applyCheckpointReached(completed));
-            }
-          } else if (validatedCheckpoint == targetCheckpoint) {
-            final result = await _applyCheckpoint(targetCheckpoint!, _abort);
-            if (result.abort) {
-              return;
-            }
-            if (result.didApply) {
-              appliedCheckpoint = targetCheckpoint;
-            }
-          }
+          logger.fine('Unknown sync line: $rawData');
+      }
+    }
+
+    await for (var line in merged) {
+      if (aborted || haveInvalidated) {
+        break;
+      }
+
+      switch (line) {
+        case ReceivedLine(:final line):
+          _state.updateStatus((s) => s.setConnected());
+          await handleLine(line as StreamingSyncLine);
+        case UploadCompleted():
+          // Only relevant for the Rust sync implementation.
+          break;
+        case TokenRefreshComplete():
+          // We have a new token, so stop the iteration.
+          haveInvalidated = true;
       }
 
       if (haveInvalidated) {
@@ -460,7 +458,7 @@ class StreamingSyncImplementation implements StreamingSync {
       // We have pending entries in the local upload queue or are waiting to
       // confirm a write checkpoint, which prevented this checkpoint from
       // applying. Wait for that to complete and try again.
-      isolateLogger.fine('Could not apply checkpoint due to local data. '
+      logger.fine('Could not apply checkpoint due to local data. '
           'Waiting for in-progress upload before retrying...');
       await Future.any([
         pendingUpload.future,
@@ -476,21 +474,20 @@ class StreamingSyncImplementation implements StreamingSync {
     }
 
     if (result.checkpointValid && result.ready) {
-      isolateLogger.fine('validated checkpoint: $targetCheckpoint');
+      logger.fine('validated checkpoint: $targetCheckpoint');
 
       _state.updateStatus((s) => s.applyCheckpointReached(targetCheckpoint));
 
       return const (abort: false, didApply: true);
     } else {
-      isolateLogger.fine(
+      logger.fine(
           'Could not apply checkpoint. Waiting for next sync complete line');
       return const (abort: false, didApply: false);
     }
   }
 
-  Stream<StreamingSyncLine> streamingSyncRequest(
-      StreamingSyncRequest data) async* {
-    final credentials = await credentialsCallback();
+  Future<http.StreamedResponse?> _postStreamRequest(Object? data) async {
+    final credentials = await connector.getCredentialsCached();
     if (credentials == null) {
       throw CredentialsException('Not logged in');
     }
@@ -503,38 +500,39 @@ class StreamingSyncImplementation implements StreamingSync {
 
     request.body = convert.jsonEncode(data);
 
-    http.StreamedResponse res;
-    try {
-      // Do not close the client during the request phase - this causes uncaught errors.
-      _safeToClose = false;
-      res = await _client.send(request);
-    } finally {
-      _safeToClose = true;
-    }
+    final res = await _client.send(request);
     if (aborted) {
-      return;
+      return null;
     }
 
     if (res.statusCode == 401) {
-      if (invalidCredentialsCallback != null) {
-        await invalidCredentialsCallback!();
-      }
+      await connector.prefetchCredentials(invalidate: true);
     }
     if (res.statusCode != 200) {
       throw await SyncResponseException.fromStreamedResponse(res);
     }
 
-    // Note: The response stream is automatically closed when this loop errors
-    yield* ndjson(res.stream)
+    return res;
+  }
+
+  Stream<String> _rawStreamingSyncRequest(Object? data) async* {
+    final response = await _postStreamRequest(data);
+    if (response != null) {
+      yield* response.stream.lines;
+    }
+  }
+
+  Stream<StreamingSyncLine> _streamingSyncRequest(StreamingSyncRequest data) {
+    return _rawStreamingSyncRequest(data)
+        .parseJson
         .cast<Map<String, dynamic>>()
-        .transform(StreamingSyncLine.reader)
-        .takeWhile((_) => !aborted);
+        .transform(StreamingSyncLine.reader);
   }
 
   /// Delays the standard `retryDelay` Duration, but exits early if
   /// an abort has been requested.
   Future<void> _delayRetry() async {
-    await Future.any([Future<void>.delayed(retryDelay), _abort!.onAbort]);
+    await Future.any([Future<void>.delayed(_retryDelay), _abort!.onAbort]);
   }
 }
 
@@ -566,3 +564,19 @@ typedef BucketDescription = ({
   String name,
   int priority,
 });
+
+sealed class SyncEvent {}
+
+final class ReceivedLine implements SyncEvent {
+  final Object /* String|Uint8List|StreamingSyncLine */ line;
+
+  const ReceivedLine(this.line);
+}
+
+final class UploadCompleted implements SyncEvent {
+  const UploadCompleted();
+}
+
+final class TokenRefreshComplete implements SyncEvent {
+  const TokenRefreshComplete();
+}
