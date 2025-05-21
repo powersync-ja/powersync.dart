@@ -1,8 +1,8 @@
 import 'dart:async';
 
 import 'package:collection/collection.dart';
-import 'package:powersync_core/src/sync/instruction.dart';
 
+import 'instruction.dart';
 import 'sync_status.dart';
 import 'bucket_storage.dart';
 import 'protocol.dart';

@@ -248,7 +248,6 @@ class StreamingSyncImplementation implements StreamingSync {
       }
 
       assert(identical(_activeCrudUpload, completer));
-      _nonLineSyncEvents.add(const UploadCompleted());
       _activeCrudUpload = null;
       completer.complete();
     });
