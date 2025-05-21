@@ -120,7 +120,7 @@ class PowerSyncDatabaseImpl
   @internal
   Future<void> connectInternal({
     required PowerSyncBackendConnector connector,
-    required SyncOptions options,
+    required ResolvedSyncOptions options,
     required AbortController abort,
     required Zone asyncWorkZone,
   }) async {
@@ -135,7 +135,6 @@ class PowerSyncDatabaseImpl
     SendPort? initPort;
     final hasInitPort = Completer<void>();
     final receivedIsolateExit = Completer<void>();
-    final resolved = ResolvedSyncOptions(options);
 
     Future<void> waitForShutdown() async {
       // Only complete the abortion signal after the isolate shuts down. This
@@ -183,7 +182,7 @@ class PowerSyncDatabaseImpl
           final port = initPort = data[1] as SendPort;
           hasInitPort.complete();
           var crudStream = database
-              .onChange(['ps_crud'], throttle: resolved.crudThrottleTime);
+              .onChange(['ps_crud'], throttle: options.crudThrottleTime);
           crudUpdateSubscription = crudStream.listen((event) {
             port.send(['update']);
           });
@@ -245,7 +244,7 @@ class PowerSyncDatabaseImpl
       _PowerSyncDatabaseIsolateArgs(
         receiveMessages.sendPort,
         dbRef,
-        resolved,
+        options,
         crudMutex.shared,
         syncMutex.shared,
       ),

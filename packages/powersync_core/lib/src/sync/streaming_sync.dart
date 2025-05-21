@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert' as convert;
+import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
 import 'package:logging/logging.dart';
@@ -13,7 +14,7 @@ import 'package:sqlite_async/mutex.dart';
 
 import 'bucket_storage.dart';
 import '../crud.dart';
-
+import 'instruction.dart';
 import 'internal_connector.dart';
 import 'mutable_sync_status.dart';
 import 'stream_utils.dart';
@@ -137,7 +138,13 @@ class StreamingSyncImplementation implements StreamingSync {
           }
           // Protect sync iterations with exclusivity (if a valid Mutex is provided)
           await syncMutex.lock(() {
-            return _streamingSyncIteration();
+            switch (options.source.syncImplementation) {
+              // ignore: deprecated_member_use_from_same_package
+              case SyncClientImplementation.dart:
+                return _dartStreamingSyncIteration();
+              case SyncClientImplementation.rust:
+                return _rustStreamingSyncIteration();
+            }
           }, timeout: _retryDelay);
         } catch (e, stacktrace) {
           if (aborted && e is http.ClientException) {
@@ -281,6 +288,10 @@ class StreamingSyncImplementation implements StreamingSync {
     });
   }
 
+  Future<void> _rustStreamingSyncIteration() async {
+    await _ActiveRustStreamingIteration(this).syncIteration();
+  }
+
   Future<(List<BucketRequest>, Map<String, BucketDescription?>)>
       _collectLocalBucketState() async {
     final bucketEntries = await adapter.getBucketStates();
@@ -295,7 +306,7 @@ class StreamingSyncImplementation implements StreamingSync {
     return (initialRequests, localDescriptions);
   }
 
-  Future<void> _streamingSyncIteration() async {
+  Future<void> _dartStreamingSyncIteration() async {
     var (bucketRequests, bucketMap) = await _collectLocalBucketState();
     if (aborted) {
       return;
@@ -432,6 +443,7 @@ class StreamingSyncImplementation implements StreamingSync {
         case UploadCompleted():
           // Only relevant for the Rust sync implementation.
           break;
+        case AbortCurrentIteration():
         case TokenRefreshComplete():
           // We have a new token, so stop the iteration.
           haveInvalidated = true;
@@ -556,7 +568,7 @@ String _syncErrorMessage(Object? error) {
   } else if (error is PowerSyncProtocolException) {
     return 'Protocol error';
   } else {
-    return '${error.runtimeType}';
+    return '${error.runtimeType}: $error';
   }
 }
 
@@ -564,6 +576,111 @@ typedef BucketDescription = ({
   String name,
   int priority,
 });
+
+final class _ActiveRustStreamingIteration {
+  final StreamingSyncImplementation sync;
+  var _isActive = true;
+
+  StreamSubscription<void>? _completedUploads;
+  final Completer<void> _completedStream = Completer();
+
+  _ActiveRustStreamingIteration(this.sync);
+
+  Future<void> syncIteration() async {
+    try {
+      await _control('start', convert.json.encode(sync.options.params));
+      assert(_completedStream.isCompleted, 'Should have started streaming');
+      await _completedStream.future;
+    } finally {
+      _isActive = false;
+      _completedUploads?.cancel();
+      await _stop();
+    }
+  }
+
+  Stream<ReceivedLine> _receiveLines(Object? data) {
+    return sync._rawStreamingSyncRequest(data).map(ReceivedLine.new);
+  }
+
+  Future<void> _handleLines(EstablishSyncStream request) async {
+    final events = addBroadcast(
+        _receiveLines(request.request), sync._nonLineSyncEvents.stream);
+
+    loop:
+    await for (final event in events) {
+      if (!_isActive || sync.aborted) {
+        break;
+      }
+
+      switch (event) {
+        case ReceivedLine(line: final Uint8List line):
+          await _control('line_binary', line);
+        case ReceivedLine(line: final line as String):
+          await _control('line_text', line);
+        case UploadCompleted():
+          await _control('completed_upload');
+        case AbortCurrentIteration():
+          break loop;
+        case TokenRefreshComplete():
+          await _control('refreshed_token');
+      }
+    }
+  }
+
+  Future<void> _stop() {
+    return _control('stop');
+  }
+
+  Future<void> _control(String operation, [Object? payload]) async {
+    final rawResponse = await sync.adapter.control(operation, payload);
+    final instructions = convert.json.decode(rawResponse) as List;
+
+    for (final instruction in instructions) {
+      await _handleInstruction(
+          Instruction.fromJson(instruction as Map<String, Object?>));
+    }
+  }
+
+  Future<void> _handleInstruction(Instruction instruction) async {
+    switch (instruction) {
+      case LogLine(:final severity, :final line):
+        sync.logger.log(
+            switch (severity) {
+              'DEBUG' => Level.FINE,
+              'INFO' => Level.INFO,
+              _ => Level.WARNING,
+            },
+            line);
+      case EstablishSyncStream():
+        _completedStream.complete(_handleLines(instruction));
+      case UpdateSyncStatus(:final status):
+        sync._state.updateStatus((m) => m.applyFromCore(status));
+      case FetchCredentials(:final didExpire):
+        if (didExpire) {
+          await sync.connector.prefetchCredentials(invalidate: true);
+        } else {
+          sync.connector.prefetchCredentials().then((_) {
+            if (_isActive && !sync.aborted) {
+              sync._nonLineSyncEvents.add(const TokenRefreshComplete());
+            }
+          }, onError: (Object e, StackTrace s) {
+            sync.logger.warning('Could not prefetch credentials', e, s);
+          });
+        }
+      case CloseSyncStream():
+        if (!sync.aborted) {
+          _isActive = false;
+          sync._nonLineSyncEvents.add(const AbortCurrentIteration());
+        }
+      case FlushFileSystem():
+        await sync.adapter.flushFileSystem();
+      case DidCompleteSync():
+        sync._state.updateStatus((m) => m.downloadError = null);
+      case UnknownSyncInstruction(:final source):
+        sync.logger.warning('Unknown instruction: $source');
+    }
+  }
+}
 
 sealed class SyncEvent {}
 
@@ -579,4 +696,8 @@ final class UploadCompleted implements SyncEvent {
 
 final class TokenRefreshComplete implements SyncEvent {
   const TokenRefreshComplete();
+}
+
+final class AbortCurrentIteration implements SyncEvent {
+  const AbortCurrentIteration();
 }

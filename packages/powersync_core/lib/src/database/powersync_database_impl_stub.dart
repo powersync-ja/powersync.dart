@@ -115,7 +115,7 @@ class PowerSyncDatabaseImpl
     required PowerSyncBackendConnector connector,
     required AbortController abort,
     required Zone asyncWorkZone,
-    required SyncOptions options,
+    required ResolvedSyncOptions options,
   }) {
     throw UnimplementedError();
   }
