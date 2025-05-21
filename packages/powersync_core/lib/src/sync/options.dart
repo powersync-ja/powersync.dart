@@ -36,6 +36,7 @@ final class SyncOptions {
 
   SyncOptions _copyWith({
     Duration? crudThrottleTime,
+    Duration? retryDelay,
     Map<String, dynamic>? params,
   }) {
     return SyncOptions(
@@ -78,10 +79,12 @@ extension type ResolvedSyncOptions(SyncOptions source) {
   factory ResolvedSyncOptions.resolve(
     SyncOptions? source, {
     Duration? crudThrottleTime,
+    Duration? retryDelay,
     Map<String, dynamic>? params,
   }) {
     return ResolvedSyncOptions((source ?? SyncOptions())._copyWith(
       crudThrottleTime: crudThrottleTime,
+      retryDelay: retryDelay,
       params: params,
     ));
   }
