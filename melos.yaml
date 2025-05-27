@@ -3,6 +3,7 @@ repository: https://github.com/powersync-ja/powersync.dart
 
 packages:
   - packages/*
+  - packages/powersync_sqlcipher/example
   - demos/*
   - demos/*/*
 

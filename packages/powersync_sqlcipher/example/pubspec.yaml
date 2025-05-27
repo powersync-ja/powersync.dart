@@ -1,0 +1,27 @@
+name: powersync_sqlcipher_example
+description: "Example and integration tests for powersync SQLCipher"
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.8.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  path: ^1.9.1
+  path_provider: ^2.1.5
+  powersync_sqlcipher: ^0.1.6
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  integration_test:
+    sdk: flutter
+
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true
