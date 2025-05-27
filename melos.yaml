@@ -40,6 +40,7 @@ scripts:
     packageFilters:
       private: true
       dirExists: web
+      dependsOn: powersync
 
   prepare:assets:
     description: Download Sqlite3 WASM for tests
