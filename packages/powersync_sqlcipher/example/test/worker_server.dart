@@ -46,7 +46,6 @@ Future<void> hybridMain(StreamChannel<Object?> channel) async {
 
   channel.sink.add(server.port);
   await channel.stream.listen(null).asFuture<void>().then<void>((_) async {
-    print('closing server');
     await server.close();
   });
 }
