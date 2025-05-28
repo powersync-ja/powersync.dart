@@ -94,9 +94,7 @@ scripts:
     packageFilters:
       dirExists:
         - test
-      # Don't run tests for this example, the test/ folder is part of integration tests
-      # that we don't currently run as part of the CI.
-      ignore: powersync_sqlcipher_example
+      dependsOn: test
     # This tells Melos tests to ignore env variables passed to tests from `melos run test`
     # as they could change the behaviour of how tests filter packages.
     env:
@@ -108,6 +106,7 @@ scripts:
     exec:
       concurrency: 1
     packageFilters:
+      dependsOn: test
       dirExists:
         - test
     env:
