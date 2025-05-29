@@ -1,3 +1,7 @@
+## 1.13.1
+
+ - Bump "powersync" to `1.13.1`.
+
 ## 1.13.0
 
 * Report real-time progress information about downloads through `SyncStatus.downloadProgress`.

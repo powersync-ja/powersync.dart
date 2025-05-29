@@ -1,3 +1,7 @@
+## 1.3.1
+
+ - http, creds, params
+
 ## 1.3.0
 
 * Report real-time progress information about downloads through `SyncStatus.downloadProgress`.
