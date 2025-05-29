@@ -30,11 +30,15 @@ Packages with dependency updates only:
 
 #### `powersync_core` - `v1.3.1`
 
- - http, creds, params
+- Use `package:http` instead of `package:fetch_client` on the web (since the former now uses fetch as well).
+- Allow disconnecting in the credentials callback of a connector.
+- Deprecate retry and CRUD upload durations as fields and independent parameters. Use the new `SyncOptions` class instead.
 
 #### `powersync` - `v1.13.1`
 
- - Bump "powersync" to `1.13.1`.
+- Use `package:http` instead of `package:fetch_client` on the web (since the former now uses fetch as well).
+- Allow disconnecting in the credentials callback of a connector.
+- Deprecate retry and CRUD upload durations as fields and independent parameters. Use the new `SyncOptions` class instead.
 
 #### `powersync_sqlcipher` - `v0.1.7`
 

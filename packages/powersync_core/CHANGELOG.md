@@ -1,6 +1,8 @@
 ## 1.3.1
 
- - http, creds, params
+- Use `package:http` instead of `package:fetch_client` on the web (since the former now uses fetch as well).
+- Allow disconnecting in the credentials callback of a connector.
+- Deprecate retry and CRUD upload durations as fields and independent parameters. Use the new `SyncOptions` class instead.
 
 ## 1.3.0
 
