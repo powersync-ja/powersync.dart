@@ -1,31 +1,22 @@
+import 'package:powersync_core/powersync_core.dart';
 import 'package:powersync_core/sqlite3_common.dart';
 import 'package:powersync_core/sqlite3_open.dart' as sqlite3_open;
 import 'package:powersync_core/sqlite_async.dart';
 import 'package:sqlcipher_flutter_libs/sqlcipher_flutter_libs.dart';
 
-import '../powersync.dart';
+import 'shared.dart';
 
-final class _NativeCipherOpenFactory extends PowerSyncOpenFactory
-    implements PowerSyncSQLCipherOpenFactory {
+class _NativeCipherOpenFactory extends PowerSyncOpenFactory
+    with BaseSQLCipherFactoryMixin {
   @override
   final String key;
 
   _NativeCipherOpenFactory({
     required super.path,
     required this.key,
-    super.sqliteOptions,
+    // ignore: unused_element_parameter
+    super.sqliteOptions = defaultOptions,
   });
-
-  @override
-  List<String> pragmaStatements(SqliteOpenOptions options) {
-    final basePragmaStatements = super.pragmaStatements(options);
-    return [
-      // Set the encryption key as the first statement
-      "PRAGMA KEY = ${quoteString(key)}",
-      // Include the default statements afterwards
-      for (var statement in basePragmaStatements) statement
-    ];
-  }
 
   @override
   CommonDatabase open(SqliteOpenOptions options) {
@@ -42,10 +33,4 @@ final class _NativeCipherOpenFactory extends PowerSyncOpenFactory
   }
 }
 
-PowerSyncSQLCipherOpenFactory cipherFactory({
-  required String path,
-  required String key,
-  required SqliteOptions options,
-}) {
-  return _NativeCipherOpenFactory(path: path, key: key, sqliteOptions: options);
-}
+typedef PowerSyncSQLCipherOpenFactory = _NativeCipherOpenFactory;

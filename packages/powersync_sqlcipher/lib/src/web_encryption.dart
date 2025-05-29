@@ -1,29 +1,18 @@
-import 'package:powersync_core/sqlite_async.dart';
 import 'package:powersync_core/web.dart';
 
-import '../powersync.dart';
+import 'shared.dart';
 
-final class _WebEncryptionFactory extends PowerSyncWebOpenFactory
-    implements PowerSyncSQLCipherOpenFactory {
+class _WebEncryptionFactory extends PowerSyncWebOpenFactory
+    with BaseSQLCipherFactoryMixin {
   @override
   final String key;
 
   _WebEncryptionFactory({
     required super.path,
     required this.key,
-    super.sqliteOptions,
+    // ignore: unused_element_parameter
+    super.sqliteOptions = defaultOptions,
   });
-
-  @override
-  List<String> pragmaStatements(SqliteOpenOptions options) {
-    final basePragmaStatements = super.pragmaStatements(options);
-    return [
-      // Set the encryption key as the first statement
-      "PRAGMA KEY = ${quoteString(key)}",
-      // Include the default statements afterwards
-      for (var statement in basePragmaStatements) statement
-    ];
-  }
 
   @override
   Future<ConnectToRecommendedResult> connectToWorker(
@@ -37,10 +26,4 @@ final class _WebEncryptionFactory extends PowerSyncWebOpenFactory
   }
 }
 
-PowerSyncSQLCipherOpenFactory cipherFactory({
-  required String path,
-  required String key,
-  required SqliteOptions options,
-}) {
-  return _WebEncryptionFactory(path: path, key: key, sqliteOptions: options);
-}
+typedef PowerSyncSQLCipherOpenFactory = _WebEncryptionFactory;
