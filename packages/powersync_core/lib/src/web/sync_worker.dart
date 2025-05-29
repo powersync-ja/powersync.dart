@@ -80,6 +80,10 @@ class _ConnectedClient {
                 final encodedParams =>
                   jsonDecode(encodedParams) as Map<String, Object?>,
               },
+              syncImplementation: switch (request.implementationName) {
+                null => SyncClientImplementation.defaultClient,
+                final name => SyncClientImplementation.values.byName(name),
+              },
             );
 
             _runner = _worker.referenceSyncTask(
