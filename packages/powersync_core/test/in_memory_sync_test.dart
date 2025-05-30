@@ -730,6 +730,28 @@ void main() {
       await Future<void>.delayed(const Duration(milliseconds: 500));
       expect(syncService.controller.hasListener, isTrue);
     });
+
+    test('closes connection after token expires', () async {
+      final status = await waitForConnection(expectNoWarnings: false);
+      syncService.addLine({
+        'checkpoint': Checkpoint(
+          lastOpId: '4',
+          writeCheckpoint: null,
+          checksums: [checksum(bucket: 'a', checksum: 10)],
+        )
+      });
+
+      await expectLater(status, emits(isSyncStatus(downloading: true)));
+      syncService.addKeepAlive(0);
+
+      await pumpEventQueue();
+      expect(syncService.controller.hasListener, isFalse);
+      syncService.endCurrentListener();
+
+      // Should reconnect after delay.
+      await Future<void>.delayed(const Duration(milliseconds: 500));
+      expect(syncService.controller.hasListener, isTrue);
+    });
   });
 }
 
