@@ -661,7 +661,7 @@ void main() {
       });
     });
 
-    test('stopping   tions', () async {
+    test('stopping closes connections', () async {
       final status = await waitForConnection();
 
       syncService.addLine({
