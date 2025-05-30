@@ -403,6 +403,7 @@ class StreamingSyncImplementation implements StreamingSync {
           if (tokenExpiresIn == 0) {
             // Token expired already - stop the connection immediately
             connector.prefetchCredentials(invalidate: true).ignore();
+            shouldStopIteration = true;
             break;
           } else if (tokenExpiresIn <= 30) {
             // Token expires soon - refresh it in the background
