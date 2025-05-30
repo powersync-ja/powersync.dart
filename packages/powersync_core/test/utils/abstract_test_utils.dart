@@ -149,6 +149,7 @@ extension MockSync on PowerSyncDatabase {
   StreamingSyncImplementation connectWithMockService(
     Client client,
     PowerSyncBackendConnector connector, {
+    Logger? logger,
     SyncOptions options = const SyncOptions(retryDelay: Duration(seconds: 5)),
   }) {
     final impl = StreamingSyncImplementation(
@@ -156,6 +157,7 @@ extension MockSync on PowerSyncDatabase {
       client: client,
       options: ResolvedSyncOptions(options),
       connector: InternalConnector.wrap(connector, this),
+      logger: logger,
       crudUpdateTriggerStream: database
           .onChange(['ps_crud'], throttle: const Duration(milliseconds: 10)),
     );
