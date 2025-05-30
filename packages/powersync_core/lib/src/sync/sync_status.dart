@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
 
@@ -241,15 +243,36 @@ final class InternalSyncDownloadProgress extends ProgressWithOperations {
   factory InternalSyncDownloadProgress.forNewCheckpoint(
       Map<String, LocalOperationCounters> localProgress, Checkpoint target) {
     final buckets = <String, BucketProgress>{};
+
     for (final bucket in target.checksums) {
       final savedProgress = localProgress[bucket.bucket];
+      final atLast = savedProgress?.atLast ?? 0;
+      final sinceLast = savedProgress?.sinceLast ?? 0;
 
       buckets[bucket.bucket] = (
         priority: BucketPriority._(bucket.priority),
-        atLast: savedProgress?.atLast ?? 0,
-        sinceLast: savedProgress?.sinceLast ?? 0,
+        atLast: atLast,
+        sinceLast: sinceLast,
         targetCount: bucket.count ?? 0,
       );
+
+      if (bucket.count case final knownCount?) {
+        if (knownCount < atLast + sinceLast) {
+          // Either due to a defrag / sync rule deploy or a compaction
+          // operation, the size of the bucket shrank so much that the local ops
+          // exceed the ops in the updated bucket. We can't possibly report
+          // progress in this case (it would overshoot 100%).
+          return InternalSyncDownloadProgress({
+            for (final bucket in target.checksums)
+              bucket.bucket: (
+                priority: BucketPriority(bucket.priority),
+                atLast: 0,
+                sinceLast: 0,
+                targetCount: knownCount,
+              )
+          });
+        }
+      }
     }
 
     return InternalSyncDownloadProgress(buckets);
@@ -282,7 +305,8 @@ final class InternalSyncDownloadProgress extends ProgressWithOperations {
       newBucketStates[dataForBucket.bucket] = (
         priority: previous.priority,
         atLast: previous.atLast,
-        sinceLast: previous.sinceLast + dataForBucket.data.length,
+        sinceLast: min(previous.sinceLast + dataForBucket.data.length,
+            previous.targetCount - previous.atLast),
         targetCount: previous.targetCount,
       );
     }

@@ -595,6 +595,35 @@ void main() {
             emits(isSyncStatus(downloading: false, downloadProgress: isNull)));
       });
 
+      test('interrupt and defrag', () async {
+        var status = await waitForConnection();
+        syncService.addLine({
+          'checkpoint': Checkpoint(
+            lastOpId: '10',
+            checksums: [bucket('a', 10)],
+          )
+        });
+        await expectProgress(status, total: progress(0, 10));
+        addDataLine('a', 5);
+        await expectProgress(status, total: progress(5, 10));
+
+        // A sync rule deploy could reset buckets, making the new bucket smaller
+        // than the existing one.
+        await syncClient.abort();
+        syncService.endCurrentListener();
+        createSyncClient();
+        status = await waitForConnection();
+        syncService.addLine({
+          'checkpoint': Checkpoint(
+            lastOpId: '14',
+            checksums: [bucket('a', 4)],
+          )
+        });
+
+        // In this special case, don't report 5/4 as progress
+        await expectProgress(status, total: progress(0, 4));
+      });
+
       test('different priorities', () async {
         var status = await waitForConnection();
         Future<void> checkProgress(Object prio0, Object prio2) async {
