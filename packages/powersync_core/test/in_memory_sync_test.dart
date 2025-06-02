@@ -4,7 +4,6 @@ import 'package:async/async.dart';
 import 'package:logging/logging.dart';
 import 'package:powersync_core/powersync_core.dart';
 import 'package:powersync_core/sqlite3_common.dart';
-import 'package:powersync_core/src/log_internal.dart';
 import 'package:powersync_core/src/sync/streaming_sync.dart';
 import 'package:powersync_core/src/sync/protocol.dart';
 import 'package:test/test.dart';
@@ -25,6 +24,7 @@ void main() {
     late CommonDatabase raw;
     late PowerSyncDatabase database;
     late MockSyncService syncService;
+    late Logger logger;
 
     late StreamingSync syncClient;
     var credentialsCallbackCount = 0;
@@ -34,7 +34,7 @@ void main() {
       final (client, server) = inMemoryServer();
       server.mount(syncService.router.call);
 
-      syncClient = database.connectWithMockService(
+      final thisSyncClient = syncClient = database.connectWithMockService(
         client,
         TestConnector(() async {
           credentialsCallbackCount++;
@@ -44,10 +44,17 @@ void main() {
             expiresAt: DateTime.now(),
           );
         }, uploadData: (db) => uploadData(db)),
+        options: const SyncOptions(retryDelay: Duration(milliseconds: 200)),
+        logger: logger,
       );
+
+      addTearDown(() async {
+        await thisSyncClient.abort();
+      });
     }
 
     setUp(() async {
+      logger = Logger.detached('powersync.active')..level = Level.ALL;
       credentialsCallbackCount = 0;
       syncService = MockSyncService();
 
@@ -58,7 +65,6 @@ void main() {
     });
 
     tearDown(() async {
-      await syncClient.abort();
       await database.close();
       await syncService.stop();
     });
@@ -66,9 +72,9 @@ void main() {
     Future<StreamQueue<SyncStatus>> waitForConnection(
         {bool expectNoWarnings = true}) async {
       if (expectNoWarnings) {
-        isolateLogger.onRecord.listen((e) {
+        logger.onRecord.listen((e) {
           if (e.level >= Level.WARNING) {
-            fail('Unexpected log: $e');
+            fail('Unexpected log: $e, ${e.stackTrace}');
           }
         });
       }
@@ -699,6 +705,52 @@ void main() {
       await syncClient.abort();
 
       expect(syncService.controller.hasListener, isFalse);
+    });
+
+    test('closes connection after failed checksum', () async {
+      final status = await waitForConnection(expectNoWarnings: false);
+      syncService.addLine({
+        'checkpoint': Checkpoint(
+          lastOpId: '4',
+          writeCheckpoint: null,
+          checksums: [checksum(bucket: 'a', checksum: 10)],
+        )
+      });
+
+      await expectLater(status, emits(isSyncStatus(downloading: true)));
+      syncService.addLine({
+        'checkpoint_complete': {'last_op_id': '10'}
+      });
+
+      await pumpEventQueue();
+      expect(syncService.controller.hasListener, isFalse);
+      syncService.endCurrentListener();
+
+      // Should reconnect after delay.
+      await Future<void>.delayed(const Duration(milliseconds: 500));
+      expect(syncService.controller.hasListener, isTrue);
+    });
+
+    test('closes connection after token expires', () async {
+      final status = await waitForConnection(expectNoWarnings: false);
+      syncService.addLine({
+        'checkpoint': Checkpoint(
+          lastOpId: '4',
+          writeCheckpoint: null,
+          checksums: [checksum(bucket: 'a', checksum: 10)],
+        )
+      });
+
+      await expectLater(status, emits(isSyncStatus(downloading: true)));
+      syncService.addKeepAlive(0);
+
+      await pumpEventQueue();
+      expect(syncService.controller.hasListener, isFalse);
+      syncService.endCurrentListener();
+
+      // Should reconnect after delay.
+      await Future<void>.delayed(const Duration(milliseconds: 500));
+      expect(syncService.controller.hasListener, isTrue);
     });
   });
 }
