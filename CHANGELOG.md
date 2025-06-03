@@ -3,6 +3,50 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 2025-05-29
+
+### Changes
+
+---
+
+Packages with breaking changes:
+
+ - There are no breaking changes in this release.
+
+Packages with other changes:
+
+ - [`powersync_core` - `v1.3.1`](#powersync_core---v131)
+ - [`powersync` - `v1.13.1`](#powersync---v1131)
+ - [`powersync_sqlcipher` - `v0.1.7`](#powersync_sqlcipher---v017)
+ - [`powersync_attachments_helper` - `v0.6.18+8`](#powersync_attachments_helper---v06188)
+
+Packages with dependency updates only:
+
+> Packages listed below depend on other packages in this workspace that have had changes. Their versions have been incremented to bump the minimum dependency versions of the packages they depend upon in this project.
+
+ - `powersync_attachments_helper` - `v0.6.18+8`
+
+---
+
+#### `powersync_core` - `v1.3.1`
+
+- Use `package:http` instead of `package:fetch_client` on the web (since the former now uses fetch as well).
+- Allow disconnecting in the credentials callback of a connector.
+- Deprecate retry and CRUD upload durations as fields and independent parameters. Use the new `SyncOptions` class instead.
+- Fix sync progress report after a compaction or defragmentation on the sync service.
+
+#### `powersync` - `v1.13.1`
+
+- Use `package:http` instead of `package:fetch_client` on the web (since the former now uses fetch as well).
+- Allow disconnecting in the credentials callback of a connector.
+- Deprecate retry and CRUD upload durations as fields and independent parameters. Use the new `SyncOptions` class instead.
+- Fix sync progress report after a compaction or defragmentation on the sync service.
+
+#### `powersync_sqlcipher` - `v0.1.7`
+
+ - Allow subclassing open factory for SQLCipher.
+
+
 ## 2025-05-07
 
 ### Changes
