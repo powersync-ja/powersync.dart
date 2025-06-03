@@ -47,9 +47,9 @@ extension type ResolvedSyncOptions(SyncOptions source) {
       params: other.params ?? params,
     );
 
-    final didChange = !_mapEquality.equals(other.params, params) ||
-        other.crudThrottleTime != crudThrottleTime ||
-        other.retryDelay != retryDelay;
+    final didChange = !_mapEquality.equals(newOptions.params, params) ||
+        newOptions.crudThrottleTime != crudThrottleTime ||
+        newOptions.retryDelay != retryDelay;
     return (ResolvedSyncOptions(newOptions), didChange);
   }
 
