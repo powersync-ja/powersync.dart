@@ -264,6 +264,7 @@ class _SyncRunner {
 
     sync = StreamingSyncImplementation(
       adapter: WebBucketStorage(database),
+      schema: null,
       connector: InternalConnector(
         getCredentialsCached: client.channel.credentialsCallback,
         prefetchCredentials: ({required bool invalidate}) async {

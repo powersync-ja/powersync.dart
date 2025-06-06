@@ -8,10 +8,11 @@ import 'schema_logic.dart';
 class Schema {
   /// List of tables in the schema.
   final List<Table> tables;
+  final List<RawTable> rawTables;
 
-  const Schema(this.tables);
+  const Schema(this.tables, {this.rawTables = const []});
 
-  Map<String, dynamic> toJson() => {'tables': tables};
+  Map<String, dynamic> toJson() => {'raw_tables': rawTables, 'tables': tables};
 
   void validate() {
     Set<String> tableNames = {};
@@ -313,6 +314,60 @@ class Column {
   const Column.real(this.name) : type = ColumnType.real;
 
   Map<String, dynamic> toJson() => {'name': name, 'type': type.sqlite};
+}
+
+class RawTable {
+  final String
+      name; // TODO: it does not need to be the same name as the raw table
+  final PendingStatement put;
+  final PendingStatement delete;
+
+  const RawTable(
+    this.name,
+    this.put,
+    this.delete,
+  );
+
+  Map<String, dynamic> toJson() => {
+        'name': name,
+        'put': put,
+        'delete': delete,
+      };
+}
+
+class PendingStatement {
+  final String sql;
+  final List<PendingStatementValue> params;
+
+  PendingStatement({required this.sql, required this.params});
+
+  Map<String, dynamic> toJson() => {
+        'sql': sql,
+        'params': params,
+      };
+}
+
+sealed class PendingStatementValue {
+  dynamic toJson();
+}
+
+class PendingStmtValueColumn extends PendingStatementValue {
+  final String column;
+  PendingStmtValueColumn(this.column);
+
+  @override
+  dynamic toJson() {
+    return {
+      'Column': column,
+    };
+  }
+}
+
+class PendingStmtValueId extends PendingStatementValue {
+  @override
+  dynamic toJson() {
+    return 'Id';
+  }
 }
 
 /// Type of column.
