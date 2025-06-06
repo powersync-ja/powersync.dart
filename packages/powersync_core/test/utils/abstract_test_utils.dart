@@ -153,6 +153,7 @@ extension MockSync on PowerSyncDatabase {
   }) {
     final impl = StreamingSyncImplementation(
       adapter: BucketStorage(this),
+      schema: null,
       client: client,
       options: ResolvedSyncOptions(options),
       connector: InternalConnector.wrap(connector, this),

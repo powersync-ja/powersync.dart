@@ -247,6 +247,7 @@ class PowerSyncDatabaseImpl
         options,
         crudMutex.shared,
         syncMutex.shared,
+        schema,
       ),
       debugName: 'Sync ${database.openFactory.path}',
       onError: receiveUnhandledErrors.sendPort,
@@ -290,6 +291,7 @@ class _PowerSyncDatabaseIsolateArgs {
   final ResolvedSyncOptions options;
   final SerializedMutex crudMutex;
   final SerializedMutex syncMutex;
+  final Schema schema;
 
   _PowerSyncDatabaseIsolateArgs(
     this.sPort,
@@ -297,6 +299,7 @@ class _PowerSyncDatabaseIsolateArgs {
     this.options,
     this.crudMutex,
     this.syncMutex,
+    this.schema,
   );
 }
 
@@ -392,6 +395,7 @@ Future<void> _syncIsolate(_PowerSyncDatabaseIsolateArgs args) async {
     final storage = BucketStorage(connection);
     final sync = StreamingSyncImplementation(
       adapter: storage,
+      schema: args.schema,
       connector: InternalConnector(
         getCredentialsCached: getCredentialsCached,
         prefetchCredentials: prefetchCredentials,
