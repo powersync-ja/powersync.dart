@@ -141,6 +141,7 @@ class PowerSyncDatabaseImpl
 
       sync = StreamingSyncImplementation(
         adapter: storage,
+        schema: schema,
         connector: InternalConnector.wrap(connector, this),
         crudUpdateTriggerStream: crudStream,
         options: options,
