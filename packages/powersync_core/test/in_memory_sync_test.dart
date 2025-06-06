@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:async/async.dart';
 import 'package:logging/logging.dart';
@@ -172,7 +173,7 @@ void _declareTests(String name, SyncOptions options) {
                   'object_type': 'a',
                   'object_id': '1',
                   'checksum': 0,
-                  'data': {},
+                  'data': '{}',
                 }
               ],
             }
@@ -187,7 +188,7 @@ void _declareTests(String name, SyncOptions options) {
                   'object_type': 'b',
                   'object_id': '1',
                   'checksum': 0,
-                  'data': {},
+                  'data': '{}',
                 }
               ],
             }
@@ -229,7 +230,7 @@ void _declareTests(String name, SyncOptions options) {
               'data': [
                 {
                   'checksum': priority + 10,
-                  'data': {'name': 'test', 'email': 'email'},
+                  'data': json.encode({'name': 'test', 'email': 'email'}),
                   'op': 'PUT',
                   'op_id': '${operationId++}',
                   'object_id': 'prio$priority',
@@ -411,7 +412,7 @@ void _declareTests(String name, SyncOptions options) {
             'data': [
               {
                 'checksum': 0,
-                'data': {'name': 'from local', 'email': 'local@example.org'},
+                'data': json.encode({'name': 'from local', 'email': 'local@example.org'}),
                 'op': 'PUT',
                 'op_id': '1',
                 'object_id': '1',
@@ -419,7 +420,7 @@ void _declareTests(String name, SyncOptions options) {
               },
               {
                 'checksum': 0,
-                'data': {'name': 'additional', 'email': ''},
+                'data': json.encode({'name': 'additional', 'email': ''}),
                 'op': 'PUT',
                 'op_id': '2',
                 'object_id': '2',
@@ -477,7 +478,7 @@ void _declareTests(String name, SyncOptions options) {
                   'object_type': bucket,
                   'object_id': '$lastOpId',
                   'checksum': 0,
-                  'data': {},
+                  'data': '{}',
                 }
             ],
           }
