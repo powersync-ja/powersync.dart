@@ -45,6 +45,9 @@ class PowerSyncDatabaseImpl
   SqliteDatabase database;
 
   @override
+  bool manualSchemaManagement;
+
+  @override
   @protected
   late Future<void> isInitialized;
 
@@ -76,6 +79,7 @@ class PowerSyncDatabaseImpl
       required String path,
       int maxReaders = SqliteDatabase.defaultMaxReaders,
       Logger? logger,
+      bool manualSchemaManagement = false,
       @Deprecated("Use [PowerSyncDatabase.withFactory] instead.")
       // ignore: deprecated_member_use_from_same_package
       SqliteConnectionSetup? sqliteSetup}) {
@@ -83,8 +87,13 @@ class PowerSyncDatabaseImpl
     DefaultSqliteOpenFactory factory =
         // ignore: deprecated_member_use_from_same_package
         PowerSyncOpenFactory(path: path, sqliteSetup: sqliteSetup);
-    return PowerSyncDatabaseImpl.withFactory(factory,
-        schema: schema, maxReaders: maxReaders, logger: logger);
+    return PowerSyncDatabaseImpl.withFactory(
+      factory,
+      schema: schema,
+      maxReaders: maxReaders,
+      logger: logger,
+      manualSchemaManagement: manualSchemaManagement,
+    );
   }
 
   /// Open a [PowerSyncDatabase] with a [PowerSyncOpenFactory].
@@ -96,13 +105,19 @@ class PowerSyncDatabaseImpl
   ///
   /// [logger] defaults to [autoLogger], which logs to the console in debug builds.
   factory PowerSyncDatabaseImpl.withFactory(
-      DefaultSqliteOpenFactory openFactory,
-      {required Schema schema,
-      int maxReaders = SqliteDatabase.defaultMaxReaders,
-      Logger? logger}) {
+    DefaultSqliteOpenFactory openFactory, {
+    required Schema schema,
+    int maxReaders = SqliteDatabase.defaultMaxReaders,
+    Logger? logger,
+    bool manualSchemaManagement = false,
+  }) {
     final db = SqliteDatabase.withFactory(openFactory, maxReaders: maxReaders);
     return PowerSyncDatabaseImpl.withDatabase(
-        schema: schema, database: db, logger: logger);
+      schema: schema,
+      database: db,
+      logger: logger,
+      manualSchemaManagement: manualSchemaManagement,
+    );
   }
 
   /// Open a PowerSyncDatabase on an existing [SqliteDatabase].
@@ -110,8 +125,12 @@ class PowerSyncDatabaseImpl
   /// Migrations are run on the database when this constructor is called.
   ///
   /// [logger] defaults to [autoLogger], which logs to the console in debug builds.s
-  PowerSyncDatabaseImpl.withDatabase(
-      {required this.schema, required this.database, Logger? logger}) {
+  PowerSyncDatabaseImpl.withDatabase({
+    required this.schema,
+    required this.database,
+    Logger? logger,
+    this.manualSchemaManagement = false,
+  }) {
     this.logger = logger ?? autoLogger;
     isInitialized = baseInit();
   }
