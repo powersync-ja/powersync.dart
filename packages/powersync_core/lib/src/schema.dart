@@ -322,11 +322,11 @@ class RawTable {
   final PendingStatement put;
   final PendingStatement delete;
 
-  const RawTable(
-    this.name,
-    this.put,
-    this.delete,
-  );
+  const RawTable({
+    required this.name,
+    required this.put,
+    required this.delete,
+  });
 
   Map<String, dynamic> toJson() => {
         'name': name,
