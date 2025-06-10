@@ -83,9 +83,10 @@ void main() {
           lastCount = count;
         }
 
-        // The number of read queries must not be greater than the number of writes overall.
+        // The number of read queries must not be greater than the number of
+        //writes overall, plus one for an initial read.
         expect(numberOfQueries,
-            lessThanOrEqualTo(results.last.first['count'] as int));
+            lessThanOrEqualTo((results.last.first['count'] as int) + 1));
 
         DateTime? lastTime;
         for (var r in times) {

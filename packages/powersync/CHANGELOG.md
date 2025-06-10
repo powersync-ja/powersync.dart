@@ -1,3 +1,10 @@
+## 1.13.1
+
+- Use `package:http` instead of `package:fetch_client` on the web (since the former now uses fetch as well).
+- Allow disconnecting in the credentials callback of a connector.
+- Deprecate retry and CRUD upload durations as fields and independent parameters. Use the new `SyncOptions` class instead.
+- Fix sync progress report after a compaction or defragmentation on the sync service.
+
 ## 1.13.0
 
 * Report real-time progress information about downloads through `SyncStatus.downloadProgress`.
