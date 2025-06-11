@@ -315,26 +315,29 @@ packages:
     source: hosted
     version: "2.1.8"
   powersync_core:
-    dependency: "direct overridden"
+    dependency: transitive
     description:
-      path: "../../powersync_core"
-      relative: true
-    source: path
-    version: "1.3.0"
+      name: powersync_core
+      sha256: ad6ffccb5c1e89a9391124a63cd94698946c9bb440a1205725b574c5766b102d
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.3.1"
   powersync_flutter_libs:
-    dependency: "direct overridden"
+    dependency: transitive
     description:
-      path: "../../powersync_flutter_libs"
-      relative: true
-    source: path
+      name: powersync_flutter_libs
+      sha256: f1cd9f3a084a39007dd2fb414b03fcc29ab61f0af5d117263fe5f54e407d97d7
+      url: "https://pub.dev"
+    source: hosted
     version: "0.4.8"
   powersync_sqlcipher:
     dependency: "direct main"
     description:
-      path: ".."
-      relative: true
-    source: path
-    version: "0.1.6"
+      name: powersync_sqlcipher
+      sha256: "33b3d67feab5d4dbf484e2c49e11d7b16f7bd406e70e974a2bbbe439ebc382c4"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.1.7"
   process:
     dependency: transitive
     description:
