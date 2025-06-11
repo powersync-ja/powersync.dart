@@ -316,9 +316,8 @@ class Column {
   Map<String, dynamic> toJson() => {'name': name, 'type': type.sqlite};
 }
 
-class RawTable {
-  final String
-      name; // TODO: it does not need to be the same name as the raw table
+final class RawTable {
+  final String name;
   final PendingStatement put;
   final PendingStatement delete;
 
@@ -335,7 +334,7 @@ class RawTable {
       };
 }
 
-class PendingStatement {
+final class PendingStatement {
   final String sql;
   final List<PendingStatementValue> params;
 
@@ -348,12 +347,15 @@ class PendingStatement {
 }
 
 sealed class PendingStatementValue {
+  factory PendingStatementValue.id() = _PendingStmtValueId;
+  factory PendingStatementValue.column(String column) = _PendingStmtValueColumn;
+
   dynamic toJson();
 }
 
-class PendingStmtValueColumn extends PendingStatementValue {
+class _PendingStmtValueColumn implements PendingStatementValue {
   final String column;
-  PendingStmtValueColumn(this.column);
+  const _PendingStmtValueColumn(this.column);
 
   @override
   dynamic toJson() {
@@ -363,7 +365,9 @@ class PendingStmtValueColumn extends PendingStatementValue {
   }
 }
 
-class PendingStmtValueId extends PendingStatementValue {
+class _PendingStmtValueId implements PendingStatementValue {
+  const _PendingStmtValueId();
+
   @override
   dynamic toJson() {
     return 'Id';
