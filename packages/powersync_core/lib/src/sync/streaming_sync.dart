@@ -5,7 +5,6 @@ import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:logging/logging.dart';
 import 'package:meta/meta.dart';
-import 'package:powersync_core/powersync_core.dart';
 import 'package:powersync_core/src/abort_controller.dart';
 import 'package:powersync_core/src/exceptions.dart';
 import 'package:powersync_core/src/log_internal.dart';
@@ -33,7 +32,7 @@ abstract interface class StreamingSync {
 
 @internal
 class StreamingSyncImplementation implements StreamingSync {
-  final Schema? schema; //TODO(SkillDevs): pass in all implementations
+  final String schemaJson;
   final BucketStorage adapter;
   final InternalConnector connector;
   final ResolvedSyncOptions options;
@@ -64,7 +63,7 @@ class StreamingSyncImplementation implements StreamingSync {
   String? clientId;
 
   StreamingSyncImplementation({
-    required this.schema,
+    required this.schemaJson,
     required this.adapter,
     required this.connector,
     required this.crudUpdateTriggerStream,
@@ -595,7 +594,7 @@ final class _ActiveRustStreamingIteration {
         'start',
         convert.json.encode({
           'parameters': sync.options.params,
-          'schema': sync.schema,
+          'schema': convert.json.decode(sync.schemaJson),
         }),
       );
       assert(_completedStream.isCompleted, 'Should have started streaming');

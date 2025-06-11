@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:isolate';
 import 'package:meta/meta.dart';
 
@@ -266,7 +267,7 @@ class PowerSyncDatabaseImpl
         options,
         crudMutex.shared,
         syncMutex.shared,
-        schema,
+        jsonEncode(schema),
       ),
       debugName: 'Sync ${database.openFactory.path}',
       onError: receiveUnhandledErrors.sendPort,
@@ -310,7 +311,7 @@ class _PowerSyncDatabaseIsolateArgs {
   final ResolvedSyncOptions options;
   final SerializedMutex crudMutex;
   final SerializedMutex syncMutex;
-  final Schema schema;
+  final String schemaJson;
 
   _PowerSyncDatabaseIsolateArgs(
     this.sPort,
@@ -318,7 +319,7 @@ class _PowerSyncDatabaseIsolateArgs {
     this.options,
     this.crudMutex,
     this.syncMutex,
-    this.schema,
+    this.schemaJson,
   );
 }
 
@@ -414,7 +415,7 @@ Future<void> _syncIsolate(_PowerSyncDatabaseIsolateArgs args) async {
     final storage = BucketStorage(connection);
     final sync = StreamingSyncImplementation(
       adapter: storage,
-      schema: args.schema,
+      schemaJson: args.schemaJson,
       connector: InternalConnector(
         getCredentialsCached: getCredentialsCached,
         prefetchCredentials: prefetchCredentials,

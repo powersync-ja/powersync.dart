@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:meta/meta.dart';
 import 'package:http/browser_client.dart';
 import 'package:logging/logging.dart';
@@ -159,7 +160,7 @@ class PowerSyncDatabaseImpl
 
       sync = StreamingSyncImplementation(
         adapter: storage,
-        schema: schema,
+        schemaJson: jsonEncode(schema),
         connector: InternalConnector.wrap(connector, this),
         crudUpdateTriggerStream: crudStream,
         options: options,

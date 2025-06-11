@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:js_interop';
 
 import 'package:logging/logging.dart';
+import 'package:powersync_core/src/schema.dart';
 import 'package:powersync_core/src/sync/options.dart';
 import 'package:web/web.dart';
 
@@ -71,6 +72,7 @@ extension type StartSynchronization._(JSObject _) implements JSObject {
     required int requestId,
     required int retryDelayMs,
     required String implementationName,
+    required String schemaJson,
     String? syncParamsEncoded,
   });
 
@@ -79,6 +81,7 @@ extension type StartSynchronization._(JSObject _) implements JSObject {
   external int get crudThrottleTimeMs;
   external int? get retryDelayMs;
   external String? get implementationName;
+  external String get schemaJson;
   external String? get syncParamsEncoded;
 }
 
@@ -410,7 +413,7 @@ final class WorkerCommunicationChannel {
   }
 
   Future<void> startSynchronization(
-      String databaseName, ResolvedSyncOptions options) async {
+      String databaseName, ResolvedSyncOptions options, Schema schema) async {
     final (id, completion) = _newRequest();
     port.postMessage(SyncWorkerMessage(
       type: SyncWorkerMessageType.startSynchronization.name,
@@ -420,6 +423,7 @@ final class WorkerCommunicationChannel {
         retryDelayMs: options.retryDelay.inMilliseconds,
         requestId: id,
         implementationName: options.source.syncImplementation.name,
+        schemaJson: jsonEncode(schema),
         syncParamsEncoded: switch (options.source.params) {
           null => null,
           final params => jsonEncode(params),
