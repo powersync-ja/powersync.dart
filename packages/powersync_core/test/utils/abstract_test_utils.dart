@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:http/http.dart';
 import 'package:logging/logging.dart';
 import 'package:powersync_core/powersync_core.dart';
@@ -154,7 +156,7 @@ extension MockSync on PowerSyncDatabase {
   }) {
     final impl = StreamingSyncImplementation(
       adapter: BucketStorage(this),
-      schema: schema,
+      schemaJson: jsonEncode(schema),
       client: client,
       options: ResolvedSyncOptions(options),
       connector: InternalConnector.wrap(connector, this),
