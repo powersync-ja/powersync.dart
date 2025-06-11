@@ -45,12 +45,16 @@ class _SyncWorker {
     });
   }
 
-  _SyncRunner referenceSyncTask(
-      String databaseIdentifier, SyncOptions options, _ConnectedClient client) {
+  _SyncRunner referenceSyncTask(String databaseIdentifier, SyncOptions options,
+      String schemaJson, _ConnectedClient client) {
     return _requestedSyncTasks.putIfAbsent(databaseIdentifier, () {
       return _SyncRunner(databaseIdentifier);
     })
-      ..registerClient(client, options);
+      ..registerClient(
+        client,
+        options,
+        schemaJson,
+      );
   }
 }
 
@@ -86,8 +90,8 @@ class _ConnectedClient {
               },
             );
 
-            _runner = _worker.referenceSyncTask(
-                request.databaseName, recoveredOptions, this);
+            _runner = _worker.referenceSyncTask(request.databaseName,
+                recoveredOptions, request.schemaJson, this);
             return (JSObject(), null);
           case SyncWorkerMessageType.abortSynchronization:
             _runner?.disconnectClient(this);
@@ -128,6 +132,7 @@ class _ConnectedClient {
 class _SyncRunner {
   final String identifier;
   ResolvedSyncOptions options = ResolvedSyncOptions(SyncOptions());
+  String schemaJson = '{}';
 
   final StreamGroup<_RunnerEvent> _group = StreamGroup();
   final StreamController<_RunnerEvent> _mainEvents = StreamController();
@@ -146,10 +151,12 @@ class _SyncRunner {
             case _AddConnection(
                 :final client,
                 :final options,
+                :final schemaJson,
               ):
               connections.add(client);
               final (newOptions, reconnect) = this.options.applyFrom(options);
               this.options = newOptions;
+              this.schemaJson = schemaJson;
 
               if (sync == null) {
                 await _requestDatabase(client);
@@ -264,6 +271,7 @@ class _SyncRunner {
 
     sync = StreamingSyncImplementation(
       adapter: WebBucketStorage(database),
+      schemaJson: client._runner!.schemaJson,
       connector: InternalConnector(
         getCredentialsCached: client.channel.credentialsCallback,
         prefetchCredentials: ({required bool invalidate}) async {
@@ -286,8 +294,9 @@ class _SyncRunner {
     sync!.streamingSync();
   }
 
-  void registerClient(_ConnectedClient client, SyncOptions options) {
-    _mainEvents.add(_AddConnection(client, options));
+  void registerClient(
+      _ConnectedClient client, SyncOptions options, String schemaJson) {
+    _mainEvents.add(_AddConnection(client, options, schemaJson));
   }
 
   /// Remove a client, disconnecting if no clients remain..
@@ -306,8 +315,9 @@ sealed class _RunnerEvent {}
 final class _AddConnection implements _RunnerEvent {
   final _ConnectedClient client;
   final SyncOptions options;
+  final String schemaJson;
 
-  _AddConnection(this.client, this.options);
+  _AddConnection(this.client, this.options, this.schemaJson);
 }
 
 final class _RemoveConnection implements _RunnerEvent {
