@@ -416,7 +416,8 @@ void _declareTests(String name, SyncOptions options) {
             'data': [
               {
                 'checksum': 0,
-                'data': json.encode({'name': 'from local', 'email': 'local@example.org'}),
+                'data': json.encode(
+                    {'name': 'from local', 'email': 'local@example.org'}),
                 'op': 'PUT',
                 'op_id': '1',
                 'object_id': '1',
