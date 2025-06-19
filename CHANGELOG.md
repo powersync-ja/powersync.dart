@@ -3,6 +3,60 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 2025-06-19
+
+### Changes
+
+---
+
+Packages with breaking changes:
+
+ - There are no breaking changes in this release.
+
+Packages with other changes:
+
+ - [`powersync_core` - `v1.4.0`](#powersync_core---v140)
+ - [`powersync` - `v1.14.0`](#powersync---v1140)
+ - [`powersync_sqlcipher` - `v0.1.8`](#powersync_sqlcipher---v018)
+ - [`powersync_attachments_helper` - `v0.6.18+9`](#powersync_attachments_helper---v06189)
+
+Packages with dependency updates only:
+
+> Packages listed below depend on other packages in this workspace that have had changes. Their versions have been incremented to bump the minimum dependency versions of the packages they depend upon in this project.
+
+ - `powersync_attachments_helper` - `v0.6.18+9`
+
+---
+
+#### `powersync_core` - `v1.4.0`
+
+#### `powersync` - `v1.14.0`
+
+#### `powersync_sqlcipher` - `v0.1.8`
+
+Add a new sync client implementation written in Rust instead of Dart. While
+this client is still experimental, we intend to make it the default in the 
+future. The main benefit of this client is faster sync performance, but 
+upcoming features will also require this client.
+We encourage interested users to try it out by passing `SyncOptions` to the
+`connect` method:
+
+```dart
+database.connect(
+  connector: YourConnector(),
+  options: const SyncOptions(
+    syncImplementation: SyncClientImplementation.rust,
+  ),
+);
+```
+
+Switching between the clients can be done at any time without compatibility
+issues. If you run into issues with the new client, please reach out to us!
+
+#### `powersync_flutter_libs` - `v0.4.9`
+
+ - Update PowerSync core extension to version 0.4.0.
+
 ## 2025-05-29
 
 ### Changes
