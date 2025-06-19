@@ -191,6 +191,9 @@ extension type const BucketPriority._(int priorityNumber) {
   /// A [Comparator] instance suitable for comparing [BucketPriority] values.
   static int comparator(BucketPriority a, BucketPriority b) =>
       -a.priorityNumber.compareTo(b.priorityNumber);
+
+  /// The priority used by PowerSync to indicate that a full sync was completed.
+  static const fullSyncPriority = BucketPriority._(2147483647);
 }
 
 /// Partial information about the synchronization status for buckets within a

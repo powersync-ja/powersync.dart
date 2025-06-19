@@ -556,8 +556,6 @@ void main() {
           writeCheckpoint: '4',
           checksums: [checksum(bucket: 'bucket1', checksum: 7)]));
 
-      await bucketStorage.forceCompact();
-
       await syncLocalChecked(Checkpoint(
           lastOpId: '4',
           writeCheckpoint: '4',
@@ -604,8 +602,6 @@ void main() {
           writeCheckpoint: '4',
           checksums: [checksum(bucket: 'bucket1', checksum: 2147483642)]));
 
-      await bucketStorage.forceCompact();
-
       await syncLocalChecked(Checkpoint(
           lastOpId: '4',
           writeCheckpoint: '4',
@@ -644,8 +640,6 @@ void main() {
           lastOpId: '4',
           writeCheckpoint: '4',
           checksums: [checksum(bucket: 'bucket1', checksum: -3)]));
-
-      await bucketStorage.forceCompact();
 
       await syncLocalChecked(Checkpoint(
           lastOpId: '4',
