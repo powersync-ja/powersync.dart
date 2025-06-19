@@ -20,8 +20,6 @@ typedef LocalOperationCounters = ({int atLast, int sinceLast});
 class BucketStorage {
   final SqliteConnection _internalDb;
   bool _hasCompletedSync = false;
-  bool _pendingBucketDeletes = false;
-  int _compactCounter = compactOperationInterval;
 
   BucketStorage(SqliteConnection db) : _internalDb = db {
     _init();
@@ -67,11 +65,8 @@ class BucketStorage {
   }
 
   Future<void> saveSyncData(SyncDataBatch batch) async {
-    var count = 0;
-
     await writeTransaction((tx) async {
       for (var b in batch.buckets) {
-        count += b.data.length;
         await _updateBucket2(
             tx,
             jsonEncode({
@@ -82,7 +77,6 @@ class BucketStorage {
       // We get major initial sync performance improvements with IndexedDB by
       // not flushing here.
     }, flush: false);
-    _compactCounter += count;
   }
 
   Future<void> _updateBucket2(SqliteWriteContext tx, String json) async {
@@ -103,8 +97,6 @@ class BucketStorage {
           ['delete_bucket', bucket]);
       // No need to flush - not directly visible to the user
     }, flush: false);
-
-    _pendingBucketDeletes = true;
   }
 
   Future<bool> hasCompletedSync() async {
@@ -153,8 +145,6 @@ class BucketStorage {
     if (!valid) {
       return SyncLocalDatabaseResult(ready: false);
     }
-
-    await forceCompact();
 
     return SyncLocalDatabaseResult(ready: true);
   }
@@ -224,52 +214,6 @@ UPDATE ps_buckets SET count_since_last = 0, count_at_last = ?1->name
           checkpointFailures:
               (result['failed_buckets'] as List).cast<String>());
     }
-  }
-
-  Future<void> forceCompact() async {
-    _compactCounter = compactOperationInterval;
-    _pendingBucketDeletes = true;
-
-    await autoCompact();
-  }
-
-  Future<void> autoCompact() async {
-    // This is a no-op since powersync-sqlite-core v0.3.0
-
-    // 1. Delete buckets
-    await _deletePendingBuckets();
-
-    // 2. Clear REMOVE operations, only keeping PUT ones
-    await _clearRemoveOps();
-  }
-
-  Future<void> _deletePendingBuckets() async {
-    // This is a no-op since powersync-sqlite-core v0.3.0
-    if (_pendingBucketDeletes) {
-      // Executed once after start-up, and again when there are pending deletes.
-      await writeTransaction((tx) async {
-        await tx.execute(
-            'INSERT INTO powersync_operations(op, data) VALUES (?, ?)',
-            ['delete_pending_buckets', '']);
-        // No need to flush - not directly visible to the user
-      }, flush: false);
-      _pendingBucketDeletes = false;
-    }
-  }
-
-  Future<void> _clearRemoveOps() async {
-    if (_compactCounter < compactOperationInterval) {
-      return;
-    }
-
-    // This is a no-op since powersync-sqlite-core v0.3.0
-    await writeTransaction((tx) async {
-      await tx.execute(
-          'INSERT INTO powersync_operations(op, data) VALUES (?, ?)',
-          ['clear_remove_ops', '']);
-      // No need to flush - not directly visible to the user
-    }, flush: false);
-    _compactCounter = 0;
   }
 
   void setTargetCheckpoint(Checkpoint checkpoint) {
