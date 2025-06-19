@@ -1,3 +1,7 @@
+## 1.4.0
+
+ - Support new Rust-based sync implementation.
+
 ## 1.3.1
 
 - Use `package:http` instead of `package:fetch_client` on the web (since the former now uses fetch as well).

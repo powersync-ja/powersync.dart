@@ -1,3 +1,7 @@
+## 0.1.8
+
+ - Support new Rust-based sync implementation.
+
 ## 0.1.7
 
  - Allow subclassing open factory for SQLCipher.
