@@ -30,16 +30,32 @@ Packages with dependency updates only:
 
 #### `powersync_core` - `v1.4.0`
 
- - Support new Rust-based sync implementation.
-
 #### `powersync` - `v1.14.0`
-
- - Support new Rust-based sync implementation.
 
 #### `powersync_sqlcipher` - `v0.1.8`
 
- - Support new Rust-based sync implementation.
+Add a new sync client implementation written in Rust instead of Dart. While
+this client is still experimental, we intend to make it the default in the 
+future. The main benefit of this client is faster sync performance, but 
+upcoming features will also require this client.
+We encourage interested users to try it out by passing `SyncOptions` to the
+`connect` method:
 
+```dart
+database.connect(
+  connector: YourConnector(),
+  options: const SyncOptions(
+    syncImplementation: SyncClientImplementation.rust,
+  ),
+);
+```
+
+Switching between the clients can be done at any time without compatibility
+issues. If you run into issues with the new client, please reach out to us!
+
+#### `powersync_flutter_libs` - `v0.4.9`
+
+ - Update PowerSync core extension to version 0.4.0.
 
 ## 2025-05-29
 

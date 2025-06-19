@@ -13,7 +13,7 @@ dependencies:
 
   sqlite3_flutter_libs: ^0.5.23
   powersync_core: ^1.4.0
-  powersync_flutter_libs: ^0.4.8
+  powersync_flutter_libs: ^0.4.9
   collection: ^1.17.0
 
 dev_dependencies:

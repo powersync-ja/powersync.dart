@@ -13,7 +13,7 @@ dependencies:
     sdk: flutter
 
   powersync_core: ^1.4.0
-  powersync_flutter_libs: ^0.4.8
+  powersync_flutter_libs: ^0.4.9
   sqlcipher_flutter_libs: ^0.6.4
   sqlite3_web: ^0.3.0
 
