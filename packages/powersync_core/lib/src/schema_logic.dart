@@ -21,8 +21,14 @@ Future<void> updateSchemaInIsolate(
 }
 
 String? friendlyTableName(String table) {
-  final re = RegExp(r"^ps_data__(.+)$");
-  final re2 = RegExp(r"^ps_data_local__(.+)$");
-  final match = re.firstMatch(table) ?? re2.firstMatch(table);
-  return match?.group(1);
+  const prefix1 = 'ps_data__';
+  const prefix2 = 'ps_data_local__';
+
+  if (table.startsWith(prefix2)) {
+    return table.substring(prefix2.length);
+  } else if (table.startsWith(prefix1)) {
+    return table.substring(prefix1.length);
+  } else {
+    return null;
+  }
 }
