@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math';
 
+import 'package:async/async.dart';
 import 'package:powersync_core/powersync_core.dart';
 import 'package:sqlite_async/sqlite_async.dart';
 import 'package:test/test.dart';
@@ -137,6 +138,29 @@ void main() {
             UpdateNotification.single('assets'),
             UpdateNotification.single('assets')
           ]));
+    });
+
+    test('emits update events with friendly names', () async {
+      final powersync = await testUtils.setupPowerSync(
+        path: path,
+        schema: Schema([
+          Table.localOnly('users', [
+            Column.text('name'),
+          ]),
+          Table('assets', [
+            Column.text('name'),
+          ]),
+        ]),
+      );
+
+      final updates = StreamQueue(powersync.updates);
+      await powersync
+          .execute('INSERT INTO users (id, name) VALUES (uuid(), ?)', ['test']);
+      await expectLater(updates, emits(UpdateNotification({'users'})));
+
+      await powersync.execute(
+          'INSERT INTO assets (id, name) VALUES (uuid(), ?)', ['test']);
+      await expectLater(updates, emits(UpdateNotification({'assets'})));
     });
   });
 }
