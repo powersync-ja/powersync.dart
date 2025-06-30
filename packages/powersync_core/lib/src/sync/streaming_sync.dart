@@ -586,6 +586,7 @@ typedef BucketDescription = ({
 final class _ActiveRustStreamingIteration {
   final StreamingSyncImplementation sync;
   var _isActive = true;
+  var _hadSyncLine = false;
 
   StreamSubscription<void>? _completedUploads;
   final Completer<void> _completedStream = Completer();
@@ -621,8 +622,10 @@ final class _ActiveRustStreamingIteration {
 
       switch (event) {
         case ReceivedLine(line: final Uint8List line):
+          _triggerCrudUploadOnFirstLine();
           await _control('line_binary', line);
         case ReceivedLine(line: final line as String):
+          _triggerCrudUploadOnFirstLine();
           await _control('line_text', line);
         case UploadCompleted():
           await _control('completed_upload');
@@ -631,6 +634,17 @@ final class _ActiveRustStreamingIteration {
         case TokenRefreshComplete():
           await _control('refreshed_token');
       }
+    }
+  }
+
+  /// Triggers a local CRUD upload when the first sync line has been received.
+  ///
+  /// This allows uploading local changes that have been made while offline or
+  /// disconnected.
+  void _triggerCrudUploadOnFirstLine() {
+    if (!_hadSyncLine) {
+      sync._internalCrudTriggerController.add(null);
+      _hadSyncLine = true;
     }
   }
 
