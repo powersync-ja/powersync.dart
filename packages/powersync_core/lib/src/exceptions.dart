@@ -38,15 +38,11 @@ class SyncResponseException implements Exception {
       http.StreamedResponse response) async {
     try {
       final body = await response.stream.bytesToString();
-      final decoded = convert.jsonDecode(body);
-      final details = _stringOrFirst(decoded['error']?['details']) ?? body;
-      final message = '${response.reasonPhrase ?? "Request failed"}: $details';
-      return SyncResponseException(response.statusCode, message);
+      return _fromResponseBody(response, body);
     } on Exception catch (_) {
-      return SyncResponseException(
-        response.statusCode,
-        response.reasonPhrase ?? "Request failed",
-      );
+      // Could be FormatException, stream issues, or possibly other exceptions.
+      // Fallback to just using the response header.
+      return _fromResponseHeader(response);
     }
   }
 
@@ -54,16 +50,27 @@ class SyncResponseException implements Exception {
   static SyncResponseException fromResponse(http.Response response) {
     try {
       final body = response.body;
-      final decoded = convert.jsonDecode(body);
-      final details = _stringOrFirst(decoded['error']?['details']) ?? body;
-      final message = '${response.reasonPhrase ?? "Request failed"}: $details';
-      return SyncResponseException(response.statusCode, message);
+      return _fromResponseBody(response, body);
     } on Exception catch (_) {
-      return SyncResponseException(
-        response.statusCode,
-        response.reasonPhrase ?? "Request failed",
-      );
+      // Could be FormatException, or possibly other exceptions.
+      // Fallback to just using the response header.
+      return _fromResponseHeader(response);
     }
+  }
+
+  static SyncResponseException _fromResponseBody(
+      http.BaseResponse response, String body) {
+    final decoded = convert.jsonDecode(body);
+    final details = _stringOrFirst(decoded['error']?['details']) ?? body;
+    final message = '${response.reasonPhrase ?? "Request failed"}: $details';
+    return SyncResponseException(response.statusCode, message);
+  }
+
+  static SyncResponseException _fromResponseHeader(http.BaseResponse response) {
+    return SyncResponseException(
+      response.statusCode,
+      response.reasonPhrase ?? "Request failed",
+    );
   }
 
   int statusCode;
