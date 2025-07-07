@@ -68,11 +68,16 @@ abstract class PowerSyncDatabase
   /// Migrations are run on the database when this constructor is called.
   ///
   /// [logger] defaults to [autoLogger], which logs to the console in debug builds.
-  factory PowerSyncDatabase.withDatabase(
-      {required Schema schema,
-      required SqliteDatabase database,
-      Logger? loggers}) {
+  factory PowerSyncDatabase.withDatabase({
+    required Schema schema,
+    required SqliteDatabase database,
+    Logger? logger,
+    @Deprecated("Use [logger] instead") Logger? loggers,
+  }) {
     return PowerSyncDatabaseImpl.withDatabase(
-        schema: schema, database: database, logger: loggers);
+      schema: schema,
+      database: database,
+      logger: loggers ?? logger,
+    );
   }
 }
