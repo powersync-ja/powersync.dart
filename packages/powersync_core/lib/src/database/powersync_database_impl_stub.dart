@@ -33,6 +33,9 @@ class PowerSyncDatabaseImpl
   SqliteDatabase get database => throw UnimplementedError();
 
   @override
+  bool get manualSchemaManagement => throw UnimplementedError();
+
+  @override
   Future<void> get isInitialized => throw UnimplementedError();
 
   /// Open a [PowerSyncDatabase].
@@ -53,6 +56,7 @@ class PowerSyncDatabaseImpl
       {required Schema schema,
       required String path,
       int maxReaders = SqliteDatabase.defaultMaxReaders,
+      bool manualSchemaManagement = false,
       Logger? logger,
       @Deprecated("Use [PowerSyncDatabase.withFactory] instead.")
       // ignore: deprecated_member_use_from_same_package
@@ -72,6 +76,7 @@ class PowerSyncDatabaseImpl
     DefaultSqliteOpenFactory openFactory, {
     required Schema schema,
     int maxReaders = SqliteDatabase.defaultMaxReaders,
+    bool manualSchemaManagement = false,
     Logger? logger,
   }) {
     throw UnimplementedError();
@@ -82,10 +87,12 @@ class PowerSyncDatabaseImpl
   /// Migrations are run on the database when this constructor is called.
   ///
   /// [logger] defaults to [autoLogger], which logs to the console in debug builds.s
-  factory PowerSyncDatabaseImpl.withDatabase(
-      {required Schema schema,
-      required SqliteDatabase database,
-      Logger? logger}) {
+  factory PowerSyncDatabaseImpl.withDatabase({
+    required Schema schema,
+    required SqliteDatabase database,
+    bool manualSchemaManagement = false,
+    Logger? logger,
+  }) {
     throw UnimplementedError();
   }
 

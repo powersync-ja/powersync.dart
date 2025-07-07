@@ -32,6 +32,7 @@ abstract interface class StreamingSync {
 
 @internal
 class StreamingSyncImplementation implements StreamingSync {
+  final String schemaJson;
   final BucketStorage adapter;
   final InternalConnector connector;
   final ResolvedSyncOptions options;
@@ -62,6 +63,7 @@ class StreamingSyncImplementation implements StreamingSync {
   String? clientId;
 
   StreamingSyncImplementation({
+    required this.schemaJson,
     required this.adapter,
     required this.connector,
     required this.crudUpdateTriggerStream,
@@ -596,7 +598,11 @@ final class _ActiveRustStreamingIteration {
   Future<void> syncIteration() async {
     try {
       await _control(
-          'start', convert.json.encode({'parameters': sync.options.params}));
+          'start',
+          convert.json.encode({
+            'parameters': sync.options.params,
+            'schema': convert.json.decode(sync.schemaJson),
+          }));
       assert(_completedStream.isCompleted, 'Should have started streaming');
       await _completedStream.future;
     } finally {

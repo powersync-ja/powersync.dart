@@ -8,10 +8,11 @@ import 'schema_logic.dart';
 class Schema {
   /// List of tables in the schema.
   final List<Table> tables;
+  final List<RawTable> rawTables;
 
-  const Schema(this.tables);
+  const Schema(this.tables, {this.rawTables = const []});
 
-  Map<String, dynamic> toJson() => {'tables': tables};
+  Map<String, dynamic> toJson() => {'raw_tables': rawTables, 'tables': tables};
 
   void validate() {
     Set<String> tableNames = {};
@@ -313,6 +314,64 @@ class Column {
   const Column.real(this.name) : type = ColumnType.real;
 
   Map<String, dynamic> toJson() => {'name': name, 'type': type.sqlite};
+}
+
+final class RawTable {
+  final String name;
+  final PendingStatement put;
+  final PendingStatement delete;
+
+  const RawTable({
+    required this.name,
+    required this.put,
+    required this.delete,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'name': name,
+        'put': put,
+        'delete': delete,
+      };
+}
+
+final class PendingStatement {
+  final String sql;
+  final List<PendingStatementValue> params;
+
+  PendingStatement({required this.sql, required this.params});
+
+  Map<String, dynamic> toJson() => {
+        'sql': sql,
+        'params': params,
+      };
+}
+
+sealed class PendingStatementValue {
+  factory PendingStatementValue.id() = _PendingStmtValueId;
+  factory PendingStatementValue.column(String column) = _PendingStmtValueColumn;
+
+  dynamic toJson();
+}
+
+class _PendingStmtValueColumn implements PendingStatementValue {
+  final String column;
+  const _PendingStmtValueColumn(this.column);
+
+  @override
+  dynamic toJson() {
+    return {
+      'Column': column,
+    };
+  }
+}
+
+class _PendingStmtValueId implements PendingStatementValue {
+  const _PendingStmtValueId();
+
+  @override
+  dynamic toJson() {
+    return 'Id';
+  }
 }
 
 /// Type of column.

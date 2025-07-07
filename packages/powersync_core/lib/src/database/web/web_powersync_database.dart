@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:meta/meta.dart';
 import 'package:http/browser_client.dart';
 import 'package:logging/logging.dart';
@@ -39,6 +40,9 @@ class PowerSyncDatabaseImpl
   SqliteDatabase database;
 
   @override
+  bool manualSchemaManagement;
+
+  @override
   @protected
   late Future<void> isInitialized;
 
@@ -69,14 +73,20 @@ class PowerSyncDatabaseImpl
       {required Schema schema,
       required String path,
       int maxReaders = SqliteDatabase.defaultMaxReaders,
+      bool manualSchemaManagement = false,
       Logger? logger,
       @Deprecated("Use [PowerSyncDatabase.withFactory] instead.")
       // ignore: deprecated_member_use_from_same_package
       SqliteConnectionSetup? sqliteSetup}) {
     // ignore: deprecated_member_use_from_same_package
     DefaultSqliteOpenFactory factory = PowerSyncOpenFactory(path: path);
-    return PowerSyncDatabaseImpl.withFactory(factory,
-        maxReaders: maxReaders, logger: logger, schema: schema);
+    return PowerSyncDatabaseImpl.withFactory(
+      factory,
+      maxReaders: maxReaders,
+      logger: logger,
+      schema: schema,
+      manualSchemaManagement: manualSchemaManagement,
+    );
   }
 
   /// Open a [PowerSyncDatabase] with a [PowerSyncOpenFactory].
@@ -91,10 +101,15 @@ class PowerSyncDatabaseImpl
       DefaultSqliteOpenFactory openFactory,
       {required Schema schema,
       int maxReaders = SqliteDatabase.defaultMaxReaders,
+      bool manualSchemaManagement = false,
       Logger? logger}) {
     final db = SqliteDatabase.withFactory(openFactory, maxReaders: 1);
     return PowerSyncDatabaseImpl.withDatabase(
-        schema: schema, logger: logger, database: db);
+      schema: schema,
+      manualSchemaManagement: manualSchemaManagement,
+      logger: logger,
+      database: db,
+    );
   }
 
   /// Open a PowerSyncDatabase on an existing [SqliteDatabase].
@@ -102,8 +117,12 @@ class PowerSyncDatabaseImpl
   /// Migrations are run on the database when this constructor is called.
   ///
   /// [logger] defaults to [autoLogger], which logs to the console in debug builds.
-  PowerSyncDatabaseImpl.withDatabase(
-      {required this.schema, required this.database, Logger? logger}) {
+  PowerSyncDatabaseImpl.withDatabase({
+    required this.schema,
+    required this.database,
+    this.manualSchemaManagement = false,
+    Logger? logger,
+  }) {
     if (logger != null) {
       this.logger = logger;
     } else {
@@ -141,6 +160,7 @@ class PowerSyncDatabaseImpl
 
       sync = StreamingSyncImplementation(
         adapter: storage,
+        schemaJson: jsonEncode(schema),
         connector: InternalConnector.wrap(connector, this),
         crudUpdateTriggerStream: crudStream,
         options: options,
