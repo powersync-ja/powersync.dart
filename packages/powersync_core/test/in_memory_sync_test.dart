@@ -48,7 +48,7 @@ void _declareTests(String name, SyncOptions options) {
     var credentialsCallbackCount = 0;
     Future<void> Function(PowerSyncDatabase) uploadData = (db) async {};
 
-    void createSyncClient() {
+    void createSyncClient({Schema? schema}) {
       final (client, server) = inMemoryServer();
       server.mount(syncService.router.call);
 
@@ -63,6 +63,7 @@ void _declareTests(String name, SyncOptions options) {
           );
         }, uploadData: (db) => uploadData(db)),
         options: options,
+        customSchema: schema,
       );
 
       addTearDown(() async {
@@ -206,6 +207,103 @@ void _declareTests(String name, SyncOptions options) {
         // The two buckets should have been inserted in a single transaction
         // because the messages were received in quick succession.
         expect(commits, 1);
+      });
+    } else {
+      // raw tables are only supported by the rust sync client
+      test('raw tabkes', () async {
+        final schema = Schema(const [], rawTables: [
+          RawTable(
+            name: 'lists',
+            put: PendingStatement(
+              sql: 'INSERT OR REPLACE INTO lists (id, name) VALUES (?, ?)',
+              params: [
+                PendingStatementValue.id(),
+                PendingStatementValue.column('name'),
+              ],
+            ),
+            delete: PendingStatement(
+              sql: 'DELETE FROM lists WHERE id = ?',
+              params: [
+                PendingStatementValue.id(),
+              ],
+            ),
+          ),
+        ]);
+
+        await database.execute(
+            'CREATE TABLE lists (id TEXT NOT NULL PRIMARY KEY, name TEXT);');
+        final query = StreamQueue(
+            database.watch('SELECT * FROM lists', throttle: Duration.zero));
+        await expectLater(query, emits(isEmpty));
+
+        createSyncClient(schema: schema);
+        await waitForConnection();
+
+        syncService
+          ..addLine({
+            'checkpoint': Checkpoint(
+              lastOpId: '1',
+              writeCheckpoint: null,
+              checksums: [
+                BucketChecksum(bucket: 'a', priority: 3, checksum: 0)
+              ],
+            )
+          })
+          ..addLine({
+            'data': {
+              'bucket': 'a',
+              'data': [
+                {
+                  'checksum': 0,
+                  'data': json.encode({'name': 'custom list'}),
+                  'op': 'PUT',
+                  'op_id': '1',
+                  'object_id': 'my_list',
+                  'object_type': 'lists'
+                }
+              ]
+            }
+          })
+          ..addLine({
+            'checkpoint_complete': {'last_op_id': '1'}
+          });
+
+        await expectLater(
+          query,
+          emits([
+            {'id': 'my_list', 'name': 'custom list'}
+          ]),
+        );
+
+        syncService
+          ..addLine({
+            'checkpoint': Checkpoint(
+              lastOpId: '2',
+              writeCheckpoint: null,
+              checksums: [
+                BucketChecksum(bucket: 'a', priority: 3, checksum: 0)
+              ],
+            )
+          })
+          ..addLine({
+            'data': {
+              'bucket': 'a',
+              'data': [
+                {
+                  'checksum': 0,
+                  'op': 'REMOVE',
+                  'op_id': '2',
+                  'object_id': 'my_list',
+                  'object_type': 'lists'
+                }
+              ]
+            }
+          })
+          ..addLine({
+            'checkpoint_complete': {'last_op_id': '2'}
+          });
+
+        await expectLater(query, emits(isEmpty));
       });
     }
 
