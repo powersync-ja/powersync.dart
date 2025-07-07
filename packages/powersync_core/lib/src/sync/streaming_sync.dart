@@ -598,7 +598,11 @@ final class _ActiveRustStreamingIteration {
   Future<void> syncIteration() async {
     try {
       await _control(
-          'start', convert.json.encode({'parameters': sync.options.params, 'schema': convert.json.decode(sync.schemaJson),}));
+          'start',
+          convert.json.encode({
+            'parameters': sync.options.params,
+            'schema': convert.json.decode(sync.schemaJson),
+          }));
       assert(_completedStream.isCompleted, 'Should have started streaming');
       await _completedStream.future;
     } finally {
