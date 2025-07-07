@@ -5,7 +5,6 @@ import 'package:async/async.dart';
 import 'package:logging/logging.dart';
 import 'package:powersync_core/powersync_core.dart';
 import 'package:powersync_core/sqlite3_common.dart';
-import 'package:powersync_core/src/log_internal.dart';
 import 'package:powersync_core/src/sync/streaming_sync.dart';
 import 'package:powersync_core/src/sync/protocol.dart';
 import 'package:test/test.dart';
@@ -20,16 +19,16 @@ void main() {
   _declareTests(
     'dart sync client',
     SyncOptions(
-      // ignore: deprecated_member_use_from_same_package
-      syncImplementation: SyncClientImplementation.dart,
-    ),
+        // ignore: deprecated_member_use_from_same_package
+        syncImplementation: SyncClientImplementation.dart,
+        retryDelay: Duration(milliseconds: 200)),
   );
 
   _declareTests(
     'rust sync client',
     SyncOptions(
-      syncImplementation: SyncClientImplementation.rust,
-    ),
+        syncImplementation: SyncClientImplementation.rust,
+        retryDelay: Duration(milliseconds: 200)),
   );
 }
 
@@ -43,6 +42,7 @@ void _declareTests(String name, SyncOptions options) {
     late CommonDatabase raw;
     late PowerSyncDatabase database;
     late MockSyncService syncService;
+    late Logger logger;
 
     late StreamingSync syncClient;
     var credentialsCallbackCount = 0;
@@ -52,7 +52,7 @@ void _declareTests(String name, SyncOptions options) {
       final (client, server) = inMemoryServer();
       server.mount(syncService.router.call);
 
-      syncClient = database.connectWithMockService(
+      final thisSyncClient = syncClient = database.connectWithMockService(
         client,
         TestConnector(() async {
           credentialsCallbackCount++;
@@ -64,9 +64,14 @@ void _declareTests(String name, SyncOptions options) {
         }, uploadData: (db) => uploadData(db)),
         options: options,
       );
+
+      addTearDown(() async {
+        await thisSyncClient.abort();
+      });
     }
 
     setUp(() async {
+      logger = Logger.detached('powersync.active')..level = Level.ALL;
       credentialsCallbackCount = 0;
       syncService = MockSyncService();
 
@@ -77,7 +82,6 @@ void _declareTests(String name, SyncOptions options) {
     });
 
     tearDown(() async {
-      await syncClient.abort();
       await database.close();
       await syncService.stop();
     });
@@ -85,9 +89,9 @@ void _declareTests(String name, SyncOptions options) {
     Future<StreamQueue<SyncStatus>> waitForConnection(
         {bool expectNoWarnings = true}) async {
       if (expectNoWarnings) {
-        isolateLogger.onRecord.listen((e) {
+        logger.onRecord.listen((e) {
           if (e.level >= Level.WARNING) {
-            fail('Unexpected log: $e');
+            fail('Unexpected log: $e, ${e.stackTrace}');
           }
         });
       }
@@ -100,8 +104,8 @@ void _declareTests(String name, SyncOptions options) {
       addTearDown(status.cancel);
 
       syncService.addKeepAlive();
-      await expectLater(
-          status, emits(isSyncStatus(connected: true, hasSynced: false)));
+      await expectLater(status,
+          emitsThrough(isSyncStatus(connected: true, hasSynced: false)));
       return status;
     }
 
@@ -412,7 +416,8 @@ void _declareTests(String name, SyncOptions options) {
             'data': [
               {
                 'checksum': 0,
-                'data': json.encode({'name': 'from local', 'email': 'local@example.org'}),
+                'data': json.encode(
+                    {'name': 'from local', 'email': 'local@example.org'}),
                 'op': 'PUT',
                 'op_id': '1',
                 'object_id': '1',
@@ -619,6 +624,35 @@ void _declareTests(String name, SyncOptions options) {
             emits(isSyncStatus(downloading: false, downloadProgress: isNull)));
       });
 
+      test('interrupt and defrag', () async {
+        var status = await waitForConnection();
+        syncService.addLine({
+          'checkpoint': Checkpoint(
+            lastOpId: '10',
+            checksums: [bucket('a', 10)],
+          )
+        });
+        await expectProgress(status, total: progress(0, 10));
+        addDataLine('a', 5);
+        await expectProgress(status, total: progress(5, 10));
+
+        // A sync rule deploy could reset buckets, making the new bucket smaller
+        // than the existing one.
+        await syncClient.abort();
+        syncService.endCurrentListener();
+        createSyncClient();
+        status = await waitForConnection();
+        syncService.addLine({
+          'checkpoint': Checkpoint(
+            lastOpId: '14',
+            checksums: [bucket('a', 4)],
+          )
+        });
+
+        // In this special case, don't report 5/4 as progress
+        await expectProgress(status, total: progress(0, 4));
+      });
+
       test('different priorities', () async {
         var status = await waitForConnection();
         Future<void> checkProgress(Object prio0, Object prio2) async {
@@ -693,6 +727,104 @@ void _declareTests(String name, SyncOptions options) {
       await syncClient.abort();
 
       expect(syncService.controller.hasListener, isFalse);
+    });
+
+    test('closes connection after failed checksum', () async {
+      final status = await waitForConnection(expectNoWarnings: false);
+      syncService.addLine({
+        'checkpoint': Checkpoint(
+          lastOpId: '4',
+          writeCheckpoint: null,
+          checksums: [checksum(bucket: 'a', checksum: 10)],
+        )
+      });
+
+      await expectLater(status, emits(isSyncStatus(downloading: true)));
+      syncService.addLine({
+        'checkpoint_complete': {'last_op_id': '10'}
+      });
+
+      await pumpEventQueue();
+      expect(syncService.controller.hasListener, isFalse);
+      syncService.endCurrentListener();
+
+      // Should reconnect after delay.
+      await Future<void>.delayed(const Duration(milliseconds: 500));
+      expect(syncService.controller.hasListener, isTrue);
+    });
+
+    test('closes connection after token expires', () async {
+      final status = await waitForConnection(expectNoWarnings: false);
+      syncService.addLine({
+        'checkpoint': Checkpoint(
+          lastOpId: '4',
+          writeCheckpoint: null,
+          checksums: [checksum(bucket: 'a', checksum: 10)],
+        )
+      });
+
+      await expectLater(status, emits(isSyncStatus(downloading: true)));
+      syncService.addKeepAlive(0);
+
+      await pumpEventQueue();
+      expect(syncService.controller.hasListener, isFalse);
+      syncService.endCurrentListener();
+
+      // Should reconnect after delay.
+      await Future<void>.delayed(const Duration(milliseconds: 500));
+      expect(syncService.controller.hasListener, isTrue);
+    });
+
+    test('uploads writes made while offline', () async {
+      // Local write while not connected
+      await database.execute(
+          'insert into customers (id, name) values (uuid(), ?)',
+          ['local customer']);
+      uploadData = (db) async {
+        final batch = await db.getNextCrudTransaction();
+        if (batch != null) {
+          await batch.complete();
+        }
+      };
+      syncService.writeCheckpoint = () => {
+            'data': {'write_checkpoint': '1'}
+          };
+
+      final query = StreamQueue(database
+          .watch('SELECT name FROM customers')
+          .map((e) => e.single['name']));
+      expect(await query.next, 'local customer');
+
+      await waitForConnection();
+
+      syncService
+        ..addLine({
+          'checkpoint': Checkpoint(
+            lastOpId: '1',
+            writeCheckpoint: '1',
+            checksums: [BucketChecksum(bucket: 'a', priority: 3, checksum: 0)],
+          )
+        })
+        ..addLine({
+          'data': {
+            'bucket': 'a',
+            'data': <Map<String, Object?>>[
+              {
+                'op_id': '1',
+                'op': 'PUT',
+                'object_type': 'customers',
+                'object_id': '1',
+                'checksum': 0,
+                'data': json.encode({'name': 'from server'}),
+              }
+            ],
+          }
+        })
+        ..addLine({
+          'checkpoint_complete': {'last_op_id': '1'}
+        });
+
+      expect(await query.next, 'from server');
     });
   });
 }

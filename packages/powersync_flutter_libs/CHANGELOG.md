@@ -1,3 +1,7 @@
+## 0.4.9
+
+ - Update PowerSync core extension to version 0.4.0.
+
 ## 0.4.8
 
  - Update PowerSync core extension to version 0.3.14.

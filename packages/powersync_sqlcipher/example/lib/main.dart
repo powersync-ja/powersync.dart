@@ -4,7 +4,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart';
 
 const schema = Schema([
-  Table('customers', [Column.text('name'), Column.text('email')])
+  Table('customers', [Column.text('name'), Column.text('email')]),
 ]);
 
 late PowerSyncDatabase db;
@@ -35,7 +35,9 @@ Future<void> openDatabase() async {
 
   // Setup the database.
   final cipherFactory = PowerSyncSQLCipherOpenFactory(
-      path: path, key: "sqlcipher-encryption-key");
+    path: path,
+    key: "sqlcipher-encryption-key",
+  );
 
   db = PowerSyncDatabase.withFactory(cipherFactory, schema: schema);
 
@@ -43,8 +45,9 @@ Future<void> openDatabase() async {
 
   // Run local statements.
   await db.execute(
-      'INSERT INTO customers(id, name, email) VALUES(uuid(), ?, ?)',
-      ['Fred', 'fred@example.org']);
+    'INSERT INTO customers(id, name, email) VALUES(uuid(), ?, ?)',
+    ['Fred', 'fred@example.org'],
+  );
 
   // Connect to backend
   db.connect(connector: BackendConnector(db));

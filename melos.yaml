@@ -3,6 +3,7 @@ repository: https://github.com/powersync-ja/powersync.dart
 
 packages:
   - packages/*
+  - packages/powersync_sqlcipher/example
   - demos/*
   - demos/*/*
 
@@ -39,6 +40,7 @@ scripts:
     packageFilters:
       private: true
       dirExists: web
+      dependsOn: powersync
 
   prepare:assets:
     description: Download Sqlite3 WASM for tests
@@ -92,6 +94,7 @@ scripts:
     packageFilters:
       dirExists:
         - test
+      dependsOn: test
     # This tells Melos tests to ignore env variables passed to tests from `melos run test`
     # as they could change the behaviour of how tests filter packages.
     env:
@@ -103,6 +106,7 @@ scripts:
     exec:
       concurrency: 1
     packageFilters:
+      dependsOn: test
       dirExists:
         - test
     env:

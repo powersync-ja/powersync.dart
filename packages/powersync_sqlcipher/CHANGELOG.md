@@ -1,3 +1,28 @@
+## 0.1.8
+
+Add a new sync client implementation written in Rust instead of Dart. While
+this client is still experimental, we intend to make it the default in the 
+future. The main benefit of this client is faster sync performance, but 
+upcoming features will also require this client.
+We encourage interested users to try it out by passing `SyncOptions` to the
+`connect` method:
+
+```dart
+database.connect(
+  connector: YourConnector(),
+  options: const SyncOptions(
+    syncImplementation: SyncClientImplementation.rust,
+  ),
+);
+```
+
+Switching between the clients can be done at any time without compatibility
+issues. If you run into issues with the new client, please reach out to us!
+
+## 0.1.7
+
+ - Allow subclassing open factory for SQLCipher.
+
 ## 0.1.6
 
 * Report real-time progress information about downloads through `SyncStatus.downloadProgress`.

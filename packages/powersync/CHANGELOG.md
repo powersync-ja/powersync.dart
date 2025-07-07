@@ -1,3 +1,31 @@
+## 1.14.0
+
+Add a new sync client implementation written in Rust instead of Dart. While
+this client is still experimental, we intend to make it the default in the 
+future. The main benefit of this client is faster sync performance, but 
+upcoming features will also require this client.
+We encourage interested users to try it out by passing `SyncOptions` to the
+`connect` method:
+
+```dart
+database.connect(
+  connector: YourConnector(),
+  options: const SyncOptions(
+    syncImplementation: SyncClientImplementation.rust,
+  ),
+);
+```
+
+Switching between the clients can be done at any time without compatibility
+issues. If you run into issues with the new client, please reach out to us!
+
+## 1.13.1
+
+- Use `package:http` instead of `package:fetch_client` on the web (since the former now uses fetch as well).
+- Allow disconnecting in the credentials callback of a connector.
+- Deprecate retry and CRUD upload durations as fields and independent parameters. Use the new `SyncOptions` class instead.
+- Fix sync progress report after a compaction or defragmentation on the sync service.
+
 ## 1.13.0
 
 * Report real-time progress information about downloads through `SyncStatus.downloadProgress`.

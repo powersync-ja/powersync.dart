@@ -19,6 +19,7 @@ assets/*
 powersync_db.worker.js
 powersync_db.worker.js*
 sqlite3.wasm
+sqlite3mc.wasm
 powersync_sync.worker.js
 powersync_sync.worker.js*
 

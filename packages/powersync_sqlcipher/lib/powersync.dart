@@ -3,30 +3,8 @@
 /// Use [PowerSyncSQLCipherOpenFactory] to open an encrypted database.
 library;
 
-import 'package:powersync_core/sqlite_async.dart';
-import 'package:powersync_sqlcipher/powersync.dart';
-
 export 'package:powersync_core/powersync_core.dart';
 
-import 'src/stub.dart'
+export 'src/stub.dart'
     if (dart.library.js_interop) 'src/web_encryption.dart'
     if (dart.library.ffi) 'src/sqlcipher.dart';
-
-const _defaultOptions = SqliteOptions(
-  webSqliteOptions: WebSqliteOptions(
-      wasmUri: 'sqlite3mc.wasm', workerUri: 'powersync_db.worker.js'),
-);
-
-/// A factory for opening a database with SQLCipher encryption.
-/// An encryption [key] is required to open the database.
-abstract interface class PowerSyncSQLCipherOpenFactory
-    extends PowerSyncOpenFactory {
-  factory PowerSyncSQLCipherOpenFactory(
-      {required String path,
-      required String key,
-      SqliteOptions sqliteOptions = _defaultOptions}) {
-    return cipherFactory(path: path, key: key, options: sqliteOptions);
-  }
-
-  String get key;
-}

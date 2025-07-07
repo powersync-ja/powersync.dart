@@ -37,7 +37,7 @@ class StreamingSyncImplementation implements StreamingSync {
   final InternalConnector connector;
   final ResolvedSyncOptions options;
 
-  final Logger logger = isolateLogger;
+  final Logger logger;
 
   final Stream<void> crudUpdateTriggerStream;
 
@@ -71,6 +71,7 @@ class StreamingSyncImplementation implements StreamingSync {
     required http.Client client,
     Mutex? syncMutex,
     Mutex? crudMutex,
+    Logger? logger,
 
     /// A unique identifier for this streaming sync implementation
     /// A good value is typically the DB file path which it will mutate when syncing.
@@ -78,7 +79,8 @@ class StreamingSyncImplementation implements StreamingSync {
   })  : _client = client,
         syncMutex = syncMutex ?? Mutex(identifier: "sync-$identifier"),
         crudMutex = crudMutex ?? Mutex(identifier: "crud-$identifier"),
-        _userAgentHeaders = userAgentHeaders();
+        _userAgentHeaders = userAgentHeaders(),
+        logger = logger ?? isolateLogger;
 
   Duration get _retryDelay => options.retryDelay;
 
@@ -125,6 +127,7 @@ class StreamingSyncImplementation implements StreamingSync {
   @override
   Future<void> streamingSync() async {
     try {
+      assert(_abort == null);
       _abort = AbortController();
       clientId = await adapter.getClientId();
       _crudLoop();
@@ -323,7 +326,7 @@ class StreamingSyncImplementation implements StreamingSync {
     var merged = addBroadcast(requestStream, _nonLineSyncEvents.stream);
 
     Future<void>? credentialsInvalidation;
-    bool haveInvalidated = false;
+    bool shouldStopIteration = false;
 
     // Trigger a CRUD upload on reconnect
     _internalCrudTriggerController.add(null);
@@ -349,6 +352,7 @@ class StreamingSyncImplementation implements StreamingSync {
         case StreamingSyncCheckpointComplete():
           final result = await _applyCheckpoint(targetCheckpoint!, _abort);
           if (result.abort) {
+            shouldStopIteration = true;
             return;
           }
         case StreamingSyncCheckpointPartiallyComplete(:final bucketPriority):
@@ -358,6 +362,7 @@ class StreamingSyncImplementation implements StreamingSync {
             // This means checksums failed. Start again with a new checkpoint.
             // TODO: better back-off
             // await new Promise((resolve) => setTimeout(resolve, 50));
+            shouldStopIteration = true;
             return;
           } else if (!result.ready) {
             // If we have pending uploads, we can't complete new checkpoints
@@ -411,13 +416,14 @@ class StreamingSyncImplementation implements StreamingSync {
           if (tokenExpiresIn == 0) {
             // Token expired already - stop the connection immediately
             connector.prefetchCredentials(invalidate: true).ignore();
+            shouldStopIteration = true;
             break;
           } else if (tokenExpiresIn <= 30) {
             // Token expires soon - refresh it in the background
             credentialsInvalidation ??=
                 connector.prefetchCredentials().then((_) {
               // Token has been refreshed - we should restart the connection.
-              haveInvalidated = true;
+              shouldStopIteration = true;
               // trigger next loop iteration ASAP, don't wait for another
               // message from the server.
               if (!aborted) {
@@ -434,7 +440,7 @@ class StreamingSyncImplementation implements StreamingSync {
     }
 
     await for (var line in merged) {
-      if (aborted || haveInvalidated) {
+      if (aborted || shouldStopIteration) {
         break;
       }
 
@@ -448,10 +454,10 @@ class StreamingSyncImplementation implements StreamingSync {
         case AbortCurrentIteration():
         case TokenRefreshComplete():
           // We have a new token, so stop the iteration.
-          haveInvalidated = true;
+          shouldStopIteration = true;
       }
 
-      if (haveInvalidated) {
+      if (shouldStopIteration) {
         // Stop this connection, so that a new one will be started
         break;
       }
@@ -582,6 +588,7 @@ typedef BucketDescription = ({
 final class _ActiveRustStreamingIteration {
   final StreamingSyncImplementation sync;
   var _isActive = true;
+  var _hadSyncLine = false;
 
   StreamSubscription<void>? _completedUploads;
   final Completer<void> _completedStream = Completer();
@@ -591,12 +598,7 @@ final class _ActiveRustStreamingIteration {
   Future<void> syncIteration() async {
     try {
       await _control(
-        'start',
-        convert.json.encode({
-          'parameters': sync.options.params,
-          'schema': convert.json.decode(sync.schemaJson),
-        }),
-      );
+          'start', convert.json.encode({'parameters': sync.options.params, 'schema': convert.json.decode(sync.schemaJson),}));
       assert(_completedStream.isCompleted, 'Should have started streaming');
       await _completedStream.future;
     } finally {
@@ -622,8 +624,10 @@ final class _ActiveRustStreamingIteration {
 
       switch (event) {
         case ReceivedLine(line: final Uint8List line):
+          _triggerCrudUploadOnFirstLine();
           await _control('line_binary', line);
         case ReceivedLine(line: final line as String):
+          _triggerCrudUploadOnFirstLine();
           await _control('line_text', line);
         case UploadCompleted():
           await _control('completed_upload');
@@ -632,6 +636,17 @@ final class _ActiveRustStreamingIteration {
         case TokenRefreshComplete():
           await _control('refreshed_token');
       }
+    }
+  }
+
+  /// Triggers a local CRUD upload when the first sync line has been received.
+  ///
+  /// This allows uploading local changes that have been made while offline or
+  /// disconnected.
+  void _triggerCrudUploadOnFirstLine() {
+    if (!_hadSyncLine) {
+      sync._internalCrudTriggerController.add(null);
+      _hadSyncLine = true;
     }
   }
 

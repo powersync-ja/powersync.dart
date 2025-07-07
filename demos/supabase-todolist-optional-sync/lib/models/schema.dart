@@ -16,7 +16,7 @@ import 'package:powersync_flutter_supabase_todolist_optional_sync_demo/models/sy
 const todosTable = 'todos';
 const listsTable = 'lists';
 
-Schema makeSchema({synced = bool}) {
+Schema makeSchema({required bool synced}) {
   String syncedName(String table) {
     if (synced) {
       // results in lists, todos

@@ -45,8 +45,7 @@ class PowerSyncUpdateNotification extends UpdateNotification {
 Set<String> _friendlyTableNames(Iterable<String> originalTables) {
   Set<String> tables = {};
   for (var table in originalTables) {
-    var friendlyName = friendlyTableName(table);
-    if (friendlyName != null) {
+    if (friendlyTableName(table) case final friendlyName?) {
       tables.add(friendlyName);
     } else if (!table.startsWith('ps_')) {
       tables.add(table);
