@@ -153,10 +153,11 @@ extension MockSync on PowerSyncDatabase {
     PowerSyncBackendConnector connector, {
     Logger? logger,
     SyncOptions options = const SyncOptions(retryDelay: Duration(seconds: 5)),
+    Schema? customSchema,
   }) {
     final impl = StreamingSyncImplementation(
       adapter: BucketStorage(this),
-      schemaJson: jsonEncode(schema),
+      schemaJson: jsonEncode(customSchema ?? schema),
       client: client,
       options: ResolvedSyncOptions(options),
       connector: InternalConnector.wrap(connector, this),

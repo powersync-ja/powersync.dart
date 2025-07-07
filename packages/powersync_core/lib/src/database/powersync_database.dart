@@ -36,7 +36,6 @@ abstract class PowerSyncDatabase
     required Schema schema,
     required String path,
     Logger? logger,
-    bool manualSchemaManagement = false,
     @Deprecated("Use [PowerSyncDatabase.withFactory] instead.")
     // ignore: deprecated_member_use_from_same_package
     SqliteConnectionSetup? sqliteSetup,
@@ -44,7 +43,6 @@ abstract class PowerSyncDatabase
     return PowerSyncDatabaseImpl(
       schema: schema,
       path: path,
-      manualSchemaManagement: manualSchemaManagement,
       logger: logger,
       // ignore: deprecated_member_use_from_same_package
       sqliteSetup: sqliteSetup,
@@ -63,14 +61,12 @@ abstract class PowerSyncDatabase
     DefaultSqliteOpenFactory openFactory, {
     required Schema schema,
     int maxReaders = SqliteDatabase.defaultMaxReaders,
-    bool manualSchemaManagement = false,
     Logger? logger,
   }) {
     return PowerSyncDatabaseImpl.withFactory(
       openFactory,
       schema: schema,
       maxReaders: maxReaders,
-      manualSchemaManagement: manualSchemaManagement,
       logger: logger,
     );
   }

@@ -40,9 +40,6 @@ class PowerSyncDatabaseImpl
   SqliteDatabase database;
 
   @override
-  bool manualSchemaManagement;
-
-  @override
   @protected
   late Future<void> isInitialized;
 
@@ -73,7 +70,6 @@ class PowerSyncDatabaseImpl
       {required Schema schema,
       required String path,
       int maxReaders = SqliteDatabase.defaultMaxReaders,
-      bool manualSchemaManagement = false,
       Logger? logger,
       @Deprecated("Use [PowerSyncDatabase.withFactory] instead.")
       // ignore: deprecated_member_use_from_same_package
@@ -85,7 +81,6 @@ class PowerSyncDatabaseImpl
       maxReaders: maxReaders,
       logger: logger,
       schema: schema,
-      manualSchemaManagement: manualSchemaManagement,
     );
   }
 
@@ -101,12 +96,10 @@ class PowerSyncDatabaseImpl
       DefaultSqliteOpenFactory openFactory,
       {required Schema schema,
       int maxReaders = SqliteDatabase.defaultMaxReaders,
-      bool manualSchemaManagement = false,
       Logger? logger}) {
     final db = SqliteDatabase.withFactory(openFactory, maxReaders: 1);
     return PowerSyncDatabaseImpl.withDatabase(
       schema: schema,
-      manualSchemaManagement: manualSchemaManagement,
       logger: logger,
       database: db,
     );
@@ -120,7 +113,6 @@ class PowerSyncDatabaseImpl
   PowerSyncDatabaseImpl.withDatabase({
     required this.schema,
     required this.database,
-    this.manualSchemaManagement = false,
     Logger? logger,
   }) {
     if (logger != null) {
