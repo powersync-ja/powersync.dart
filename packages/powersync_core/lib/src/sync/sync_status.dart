@@ -5,6 +5,7 @@ import 'package:meta/meta.dart';
 
 import 'bucket_storage.dart';
 import 'protocol.dart';
+import 'stream.dart';
 
 final class SyncStatus {
   /// true if currently connected.
@@ -54,6 +55,8 @@ final class SyncStatus {
 
   final List<SyncPriorityStatus> priorityStatusEntries;
 
+  final List<SyncStreamStatus>? activeSubscriptions;
+
   const SyncStatus({
     this.connected = false,
     this.connecting = false,
@@ -65,6 +68,7 @@ final class SyncStatus {
     this.downloadError,
     this.uploadError,
     this.priorityStatusEntries = const [],
+    this.activeSubscriptions,
   });
 
   @override
@@ -172,6 +176,18 @@ final class SyncStatus {
   // This should be a ListEquality<SyncPriorityStatus>, but that appears to
   // cause weird type errors with DDC (but only after hot reloads?!)
   static const _statusEquality = ListEquality<Object?>();
+}
+
+final class SyncStreamStatus {
+  final SyncSubscriptionDefinition subscription;
+  final BucketPriority priority;
+
+  final bool isDefault;
+  final ProgressWithOperations progress;
+
+  @internal
+  SyncStreamStatus(
+      this.subscription, this.priority, this.isDefault, this.progress);
 }
 
 /// The priority of a PowerSync bucket.
