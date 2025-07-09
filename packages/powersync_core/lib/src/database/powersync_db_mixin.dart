@@ -17,6 +17,8 @@ import 'package:powersync_core/src/schema_logic.dart' as schema_logic;
 import 'package:powersync_core/src/sync/options.dart';
 import 'package:powersync_core/src/sync/sync_status.dart';
 
+import '../sync/stream.dart';
+
 mixin PowerSyncDatabaseMixin implements SqliteConnection {
   /// Schema used for the local database.
   Schema get schema;
@@ -139,6 +141,10 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
   /// While initializing is automatic, this helps to catch and report initialization errors.
   Future<void> initialize() {
     return isInitialized;
+  }
+
+  Future<List<SyncStreamSubscription>> get activeSubscriptions {
+    throw UnimplementedError();
   }
 
   Future<void> _updateHasSynced() async {
