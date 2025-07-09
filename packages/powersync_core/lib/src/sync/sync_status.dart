@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
+import '../database/powersync_database.dart';
 
 import 'bucket_storage.dart';
 import 'protocol.dart';
@@ -55,7 +56,7 @@ final class SyncStatus {
 
   final List<SyncPriorityStatus> priorityStatusEntries;
 
-  final List<SyncStreamStatus>? activeSubscriptions;
+  final List<CoreActiveStreamSubscription>? _internalSubscriptions;
 
   const SyncStatus({
     this.connected = false,
@@ -68,8 +69,8 @@ final class SyncStatus {
     this.downloadError,
     this.uploadError,
     this.priorityStatusEntries = const [],
-    this.activeSubscriptions,
-  });
+    List<CoreActiveStreamSubscription>? streamSubscriptions,
+  }) : _internalSubscriptions = streamSubscriptions;
 
   @override
   bool operator ==(Object other) {
@@ -82,8 +83,10 @@ final class SyncStatus {
         other.uploadError == uploadError &&
         other.lastSyncedAt == lastSyncedAt &&
         other.hasSynced == hasSynced &&
-        _statusEquality.equals(
+        _listEquality.equals(
             other.priorityStatusEntries, priorityStatusEntries) &&
+        _listEquality.equals(
+            other._internalSubscriptions, _internalSubscriptions) &&
         other.downloadProgress == downloadProgress);
   }
 
@@ -112,6 +115,18 @@ final class SyncStatus {
       priorityStatusEntries:
           priorityStatusEntries ?? this.priorityStatusEntries,
     );
+  }
+
+  /// All sync streams currently being tracked in this subscription.
+  ///
+  /// This returns null when the sync stream is currently being opened and we
+  /// don't have reliable information about all included streams yet (in that
+  /// state, [PowerSyncDatabase.activeSubscriptions] can still be used to
+  /// resolve known subscriptions locally).
+  Iterable<SyncStreamStatus>? get activeSubscriptions {
+    return _internalSubscriptions?.map((subscription) {
+      return SyncStreamStatus._(subscription, downloadProgress);
+    });
   }
 
   /// Get the current [downloadError] or [uploadError].
@@ -153,6 +168,21 @@ final class SyncStatus {
     );
   }
 
+  /// If the [stream] appears in [activeSubscriptions], returns the current
+  /// status for that stream.
+  SyncStreamStatus? statusFor(SyncStreamDescription stream) {
+    final raw = _internalSubscriptions?.firstWhereOrNull(
+      (e) =>
+          e.name == stream.name &&
+          _mapEquality.equals(e.parameters, stream.parameters),
+    );
+
+    if (raw == null) {
+      return null;
+    }
+    return SyncStreamStatus._(raw, downloadProgress);
+  }
+
   @override
   int get hashCode {
     return Object.hash(
@@ -163,8 +193,9 @@ final class SyncStatus {
       uploadError,
       downloadError,
       lastSyncedAt,
-      _statusEquality.hash(priorityStatusEntries),
+      _listEquality.hash(priorityStatusEntries),
       downloadProgress,
+      _listEquality.hash(_internalSubscriptions),
     );
   }
 
@@ -173,21 +204,20 @@ final class SyncStatus {
     return "SyncStatus<connected: $connected connecting: $connecting downloading: $downloading (progress: $downloadProgress) uploading: $uploading lastSyncedAt: $lastSyncedAt, hasSynced: $hasSynced, error: $anyError>";
   }
 
-  // This should be a ListEquality<SyncPriorityStatus>, but that appears to
-  // cause weird type errors with DDC (but only after hot reloads?!)
-  static const _statusEquality = ListEquality<Object?>();
+  static const _listEquality = ListEquality<Object?>();
+  static const _mapEquality = MapEquality<Object?, Object?>();
 }
 
 final class SyncStreamStatus {
-  final SyncSubscriptionDefinition subscription;
-  final BucketPriority priority;
+  final ProgressWithOperations? progress;
+  final CoreActiveStreamSubscription _internal;
 
-  final bool isDefault;
-  final ProgressWithOperations progress;
+  SyncSubscriptionDefinition get subscription => _internal;
+  BucketPriority get priority => _internal.priority;
+  bool get isDefault => _internal.isDefault;
 
-  @internal
-  SyncStreamStatus(
-      this.subscription, this.priority, this.isDefault, this.progress);
+  SyncStreamStatus._(this._internal, SyncDownloadProgress? progress)
+      : progress = progress?._internal._forStream(_internal);
 }
 
 /// The priority of a PowerSync bucket.
@@ -304,13 +334,23 @@ final class InternalSyncDownloadProgress extends ProgressWithOperations {
   /// Sums the total target and completed operations for all buckets up until
   /// the given [priority] (inclusive).
   ProgressWithOperations untilPriority(BucketPriority priority) {
-    final (total, downloaded) =
-        buckets.values.where((e) => e.priority >= priority).fold(
+    final (total, downloaded) = buckets.values
+        .where((e) => e.priority >= priority)
+        .fold((0, 0), _addProgress);
+
+    return ProgressWithOperations._(total, downloaded);
+  }
+
+  ProgressWithOperations _forStream(CoreActiveStreamSubscription subscription) {
+    final (total, downloaded) = subscription.associatedBuckets.fold(
       (0, 0),
-      (prev, entry) {
-        final downloaded = entry.sinceLast;
-        final total = entry.targetCount - entry.atLast;
-        return (prev.$1 + total, prev.$2 + downloaded);
+      (prev, bucket) {
+        final foundProgress = buckets[bucket];
+        if (foundProgress == null) {
+          return prev;
+        }
+
+        return _addProgress(prev, foundProgress);
       },
     );
 
@@ -356,6 +396,12 @@ final class InternalSyncDownloadProgress extends ProgressWithOperations {
   }
 
   static const _mapEquality = MapEquality<Object?, Object?>();
+
+  (int, int) _addProgress((int, int) prev, BucketProgress entry) {
+    final downloaded = entry.sinceLast;
+    final total = entry.targetCount - entry.atLast;
+    return (prev.$1 + total, prev.$2 + downloaded);
+  }
 }
 
 /// Information about a progressing download.

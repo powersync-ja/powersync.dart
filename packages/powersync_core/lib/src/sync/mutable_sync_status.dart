@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:collection/collection.dart';
 
 import 'instruction.dart';
+import 'stream.dart';
 import 'sync_status.dart';
 import 'bucket_storage.dart';
 import 'protocol.dart';
@@ -15,6 +16,7 @@ final class MutableSyncStatus {
 
   InternalSyncDownloadProgress? downloadProgress;
   List<SyncPriorityStatus> priorityStatusEntries = const [];
+  List<CoreActiveStreamSubscription> streams = const [];
 
   DateTime? lastSyncedAt;
 

@@ -1,3 +1,4 @@
+import 'stream.dart';
 import 'sync_status.dart';
 
 /// An internal instruction emitted by the sync client in the core extension in
@@ -62,12 +63,14 @@ final class CoreSyncStatus {
   final bool connecting;
   final List<SyncPriorityStatus> priorityStatus;
   final DownloadProgress? downloading;
+  final List<CoreActiveStreamSubscription>? streams;
 
   CoreSyncStatus({
     required this.connected,
     required this.connecting,
     required this.priorityStatus,
     required this.downloading,
+    required this.streams,
   });
 
   factory CoreSyncStatus.fromJson(Map<String, Object?> json) {
@@ -82,6 +85,10 @@ final class CoreSyncStatus {
         null => null,
         final raw as Map<String, Object?> => DownloadProgress.fromJson(raw),
       },
+      streams: (json['stream'] as List<Object?>?)
+          ?.map((e) =>
+              CoreActiveStreamSubscription.fromJson(e as Map<String, Object?>))
+          .toList(),
     );
   }
 
