@@ -6,3 +6,5 @@ To update the version of the PowerSync core extension used in the Dart SDK, upda
 4. `POWERSYNC_CORE_VERSION` in `sqlite3_wasm_build/build.sh`.
 
 After updating, run `podfile:update` to update the podfile locks for demo projects.
+If you've updated the core version to use a new feature, also update the minimum
+version in `core_version.dart` to reflect that requirement.
