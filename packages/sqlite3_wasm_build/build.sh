@@ -2,7 +2,7 @@
 set -e
 
 SQLITE_VERSION="2.7.6"
-POWERSYNC_CORE_VERSION="0.4.0"
+POWERSYNC_CORE_VERSION="0.4.2"
 SQLITE_PATH="sqlite3.dart"
 
 if [ -d "$SQLITE_PATH" ]; then

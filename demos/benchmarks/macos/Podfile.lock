@@ -3,10 +3,10 @@ PODS:
   - path_provider_foundation (0.0.1):
     - Flutter
     - FlutterMacOS
-  - powersync-sqlite-core (0.4.0)
+  - powersync-sqlite-core (0.4.2)
   - powersync_flutter_libs (0.0.1):
     - FlutterMacOS
-    - powersync-sqlite-core (~> 0.4.0)
+    - powersync-sqlite-core (~> 0.4.2)
   - sqlite3 (3.49.2):
     - sqlite3/common (= 3.49.2)
   - sqlite3/common (3.49.2)
@@ -54,8 +54,8 @@ EXTERNAL SOURCES:
 SPEC CHECKSUMS:
   FlutterMacOS: 8f6f14fa908a6fb3fba0cd85dbd81ec4b251fb24
   path_provider_foundation: 080d55be775b7414fd5a5ef3ac137b97b097e564
-  powersync-sqlite-core: 3bfe9a3c210e130583496871b404f18d4cfbe366
-  powersync_flutter_libs: 31df4f212f2ee3bb0c0ba96214690eb719d83145
+  powersync-sqlite-core: a58efd88833861f0a8bb636c171bdf0ed55c9801
+  powersync_flutter_libs: fa885a30ceb636655741eee2ff5282d0500fa96b
   sqlite3: 3c950dc86011117c307eb0b28c4a7bb449dce9f1
   sqlite3_flutter_libs: f6acaa2172e6bb3e2e70c771661905080e8ebcf2
 

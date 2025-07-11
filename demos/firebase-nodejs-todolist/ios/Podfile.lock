@@ -13,7 +13,7 @@ PODS:
   - firebase_core (3.13.0):
     - Firebase/CoreOnly (= 11.10.0)
     - Flutter
-  - FirebaseAppCheckInterop (11.14.0)
+  - FirebaseAppCheckInterop (11.15.0)
   - FirebaseAuth (11.10.0):
     - FirebaseAppCheckInterop (~> 11.0)
     - FirebaseAuthInterop (~> 11.0)
@@ -23,7 +23,7 @@ PODS:
     - GoogleUtilities/Environment (~> 8.0)
     - GTMSessionFetcher/Core (< 5.0, >= 3.4)
     - RecaptchaInterop (~> 101.0)
-  - FirebaseAuthInterop (11.14.0)
+  - FirebaseAuthInterop (11.15.0)
   - FirebaseCore (11.10.0):
     - FirebaseCoreInternal (~> 11.10.0)
     - GoogleUtilities/Environment (~> 8.0)
@@ -58,10 +58,10 @@ PODS:
   - path_provider_foundation (0.0.1):
     - Flutter
     - FlutterMacOS
-  - powersync-sqlite-core (0.4.0)
+  - powersync-sqlite-core (0.4.2)
   - powersync_flutter_libs (0.0.1):
     - Flutter
-    - powersync-sqlite-core (~> 0.4.0)
+    - powersync-sqlite-core (~> 0.4.2)
   - RecaptchaInterop (101.0.0)
   - shared_preferences_foundation (0.0.1):
     - Flutter
@@ -142,9 +142,9 @@ SPEC CHECKSUMS:
   Firebase: 1fe1c0a7d9aaea32efe01fbea5f0ebd8d70e53a2
   firebase_auth: 83bf106e5ac670dd3a0af27a86be6cba16a85723
   firebase_core: 2d4534e7b489907dcede540c835b48981d890943
-  FirebaseAppCheckInterop: a92ba81d0ee3c4cddb1a2e52c668ea51dc63c3ae
+  FirebaseAppCheckInterop: 06fe5a3799278ae4667e6c432edd86b1030fa3df
   FirebaseAuth: c4146bdfdc87329f9962babd24dae89373f49a32
-  FirebaseAuthInterop: e25b58ecb90f3285085fa2118861a3c9dfdc62ad
+  FirebaseAuthInterop: 7087d7a4ee4bc4de019b2d0c240974ed5d89e2fd
   FirebaseCore: 8344daef5e2661eb004b177488d6f9f0f24251b7
   FirebaseCoreExtension: 6f357679327f3614e995dc7cf3f2d600bdc774ac
   FirebaseCoreInternal: ef4505d2afb1d0ebbc33162cb3795382904b5679
@@ -152,8 +152,8 @@ SPEC CHECKSUMS:
   GoogleUtilities: 00c88b9a86066ef77f0da2fab05f65d7768ed8e1
   GTMSessionFetcher: fc75fc972958dceedee61cb662ae1da7a83a91cf
   path_provider_foundation: 080d55be775b7414fd5a5ef3ac137b97b097e564
-  powersync-sqlite-core: 3bfe9a3c210e130583496871b404f18d4cfbe366
-  powersync_flutter_libs: f7069f8801cbb3bf870caf726c3bd5ac105c0ad9
+  powersync-sqlite-core: a58efd88833861f0a8bb636c171bdf0ed55c9801
+  powersync_flutter_libs: 881187a07f70ecabaf802fce45b186485464d618
   RecaptchaInterop: 11e0b637842dfb48308d242afc3f448062325aba
   shared_preferences_foundation: 9e1978ff2562383bd5676f64ec4e9aa8fa06a6f7
   sqlite3: 3c950dc86011117c307eb0b28c4a7bb449dce9f1

@@ -6,7 +6,7 @@ import 'dart:io';
 import 'package:melos/melos.dart';
 
 final sqliteUrl =
-    'https://github.com/powersync-ja/powersync-sqlite-core/releases/download/v0.4.0';
+    'https://github.com/powersync-ja/powersync-sqlite-core/releases/download/v0.4.2';
 
 void main() async {
   final sqliteCoreFilename = getLibraryForPlatform();
