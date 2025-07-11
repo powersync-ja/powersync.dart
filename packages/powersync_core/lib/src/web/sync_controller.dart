@@ -113,6 +113,9 @@ class SyncWorkerHandle implements StreamingSync {
   @override
   Future<void> streamingSync() async {
     await _channel.startSynchronization(
-        database.database.openFactory.path, ResolvedSyncOptions(options));
+      database.database.openFactory.path,
+      ResolvedSyncOptions(options),
+      database.schema,
+    );
   }
 }

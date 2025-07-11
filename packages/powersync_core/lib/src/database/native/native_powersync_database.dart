@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:isolate';
 import 'package:meta/meta.dart';
 
@@ -83,8 +84,12 @@ class PowerSyncDatabaseImpl
     DefaultSqliteOpenFactory factory =
         // ignore: deprecated_member_use_from_same_package
         PowerSyncOpenFactory(path: path, sqliteSetup: sqliteSetup);
-    return PowerSyncDatabaseImpl.withFactory(factory,
-        schema: schema, maxReaders: maxReaders, logger: logger);
+    return PowerSyncDatabaseImpl.withFactory(
+      factory,
+      schema: schema,
+      maxReaders: maxReaders,
+      logger: logger,
+    );
   }
 
   /// Open a [PowerSyncDatabase] with a [PowerSyncOpenFactory].
@@ -96,13 +101,17 @@ class PowerSyncDatabaseImpl
   ///
   /// [logger] defaults to [autoLogger], which logs to the console in debug builds.
   factory PowerSyncDatabaseImpl.withFactory(
-      DefaultSqliteOpenFactory openFactory,
-      {required Schema schema,
-      int maxReaders = SqliteDatabase.defaultMaxReaders,
-      Logger? logger}) {
+    DefaultSqliteOpenFactory openFactory, {
+    required Schema schema,
+    int maxReaders = SqliteDatabase.defaultMaxReaders,
+    Logger? logger,
+  }) {
     final db = SqliteDatabase.withFactory(openFactory, maxReaders: maxReaders);
     return PowerSyncDatabaseImpl.withDatabase(
-        schema: schema, database: db, logger: logger);
+      schema: schema,
+      database: db,
+      logger: logger,
+    );
   }
 
   /// Open a PowerSyncDatabase on an existing [SqliteDatabase].
@@ -110,8 +119,11 @@ class PowerSyncDatabaseImpl
   /// Migrations are run on the database when this constructor is called.
   ///
   /// [logger] defaults to [autoLogger], which logs to the console in debug builds.s
-  PowerSyncDatabaseImpl.withDatabase(
-      {required this.schema, required this.database, Logger? logger}) {
+  PowerSyncDatabaseImpl.withDatabase({
+    required this.schema,
+    required this.database,
+    Logger? logger,
+  }) {
     this.logger = logger ?? autoLogger;
     isInitialized = baseInit();
   }
@@ -247,6 +259,7 @@ class PowerSyncDatabaseImpl
         options,
         crudMutex.shared,
         syncMutex.shared,
+        jsonEncode(schema),
       ),
       debugName: 'Sync ${database.openFactory.path}',
       onError: receiveUnhandledErrors.sendPort,
@@ -290,6 +303,7 @@ class _PowerSyncDatabaseIsolateArgs {
   final ResolvedSyncOptions options;
   final SerializedMutex crudMutex;
   final SerializedMutex syncMutex;
+  final String schemaJson;
 
   _PowerSyncDatabaseIsolateArgs(
     this.sPort,
@@ -297,6 +311,7 @@ class _PowerSyncDatabaseIsolateArgs {
     this.options,
     this.crudMutex,
     this.syncMutex,
+    this.schemaJson,
   );
 }
 
@@ -392,6 +407,7 @@ Future<void> _syncIsolate(_PowerSyncDatabaseIsolateArgs args) async {
     final storage = BucketStorage(connection);
     final sync = StreamingSyncImplementation(
       adapter: storage,
+      schemaJson: args.schemaJson,
       connector: InternalConnector(
         getCredentialsCached: getCredentialsCached,
         prefetchCredentials: prefetchCredentials,

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:meta/meta.dart';
 import 'package:http/browser_client.dart';
 import 'package:logging/logging.dart';
@@ -75,8 +76,12 @@ class PowerSyncDatabaseImpl
       SqliteConnectionSetup? sqliteSetup}) {
     // ignore: deprecated_member_use_from_same_package
     DefaultSqliteOpenFactory factory = PowerSyncOpenFactory(path: path);
-    return PowerSyncDatabaseImpl.withFactory(factory,
-        maxReaders: maxReaders, logger: logger, schema: schema);
+    return PowerSyncDatabaseImpl.withFactory(
+      factory,
+      maxReaders: maxReaders,
+      logger: logger,
+      schema: schema,
+    );
   }
 
   /// Open a [PowerSyncDatabase] with a [PowerSyncOpenFactory].
@@ -94,7 +99,10 @@ class PowerSyncDatabaseImpl
       Logger? logger}) {
     final db = SqliteDatabase.withFactory(openFactory, maxReaders: 1);
     return PowerSyncDatabaseImpl.withDatabase(
-        schema: schema, logger: logger, database: db);
+      schema: schema,
+      logger: logger,
+      database: db,
+    );
   }
 
   /// Open a PowerSyncDatabase on an existing [SqliteDatabase].
@@ -102,8 +110,11 @@ class PowerSyncDatabaseImpl
   /// Migrations are run on the database when this constructor is called.
   ///
   /// [logger] defaults to [autoLogger], which logs to the console in debug builds.
-  PowerSyncDatabaseImpl.withDatabase(
-      {required this.schema, required this.database, Logger? logger}) {
+  PowerSyncDatabaseImpl.withDatabase({
+    required this.schema,
+    required this.database,
+    Logger? logger,
+  }) {
     if (logger != null) {
       this.logger = logger;
     } else {
@@ -141,6 +152,7 @@ class PowerSyncDatabaseImpl
 
       sync = StreamingSyncImplementation(
         adapter: storage,
+        schemaJson: jsonEncode(schema),
         connector: InternalConnector.wrap(connector, this),
         crudUpdateTriggerStream: crudStream,
         options: options,
