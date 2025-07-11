@@ -29,7 +29,7 @@ void main() {
           equals([
             {
               'data':
-                  '{"op":"PUT","type":"assets","id":"$testId","data":{"description":"test"}}'
+                  '{"op":"PUT","id":"$testId","type":"assets","data":{"description":"test"}}'
             }
           ]));
 
@@ -59,7 +59,7 @@ void main() {
           equals([
             {
               'data':
-                  '{"op":"PUT","type":"assets","id":"$testId","data":{"description":"test2"}}'
+                  '{"op":"PUT","id":"$testId","type":"assets","data":{"description":"test2"}}'
             }
           ]));
 
@@ -91,7 +91,7 @@ void main() {
           equals([
             {
               'data':
-                  '{"op":"PATCH","type":"assets","id":"$testId","data":{"description":"test2"}}'
+                  '{"op":"PATCH","id":"$testId","type":"assets","data":{"description":"test2"}}'
             }
           ]));
 
@@ -116,7 +116,7 @@ void main() {
       expect(
           await powersync.getAll('SELECT data FROM ps_crud ORDER BY id'),
           equals([
-            {'data': '{"op":"DELETE","type":"assets","id":"$testId"}'}
+            {'data': '{"op":"DELETE","id":"$testId","type":"assets"}'}
           ]));
 
       var tx = (await powersync.getNextCrudTransaction())!;
@@ -213,7 +213,7 @@ void main() {
           equals([
             {
               'data':
-                  '{"op":"PUT","type":"assets","id":"$testId","data":{"quantity":"$bigNumber"}}'
+                  '{"op":"PUT","id":"$testId","type":"assets","data":{"quantity":"$bigNumber"}}'
             }
           ]));
 
@@ -227,7 +227,7 @@ void main() {
           equals([
             {
               'data':
-                  '{"op":"PATCH","type":"assets","id":"$testId","data":{"quantity":${bigNumber + 1}}}'
+                  '{"op":"PATCH","id":"$testId","type":"assets","data":{"quantity":${bigNumber + 1}}}'
             }
           ]));
     });
