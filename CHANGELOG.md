@@ -3,6 +3,39 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 2025-07-07
+
+### Changes
+
+---
+
+Packages with breaking changes:
+
+ - There are no breaking changes in this release.
+
+Packages with other changes:
+
+ - [`powersync_core` - `v1.4.1`](#powersync_core---v141)
+ - [`powersync` - `v1.14.1`](#powersync---v1141)
+ - [`powersync_sqlcipher` - `v0.1.9`](#powersync_sqlcipher---v019)
+ - [`powersync_attachments_helper` - `v0.6.18+10`](#powersync_attachments_helper---v061810)
+
+Packages with dependency updates only:
+
+> Packages listed below depend on other packages in this workspace that have had changes. Their versions have been incremented to bump the minimum dependency versions of the packages they depend upon in this project.
+
+ - `powersync_attachments_helper` - `v0.6.18+10`
+
+---
+
+#### `powersync_core` - `v1.4.1`
+#### `powersync` - `v1.14.1`
+#### `powersync_sqlcipher` - `v0.1.9`
+
+ - Rust client: Fix uploading local writes after reconnect.
+ - `PowerSyncDatabase.withDatabase`: Rename `loggers` parameter to `logger` for consistency.
+ - Fix parsing HTTP errors for sync service unavailability.
+
 ## 2025-06-19
 
 ### Changes

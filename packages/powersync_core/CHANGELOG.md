@@ -1,3 +1,9 @@
+## 1.4.1
+
+ - Rust client: Fix uploading local writes after reconnect.
+ - `PowerSyncDatabase.withDatabase`: Rename `loggers` parameter to `logger` for consistency.
+ - Fix parsing HTTP errors for sync service unavailability.
+
 ## 1.4.0
 
 Add a new sync client implementation written in Rust instead of Dart. While
