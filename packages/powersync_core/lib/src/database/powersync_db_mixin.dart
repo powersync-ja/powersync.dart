@@ -192,14 +192,7 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
       }
     }
 
-    if (matches(currentStatus)) {
-      return;
-    }
-    await for (final result in statusStream) {
-      if (matches(result)) {
-        break;
-      }
-    }
+    return _connections.firstStatusMatching(matches);
   }
 
   @protected
@@ -550,6 +543,10 @@ SELECT * FROM crud_entries;
   @override
   Future<void> refreshSchema() async {
     await database.refreshSchema();
+  }
+
+  SyncStream syncStream(String name, [Map<String, Object?>? parameters]) {
+    return _connections.syncStream(name, parameters);
   }
 }
 

@@ -21,6 +21,8 @@ abstract interface class SyncStream extends SyncStreamDescription {
     BucketPriority? priority,
     Map<String, Object?>? parameters,
   });
+
+  Future<SyncStreamSubscription?> get current;
 }
 
 abstract interface class SyncStreamSubscription
