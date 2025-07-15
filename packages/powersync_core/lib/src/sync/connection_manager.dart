@@ -231,7 +231,7 @@ final class ConnectionManager {
   Future<SyncStreamSubscription?> resolveCurrent(
       String name, Map<String, Object?>? parameters) async {
     final row = await db.getOptional(
-      'SELECT stream_name, active, is_default, local_priority, local_params, expires_at, last_synced_at FROM ps_stream_subscriptions WHERE stream_name = ? AND local_params = ?',
+      'SELECT stream_name, active, is_default, local_priority, local_params, expires_at, last_synced_at, ttl FROM ps_stream_subscriptions WHERE stream_name = ? AND local_params = ?',
       [name, json.encode(parameters)],
     );
 
@@ -245,6 +245,8 @@ final class ConnectionManager {
       parameters:
           json.decode(row['local_params'] as String) as Map<String, Object?>?,
       active: row['active'] != 0,
+      isDefault: row['is_default'] != 0,
+      hasExplicitSubscription: row['ttl'] != null,
       expiresAt: switch (row['expires_at']) {
         null => null,
         final expiresAt as int =>
@@ -285,10 +287,10 @@ final class _SyncStreamImplementation implements SyncStream {
   }
 
   @override
-  Future<void> subscribe(
-      {Duration? ttl,
-      BucketPriority? priority,
-      Map<String, Object?>? parameters}) async {
+  Future<void> subscribe({
+    Duration? ttl,
+    BucketPriority? priority,
+  }) async {
     await _connections.subscribe(
       stream: name,
       parameters: parameters,
@@ -309,6 +311,10 @@ final class _SyncStreamSubscription implements SyncStreamSubscription {
   @override
   final bool active;
   @override
+  final bool isDefault;
+  @override
+  final bool hasExplicitSubscription;
+  @override
   final DateTime? expiresAt;
   @override
   final bool hasSynced;
@@ -320,6 +326,8 @@ final class _SyncStreamSubscription implements SyncStreamSubscription {
     required this.name,
     required this.parameters,
     required this.active,
+    required this.isDefault,
+    required this.hasExplicitSubscription,
     required this.expiresAt,
     required this.hasSynced,
     required this.lastSyncedAt,
