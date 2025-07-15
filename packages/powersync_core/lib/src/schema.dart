@@ -7,7 +7,18 @@ import 'schema_logic.dart';
 /// No migrations are required on the client.
 class Schema {
   /// List of tables in the schema.
+  ///
+  /// When opening a PowerSync database, these tables will be created and
+  /// migrated automatically.
   final List<Table> tables;
+
+  /// A list of [RawTable]s in addition to PowerSync-managed [tables].
+  ///
+  /// Raw tables give users full control over the SQLite tables, but that
+  /// includes the responsibility to create those tables and to write migrations
+  /// for them.
+  ///
+  /// For more information on raw tables, see [RawTable] and [the documentation](https://docs.powersync.com/usage/use-case-examples/raw-tables).
   final List<RawTable> rawTables;
 
   const Schema(this.tables, {this.rawTables = const []});
@@ -316,9 +327,45 @@ class Column {
   Map<String, dynamic> toJson() => {'name': name, 'type': type.sqlite};
 }
 
+/// A raw table, defined by the user instead of being managed by PowerSync.
+///
+/// Any ordinary SQLite table can be defined as a raw table, which enables:
+///
+/// - More performant queries, since data is stored in typed rows instead of the
+///   schemaless JSON view PowerSync uses by default.
+/// - More control over the table, since custom column constraints can be used
+///   in its definition.
+///
+/// PowerSync doesn't know anything about the internal structure of raw tables -
+/// instead, it relies on user-defined [put] and [delete] statements to sync
+/// data into them.
+///
+/// When using raw tables, you are responsible for creating and migrating them
+/// when they've changed. Further, triggers are necessary to collect local
+/// writes to those tables. For more information, see
+/// [the documentation](https://docs.powersync.com/usage/use-case-examples/raw-tables).
+///
+/// Note that raw tables are only supported by the Rust sync client, which needs
+/// to be enabled when connecting with raw tables.
 final class RawTable {
+  /// The name of the table as used by the sync service.
+  ///
+  /// This doesn't necessarily have to match the name of the SQLite table that
+  /// [put] and [delete] write to. Instead, it's used by the sync client to
+  /// identify which statements to use when it encounters sync operations for
+  /// this table.
   final String name;
+
+  /// A statement responsible for inserting or updating a row in this raw table
+  /// based on data from the sync service.
+  ///
+  /// See [PendingStatement] for details.
   final PendingStatement put;
+
+  /// A statement responsible for deleting a row based on its PowerSync id.
+  ///
+  /// See [PendingStatement] for details. Note that [PendingStatementValue]s
+  /// used here must all be [PendingStatementValue.id].
   final PendingStatement delete;
 
   const RawTable({
@@ -334,8 +381,22 @@ final class RawTable {
       };
 }
 
+/// An SQL statement to be run by the sync client against raw tables.
+///
+/// Since raw tables are managed by the user, PowerSync can't know how to apply
+/// serverside changes to them. These statements bridge raw tables and PowerSync
+/// by providing upserts and delete statements.
+///
+/// For more information, see [the documentation](https://docs.powersync.com/usage/use-case-examples/raw-tables)
 final class PendingStatement {
+  /// The SQL statement to run to upsert or delete data from a raw table.
   final String sql;
+
+  /// A list of value identifiers for parameters in [sql].
+  ///
+  /// Put statements can use both [PendingStatementValue.id] and
+  /// [PendingStatementValue.column], whereas delete statements can only use
+  /// [PendingStatementValue.id].
   final List<PendingStatementValue> params;
 
   PendingStatement({required this.sql, required this.params});
@@ -346,8 +407,14 @@ final class PendingStatement {
       };
 }
 
+/// A description of a value that will be resolved in the sync client when
+/// running a [PendingStatement] for a [RawTable].
 sealed class PendingStatementValue {
+  /// A value that is bound to the textual id used in the PowerSync protocol.
   factory PendingStatementValue.id() = _PendingStmtValueId;
+
+  /// A value that is bound to the value of a column in a replace (`PUT`)
+  /// operation of the PowerSync protocol.
   factory PendingStatementValue.column(String column) = _PendingStmtValueColumn;
 
   dynamic toJson();
