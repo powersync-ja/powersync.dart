@@ -53,7 +53,7 @@ void main() {
           'INSERT INTO customers(id, name) VALUES (?, ?)', [id, 'a customer']);
 
       var done = false;
-      inserts() async {
+      Future<void> inserts() async {
         while (!done) {
           await powersync.execute(
               'INSERT INTO assets(id, make, customer_id) VALUES (uuid(), ?, ?)',
@@ -65,7 +65,7 @@ void main() {
 
       const numberOfQueries = 10;
 
-      inserts();
+      final insertsFuture = inserts();
       try {
         List<DateTime> times = [];
         final results = await stream.take(numberOfQueries).map((e) {
@@ -100,6 +100,8 @@ void main() {
       } finally {
         done = true;
       }
+
+      await insertsFuture;
     });
 
     test('onChange', () async {
