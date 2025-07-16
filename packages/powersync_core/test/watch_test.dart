@@ -113,7 +113,7 @@ void main() {
       const throttleDuration = Duration(milliseconds: baseTime);
 
       var done = false;
-      inserts() async {
+      Future<void> inserts() async {
         while (!done) {
           await powersync.execute(
               'INSERT INTO assets(id, make) VALUES (uuid(), ?)', ['test']);
@@ -122,7 +122,7 @@ void main() {
         }
       }
 
-      inserts();
+      final insertsFuture = inserts();
 
       final stream = powersync.onChange({'assets', 'customers'},
           throttle: throttleDuration).asyncMap((event) async {
@@ -140,6 +140,7 @@ void main() {
             UpdateNotification.single('assets'),
             UpdateNotification.single('assets')
           ]));
+      await insertsFuture;
     });
 
     test('emits update events with friendly names', () async {
