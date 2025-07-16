@@ -210,7 +210,7 @@ void _declareTests(String name, SyncOptions options) {
       });
     } else {
       // raw tables are only supported by the rust sync client
-      test('raw tabkes', () async {
+      test('raw tables', () async {
         final schema = Schema(const [], rawTables: [
           RawTable(
             name: 'lists',
