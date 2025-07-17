@@ -32,19 +32,21 @@ abstract class PowerSyncDatabase
   /// A maximum of [maxReaders] concurrent read transactions are allowed.
   ///
   /// [logger] defaults to [autoLogger], which logs to the console in debug builds.
-  factory PowerSyncDatabase(
-      {required Schema schema,
-      required String path,
-      Logger? logger,
-      @Deprecated("Use [PowerSyncDatabase.withFactory] instead.")
-      // ignore: deprecated_member_use_from_same_package
-      SqliteConnectionSetup? sqliteSetup}) {
+  factory PowerSyncDatabase({
+    required Schema schema,
+    required String path,
+    Logger? logger,
+    @Deprecated("Use [PowerSyncDatabase.withFactory] instead.")
+    // ignore: deprecated_member_use_from_same_package
+    SqliteConnectionSetup? sqliteSetup,
+  }) {
     return PowerSyncDatabaseImpl(
-        schema: schema,
-        path: path,
-        logger: logger,
-        // ignore: deprecated_member_use_from_same_package
-        sqliteSetup: sqliteSetup);
+      schema: schema,
+      path: path,
+      logger: logger,
+      // ignore: deprecated_member_use_from_same_package
+      sqliteSetup: sqliteSetup,
+    );
   }
 
   /// Open a [PowerSyncDatabase] with a [PowerSyncOpenFactory].
@@ -55,12 +57,18 @@ abstract class PowerSyncDatabase
   /// Subclass [PowerSyncOpenFactory] to add custom logic to this process.
   ///
   /// [logger] defaults to [autoLogger], which logs to the console in debug builds.
-  factory PowerSyncDatabase.withFactory(DefaultSqliteOpenFactory openFactory,
-      {required Schema schema,
-      int maxReaders = SqliteDatabase.defaultMaxReaders,
-      Logger? logger}) {
-    return PowerSyncDatabaseImpl.withFactory(openFactory,
-        schema: schema, maxReaders: maxReaders, logger: logger);
+  factory PowerSyncDatabase.withFactory(
+    DefaultSqliteOpenFactory openFactory, {
+    required Schema schema,
+    int maxReaders = SqliteDatabase.defaultMaxReaders,
+    Logger? logger,
+  }) {
+    return PowerSyncDatabaseImpl.withFactory(
+      openFactory,
+      schema: schema,
+      maxReaders: maxReaders,
+      logger: logger,
+    );
   }
 
   /// Open a PowerSyncDatabase on an existing [SqliteDatabase].

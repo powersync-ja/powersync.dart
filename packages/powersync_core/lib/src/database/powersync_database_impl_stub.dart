@@ -82,10 +82,11 @@ class PowerSyncDatabaseImpl
   /// Migrations are run on the database when this constructor is called.
   ///
   /// [logger] defaults to [autoLogger], which logs to the console in debug builds.s
-  factory PowerSyncDatabaseImpl.withDatabase(
-      {required Schema schema,
-      required SqliteDatabase database,
-      Logger? logger}) {
+  factory PowerSyncDatabaseImpl.withDatabase({
+    required Schema schema,
+    required SqliteDatabase database,
+    Logger? logger,
+  }) {
     throw UnimplementedError();
   }
 
