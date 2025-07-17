@@ -3,6 +3,44 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 2025-07-17
+
+### Changes
+
+---
+
+Packages with breaking changes:
+
+ - There are no breaking changes in this release.
+
+Packages with other changes:
+
+ - [`powersync_core` - `v1.5.0`](#powersync_core---v150)
+ - [`powersync` - `v1.15.0`](#powersync---v1150)
+ - [`powersync_sqlcipher` - `v0.1.10`](#powersync_sqlcipher---v0110)
+ - [`powersync_flutter_libs` - `v0.4.10`](#powersync_flutter_libs---v0410)
+ - [`powersync_attachments_helper` - `v0.6.18+11`](#powersync_attachments_helper---v061811)
+
+Packages with dependency updates only:
+
+> Packages listed below depend on other packages in this workspace that have had changes. Their versions have been incremented to bump the minimum dependency versions of the packages they depend upon in this project.
+
+ - `powersync_attachments_helper` - `v0.6.18+11`
+
+---
+
+#### `powersync_flutter_libs` - `v0.4.10`.
+
+ - Update the PowerSync core extension to `0.4.2`.
+
+#### `powersync_core` - `v1.5.0`
+#### `powersync` - `v1.15.0`
+#### `powersync_sqlcipher` - `v0.1.10`
+
+ - Add support for [raw tables](https://docs.powersync.com/usage/use-case-examples/raw-tables), which are user-managed
+   regular SQLite tables instead of the JSON-based views managed by PowerSync.
+
+
 ## 2025-07-07
 
 ### Changes

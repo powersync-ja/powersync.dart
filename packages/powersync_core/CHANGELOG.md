@@ -1,3 +1,9 @@
+## 1.5.0
+
+ - Update the PowerSync core extension to `0.4.2`.
+ - Add support for [raw tables](https://docs.powersync.com/usage/use-case-examples/raw-tables), which are user-managed
+   regular SQLite tables instead of the JSON-based views managed by PowerSync.
+
 ## 1.4.1
 
  - Rust client: Fix uploading local writes after reconnect.
