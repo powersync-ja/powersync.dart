@@ -102,7 +102,7 @@ class SyncResponseException implements Exception {
 
     if (details is String) {
       fullDescription
-        ..write(' ')
+        ..write(', ')
         ..write(details);
     }
 

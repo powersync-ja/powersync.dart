@@ -26,6 +26,17 @@ void main() {
           'Request failed: PSYNC_S2106(AuthorizationError): Authentication required');
     });
 
+    test('with description', () {
+      const errorResponse =
+          '{"error":{"code":"PSYNC_S2106","status":401,"description":"Authentication required","name":"AuthorizationError", "details": "Missing authorization header"}}';
+
+      final exc =
+          SyncResponseException.fromResponse(Response(errorResponse, 401));
+      expect(exc.statusCode, 401);
+      expect(exc.description,
+          'Request failed: PSYNC_S2106(AuthorizationError): Authentication required, Missing authorization header');
+    });
+
     test('malformed', () {
       const malformed =
           '{"message":"Route GET:/foo/bar not found","error":"Not Found","statusCode":404}';
