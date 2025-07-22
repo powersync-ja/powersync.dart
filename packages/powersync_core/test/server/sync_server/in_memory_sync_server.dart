@@ -1,12 +1,17 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 
+import 'package:bson/bson.dart';
 import 'package:shelf/shelf.dart';
 import 'package:shelf_router/shelf_router.dart';
 
 final class MockSyncService {
+  final bool useBson;
+
   // Use a queued stream to make tests easier.
-  StreamController<String> controller = StreamController();
+  StreamController<Object /* String | Uint8List */ > controller =
+      StreamController();
   Completer<Request> _listener = Completer();
 
   final router = Router();
@@ -16,13 +21,29 @@ final class MockSyncService {
     };
   };
 
-  MockSyncService() {
+  MockSyncService({this.useBson = false}) {
     router
       ..post('/sync/stream', (Request request) async {
+        if (useBson &&
+            !request.headers['Accept']!
+                .contains('application/vnd.powersync.bson-stream')) {
+          throw "Want to serve bson, but client doesn't accept it";
+        }
+
         _listener.complete(request);
         // Respond immediately with a stream
-        return Response.ok(controller.stream.transform(utf8.encoder), headers: {
-          'Content-Type': 'application/x-ndjson',
+        final bytes = controller.stream.map((line) {
+          return switch (line) {
+            final String line => utf8.encode(line),
+            final Uint8List line => line,
+            _ => throw ArgumentError.value(line, 'line', 'Unexpected type'),
+          };
+        });
+
+        return Response.ok(bytes, headers: {
+          'Content-Type': useBson
+              ? 'application/vnd.powersync.bson-stream'
+              : 'application/x-ndjson',
           'Cache-Control': 'no-cache',
           'Connection': 'keep-alive',
         }, context: {
@@ -39,12 +60,19 @@ final class MockSyncService {
   Future<Request> get waitForListener => _listener.future;
 
   // Queue events which will be sent to connected clients.
-  void addRawEvent(String data) {
+  void addRawEvent(Object data) {
     controller.add(data);
   }
 
   void addLine(Object? message) {
-    addRawEvent('${json.encode(message)}\n');
+    if (useBson) {
+      // Going through a JSON roundtrip ensures that the message can be
+      // serialized with the BSON package.
+      final cleanedMessage = json.decode(json.encode(message));
+      addRawEvent(BsonCodec.serialize(cleanedMessage).byteList);
+    } else {
+      addRawEvent('${json.encode(message)}\n');
+    }
   }
 
   void addKeepAlive([int tokenExpiresIn = 3600]) {

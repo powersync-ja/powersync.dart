@@ -506,7 +506,11 @@ class StreamingSyncImplementation implements StreamingSync {
     }
   }
 
-  Future<http.StreamedResponse?> _postStreamRequest(Object? data) async {
+  Future<http.StreamedResponse?> _postStreamRequest(
+      Object? data, bool acceptBson) async {
+    const ndJson = 'application/x-ndjson';
+    const bson = 'application/vnd.powersync.bson-stream';
+
     final credentials = await connector.getCredentialsCached();
     if (credentials == null) {
       throw CredentialsException('Not logged in');
@@ -516,6 +520,8 @@ class StreamingSyncImplementation implements StreamingSync {
     final request = http.Request('POST', uri);
     request.headers['Content-Type'] = 'application/json';
     request.headers['Authorization'] = "Token ${credentials.token}";
+    request.headers['Accept'] =
+        acceptBson ? '$bson;q=0.9,$ndJson;q=0.8' : ndJson;
     request.headers.addAll(_userAgentHeaders);
 
     request.body = convert.jsonEncode(data);
@@ -535,18 +541,13 @@ class StreamingSyncImplementation implements StreamingSync {
     return res;
   }
 
-  Stream<String> _rawStreamingSyncRequest(Object? data) async* {
-    final response = await _postStreamRequest(data);
-    if (response != null) {
-      yield* response.stream.lines;
-    }
-  }
-
   Stream<StreamingSyncLine> _streamingSyncRequest(StreamingSyncRequest data) {
-    return _rawStreamingSyncRequest(data)
-        .parseJson
-        .cast<Map<String, dynamic>>()
-        .transform(StreamingSyncLine.reader);
+    return Stream.fromFuture(_postStreamRequest(data, false))
+        .asyncExpand((response) {
+      return response?.stream.lines.parseJson
+          .cast<Map<String, dynamic>>()
+          .transform(StreamingSyncLine.reader);
+    });
   }
 
   /// Delays the standard `retryDelay` Duration, but exits early if
@@ -614,7 +615,17 @@ final class _ActiveRustStreamingIteration {
   }
 
   Stream<ReceivedLine> _receiveLines(Object? data) {
-    return sync._rawStreamingSyncRequest(data).map(ReceivedLine.new);
+    return Stream.fromFuture(sync._postStreamRequest(data, true))
+        .asyncExpand<Object /* Uint8List | String */ >((response) {
+      if (response == null) {
+        return null;
+      } else {
+        final contentType = response.headers['content-type'];
+        final isBson = contentType == 'application/vnd.powersync.bson-stream';
+
+        return isBson ? response.stream.bsonDocuments : response.stream.lines;
+      }
+    }).map(ReceivedLine.new);
   }
 
   Future<void> _handleLines(EstablishSyncStream request) async {

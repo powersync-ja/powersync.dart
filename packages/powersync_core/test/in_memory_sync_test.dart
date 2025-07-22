@@ -19,20 +19,33 @@ void main() {
   _declareTests(
     'dart sync client',
     SyncOptions(
-        // ignore: deprecated_member_use_from_same_package
-        syncImplementation: SyncClientImplementation.dart,
-        retryDelay: Duration(milliseconds: 200)),
+      // ignore: deprecated_member_use_from_same_package
+      syncImplementation: SyncClientImplementation.dart,
+      retryDelay: Duration(milliseconds: 200),
+    ),
+    false,
   );
 
-  _declareTests(
-    'rust sync client',
-    SyncOptions(
-        syncImplementation: SyncClientImplementation.rust,
-        retryDelay: Duration(milliseconds: 200)),
-  );
+  group('rust sync client', () {
+    _declareTests(
+      'json',
+      SyncOptions(
+          syncImplementation: SyncClientImplementation.rust,
+          retryDelay: Duration(milliseconds: 200)),
+      false,
+    );
+
+    _declareTests(
+      'bson',
+      SyncOptions(
+          syncImplementation: SyncClientImplementation.rust,
+          retryDelay: Duration(milliseconds: 200)),
+      true,
+    );
+  });
 }
 
-void _declareTests(String name, SyncOptions options) {
+void _declareTests(String name, SyncOptions options, bool bson) {
   final ignoredLogger = Logger.detached('powersync.test')..level = Level.OFF;
 
   group(name, () {
@@ -74,7 +87,7 @@ void _declareTests(String name, SyncOptions options) {
     setUp(() async {
       logger = Logger.detached('powersync.active')..level = Level.ALL;
       credentialsCallbackCount = 0;
-      syncService = MockSyncService();
+      syncService = MockSyncService(useBson: bson);
 
       factory = await testUtils.testFactory();
       (raw, database) = await factory.openInMemoryDatabase();
