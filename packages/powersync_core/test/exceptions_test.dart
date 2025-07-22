@@ -34,6 +34,12 @@ void main() {
       expect(exc.statusCode, 401);
       expect(exc.description,
           'Request failed: {"message":"Route GET:/foo/bar not found","error":"Not Found","statusCode":404}');
+
+      final exc2 = SyncResponseException.fromResponse(Response(
+          'not even json', 500,
+          reasonPhrase: 'Internal server error'));
+      expect(exc2.statusCode, 500);
+      expect(exc2.description, 'Internal server error');
     });
   });
 }
