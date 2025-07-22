@@ -1,3 +1,7 @@
+## 0.1.10
+
+ - raw tables
+
 ## 0.1.9
 
  - Rust client: Fix uploading local writes after reconnect.
