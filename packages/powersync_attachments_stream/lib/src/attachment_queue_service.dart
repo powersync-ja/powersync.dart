@@ -1,66 +1,370 @@
-import 'attachment_service.dart';
-import 'attachment_state.dart';
-import 'attachment_context.dart';
-import 'local_storage.dart';
-import 'sync_error_handler.dart';
-import 'utils/mutex.dart';
 import 'dart:async';
+import 'dart:typed_data';
+import 'package:logging/logging.dart';
+import 'package:sqlite_async/mutex.dart';
+import 'attachment.dart';
+import 'abstractions/attachment_service.dart';
+import 'abstractions/attachment_context.dart';
+import 'abstractions/local_storage.dart';
+import 'abstractions/remote_storage.dart';
+import 'sync_error_handler.dart';
+import 'implementations/attachment_service.dart';
+import 'sync/syncing_service.dart';
 
-class AttachmentQueueService implements AttachmentService {
+/// A watched attachment record item.
+/// This is usually returned from watching all relevant attachment IDs.
+class WatchedAttachmentItem {
+  final String id;
+  final String? fileExtension;
+  final String? filename;
+  final String? metaData;
+
+  WatchedAttachmentItem({
+    required this.id,
+    this.fileExtension,
+    this.filename,
+    this.metaData,
+  }) : assert(
+         fileExtension != null || filename != null,
+         'Either fileExtension or filename must be provided.',
+       );
+}
+
+/// Class used to implement the attachment queue.
+/// Requires a database client, remote storage adapter, and an attachment directory name.
+class AttachmentQueue {
+  final dynamic db;
+  final RemoteStorage remoteStorage;
+  final String attachmentsDirectory;
+  final Stream<List<WatchedAttachmentItem>> Function() watchAttachments;
   final LocalStorage localStorage;
-  final SyncErrorHandler errorHandler;
-  final AsyncMutex _mutex = AsyncMutex();
+  final String attachmentsQueueTableName;
+  final SyncErrorHandler? errorHandler;
+  final Duration syncInterval;
+  final int archivedCacheLimit;
+  final Duration syncThrottleDuration;
+  final List<String>? subdirectories;
+  final bool downloadAttachments;
+  final Logger logger;
 
-  final StreamController<List<Attachment>> _activeAttachmentsController = StreamController.broadcast();
-  final List<Attachment> _attachments = [];
+  static const String defaultTableName = 'attachments_queue';
 
-  AttachmentQueueService({
+  final Mutex _mutex = Mutex();
+  bool _closed = false;
+  StreamSubscription? _syncStatusSubscription;
+  late final AttachmentService attachmentsService;
+  late final SyncingService syncingService;
+
+  AttachmentQueue({
+    required this.db,
+    required this.remoteStorage,
+    required this.attachmentsDirectory,
+    required this.watchAttachments,
     required this.localStorage,
-    required this.errorHandler,
-  });
+    this.attachmentsQueueTableName = defaultTableName,
+    this.errorHandler,
+    this.syncInterval = const Duration(seconds: 30),
+    this.archivedCacheLimit = 100,
+    this.syncThrottleDuration = const Duration(seconds: 1),
+    this.subdirectories,
+    this.downloadAttachments = true,
+    Logger? logger,
+  }) : logger = logger ?? Logger('AttachmentQueue') {
+    attachmentsService = AttachmentServiceImpl(
+      db: db,
+      log: logger ?? Logger('AttachmentQueue'),
+      maxArchivedCount: archivedCacheLimit,
+      attachmentsQueueTableName: attachmentsQueueTableName,
+    );
 
-  @override
-  Future<void> init() async {
-    // Initialize resources, DB, etc.
+    syncingService = SyncingService(
+      remoteStorage: remoteStorage,
+      localStorage: localStorage,
+      attachmentsService: attachmentsService,
+      getLocalUri: (filename) async => getLocalUri(filename),
+      errorHandler: errorHandler,
+      syncThrottle: syncThrottleDuration,
+      period: syncInterval,
+    );
+    logger?.info('syncingService: $syncingService');
   }
 
-  @override
-  Future<void> close() async {
-    await _activeAttachmentsController.close();
-    // Clean up resources
-  }
+  /// Initialize the attachment queue by:
+  /// 1. Creating the attachments directory.
+  /// 2. Adding watches for uploads, downloads, and deletes.
+  /// 3. Adding a trigger to run uploads, downloads, and deletes when the device is online after being offline.
+  Future<void> startSync() async {
+    await _mutex.lock(() async {
+      if (_closed) {
+        throw Exception('Attachment queue has been closed');
+      }
 
-  @override
-  Stream<List<Attachment>> watchActiveAttachments() => _activeAttachmentsController.stream;
+      await _stopSyncingInternal();
 
-  @override
-  Future<List<Attachment>> getActiveAttachments({AttachmentState? state}) async {
-    return _attachments.where((a) =>
-      a.state != AttachmentState.archived &&
-      (state == null || a.state == state)
-    ).toList();
-  }
+      logger.info('startSync attachmentsDirectory: $attachmentsDirectory');
+      await localStorage.makeDir(attachmentsDirectory);
 
-  @override
-  Future<void> triggerSync() async {
-    // Implement sync logic, update states, handle errors
-  }
+      subdirectories?.forEach((subdirectory) async {
+        await localStorage.makeDir('$attachmentsDirectory/$subdirectory');
+      });
 
-  @override
-  Future<List<Attachment>> getAttachments({int? limit, int? offset}) async {
-    var list = List<Attachment>.from(_attachments);
-    if (offset != null) list = list.skip(offset).toList();
-    if (limit != null) list = list.take(limit).toList();
-    return list;
-  }
+      await attachmentsService.withContext((context) async {
+        await _verifyAttachments(context);
+      });
 
-  @override
-  Future<void> withContext(Future<void> Function(AttachmentContext ctx) action) async {
-    await _mutex.protect(() async {
-      final ctx = AttachmentContext();
-      await action(ctx);
+      await syncingService.startSync();
+
+      // Listen for connectivity changes and watched attachments
+      _syncStatusSubscription = watchAttachments().listen((items) async {
+        await _processWatchedAttachments(items);
+      });
+
+      logger.info('AttachmentQueue started syncing.');
     });
   }
 
-  // Add methods for adding, updating, removing attachments, etc.
+  /// Stops syncing. Syncing may be resumed with [startSync].
+  Future<void> stopSyncing() async {
+    await _mutex.lock(() async {
+      await _stopSyncingInternal();
+    });
+  }
+
+  Future<void> _stopSyncingInternal() async {
+    if (_closed) return;
+
+    await _syncStatusSubscription?.cancel();
+    _syncStatusSubscription = null;
+    await syncingService.stopSync();
+
+    logger.info('AttachmentQueue stopped syncing.');
+  }
+
+  /// Closes the queue. The queue cannot be used after closing.
+  Future<void> close() async {
+    await _mutex.lock(() async {
+      if (_closed) return;
+
+      await _syncStatusSubscription?.cancel();
+      await syncingService.close();
+      _closed = true;
+
+      logger.info('AttachmentQueue closed.');
+    });
+  }
+
+  /// Resolves the filename for new attachment items.
+  /// Concatenates the attachment ID and extension by default.
+  Future<String> resolveNewAttachmentFilename(
+    String attachmentId,
+    String? fileExtension,
+  ) async {
+    return fileExtension != null
+        ? '$attachmentId.$fileExtension'
+        : '$attachmentId.dat';
+  }
+
+  /// Processes attachment items returned from [watchAttachments].
+  /// The default implementation asserts the items returned from [watchAttachments] as the definitive
+  /// state for local attachments.
+  Future<void> _processWatchedAttachments(
+    List<WatchedAttachmentItem> items,
+  ) async {
+    await attachmentsService.withContext((context) async {
+      final currentAttachments = await context.getAttachments();
+      final List<Attachment> attachmentUpdates = [];
+
+      for (final item in items) {
+        final existingQueueItem = currentAttachments
+            .cast<Attachment?>()
+            .firstWhere(
+              (a) => a != null && a.id == item.id,
+              orElse: () => null,
+            );
+
+        if (existingQueueItem == null) {
+          if (!downloadAttachments) continue;
+
+          // This item should be added to the queue.
+          // This item is assumed to be coming from an upstream sync.
+          final String filename =
+              item.filename ??
+              await resolveNewAttachmentFilename(item.id, item.fileExtension);
+
+          attachmentUpdates.add(
+            Attachment(
+              id: item.id,
+              filename: filename,
+              state: AttachmentState.queuedDownload,
+              metaData: item.metaData,
+            ),
+          );
+        } else if (existingQueueItem.state == AttachmentState.archived) {
+          // The attachment is present again. Need to queue it for sync.
+          if (existingQueueItem.hasSynced) {
+            // No remote action required, we can restore the record (avoids deletion).
+            attachmentUpdates.add(
+              existingQueueItem.copyWith(state: AttachmentState.synced),
+            );
+          } else {
+            // The localURI should be set if the record was meant to be downloaded
+            // and has been synced. If it's missing and hasSynced is false then
+            // it must be an upload operation.
+            attachmentUpdates.add(
+              existingQueueItem.copyWith(
+                state: existingQueueItem.localUri == null
+                    ? AttachmentState.queuedDownload
+                    : AttachmentState.queuedUpload,
+              ),
+            );
+          }
+        }
+      }
+
+      // Archive any items not specified in the watched items.
+      // For QUEUED_DELETE or QUEUED_UPLOAD states, archive only if hasSynced is true.
+      // For other states, archive if the record is not found in the items.
+      for (final attachment in currentAttachments) {
+        final notInWatchedItems = items.every(
+          (update) => update.id != attachment.id,
+        );
+
+        if (notInWatchedItems) {
+          switch (attachment.state) {
+            case AttachmentState.queuedDelete:
+            case AttachmentState.queuedUpload:
+              if (attachment.hasSynced) {
+                attachmentUpdates.add(
+                  attachment.copyWith(state: AttachmentState.archived),
+                );
+              }
+              break;
+            default:
+              attachmentUpdates.add(
+                attachment.copyWith(state: AttachmentState.archived),
+              );
+          }
+        }
+      }
+
+      await context.saveAttachments(attachmentUpdates);
+    });
+  }
+
+  /// Creates a new attachment locally and queues it for upload.
+  /// The filename is resolved using [resolveNewAttachmentFilename].
+  Future<Attachment> saveFile({
+    required Stream<Uint8List> data,
+    required String mediaType,
+    String? fileExtension,
+    String? metaData,
+    required Future<void> Function(dynamic context, Attachment attachment)
+    updateHook,
+  }) async {
+    final row = await db.get('SELECT uuid() as id');
+    final id = row['id'] as String;
+    final String filename = await resolveNewAttachmentFilename(
+      id,
+      fileExtension,
+    );
+    final String localUri = getLocalUri(filename);
+
+    // Write the file to the filesystem.
+    final fileSize = await localStorage.saveFile(localUri, data);
+
+    return await attachmentsService.withContext((attachmentContext) async {
+      return await db.writeTransaction((tx) async {
+        final attachment = Attachment(
+          id: id,
+          filename: filename,
+          size: fileSize,
+          mediaType: mediaType,
+          state: AttachmentState.queuedUpload,
+          localUri: localUri,
+          metaData: metaData,
+        );
+
+        // Allow consumers to set relationships to this attachment ID.
+        await updateHook(tx, attachment);
+
+        return await attachmentContext.upsertAttachment(attachment, tx);
+      });
+    });
+  }
+
+  /// Queues an attachment for delete.
+  /// The default implementation assumes the attachment record already exists locally.
+  Future<Attachment> deleteFile({
+    required String attachmentId,
+    required Future<void> Function(dynamic context, Attachment attachment)
+    updateHook,
+  }) async {
+    return await attachmentsService.withContext((attachmentContext) async {
+      final attachment = await attachmentContext.getAttachment(attachmentId);
+      if (attachment == null) {
+        throw Exception(
+          'Attachment record with id $attachmentId was not found.',
+        );
+      }
+
+      return await db.writeTransaction((tx) async {
+        await updateHook(tx, attachment);
+        return await attachmentContext.upsertAttachment(
+          attachment.copyWith(
+            state: AttachmentState.queuedDelete,
+            hasSynced: false,
+          ),
+          tx,
+        );
+      });
+    });
+  }
+
+  /// Returns the user's storage directory with the attachment path used to load the file.
+  String getLocalUri(String filename) {
+    return '$attachmentsDirectory/$filename';
+  }
+
+  /// Removes all archived items.
+  Future<void> expireCache() async {
+    await attachmentsService.withContext((context) async {
+      bool done;
+      do {
+        done = await syncingService.deleteArchivedAttachments(context);
+      } while (!done);
+    });
+  }
+
+  /// Clears the attachment queue and deletes all attachment files.
+  Future<void> clearQueue() async {
+    await attachmentsService.withContext((context) async {
+      await context.clearQueue();
+    });
+    await localStorage.rmDir(attachmentsDirectory);
+  }
+
+  /// Cleans up stale attachments.
+  Future<void> _verifyAttachments(AttachmentContext context) async {
+    final attachments = await context.getActiveAttachments();
+    final List<Attachment> updates = [];
+
+    for (final attachment in attachments) {
+      // Only check attachments that should have local files
+      if (attachment.localUri == null) {
+        // Skip attachments that don't have localUri (like queued downloads)
+        continue;
+      }
+
+      final exists = await localStorage.fileExists(attachment.localUri!);
+      if ((attachment.state == AttachmentState.synced ||
+              attachment.state == AttachmentState.queuedUpload) &&
+          !exists) {
+        updates.add(
+          attachment.copyWith(state: AttachmentState.archived, localUri: null),
+        );
+      }
+    }
+
+    await context.saveAttachments(updates);
+  }
 }
