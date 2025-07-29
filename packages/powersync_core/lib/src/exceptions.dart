@@ -61,7 +61,12 @@ class SyncResponseException implements Exception {
   static SyncResponseException _fromResponseBody(
       http.BaseResponse response, String body) {
     final decoded = convert.jsonDecode(body);
-    final details = _stringOrFirst(decoded['error']?['details']) ?? body;
+    final details = switch (decoded['error']) {
+          final Map<String, Object?> details => _errorDescription(details),
+          _ => null,
+        } ??
+        body;
+
     final message = '${response.reasonPhrase ?? "Request failed"}: $details';
     return SyncResponseException(response.statusCode, message);
   }
@@ -73,6 +78,37 @@ class SyncResponseException implements Exception {
     );
   }
 
+  /// Extracts an error description from an error resonse looking like
+  /// `{"code":"PSYNC_S2106","status":401,"description":"Authentication required","name":"AuthorizationError"}`.
+  static String? _errorDescription(Map<String, Object?> raw) {
+    final code = raw['code']; // Required, string
+    final description = raw['description']; // Required, string
+
+    final name = raw['name']; // Optional, string
+    final details = raw['details']; // Optional, string
+
+    if (code is! String || description is! String) {
+      return null;
+    }
+
+    final fullDescription = StringBuffer(code);
+    if (name is String) {
+      fullDescription.write('($name)');
+    }
+
+    fullDescription
+      ..write(': ')
+      ..write(description);
+
+    if (details is String) {
+      fullDescription
+        ..write(', ')
+        ..write(details);
+    }
+
+    return fullDescription.toString();
+  }
+
   int statusCode;
   String description;
 
@@ -81,18 +117,6 @@ class SyncResponseException implements Exception {
   @override
   toString() {
     return 'SyncResponseException: $statusCode $description';
-  }
-}
-
-String? _stringOrFirst(Object? details) {
-  if (details == null) {
-    return null;
-  } else if (details is String) {
-    return details;
-  } else if (details case [final String first, ...]) {
-    return first;
-  } else {
-    return null;
   }
 }
 
