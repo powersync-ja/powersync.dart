@@ -1,6 +1,12 @@
 import 'dart:async';
 
 import 'dart:convert' as convert;
+import 'dart:math';
+import 'dart:typed_data';
+
+import 'package:typed_data/typed_buffers.dart';
+
+import '../exceptions.dart';
 
 /// Inject a broadcast stream into a normal stream.
 Stream<T> addBroadcast<T>(Stream<T> a, Stream<T> broadcast) {
@@ -75,6 +81,11 @@ extension ByteStreamToLines on Stream<List<int>> {
     final textInput = transform(convert.utf8.decoder);
     return textInput.transform(const convert.LineSplitter());
   }
+
+  /// Splits this stream into BSON documents without parsing them.
+  Stream<Uint8List> get bsonDocuments {
+    return Stream.eventTransformed(this, _BsonSplittingSink.new);
+  }
 }
 
 extension StreamToJson on Stream<String> {
@@ -98,4 +109,92 @@ void resumeAll(List<StreamSubscription<void>> subscriptions) {
 Future<void> cancelAll(List<StreamSubscription<void>> subscriptions) async {
   final futures = subscriptions.map((sub) => sub.cancel());
   await Future.wait(futures);
+}
+
+/// An [EventSink] that takes raw bytes as inputs, buffers them internally by
+/// reading a 4-byte length prefix for each message and then emits them as
+/// chunks.
+final class _BsonSplittingSink implements EventSink<List<int>> {
+  final EventSink<Uint8List> _downstream;
+
+  final length = ByteData(4);
+  int remainingBytes = 4;
+
+  Uint8Buffer? pendingBuffer;
+
+  _BsonSplittingSink(this._downstream);
+
+  @override
+  void add(List<int> data) {
+    var i = 0;
+    while (i < data.length) {
+      final availableInData = data.length - i;
+
+      if (pendingBuffer case final pending?) {
+        // We're in the middle of reading a document
+        final bytesToRead = min(availableInData, remainingBytes);
+        pending.addAll(data, i, i + bytesToRead);
+        i += bytesToRead;
+        remainingBytes -= bytesToRead;
+        assert(remainingBytes >= 0);
+
+        if (remainingBytes == 0) {
+          _downstream.add(pending.buffer
+              .asUint8List(pending.offsetInBytes, pending.lengthInBytes));
+
+          // Prepare reading another document, starting with its length
+          pendingBuffer = null;
+          remainingBytes = 4;
+        }
+      } else {
+        final bytesToRead = min(availableInData, remainingBytes);
+        final lengthAsUint8List = length.buffer.asUint8List();
+
+        lengthAsUint8List.setRange(
+          4 - remainingBytes,
+          4 - remainingBytes + bytesToRead,
+          data,
+          i,
+        );
+        i += bytesToRead;
+        remainingBytes -= bytesToRead;
+        assert(remainingBytes >= 0);
+
+        if (remainingBytes == 0) {
+          // Transition from reading length header to reading document.
+          // Subtracting 4 because the length of the header is included in the
+          // length.
+          remainingBytes = length.getInt32(0, Endian.little) - 4;
+          if (remainingBytes < 5) {
+            _downstream.addError(
+              PowerSyncProtocolException(
+                  'Invalid length for bson: $remainingBytes'),
+              StackTrace.current,
+            );
+          }
+
+          pendingBuffer = Uint8Buffer()..addAll(lengthAsUint8List);
+        }
+      }
+    }
+
+    assert(i == data.length);
+  }
+
+  @override
+  void addError(Object error, [StackTrace? stackTrace]) {
+    _downstream.addError(error, stackTrace);
+  }
+
+  @override
+  void close() {
+    if (pendingBuffer != null || remainingBytes != 4) {
+      _downstream.addError(
+        PowerSyncProtocolException('Pending data when stream was closed'),
+        StackTrace.current,
+      );
+    }
+
+    _downstream.close();
+  }
 }
