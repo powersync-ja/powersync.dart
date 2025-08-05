@@ -15,10 +15,8 @@ enum AttachmentState {
   synced,
 
   /// The attachment is archived and no longer actively synchronized.
-  archived,
-}
+  archived;
 
-extension AttachmentStateX on AttachmentState {
   static AttachmentState fromInt(int value) {
     if (value < 0 || value >= AttachmentState.values.length) {
       throw ArgumentError('Invalid value for AttachmentState: $value');
@@ -54,22 +52,6 @@ class Attachment {
     this.metaData,
   });
 
-  /// Factory constructor to create an Attachment from a database map.
-  /// [map] should be a `Map<String, dynamic>` from your database query.
-  // factory Attachment.fromMap(Map<String, dynamic> map) {
-  //   return Attachment(
-  //     id: map['id'] as String,
-  //     timestamp: map['timestamp'] as int? ?? 0,
-  //     filename: map['filename'] as String,
-  //     localUri: map['local_uri'] as String?,
-  //     mediaType: map['media_type'] as String?,
-  //     size: map['size'] as int?,
-  //     state: AttachmentStateX.fromInt(map['state'] as int),
-  //     hasSynced: (map['has_synced'] as int? ?? 0) > 0,
-  //     metaData: map['meta_data'] as String?,
-  //   );
-  // }
-
   factory Attachment.fromRow(Row row) {
     return Attachment(
       id: row['id'] as String,
@@ -78,15 +60,8 @@ class Attachment {
       localUri: row['local_uri'] as String?,
       mediaType: row['media_type'] as String?,
       size: row['size'] as int?,
-      // state: AttachmentState.queuedDownload,
-      state: AttachmentStateX.fromInt(row['state'] as int),
-      // state: AttachmentStateX.fromInt(row['state'] as int? ?? AttachmentState.queuedDownload.index),
-      // state: AttachmentState.values.firstWhere(
-      //   (e) => e.index == row['state'],
-      //   orElse: () => AttachmentState.queuedDownload,
-      // ),
+      state: AttachmentState.fromInt(row['state'] as int),
       hasSynced: (row['has_synced'] as int? ?? 0) > 0,
-      // metaData: 'test',
       metaData: row['meta_data']?.toString(),
     );
   }
@@ -114,26 +89,6 @@ class Attachment {
       hasSynced: hasSynced ?? this.hasSynced,
       metaData: metaData ?? this.metaData,
     );
-  }
-
-  /// Converts this Attachment to a JSON-compatible map.
-  Map<String, dynamic> toJson() {
-    try {
-      return {
-        'id': id,
-        'timestamp': timestamp,
-        'filename': filename,
-        'state': state.index,
-        'local_uri': localUri,
-        'media_type': mediaType,
-        'size': size,
-        'has_synced': hasSynced ? 1 : 0,
-        'meta_data': metaData,
-      };
-    } catch (e) {
-      print('toJson error: $e');
-      return {};
-    }
   }
 }
 

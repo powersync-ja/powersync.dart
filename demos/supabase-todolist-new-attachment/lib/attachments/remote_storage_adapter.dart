@@ -25,7 +25,7 @@ class SupabaseStorageAdapter implements RemoteStorage {
               fileOptions: FileOptions(
                   contentType:
                       attachment.mediaType ?? 'application/octet-stream'));
-      print('uploadFile: ${attachment.filename}');
+
     } catch (error) {
       throw Exception(error);
     } finally {
