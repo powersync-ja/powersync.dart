@@ -36,7 +36,6 @@ class _PhotoWidgetState extends State<PhotoWidget> {
   final log = Logger('PhotoWidget');
 
   Future<_ResolvedPhotoState> _getPhotoState(photoId) async {
-    log.info('getPhotoState: $photoId');
     if (photoId == null) {
       return _ResolvedPhotoState(photoPath: null, fileExists: false);
     }
@@ -45,8 +44,6 @@ class _PhotoWidgetState extends State<PhotoWidget> {
 
     bool fileExists = await File(photoPath).exists();
 
-    log.info('fileExists: $fileExists');
-
     final row = await attachmentQueue.db
         .getOptional('SELECT * FROM attachments_queue WHERE id = ?', [photoId]);
 
@@ -54,16 +51,6 @@ class _PhotoWidgetState extends State<PhotoWidget> {
 
     if (row != null) {
       Attachment attachment = Attachment.fromRow(row);
-      // Attachment attachment = Attachment.fromMap(row);
-
-      // Log as JSON using logging package
-      // ignore: avoid_print
-      attachmentQueue.logger.info({
-        'event': 'attachment_object',
-        'photoPath': photoPath,
-        'fileExists': fileExists,
-        'attachment': '',
-      });
 
       return _ResolvedPhotoState(
           photoPath: photoPath, fileExists: fileExists, attachment: attachment);

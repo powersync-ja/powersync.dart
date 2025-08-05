@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:typed_data';
 import 'package:logging/logging.dart';
+import 'package:powersync_core/powersync_core.dart';
 import 'package:sqlite_async/mutex.dart';
 import 'attachment.dart';
 import 'abstractions/attachment_service.dart';
@@ -33,7 +34,7 @@ class WatchedAttachmentItem {
 /// Class used to implement the attachment queue.
 /// Requires a database client, remote storage adapter, and an attachment directory name.
 class AttachmentQueue {
-  final dynamic db;
+  final PowerSyncDatabase db;
   final RemoteStorage remoteStorage;
   final String attachmentsDirectory;
   final Stream<List<WatchedAttachmentItem>> Function() watchAttachments;
@@ -43,7 +44,6 @@ class AttachmentQueue {
   final Duration syncInterval;
   final int archivedCacheLimit;
   final Duration syncThrottleDuration;
-  final List<String>? subdirectories;
   final bool downloadAttachments;
   final Logger logger;
 
@@ -66,7 +66,6 @@ class AttachmentQueue {
     this.syncInterval = const Duration(seconds: 30),
     this.archivedCacheLimit = 100,
     this.syncThrottleDuration = const Duration(seconds: 1),
-    this.subdirectories,
     this.downloadAttachments = true,
     Logger? logger,
   }) : logger = logger ?? Logger('AttachmentQueue') {
@@ -101,12 +100,7 @@ class AttachmentQueue {
 
       await _stopSyncingInternal();
 
-      logger.info('startSync attachmentsDirectory: $attachmentsDirectory');
       await localStorage.makeDir(attachmentsDirectory);
-
-      subdirectories?.forEach((subdirectory) async {
-        await localStorage.makeDir('$attachmentsDirectory/$subdirectory');
-      });
 
       await attachmentsService.withContext((context) async {
         await _verifyAttachments(context);
@@ -197,8 +191,16 @@ class AttachmentQueue {
               filename: filename,
               state: AttachmentState.queuedDownload,
               metaData: item.metaData,
+              // hasSynced: existingQueueItem.hasSynced;
             ),
           );
+
+          // attachmentUpdates.add(
+          //   existingQueueItem.copyWith(
+          //     filename: filename,
+          //     state: AttachmentState.queuedDownload,
+          //   ),
+          // );
         } else if (existingQueueItem.state == AttachmentState.archived) {
           // The attachment is present again. Need to queue it for sync.
           if (existingQueueItem.hasSynced) {

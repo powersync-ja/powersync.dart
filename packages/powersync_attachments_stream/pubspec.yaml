@@ -12,7 +12,6 @@ dependencies:
     sdk: flutter
   path: ^1.8.0
   async: ^2.11.0
-
   powersync_core: ^1.4.1
   logging: ^1.2.0
   sqlite_async: ^0.11.0
@@ -21,5 +20,6 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^5.0.0
   test: ^1.25.15
+  test_descriptor: ^2.0.2
+  flutter_lints: ^5.0.0

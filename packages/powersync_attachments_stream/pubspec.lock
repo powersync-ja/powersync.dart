@@ -26,7 +26,7 @@ packages:
     source: hosted
     version: "2.7.0"
   async:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: async
       sha256: "758e6d74e971c3e5aceb4110bfd6698efc7f501675bcfe0c775459a8140750eb"
@@ -398,10 +398,9 @@ packages:
   powersync_core:
     dependency: "direct main"
     description:
-      name: powersync_core
-      sha256: d8ae292bc77f0a96f44c6cc2911d1b781760a87a919e5045e75458cba83bb759
-      url: "https://pub.dev"
-    source: hosted
+      path: "../powersync_core"
+      relative: true
+    source: path
     version: "1.5.0"
   pub_semver:
     dependency: transitive
@@ -568,6 +567,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.6.8"
+  test_descriptor:
+    dependency: "direct dev"
+    description:
+      name: test_descriptor
+      sha256: "9ce468c97ae396e8440d26bb43763f84e2a2a5331813ee5a397cb4da481aaf9a"
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.0.2"
   typed_data:
     dependency: transitive
     description:

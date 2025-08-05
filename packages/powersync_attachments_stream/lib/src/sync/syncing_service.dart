@@ -172,9 +172,6 @@ class SyncingService {
       if (attachment.localUri == null) {
         throw Exception('No localUri for attachment $attachment');
       }
-      _log.info(
-        'SyncingService: Calling remoteStorage.uploadFile for ${attachment.id}',
-      );
       await remoteStorage.uploadFile(
         localStorage.readFile(attachment.localUri!),
         attachment,
@@ -211,9 +208,6 @@ class SyncingService {
     );
     final attachmentPath = await getLocalUri(attachment.filename);
     try {
-      _log.info(
-        'SyncingService: Calling remoteStorage.downloadFile for ${attachment.id}',
-      );
       final fileStream = await remoteStorage.downloadFile(attachment);
       await localStorage.saveFile(
         attachmentPath,
@@ -222,6 +216,9 @@ class SyncingService {
       _log.info(
         'SyncingService: Successfully downloaded file "${attachment.id}"',
       );
+
+      _log.info('downloadAttachmentXY $attachment');
+
       return attachment.copyWith(
         localUri: attachmentPath,
         state: AttachmentState.synced,

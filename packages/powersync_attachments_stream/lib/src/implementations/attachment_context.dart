@@ -47,27 +47,9 @@ class AttachmentContextImpl implements AttachmentContext {
 
   @override
   Future<Attachment> saveAttachment(Attachment attachment) async {
-    Attachment updatedRecord = attachment.copyWith(
-      timestamp: DateTime.now().millisecondsSinceEpoch,
-    );
-
-    await db.execute(
-      '''
-      INSERT OR REPLACE INTO $table
-      (id, timestamp, filename, local_uri, media_type, size, state) VALUES (?, ?, ?, ?, ?, ?, ?)
-    ''',
-      [
-        updatedRecord.id,
-        updatedRecord.timestamp,
-        updatedRecord.filename,
-        updatedRecord.localUri,
-        updatedRecord.mediaType,
-        updatedRecord.size,
-        updatedRecord.state.index,
-      ],
-    );
-
-    return updatedRecord;
+    return await db.writeLock((ctx) async {
+      return await upsertAttachment(attachment, ctx);
+    });
   }
 
   @override
@@ -76,28 +58,11 @@ class AttachmentContextImpl implements AttachmentContext {
       log.info('No attachments to save.');
       return;
     }
-
-    final updatedRecords = attachments.map((attachment) {
-      final updated = attachment.copyWith(
-        timestamp: DateTime.now().millisecondsSinceEpoch,
-      );
-      return [
-        updated.id,
-        updated.filename,
-        updated.localUri,
-        updated.mediaType,
-        updated.size,
-        updated.timestamp,
-        updated.state.index,
-      ];
-    }).toList();
-
-    log.info('Saving ${updatedRecords.length} attachments...');
-
-    await db.executeBatch('''
-      INSERT OR REPLACE INTO $table
-      (id, filename, local_uri, media_type, size, timestamp, state) VALUES (?, ?, ?, ?, ?, ?, ?)
-    ''', updatedRecords);
+    await db.writeTransaction((tx) async {
+      for (final attachment in attachments) {
+        await upsertAttachment(attachment, tx);
+      }
+    });
   }
 
   @override
@@ -181,11 +146,11 @@ class AttachmentContextImpl implements AttachmentContext {
         attachment.mediaType,
         attachment.size,
         attachment.state.index,
-        // attachment.state,
         attachment.hasSynced ? 1 : 0,
         attachment.metaData,
       ],
     );
+
     return attachment;
   }
 }
