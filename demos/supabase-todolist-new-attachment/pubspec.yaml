@@ -1,4 +1,4 @@
-name: powersync_flutter_demo
+name: powersync_flutter_demo_new
 description: PowerSync Flutter Demo
 publish_to: "none"
 
@@ -10,8 +10,10 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  powersync_attachments_helper: ^0.6.18+11
-  powersync: ^1.15.0
+  # powersync_attachments_helper: ^0.6.18+10
+  powersync_attachments_stream:
+    path: ../../packages/powersync_attachments_stream
+  powersync: ^1.14.1
   path_provider: ^2.1.1
   supabase_flutter: ^2.0.1
   path: ^1.8.3
