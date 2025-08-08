@@ -542,7 +542,7 @@ class StreamingSyncImplementation implements StreamingSync {
   }
 
   Stream<StreamingSyncLine> _streamingSyncRequest(StreamingSyncRequest data) {
-    return Stream.fromFuture(_postStreamRequest(data, false))
+    return streamFromFutureAwaitInCancellation(_postStreamRequest(data, false))
         .asyncExpand((response) {
       return response?.stream.lines.parseJson
           .cast<Map<String, dynamic>>()
@@ -615,7 +615,8 @@ final class _ActiveRustStreamingIteration {
   }
 
   Stream<ReceivedLine> _receiveLines(Object? data) {
-    return Stream.fromFuture(sync._postStreamRequest(data, true))
+    return streamFromFutureAwaitInCancellation(
+            sync._postStreamRequest(data, true))
         .asyncExpand<Object /* Uint8List | String */ >((response) {
       if (response == null) {
         return null;

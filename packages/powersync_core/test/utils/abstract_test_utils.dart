@@ -51,7 +51,7 @@ Logger _makeTestLogger({Level level = Level.ALL, String? name}) {
       // Hack to fail the test if a SEVERE error is logged.
       // Not ideal, but works to catch "Sync Isolate error".
       uncaughtError() async {
-        throw record.error!;
+        throw 'Unexpected severe error on logger: ${record.error!}';
       }
 
       uncaughtError();

@@ -1,8 +1,8 @@
 #!/bin/sh
 set -e
 
-SQLITE_VERSION="2.8.0"
-POWERSYNC_CORE_VERSION="0.4.2"
+SQLITE_VERSION="2.9.0"
+POWERSYNC_CORE_VERSION="0.4.4"
 SQLITE_PATH="sqlite3.dart"
 
 if [ -d "$SQLITE_PATH" ]; then

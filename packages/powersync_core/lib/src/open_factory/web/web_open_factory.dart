@@ -23,6 +23,7 @@ class PowerSyncOpenFactory extends AbstractPowerSyncOpenFactory
       wasmModule: Uri.parse(sqliteOptions.webSqliteOptions.wasmUri),
       worker: Uri.parse(sqliteOptions.webSqliteOptions.workerUri),
       controller: PowerSyncAsyncSqliteController(),
+      handleCustomRequest: handleCustomRequest,
     );
   }
 
