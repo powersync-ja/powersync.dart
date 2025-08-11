@@ -38,9 +38,8 @@ Future<void> initializeAttachmentQueue(PowerSyncDatabase db) async {
       return items;
     }),
     localStorage: localStorage,
-    errorHandler: null, // Optionally implement SyncErrorHandler
+    errorHandler: null, 
   );
-  // await attachmentQueue.startSync();
 }
 
 Future<Attachment> savePhotoAttachment(Stream<Uint8List> photoData, String todoId,
