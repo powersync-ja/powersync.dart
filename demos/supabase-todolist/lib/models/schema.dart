@@ -1,5 +1,5 @@
 import 'package:powersync/powersync.dart';
-import 'package:powersync_attachments_helper/powersync_attachments_helper.dart';
+import 'package:powersync_attachments_stream/powersync_attachments_stream.dart';
 
 const todosTable = 'todos';
 
