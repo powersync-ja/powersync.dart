@@ -9,7 +9,7 @@ import 'attachment_context.dart';
 
 class AttachmentServiceImpl implements AttachmentService {
   final PowerSyncDatabase db;
-  final Logger log;
+  final Logger logger;
   final int maxArchivedCount;
   final String attachmentsQueueTableName;
   Future<void> _mutex = Future.value();
@@ -18,16 +18,16 @@ class AttachmentServiceImpl implements AttachmentService {
 
   AttachmentServiceImpl({
     required this.db,
-    required this.log,
+    required this.logger,
     required this.maxArchivedCount,
     required this.attachmentsQueueTableName,
   }) {
-    _context = AttachmentContextImpl(db, log, maxArchivedCount, attachmentsQueueTableName);
+    _context = AttachmentContextImpl(db, logger, maxArchivedCount, attachmentsQueueTableName);
   }
 
   @override
   Stream<void> watchActiveAttachments() async* {
-    log.info('Watching attachments...');
+    logger.info('Watching attachments...');
     
     // Watch for attachments with active states (queued for upload, download, or delete)
     final stream = db.watch(

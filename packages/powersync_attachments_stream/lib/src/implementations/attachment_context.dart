@@ -101,30 +101,35 @@ class AttachmentContextImpl implements AttachmentContext {
   Future<bool> deleteArchivedAttachments(
     Future<void> Function(List<Attachment>) callback,
   ) async {
-    // Find all archived attachments
-    final results = await db.getAll('SELECT * FROM $table WHERE state = ?', [
-      AttachmentState.archived.index,
-    ]);
-    final archivedAttachments = results
-        .map((row) => Attachment.fromRow(row))
-        .toList();
+    // Only delete archived attachments exceeding the maxArchivedCount, ordered by timestamp DESC
+    const limit = 1000;
+    final results = await db.getAll(
+      'SELECT * FROM $table WHERE state = ? ORDER BY timestamp DESC LIMIT ? OFFSET ?',
+      [
+        AttachmentState.archived.index,
+        limit,
+        maxArchivedCount,
+      ],
+    );
+    final archivedAttachments = results.map((row) => Attachment.fromRow(row)).toList();
 
     if (archivedAttachments.isEmpty) {
       return false;
     }
 
-    log.info('Deleting ${archivedAttachments.length} archived attachments...');
+    log.info('Deleting ${archivedAttachments.length} archived attachments (exceeding maxArchivedCount=$maxArchivedCount)...');
     // Call the callback with the list of archived attachments before deletion
     await callback(archivedAttachments);
 
     // Delete the archived attachments from the table
     final ids = archivedAttachments.map((a) => a.id).toList();
-    // Use a batch delete for efficiency
-    final placeholders = List.filled(ids.length, '?').join(',');
-    await db.execute('DELETE FROM $table WHERE id IN ($placeholders)', ids);
+    if (ids.isNotEmpty) {
+      final placeholders = List.filled(ids.length, '?').join(',');
+      await db.execute('DELETE FROM $table WHERE id IN ($placeholders)', ids);
+    }
 
     log.info('Deleted ${archivedAttachments.length} archived attachments.');
-    return true;
+    return archivedAttachments.length < limit;
   }
 
   @override

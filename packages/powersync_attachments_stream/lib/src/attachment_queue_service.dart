@@ -71,7 +71,7 @@ class AttachmentQueue {
   }) : logger = logger ?? Logger('AttachmentQueue') {
     attachmentsService = AttachmentServiceImpl(
       db: db,
-      log: logger ?? Logger('AttachmentQueue'),
+      logger: logger ?? Logger('AttachmentQueue'),
       maxArchivedCount: archivedCacheLimit,
       attachmentsQueueTableName: attachmentsQueueTableName,
     );
@@ -195,12 +195,6 @@ class AttachmentQueue {
             ),
           );
 
-          // attachmentUpdates.add(
-          //   existingQueueItem.copyWith(
-          //     filename: filename,
-          //     state: AttachmentState.queuedDownload,
-          //   ),
-          // );
         } else if (existingQueueItem.state == AttachmentState.archived) {
           // The attachment is present again. Need to queue it for sync.
           if (existingQueueItem.hasSynced) {

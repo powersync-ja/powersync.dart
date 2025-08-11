@@ -4,10 +4,7 @@ import 'dart:typed_data';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
-import 'package:powersync/powersync.dart' as powersync;
 import 'package:powersync_flutter_demo_new/attachments/queue.dart';
-import 'package:powersync_flutter_demo_new/models/todo_item.dart';
-import 'package:powersync_flutter_demo_new/powersync.dart';
 
 class TakePhotoWidget extends StatefulWidget {
   final String todoId;

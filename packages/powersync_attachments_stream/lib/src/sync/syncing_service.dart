@@ -18,7 +18,7 @@ class SyncingService {
   final SyncErrorHandler? errorHandler;
   final Duration syncThrottle;
   final Duration period;
-  final _log = Logger('SyncingService');
+  final Logger logger;
 
   StreamSubscription? _syncSubscription;
   StreamSubscription? _periodicSubscription;
@@ -33,7 +33,8 @@ class SyncingService {
     this.errorHandler,
     this.syncThrottle = const Duration(seconds: 5),
     this.period = const Duration(seconds: 30),
-  });
+    Logger? logger,
+  }) : logger = logger ?? Logger('SyncingService');
 
   Future<void> startSync() async {
     if (_isClosed) return;
@@ -52,10 +53,10 @@ class SyncingService {
           try {
             await attachmentsService.withContext((context) async {
               final attachments = await context.getActiveAttachments();
-              _log.info(
+              logger.info(
                 'active attachments: ${attachments.map((e) => e.id).toList()}',
               );
-              _log.info(
+              logger.info(
                 'SyncingService: Found ${attachments.length} active attachments',
               );
               await handleSync(attachments, context);
@@ -63,7 +64,7 @@ class SyncingService {
             });
           } catch (e, st) {
             if (e is! StateError && e.toString().contains('cancelled')) {
-              _log.severe(
+              logger.severe(
                 'Caught exception when processing attachments',
                 e,
                 st,
@@ -78,7 +79,7 @@ class SyncingService {
 
     // Start periodic sync
     _periodicSubscription = Stream.periodic(period).listen((_) {
-      _log.info('Periodically syncing attachments');
+      logger.info('Periodically syncing attachments');
       triggerSync();
     });
   }
@@ -113,42 +114,42 @@ class SyncingService {
     List<Attachment> attachments,
     AttachmentContext context,
   ) async {
-    _log.info(
+    logger.info(
       'SyncingService: Starting handleSync with ${attachments.length} attachments',
     );
     final updatedAttachments = <Attachment>[];
 
     for (final attachment in attachments) {
-      _log.info(
+      logger.info(
         'SyncingService: Processing attachment ${attachment.id} with state: ${attachment.state}',
       );
       try {
         switch (attachment.state) {
           case AttachmentState.queuedDownload:
-            _log.info('SyncingService: Downloading [${attachment.filename}]');
+            logger.info('SyncingService: Downloading [${attachment.filename}]');
             updatedAttachments.add(await downloadAttachment(attachment));
             break;
           case AttachmentState.queuedUpload:
-            _log.info('SyncingService: Uploading [${attachment.filename}]');
+            logger.info('SyncingService: Uploading [${attachment.filename}]');
             updatedAttachments.add(await uploadAttachment(attachment));
             break;
           case AttachmentState.queuedDelete:
-            _log.info('SyncingService: Deleting [${attachment.filename}]');
+            logger.info('SyncingService: Deleting [${attachment.filename}]');
             updatedAttachments.add(await deleteAttachment(attachment));
             break;
           case AttachmentState.synced:
-            _log.info(
+            logger.info(
               'SyncingService: Attachment ${attachment.id} is already synced',
             );
             break;
           case AttachmentState.archived:
-            _log.info(
+            logger.info(
               'SyncingService: Attachment ${attachment.id} is archived',
             );
             break;
         }
       } catch (e, st) {
-        _log.warning(
+        logger.warning(
           'SyncingService: Error during sync for ${attachment.id}',
           e,
           st,
@@ -157,7 +158,7 @@ class SyncingService {
     }
 
     if (updatedAttachments.isNotEmpty) {
-      _log.info(
+      logger.info(
         'SyncingService: Saving ${updatedAttachments.length} updated attachments',
       );
       await context.saveAttachments(updatedAttachments);
@@ -165,7 +166,7 @@ class SyncingService {
   }
 
   Future<Attachment> uploadAttachment(Attachment attachment) async {
-    _log.info(
+    logger.info(
       'SyncingService: Starting upload for attachment ${attachment.id}',
     );
     try {
@@ -176,7 +177,7 @@ class SyncingService {
         localStorage.readFile(attachment.localUri!),
         attachment,
       );
-      _log.info(
+      logger.info(
         'SyncingService: Successfully uploaded attachment "${attachment.id}" to Cloud Storage',
       );
       return attachment.copyWith(
@@ -184,7 +185,7 @@ class SyncingService {
         hasSynced: true,
       );
     } catch (e, st) {
-      _log.warning(
+      logger.warning(
         'SyncingService: Upload attachment error for attachment $attachment',
         e,
         st,
@@ -192,7 +193,7 @@ class SyncingService {
       if (errorHandler != null) {
         final shouldRetry = await errorHandler!.onUploadError(attachment, e);
         if (!shouldRetry) {
-          _log.info(
+          logger.info(
             'SyncingService: Attachment with ID ${attachment.id} has been archived',
           );
           return attachment.copyWith(state: AttachmentState.archived);
@@ -203,7 +204,7 @@ class SyncingService {
   }
 
   Future<Attachment> downloadAttachment(Attachment attachment) async {
-    _log.info(
+    logger.info(
       'SyncingService: Starting download for attachment ${attachment.id}',
     );
     final attachmentPath = await getLocalUri(attachment.filename);
@@ -213,11 +214,11 @@ class SyncingService {
         attachmentPath,
         fileStream.map((chunk) => Uint8List.fromList(chunk)),
       );
-      _log.info(
+      logger.info(
         'SyncingService: Successfully downloaded file "${attachment.id}"',
       );
 
-      _log.info('downloadAttachmentXY $attachment');
+      logger.info('downloadAttachmentXY $attachment');
 
       return attachment.copyWith(
         localUri: attachmentPath,
@@ -228,13 +229,13 @@ class SyncingService {
       if (errorHandler != null) {
         final shouldRetry = await errorHandler!.onDownloadError(attachment, e);
         if (!shouldRetry) {
-          _log.info(
+          logger.info(
             'SyncingService: Attachment with ID ${attachment.id} has been archived',
           );
           return attachment.copyWith(state: AttachmentState.archived);
         }
       }
-      _log.warning(
+      logger.warning(
         'SyncingService: Download attachment error for attachment $attachment',
         e,
         st,
@@ -245,7 +246,7 @@ class SyncingService {
 
   Future<Attachment> deleteAttachment(Attachment attachment) async {
     try {
-      _log.info(
+      logger.info(
         'SyncingService: Deleting attachment ${attachment.id} from remote storage',
       );
       await remoteStorage.deleteFile(attachment);
@@ -259,11 +260,11 @@ class SyncingService {
       if (errorHandler != null) {
         final shouldRetry = await errorHandler!.onDeleteError(attachment, e);
         if (!shouldRetry) {
-          _log.info('Attachment with ID ${attachment.id} has been archived');
+          logger.info('Attachment with ID ${attachment.id} has been archived');
           return attachment.copyWith(state: AttachmentState.archived);
         }
       }
-      _log.warning('Error deleting attachment: $e', e, st);
+      logger.warning('Error deleting attachment: $e', e, st);
       return attachment;
     }
   }
