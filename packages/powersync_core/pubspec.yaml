@@ -16,7 +16,7 @@ dependencies:
   sqlite3_web: ^0.3.2
   universal_io: ^2.0.0
   meta: ^1.0.0
-  http: ^1.4.0
+  http: ^1.5.0
   uuid: ^4.2.0
   async: ^2.10.0
   logging: ^1.1.1
