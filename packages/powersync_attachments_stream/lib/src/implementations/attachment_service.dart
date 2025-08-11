@@ -7,14 +7,14 @@ import '../abstractions/attachment_context.dart';
 import '../attachment.dart';
 import 'attachment_context.dart';
 
-class AttachmentServiceImpl implements AttachmentService {
+class AttachmentServiceImpl implements AbstractAttachmentService {
   final PowerSyncDatabase db;
   final Logger logger;
   final int maxArchivedCount;
   final String attachmentsQueueTableName;
   Future<void> _mutex = Future.value();
 
-  late final AttachmentContext _context;
+  late final AbstractAttachmentContext _context;
 
   AttachmentServiceImpl({
     required this.db,
@@ -54,7 +54,7 @@ class AttachmentServiceImpl implements AttachmentService {
   }
 
   @override
-  Future<T> withContext<T>(Future<T> Function(AttachmentContext ctx) action) {
+  Future<T> withContext<T>(Future<T> Function(AbstractAttachmentContext ctx) action) {
     // Simple mutex using chained futures
     final completer = Completer<T>();
     _mutex = _mutex.then((_) => action(_context)).then(completer.complete).catchError(completer.completeError);

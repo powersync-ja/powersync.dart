@@ -2,7 +2,7 @@ import 'dart:async';
 import '../attachment.dart';
 
 /// Adapter for interfacing with remote attachment storage.
-abstract class RemoteStorage {
+abstract class AbstractRemoteStorageAdapter {
   /// Uploads a file to remote storage.
   ///
   /// [fileData] is a stream of byte arrays representing the file data.

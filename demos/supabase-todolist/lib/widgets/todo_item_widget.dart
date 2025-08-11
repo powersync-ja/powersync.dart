@@ -23,7 +23,13 @@ class TodoItemWidget extends StatelessWidget {
 
   Future<void> deleteTodo(TodoItem todo) async {
     if (todo.photoId != null) {
-      attachmentQueue.deleteFile(todo.photoId!);
+      
+      await attachmentQueue.deleteFile(
+        attachmentId: todo.photoId!,
+        updateHook: (context, attachment) async {
+          // await context.execute("UPDATE todos SET photo_id = NULL WHERE id = ?", [todo.id]);
+        },
+      );
     }
     await todo.delete();
   }

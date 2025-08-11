@@ -32,9 +32,9 @@ import '../sync_error_handler.dart';
 /// - [getLocalUri]: A function to resolve the local URI for a given filename.
 /// - [onDownloadError], [onUploadError], [onDeleteError]: Optional error handlers for managing sync-related errors.
 class SyncingService {
-  final RemoteStorage remoteStorage;
-  final LocalStorage localStorage;
-  final AttachmentService attachmentsService;
+  final AbstractRemoteStorageAdapter remoteStorage;
+  final AbstractLocalStorageAdapter localStorage;
+  final AbstractAttachmentService attachmentsService;
   final Future<String> Function(String) getLocalUri;
   final SyncErrorHandler? errorHandler;
   final Duration syncThrottle;
@@ -144,7 +144,7 @@ class SyncingService {
   /// [context]: The attachment context used for managing attachment states.
   Future<void> handleSync(
     List<Attachment> attachments,
-    AttachmentContext context,
+    AbstractAttachmentContext context,
   ) async {
     logger.info(
       'SyncingService: Starting handleSync with ${attachments.length} attachments',
@@ -317,7 +317,7 @@ class SyncingService {
   ///
   /// [context]: The attachment context used to retrieve and manage archived attachments.
   /// Returns `true` if all archived attachments were successfully deleted, `false` otherwise.
-  Future<bool> deleteArchivedAttachments(AttachmentContext context) async {
+  Future<bool> deleteArchivedAttachments(AbstractAttachmentContext context) async {
     return context.deleteArchivedAttachments((pendingDelete) async {
       for (final attachment in pendingDelete) {
         if (attachment.localUri == null) continue;

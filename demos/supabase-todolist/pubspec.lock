@@ -568,12 +568,19 @@ packages:
     source: path
     version: "1.15.0"
   powersync_attachments_helper:
-    dependency: "direct main"
+    dependency: "direct overridden"
     description:
       path: "../../packages/powersync_attachments_helper"
       relative: true
     source: path
     version: "0.6.18+11"
+  powersync_attachments_stream:
+    dependency: "direct main"
+    description:
+      path: "../../packages/powersync_attachments_stream"
+      relative: true
+    source: path
+    version: "0.0.1"
   powersync_core:
     dependency: "direct overridden"
     description:
@@ -1050,5 +1057,5 @@ packages:
     source: hosted
     version: "2.1.0"
 sdks:
-  dart: ">=3.7.0 <4.0.0"
+  dart: ">=3.8.1 <4.0.0"
   flutter: ">=3.27.0"

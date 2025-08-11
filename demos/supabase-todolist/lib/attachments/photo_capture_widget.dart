@@ -1,18 +1,16 @@
 import 'dart:async';
-
+import 'dart:io';
+import 'dart:typed_data';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
-import 'package:powersync/powersync.dart' as powersync;
+import 'package:logging/logging.dart';
 import 'package:powersync_flutter_demo/attachments/queue.dart';
-import 'package:powersync_flutter_demo/models/todo_item.dart';
-import 'package:powersync_flutter_demo/powersync.dart';
 
 class TakePhotoWidget extends StatefulWidget {
   final String todoId;
   final CameraDescription camera;
 
-  const TakePhotoWidget(
-      {super.key, required this.todoId, required this.camera});
+  const TakePhotoWidget({super.key, required this.todoId, required this.camera});
 
   @override
   State<StatefulWidget> createState() {
@@ -23,6 +21,7 @@ class TakePhotoWidget extends StatefulWidget {
 class _TakePhotoWidgetState extends State<TakePhotoWidget> {
   late CameraController _cameraController;
   late Future<void> _initializeControllerFuture;
+  final log = Logger('TakePhotoWidget');
 
   @override
   void initState() {
@@ -37,7 +36,6 @@ class _TakePhotoWidgetState extends State<TakePhotoWidget> {
   }
 
   @override
-  // Dispose of the camera controller when the widget is disposed
   void dispose() {
     _cameraController.dispose();
     super.dispose();
@@ -45,25 +43,26 @@ class _TakePhotoWidgetState extends State<TakePhotoWidget> {
 
   Future<void> _takePhoto(context) async {
     try {
-      // Ensure the camera is initialized before taking a photo
+      log.info('Taking photo for todo: ${widget.todoId}');
       await _initializeControllerFuture;
-
       final XFile photo = await _cameraController.takePicture();
-      // copy photo to new directory with ID as name
-      String photoId = powersync.uuid.v4();
-      String storageDirectory = await attachmentQueue.getStorageDirectory();
-      await attachmentQueue.localStorage
-          .copyFile(photo.path, '$storageDirectory/$photoId.jpg');
-
-      int photoSize = await photo.length();
-
-      TodoItem.addPhoto(photoId, widget.todoId);
-      attachmentQueue.saveFile(photoId, photoSize);
+      
+      // Read the photo data as a stream
+      final photoFile = File(photo.path);
+      if (!await photoFile.exists()) {
+        log.warning('Photo file does not exist: ${photo.path}');
+        return;
+      }
+      
+      final photoDataStream = photoFile.openRead().cast<Uint8List>();
+      
+      // Save the photo attachment directly with the data stream
+      final attachment = await savePhotoAttachment(photoDataStream, widget.todoId);
+      
+      log.info('Photo attachment saved with ID: ${attachment.id}');
     } catch (e) {
-      log.info('Error taking photo: $e');
+      log.severe('Error taking photo: $e');
     }
-
-    // After taking the photo, navigate back to the previous screen
     Navigator.pop(context);
   }
 
