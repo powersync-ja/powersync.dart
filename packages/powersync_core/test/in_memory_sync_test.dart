@@ -7,6 +7,8 @@ import 'package:powersync_core/powersync_core.dart';
 import 'package:powersync_core/sqlite3_common.dart';
 import 'package:powersync_core/src/sync/streaming_sync.dart';
 import 'package:powersync_core/src/sync/protocol.dart';
+import 'package:shelf/shelf.dart';
+import 'package:shelf_router/shelf_router.dart';
 import 'package:test/test.dart';
 
 import 'bucket_storage_test.dart';
@@ -63,7 +65,7 @@ void _declareTests(String name, SyncOptions options, bool bson) {
 
     void createSyncClient({Schema? schema}) {
       final (client, server) = inMemoryServer();
-      server.mount(syncService.router.call);
+      server.mount((req) => syncService.router(req));
 
       final thisSyncClient = syncClient = database.connectWithMockService(
         client,
@@ -936,6 +938,46 @@ void _declareTests(String name, SyncOptions options, bool bson) {
         });
 
       expect(await query.next, 'from server');
+    });
+
+    group('abort', () {
+      test('during connect', () async {
+        final requestStarted = Completer<void>();
+
+        syncService.router = Router()
+          ..post('/sync/stream', expectAsync1((Request request) async {
+            requestStarted.complete();
+
+            // emulate a network that never connects
+            await Completer<void>().future;
+          }));
+
+        syncClient.streamingSync();
+        await requestStarted.future;
+        expect(database.currentStatus, isSyncStatus(connecting: true));
+
+        await syncClient.abort();
+        expect(database.currentStatus.anyError, isNull);
+      });
+
+      test('during stream', () async {
+        final status = await waitForConnection();
+        syncService.addLine({
+          'checkpoint': {
+            'last_op_id': '0',
+            'buckets': [
+              {
+                'bucket': 'bkt',
+                'checksum': 0,
+              }
+            ],
+          },
+        });
+        await expectLater(status, emits(isSyncStatus(downloading: true)));
+
+        await syncClient.abort();
+        expect(database.currentStatus.anyError, isNull);
+      });
     });
   });
 }

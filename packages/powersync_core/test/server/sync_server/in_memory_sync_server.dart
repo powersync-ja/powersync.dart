@@ -14,7 +14,7 @@ final class MockSyncService {
       StreamController();
   Completer<Request> _listener = Completer();
 
-  final router = Router();
+  var router = Router();
   Object? Function() writeCheckpoint = () {
     return {
       'data': {'write_checkpoint': '10'}
