@@ -17,7 +17,7 @@ import '../abstractions/attachment_context.dart';
 import '../attachment.dart';
 import '../abstractions/local_storage.dart';
 import '../abstractions/remote_storage.dart';
-import '../sync_error_handler.dart';
+import '../abstractions/sync_error_handler.dart';
 
 /// SyncingService is responsible for syncing attachments between local and remote storage.
 ///
@@ -36,7 +36,7 @@ class SyncingService {
   final AbstractLocalStorageAdapter localStorage;
   final AbstractAttachmentService attachmentsService;
   final Future<String> Function(String) getLocalUri;
-  final SyncErrorHandler? errorHandler;
+  final AbstractSyncErrorHandler? errorHandler;
   final Duration syncThrottle;
   final Duration period;
   final Logger logger;

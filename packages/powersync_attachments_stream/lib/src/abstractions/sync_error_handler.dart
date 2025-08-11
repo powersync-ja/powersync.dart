@@ -1,9 +1,9 @@
-import './attachment.dart';
+import '../attachment.dart';
 
 /// Interface for handling errors during attachment operations.
 /// Implementations determine whether failed operations should be retried.
 /// Attachment records are archived if an operation fails and should not be retried.
-abstract class SyncErrorHandler {
+abstract class AbstractSyncErrorHandler {
   /// Determines whether the provided attachment download operation should be retried.
   ///
   /// [attachment] The attachment involved in the failed download operation.
