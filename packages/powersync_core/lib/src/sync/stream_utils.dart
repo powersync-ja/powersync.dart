@@ -111,6 +111,58 @@ Future<void> cancelAll(List<StreamSubscription<void>> subscriptions) async {
   await Future.wait(futures);
 }
 
+/// A variant of [Stream.fromFuture] that makes [StreamSubscription.cancel]
+/// await the original future and report errors.
+///
+/// When using the regular [Stream.fromFuture], cancelling the subscription
+/// before the future completes with an error could cause an handled error to
+/// be reported.
+/// Further, it could cause concurrency issues in the stream client because it
+/// was possible for us to:
+///
+///  1. Make an HTTP request, wrapped in [Stream.fromFuture] to later expand
+///     sync lines from the response.
+///  2. Receive a cancellation request, posting an event on another stream that
+///     is merged into the pending HTTP stream.
+///  3. Act on the cancellation request by cancelling the merged subscription.
+///  4. As a clean-up action, close the HTTP client (while the request is still
+///     being resolved).
+///
+/// Running step 4 and 1 concurrently is really bad, so we delay the
+/// cancellation until step 1 has completed.
+///
+/// As a further discussion, note that throwing in [StreamSubscription.cancel]
+/// is also not exactly a good practice. However, it is the only way to properly
+/// delay cancelling streams here, since the [future] itself is a critical
+/// operation that must complete first here.
+Stream<T> streamFromFutureAwaitInCancellation<T>(Future<T> future) {
+  final controller = StreamController<T>(sync: true);
+  var cancelled = false;
+
+  final handledFuture = future.then((value) {
+    controller
+      ..add(value)
+      ..close();
+  }, onError: (Object error, StackTrace trace) {
+    if (cancelled) {
+      // Make handledFuture complete with the error, so that controller.cancel
+      // throws (instead of the error being unhandled).
+      throw error;
+    } else {
+      controller
+        ..addError(error, trace)
+        ..close();
+    }
+  });
+
+  controller.onCancel = () async {
+    cancelled = true;
+    await handledFuture;
+  };
+
+  return controller.stream;
+}
+
 /// An [EventSink] that takes raw bytes as inputs, buffers them internally by
 /// reading a 4-byte length prefix for each message and then emits them as
 /// chunks.
