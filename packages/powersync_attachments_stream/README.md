@@ -29,46 +29,39 @@ In the example below, the user captures photos when checklist items are complete
 1. First, define your schema including the `checklist` table and the local-only attachments table:
 
 ```dart
-final checklists = Table(
-  name: 'checklists',
-  columns: [
+Schema schema = Schema(([
+  const Table('checklists', [
     Column.text('description'),
     Column.integer('completed'),
     Column.text('photo_id'),
-  ],
-);
-
-final schema = Schema([
-  UserRow.table,
-  // Add the local-only table which stores attachment states
-  // Learn more about this function below
-  createAttachmentsTable('attachments'),
-]);
+  ]),
+  AttachmentsQueueTable(
+      attachmentsQueueTableName: defaultAttachmentsQueueTableName)
+]));
 ```
 
 2. Create an `AttachmentQueue` instance. This class provides default syncing utilities and implements a default sync strategy. This class is open and can be overridden for custom functionality:
 
 ```dart
+final Directory appDocDir = await getApplicationDocumentsDirectory();
+
 final queue = AttachmentQueue(
-  db: db,
-  attachmentsDirectory: attachmentsDirectory,
-  remoteStorage: SupabaseRemoteStorage(supabase),
-  watchAttachments: () => db.watch(
-    '''
-    SELECT photo_id
-    FROM checklists
-    WHERE photo_id IS NOT NULL
-    ''',
-    mapper: (row) => WatchedAttachmentItem(
-      id: row['photo_id'] as String,
-      fileExtension: 'jpg',
-    ),
-  ),
-);
+    db: db,
+    remoteStorage: remoteStorage,
+    attachmentsDirectory: '${appDocDir.path}/attachments',
+    watchAttachments: () => db.watch('''
+      SELECT photo_id as id FROM todos WHERE photo_id IS NOT NULL
+    ''').map((results) => results
+        .map((row) => WatchedAttachmentItem(
+              id: row['id'] as String,
+              fileExtension: 'jpg',
+            ))
+        .toList()),
+  );
 ```
 
 * The `attachmentsDirectory` specifies where local attachment files should be stored. This directory needs to be provided to the constructor. In Flutter, `path_provider`'s `getApplicationDocumentsDirectory()` with a subdirectory like `/attachments` is a good choice.
-* The `remoteStorage` is responsible for connecting to the attachments backend. See the `RemoteStorageAdapter` interface definition [here](https://github.com/powersync-ja/powersync-dart/blob/main/core/lib/src/attachments/remote_storage_adapter.dart).
+* The `remoteStorage` is responsible for connecting to the attachments backend. See the `RemoteStorageAdapter` interface definition [here](https://github.com/powersync-ja/powersync.dart/blob/main/packages/powersync_attachments_stream/lib/src/abstractions/remote_storage.dart).
 * `watchAttachments` is a `Stream` of `WatchedAttachmentItem`. The `WatchedAttachmentItem`s represent the attachments which should be present in the application. We recommend using `PowerSync`'s `watch` query as shown above. In this example, we provide the `fileExtension` for all photos. This information could also be obtained from the query if necessary.
 
 3. Implement a `RemoteStorageAdapter` which interfaces with a remote storage provider. This will be used for downloading, uploading, and deleting attachments:
@@ -78,13 +71,13 @@ final remote = _RemoteStorageAdapter();
 
 class _RemoteStorageAdapter implements RemoteStorageAdapter {
   @override
-  Stream<List<int>> downloadFile(Attachment attachment) async* {
-    // TODO: Implement download from your backend
+  Future<void> uploadFile(Stream<List<int>> fileData, Attachment attachment) async {
+    // TODO: Implement upload to your backend
   }
 
   @override
-  Future<void> uploadFile(Stream<List<int>> fileData, Attachment attachment) async {
-    // TODO: Implement upload to your backend
+  Future<Stream<List<int>>> downloadFile(Attachment attachment) async {
+    // TODO: Implement download from your backend
   }
 
   @override
@@ -104,68 +97,76 @@ await queue.startSync();
 
 ```dart
 await queue.saveFile(
-  data: Stream.value([0]), // Your attachment data
-  mediaType: 'image/jpg',
-  fileExtension: 'jpg',
-  onSave: (tx, attachment) async {
-    /**
-     * This callback is invoked in the same transaction which creates the attachment record.
-     * Assignments of the newly created photo_id should be done in the same transaction for maximum efficiency.
-     */
-    await tx.execute(
-      '''
-      UPDATE checklists 
-      SET photo_id = ?
-      WHERE id = ?
-      ''',
-      [attachment.id, checklistId],
-    );
-  },
-);
+    data: photoData,
+    mediaType: 'image/jpg',
+    fileExtension: 'jpg',
+    metaData: 'Test meta data',
+    updateHook: (context, attachment) async {
+      // Update the todo item to reference this attachment
+      await context.execute(
+        'UPDATE checklists SET photo_id = ? WHERE id = ?',
+        [attachment.id, checklistId],
+      );
+    },
+  );
 ```
 
 ## Implementation Details
 
 ### Attachment Table Structure
 
-The `createAttachmentsTable` function creates a local-only table for tracking attachment states.
+The `AttachmentsQueueTable` class creates a **local-only table** for tracking the states and metadata of file attachments. It allows customization of the table name, additional columns, indexes, and optionally a view name.
 
 An attachments table definition can be created with the following options:
 
-| Option | Description           | Default       |
-|--------|-----------------------|---------------|
-| `name` | The name of the table | `attachments` |
+| Option                 | Description                     | Default                      |
+| ---------------------- | -------------------------------| ----------------------------|
+| `attachmentsQueueTableName` | The name of the table          | `defaultAttachmentsQueueTableName` |
+| `additionalColumns`    | Extra columns to add to the table | `[]` (empty list)            |
+| `indexes`              | Indexes to optimize queries     | `[]` (empty list)            |
+| `viewName`             | Optional associated view name   | `null`                       |
 
-The default columns are:
+The default columns included in the table are:
 
-| Column Name  | Type      | Description                                                                                                        |
-|--------------|-----------|--------------------------------------------------------------------------------------------------------------------|
-| `id`         | `TEXT`    | Unique identifier for the attachment                                                                               |
-| `filename`   | `TEXT`    | The filename of the attachment                                                                                        |
-| `media_type` | `TEXT`    | The media type of the attachment                                                                                        |
-| `state`      | `INTEGER` | Current state of the attachment (see `AttachmentState` enum)                                                         |
-| `timestamp`  | `INTEGER` | The timestamp of last update to the attachment                                                                                              |
-| `size`       | `INTEGER` | File size in bytes                                                                                                 |
-| `has_synced` | `INTEGER` | Internal flag tracking if the attachment has ever been synced (used for caching)                                    |
-| `meta_data`  | `TEXT`    | Additional metadata in JSON format                                                                                 |
+| Column Name  | Type      | Description                                                                      |
+| ------------ | --------- | -------------------------------------------------------------------------------- |
+| `filename`   | `TEXT`    | The filename of the attachment                                                   |
+| `local_uri`  | `TEXT`    | Local file URI or path                                                           |
+| `timestamp`  | `INTEGER` | The timestamp of the last update to the attachment                               |
+| `size`       | `INTEGER` | File size in bytes                                                               |
+| `media_type` | `TEXT`    | The media (MIME) type of the attachment                                          |
+| `state`      | `INTEGER` | Current state of the attachment (e.g., queued, syncing, synced)                  |
+| `has_synced` | `INTEGER` | Internal flag indicating if the attachment has ever been synced (for caching)    |
+| `meta_data`  | `TEXT`    | Additional metadata stored as JSON                                               |
+
+The class extends a base `Table` class using a `localOnly` constructor, so this table exists **only locally** on the device and is not synchronized with a remote database.
+
+This design allows flexible tracking and management of attachment syncing state and metadata within the local database.                                               |
 
 ### Attachment States
 
-Attachments are managed through the following states:
+Attachments are managed through the following states, which represent their current synchronization status with remote storage:
 
-| State             | Description                                                                   |
-|-------------------|-------------------------------------------------------------------------------|
-| `QUEUED_UPLOAD`   | Attachment is queued for upload to cloud storage                              |
-| `QUEUED_DELETE`   | Attachment is queued for deletion from cloud storage and local storage        |
-| `QUEUED_DOWNLOAD` | Attachment is queued for download from cloud storage                          |
-| `SYNCED`          | Attachment is fully synced                                              |
-| `ARCHIVED`        | Attachment is orphaned - i.e., no longer referenced by any data                                |
+| State             | Description                                                            |
+| ----------------- | ---------------------------------------------------------------------- |
+| `queuedUpload`    | Attachment is queued for upload to remote/cloud storage                |
+| `queuedDelete`    | Attachment is queued for deletion from both remote and local storage   |
+| `queuedDownload`  | Attachment is queued for download from remote/cloud storage            |
+| `synced`          | Attachment is fully synchronized with remote storage                   |
+| `archived`        | Attachment is archived — no longer actively synchronized or referenced |
+
+---
+
+The `AttachmentState` enum also provides helper methods for converting between the enum and its integer representation:
+
+- `AttachmentState.fromInt(int value)` — Constructs an `AttachmentState` from its corresponding integer index. Throws an `ArgumentError` if the value is out of range.
+- `toInt()` — Returns the integer index of the current `AttachmentState` instance.
 
 ### Sync Process
 
 The `AttachmentQueue` implements a sync process with these components:
 
-1. **State Monitoring**: The queue watches the attachments table for records in `QUEUED_UPLOAD`, `QUEUED_DELETE`, and `QUEUED_DOWNLOAD` states. An event loop triggers calls to the remote storage for these operations.
+1. **State Monitoring**: The queue watches the attachments table for records in `queuedUpload`, `queuedDelete`, and `queuedDownload` states. An event loop triggers calls to the remote storage for these operations.
 
 2. **Periodic Sync**: By default, the queue triggers a sync every 30 seconds to retry failed uploads/downloads, in particular after the app was offline. This interval can be configured by setting `syncInterval` in the `AttachmentQueue` constructor options, or disabled by setting the interval to `0`.
 
@@ -178,27 +179,27 @@ The `AttachmentQueue` implements a sync process with these components:
 The `saveFile` method handles attachment creation and upload:
 
 1. The attachment is saved to local storage
-2. An `AttachmentRecord` is created with `QUEUED_UPLOAD` state, linked to the local file using `localUri`
+2. An `AttachmentRecord` is created with `queuedUpload` state, linked to the local file using `localUri`
 3. The attachment must be assigned to relational data in the same transaction, since this data is constantly watched and should always represent the attachment queue state
 4. The `RemoteStorageAdapter` `uploadFile` function is called
-5. On successful upload, the state changes to `SYNCED`
-6. If upload fails, the record stays in `QUEUED_UPLOAD` state for retry
+5. On successful upload, the state changes to `synced`
+6. If upload fails, the record stays in `queuedUpload` state for retry
 
 ### Download Process
 
 Attachments are scheduled for download when the stream from `watchAttachments` emits a new item that is not present locally:
 
-1. An `AttachmentRecord` is created with `QUEUED_DOWNLOAD` state
+1. An `AttachmentRecord` is created with `queuedDownload` state
 2. The `RemoteStorageAdapter` `downloadFile` function is called
 3. The received data is saved to local storage
-4. On successful download, the state changes to `SYNCED`
+4. On successful download, the state changes to `synced`
 5. If download fails, the operation is retried in the next sync cycle
 
 ### Delete Process
 
 The `deleteFile` method deletes attachments from both local and remote storage:
 
-1. The attachment record moves to `QUEUED_DELETE` state
+1. The attachment record moves to `queuedDelete` state
 2. The attachment must be unassigned from relational data in the same transaction, since this data is constantly watched and should always represent the attachment queue state
 3. On successful deletion, the record is removed
 4. If deletion fails, the operation is retried in the next sync cycle
@@ -207,7 +208,7 @@ The `deleteFile` method deletes attachments from both local and remote storage:
 
 The `AttachmentQueue` implements a caching system for archived attachments:
 
-1. Local attachments are marked as `ARCHIVED` if the stream from `watchAttachments` no longer references them
+1. Local attachments are marked as `archived` if the stream from `watchAttachments` no longer references them
 2. Archived attachments are kept in the cache for potential future restoration
 3. The cache size is controlled by the `archivedCacheLimit` parameter in the `AttachmentQueue` constructor
 4. By default, the queue keeps the last 100 archived attachment records
@@ -234,19 +235,19 @@ final errorHandler = _SyncErrorHandler();
 
 class _SyncErrorHandler implements SyncErrorHandler {
   @override
-  Future<bool> onDownloadError(Attachment attachment, Exception exception) async {
+  Future<bool> onDownloadError(Attachment attachment, Object exception) async {
     // TODO: Return if the attachment sync should be retried
     return false;
   }
 
   @override
-  Future<bool> onUploadError(Attachment attachment, Exception exception) async {
+  Future<bool> onUploadError(Attachment attachment, Object exception) async {
     // TODO: Return if the attachment sync should be retried
     return false;
   }
 
   @override
-  Future<bool> onDeleteError(Attachment attachment, Exception exception) async {
+  Future<bool> onDeleteError(Attachment attachment, Object exception) async {
     // TODO: Return if the attachment sync should be retried
     return false;
   }

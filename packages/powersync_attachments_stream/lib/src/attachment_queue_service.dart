@@ -7,6 +7,7 @@
 import 'dart:async';
 import 'dart:typed_data';
 import 'package:logging/logging.dart';
+import './storage/io_local_storage.dart';
 import 'package:powersync_core/powersync_core.dart';
 import 'package:sqlite_async/mutex.dart';
 import 'attachment.dart';
@@ -29,10 +30,13 @@ import 'sync/syncing_service.dart';
 class WatchedAttachmentItem {
   /// Id for the attachment record.
   final String id;
+
   /// File extension used to determine an internal filename for storage if no [filename] is provided.
   final String? fileExtension;
+
   /// Filename to store the attachment with.
   final String? filename;
+
   /// Optional metadata for the attachment record.
   final String? metaData;
 
@@ -95,7 +99,7 @@ class AttachmentQueue {
     required this.remoteStorage,
     required this.attachmentsDirectory,
     required this.watchAttachments,
-    required this.localStorage,
+    IOLocalStorage? localStorage,
     this.attachmentsQueueTableName = defaultTableName,
     this.errorHandler,
     this.syncInterval = const Duration(seconds: 30),
@@ -103,7 +107,8 @@ class AttachmentQueue {
     this.syncThrottleDuration = const Duration(seconds: 1),
     this.downloadAttachments = true,
     Logger? logger,
-  }) : logger = logger ?? Logger('AttachmentQueue') {
+  }) : localStorage = localStorage ?? IOLocalStorage(),
+       logger = logger ?? Logger('AttachmentQueue') {
     attachmentsService = AttachmentServiceImpl(
       db: db,
       logger: logger ?? Logger('AttachmentQueue'),
@@ -113,7 +118,7 @@ class AttachmentQueue {
 
     syncingService = SyncingService(
       remoteStorage: remoteStorage,
-      localStorage: localStorage,
+      localStorage: this.localStorage,
       attachmentsService: attachmentsService,
       getLocalUri: (filename) async => getLocalUri(filename),
       errorHandler: errorHandler,
@@ -229,7 +234,6 @@ class AttachmentQueue {
               // hasSynced: existingQueueItem.hasSynced;
             ),
           );
-
         } else if (existingQueueItem.state == AttachmentState.archived) {
           // The attachment is present again. Need to queue it for sync.
           if (existingQueueItem.hasSynced) {

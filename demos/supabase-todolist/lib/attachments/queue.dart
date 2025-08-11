@@ -14,7 +14,6 @@ final log = Logger('AttachmentQueue');
 Future<void> initializeAttachmentQueue(PowerSyncDatabase db) async {
   // Use the app's document directory for local storage
   final Directory appDocDir = await getApplicationDocumentsDirectory();
-  final localStorage = IOLocalStorage(appDocDir);
 
   attachmentQueue = AttachmentQueue(
     db: db,
@@ -22,21 +21,20 @@ Future<void> initializeAttachmentQueue(PowerSyncDatabase db) async {
     attachmentsDirectory: '${appDocDir.path}/attachments',
     watchAttachments: () => db.watch('''
       SELECT photo_id as id FROM todos WHERE photo_id IS NOT NULL
-    ''').map((results) {
-      final items = results.map((row) => WatchedAttachmentItem(id: row['id'] as String, fileExtension: 'jpg')).toList();
-      log.info('Watched attachment IDs: ${items.map((e) => e.id).toList()}');
-      return items;
-    }),
-    localStorage: localStorage,
-    errorHandler: null, 
+    ''').map((results) => results
+        .map((row) => WatchedAttachmentItem(
+              id: row['id'] as String,
+              fileExtension: 'jpg',
+            ))
+        .toList()),
   );
 
   await attachmentQueue.startSync();
 }
 
-Future<Attachment> savePhotoAttachment(Stream<Uint8List> photoData, String todoId,
+Future<Attachment> savePhotoAttachment(
+    Stream<Uint8List> photoData, String todoId,
     {String mediaType = 'image/jpeg'}) async {
-  
   // Save the file using the AttachmentQueue API
   return await attachmentQueue.saveFile(
     data: photoData,
