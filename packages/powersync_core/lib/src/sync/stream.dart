@@ -83,7 +83,7 @@ abstract interface class SyncStreamSubscription
   ///
   /// The subscription may still be included for a while, until the client
   /// reconnects and receives new snapshots from the sync service.
-  Future<void> unsubscribe({bool immediately = false});
+  Future<void> unsubscribe();
 }
 
 /// An `ActiveStreamSubscription` as part of the sync status in Rust.
