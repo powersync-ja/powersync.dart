@@ -1,3 +1,10 @@
+## 1.15.1
+
+ - Support latest versions of `package:sqlite3` and `package:sqlite_async`.
+ - Stream client: Improve `disconnect()` while a connection is being opened.
+ - Stream client: Support binary sync lines with Rust client and compatible PowerSync service versions.
+ - Sync client: Improve parsing error responses.
+
 ## 1.15.0
 
  - Update the PowerSync core extension to `0.4.2`.

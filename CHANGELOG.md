@@ -3,6 +3,35 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 2025-08-11
+
+### Changes
+
+---
+
+Packages with breaking changes:
+
+ - There are no breaking changes in this release.
+
+Packages with other changes:
+
+ - [`powersync_core` - `v1.5.1`](#powersync_core---v151)
+ - [`powersync` - `v1.15.1`](#powersync---v1151)
+ - [`powersync_sqlcipher` - `v0.1.11`](#powersync_sqlcipher---v0111)
+ - [`powersync_flutter_libs` - `v0.4.11`](#powersync_flutter_libs---v0411)
+
+---
+
+#### `powersync_core` - `v1.5.1`
+#### `powersync` - `v1.15.1`
+#### `powersync_sqlcipher` - `v0.1.11`
+#### `powersync_flutter_libs` - `v0.4.11`
+
+ - Support latest versions of `package:sqlite3` and `package:sqlite_async`.
+ - Stream client: Improve `disconnect()` while a connection is being opened.
+ - Stream client: Support binary sync lines with Rust client and compatible PowerSync service versions.
+ - Sync client: Improve parsing error responses.
+
 ## 2025-07-17
 
 ### Changes
