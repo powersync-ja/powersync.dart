@@ -217,13 +217,11 @@ final class ConnectionManager {
   Future<void> unsubscribe({
     required String stream,
     required Object? parameters,
-    required bool immediate,
   }) async {
     await _subscriptionsCommand({
       'unsubscribe': {
         'stream': stream,
         'params': parameters,
-        'immediate': immediate,
       },
     });
   }
@@ -334,9 +332,8 @@ final class _SyncStreamSubscription implements SyncStreamSubscription {
   });
 
   @override
-  Future<void> unsubscribe({bool immediately = false}) async {
-    await _connections.unsubscribe(
-        stream: name, parameters: parameters, immediate: immediately);
+  Future<void> unsubscribe() async {
+    await _connections.unsubscribe(stream: name, parameters: parameters);
   }
 
   @override
