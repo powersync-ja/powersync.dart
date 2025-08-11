@@ -15,7 +15,7 @@ import 'abstractions/attachment_service.dart';
 import 'abstractions/attachment_context.dart';
 import 'abstractions/local_storage.dart';
 import 'abstractions/remote_storage.dart';
-import 'sync_error_handler.dart';
+import 'abstractions/sync_error_handler.dart';
 import 'implementations/attachment_service.dart';
 import 'sync/syncing_service.dart';
 
@@ -79,7 +79,7 @@ class AttachmentQueue {
   final Stream<List<WatchedAttachmentItem>> Function() watchAttachments;
   final AbstractLocalStorageAdapter localStorage;
   final String attachmentsQueueTableName;
-  final SyncErrorHandler? errorHandler;
+  final AbstractSyncErrorHandler? errorHandler;
   final Duration syncInterval;
   final int archivedCacheLimit;
   final Duration syncThrottleDuration;
@@ -125,7 +125,6 @@ class AttachmentQueue {
       syncThrottle: syncThrottleDuration,
       period: syncInterval,
     );
-    logger?.info('syncingService: $syncingService');
   }
 
   /// Initialize the attachment queue by:

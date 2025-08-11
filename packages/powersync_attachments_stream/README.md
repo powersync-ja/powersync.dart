@@ -233,7 +233,7 @@ Example of a custom `SyncErrorHandler`:
 ```dart
 final errorHandler = _SyncErrorHandler();
 
-class _SyncErrorHandler implements SyncErrorHandler {
+class _SyncErrorHandler implements AbstractSyncErrorHandler {
   @override
   Future<bool> onDownloadError(Attachment attachment, Object exception) async {
     // TODO: Return if the attachment sync should be retried

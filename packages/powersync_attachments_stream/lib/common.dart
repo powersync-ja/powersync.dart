@@ -1,6 +1,6 @@
 /// Platform-agnostic exports for all platforms (including web).
 export 'src/attachment.dart';
-export 'src/sync_error_handler.dart';
+export 'src/abstractions/sync_error_handler.dart';
 export 'src/abstractions/attachment_service.dart';
 export 'src/abstractions/attachment_context.dart';
 export 'src/abstractions/local_storage.dart';
