@@ -25,7 +25,8 @@ import '../abstractions/local_storage.dart';
 class IOLocalStorage implements AbstractLocalStorageAdapter {
   final Directory baseDir;
 
-  IOLocalStorage(this.baseDir);
+  IOLocalStorage([Directory? baseDir])
+    : baseDir = baseDir ?? Directory.systemTemp;
 
   File _fileFor(String filePath) => File(p.join(baseDir.path, filePath));
   File _metaFileFor(String filePath) =>
