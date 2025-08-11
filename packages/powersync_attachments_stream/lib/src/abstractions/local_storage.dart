@@ -1,6 +1,6 @@
 import 'dart:typed_data';
 
-abstract class LocalStorage {
+abstract class AbstractLocalStorageAdapter {
   /// Saves binary data stream to storage at the specified file path
   ///
   /// [filePath] - Path where the file will be stored

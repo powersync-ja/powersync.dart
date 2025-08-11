@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:powersync_attachments_helper/powersync_attachments_helper.dart';
+import 'package:powersync_attachments_stream/powersync_attachments_stream.dart';
 import 'package:powersync_flutter_demo/attachments/camera_helpers.dart';
 import 'package:powersync_flutter_demo/attachments/photo_capture_widget.dart';
 import 'package:powersync_flutter_demo/attachments/queue.dart';

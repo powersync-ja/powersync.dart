@@ -4,7 +4,7 @@ import '../attachment.dart';
 ///
 /// This is typically provided through a locking/exclusivity method and allows
 /// safe, transactional operations on the attachment queue.
-abstract class AttachmentContext {
+abstract class AbstractAttachmentContext {
   /// Delete the attachment from the attachment queue.
   ///
   /// [id]: The ID of the attachment to delete.

@@ -70,10 +70,10 @@ class WatchedAttachmentItem {
 /// - [logger]: Logging interface used for all log operations.
 class AttachmentQueue {
   final PowerSyncDatabase db;
-  final RemoteStorage remoteStorage;
+  final AbstractRemoteStorageAdapter remoteStorage;
   final String attachmentsDirectory;
   final Stream<List<WatchedAttachmentItem>> Function() watchAttachments;
-  final LocalStorage localStorage;
+  final AbstractLocalStorageAdapter localStorage;
   final String attachmentsQueueTableName;
   final SyncErrorHandler? errorHandler;
   final Duration syncInterval;
@@ -87,7 +87,7 @@ class AttachmentQueue {
   final Mutex _mutex = Mutex();
   bool _closed = false;
   StreamSubscription? _syncStatusSubscription;
-  late final AttachmentService attachmentsService;
+  late final AbstractAttachmentService attachmentsService;
   late final SyncingService syncingService;
 
   AttachmentQueue({
@@ -375,7 +375,7 @@ class AttachmentQueue {
   }
 
   /// Cleans up stale attachments.
-  Future<void> _verifyAttachments(AttachmentContext context) async {
+  Future<void> _verifyAttachments(AbstractAttachmentContext context) async {
     final attachments = await context.getActiveAttachments();
     final List<Attachment> updates = [];
 

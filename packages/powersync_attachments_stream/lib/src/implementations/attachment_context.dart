@@ -4,7 +4,7 @@ import 'package:powersync_core/powersync_core.dart';
 import 'package:powersync_core/sqlite3_common.dart';
 import 'package:logging/logging.dart';
 
-class AttachmentContextImpl implements AttachmentContext {
+class AttachmentContextImpl implements AbstractAttachmentContext {
   final PowerSyncDatabase db;
   final Logger log;
   final int maxArchivedCount;

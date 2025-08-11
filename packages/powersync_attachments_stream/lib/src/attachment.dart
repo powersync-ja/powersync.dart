@@ -4,6 +4,7 @@
 
 import 'package:powersync_core/sqlite3_common.dart' show Row;
 import 'package:powersync_core/powersync_core.dart';
+import './attachment_queue_service.dart';
 
 /// Represents the state of an attachment.
 enum AttachmentState {
@@ -36,7 +37,7 @@ enum AttachmentState {
   int toInt() => index;
 }
 
-const defaultAttachmentsQueueTableName = 'attachments_queue';
+const defaultAttachmentsQueueTableName = AttachmentQueue.defaultTableName;
 
 /// Represents an attachment with metadata and state information.
 ///
