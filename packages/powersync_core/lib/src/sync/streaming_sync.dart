@@ -517,7 +517,8 @@ class StreamingSyncImplementation implements StreamingSync {
     }
     final uri = credentials.endpointUri('sync/stream');
 
-    final request = http.Request('POST', uri);
+    final request =
+        http.AbortableRequest('POST', uri, abortTrigger: _abort!.onAbort);
     request.headers['Content-Type'] = 'application/json';
     request.headers['Authorization'] = "Token ${credentials.token}";
     request.headers['Accept'] =
