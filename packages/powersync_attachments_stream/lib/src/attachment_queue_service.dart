@@ -1,3 +1,9 @@
+// Implements the attachment queue for PowerSync attachments.
+//
+// This class manages the lifecycle of attachment records, including watching for new attachments,
+// syncing with remote storage, handling uploads, downloads, and deletes, and managing local storage.
+// It provides hooks for error handling, cache management, and custom filename resolution.
+
 import 'dart:async';
 import 'dart:typed_data';
 import 'package:logging/logging.dart';
@@ -13,13 +19,26 @@ import 'implementations/attachment_service.dart';
 import 'sync/syncing_service.dart';
 
 /// A watched attachment record item.
+///
 /// This is usually returned from watching all relevant attachment IDs.
+///
+/// - [id]: Id for the attachment record.
+/// - [fileExtension]: File extension used to determine an internal filename for storage if no [filename] is provided.
+/// - [filename]: Filename to store the attachment with.
+/// - [metaData]: Optional metadata for the attachment record.
 class WatchedAttachmentItem {
+  /// Id for the attachment record.
   final String id;
+  /// File extension used to determine an internal filename for storage if no [filename] is provided.
   final String? fileExtension;
+  /// Filename to store the attachment with.
   final String? filename;
+  /// Optional metadata for the attachment record.
   final String? metaData;
 
+  /// Creates a [WatchedAttachmentItem].
+  ///
+  /// Either [fileExtension] or [filename] must be provided.
   WatchedAttachmentItem({
     required this.id,
     this.fileExtension,
@@ -32,7 +51,23 @@ class WatchedAttachmentItem {
 }
 
 /// Class used to implement the attachment queue.
-/// Requires a database client, remote storage adapter, and an attachment directory name.
+///
+/// Manages the lifecycle of attachment records, including watching for new attachments,
+/// syncing with remote storage, handling uploads, downloads, and deletes, and managing local storage.
+///
+/// Properties:
+/// - [db]: PowerSync database client.
+/// - [remoteStorage]: Adapter which interfaces with the remote storage backend.
+/// - [attachmentsDirectory]: Directory name where attachment files will be written to disk.
+/// - [watchAttachments]: A stream generator for the current state of local attachments.
+/// - [localStorage]: Provides access to local filesystem storage methods.
+/// - [attachmentsQueueTableName]: SQLite table where attachment state will be recorded.
+/// - [errorHandler]: Attachment operation error handler. Specifies if failed attachment operations should be retried.
+/// - [syncInterval]: Periodic interval to trigger attachment sync operations.
+/// - [archivedCacheLimit]: Defines how many archived records are retained as a cache.
+/// - [syncThrottleDuration]: Throttles remote sync operations triggering.
+/// - [downloadAttachments]: Should attachments be downloaded.
+/// - [logger]: Logging interface used for all log operations.
 class AttachmentQueue {
   final PowerSyncDatabase db;
   final RemoteStorage remoteStorage;

@@ -1,3 +1,12 @@
+// Service responsible for syncing attachments between local and remote storage.
+//
+// This service handles downloading, uploading, and deleting attachments, as well as
+// periodically syncing attachment states. It ensures proper lifecycle management
+// of sync operations and provides mechanisms for error handling and retries.
+//
+// The class provides a default implementation for syncing operations, which can be
+// extended or customized as needed.
+
 import 'dart:async';
 import 'dart:typed_data';
 import 'package:logging/logging.dart';
@@ -10,6 +19,18 @@ import '../abstractions/local_storage.dart';
 import '../abstractions/remote_storage.dart';
 import '../sync_error_handler.dart';
 
+/// SyncingService is responsible for syncing attachments between local and remote storage.
+///
+/// This service handles downloading, uploading, and deleting attachments, as well as
+/// periodically syncing attachment states. It ensures proper lifecycle management
+/// of sync operations and provides mechanisms for error handling and retries.
+///
+/// Properties:
+/// - [remoteStorage]: The remote storage implementation for handling file operations.
+/// - [localStorage]: The local storage implementation for managing files locally.
+/// - [attachmentsService]: The service for managing attachment states and operations.
+/// - [getLocalUri]: A function to resolve the local URI for a given filename.
+/// - [onDownloadError], [onUploadError], [onDeleteError]: Optional error handlers for managing sync-related errors.
 class SyncingService {
   final RemoteStorage remoteStorage;
   final LocalStorage localStorage;
@@ -36,7 +57,10 @@ class SyncingService {
     Logger? logger,
   }) : logger = logger ?? Logger('SyncingService');
 
-  Future<void> startSync() async {
+  /// Starts the syncing process, including periodic and event-driven sync operations.
+  ///
+  /// [period] is the interval at which periodic sync operations are triggered.
+  Future<void> startSync({Duration period = const Duration(seconds: 30)}) async {
     if (_isClosed) return;
 
     _syncSubscription?.cancel();
@@ -94,22 +118,30 @@ class SyncingService {
     );
   }
 
+  /// Enqueues a sync operation (manual trigger).
   Future<void> triggerSync() async {
     if (_isClosed) return;
     _syncTriggerController.add(null);
   }
 
+  /// Stops all ongoing sync operations.
   Future<void> stopSync() async {
     await _syncSubscription?.cancel();
     await _periodicSubscription?.cancel();
   }
 
+  /// Closes the syncing service, stopping all operations and releasing resources.
   Future<void> close() async {
     _isClosed = true;
     await stopSync();
     await _syncTriggerController.close();
   }
 
+  /// Handles syncing operations for a list of attachments, including downloading,
+  /// uploading, and deleting files based on their states.
+  ///
+  /// [attachments]: The list of attachments to process.
+  /// [context]: The attachment context used for managing attachment states.
   Future<void> handleSync(
     List<Attachment> attachments,
     AttachmentContext context,
@@ -165,6 +197,10 @@ class SyncingService {
     }
   }
 
+  /// Uploads an attachment from local storage to remote storage.
+  ///
+  /// [attachment]: The attachment to upload.
+  /// Returns the updated attachment with its new state.
   Future<Attachment> uploadAttachment(Attachment attachment) async {
     logger.info(
       'SyncingService: Starting upload for attachment ${attachment.id}',
@@ -203,6 +239,10 @@ class SyncingService {
     }
   }
 
+  /// Downloads an attachment from remote storage and saves it to local storage.
+  ///
+  /// [attachment]: The attachment to download.
+  /// Returns the updated attachment with its new state.
   Future<Attachment> downloadAttachment(Attachment attachment) async {
     logger.info(
       'SyncingService: Starting download for attachment ${attachment.id}',
@@ -244,6 +284,10 @@ class SyncingService {
     }
   }
 
+  /// Deletes an attachment from remote and local storage, and removes it from the queue.
+  ///
+  /// [attachment]: The attachment to delete.
+  /// Returns the updated attachment with its new state.
   Future<Attachment> deleteAttachment(Attachment attachment) async {
     try {
       logger.info(
@@ -269,6 +313,10 @@ class SyncingService {
     }
   }
 
+  /// Deletes archived attachments from local storage.
+  ///
+  /// [context]: The attachment context used to retrieve and manage archived attachments.
+  /// Returns `true` if all archived attachments were successfully deleted, `false` otherwise.
   Future<bool> deleteArchivedAttachments(AttachmentContext context) async {
     return context.deleteArchivedAttachments((pendingDelete) async {
       for (final attachment in pendingDelete) {
