@@ -23,9 +23,9 @@ class AttachmentContextImpl implements AttachmentContext {
   }
 
   @override
-  Future<void> deleteAttachment(String id, dynamic tx) async {
+  Future<void> deleteAttachment(String id, dynamic context) async {
     log.info('deleteAttachment: $id');
-    await tx.execute('DELETE FROM $table WHERE id = ?', [id]);
+    await context.execute('DELETE FROM $table WHERE id = ?', [id]);
   }
 
   @override
