@@ -7,7 +7,6 @@ import 'package:powersync_core/src/abort_controller.dart';
 import 'package:powersync_core/src/database/active_instances.dart';
 import 'package:powersync_core/src/database/powersync_db_mixin.dart';
 import 'package:powersync_core/src/sync/options.dart';
-import 'package:powersync_core/src/sync/stream.dart';
 
 import 'streaming_sync.dart';
 
@@ -189,6 +188,7 @@ final class ConnectionManager {
         hasSynced: status.lastSyncedAt != null
             ? true
             : status.hasSynced ?? currentStatus.hasSynced,
+        streamSubscriptions: status.internalSubscriptions,
       );
 
       // If the absence of hasSynced was the only difference, the new states
@@ -226,7 +226,7 @@ final class ConnectionManager {
 
   Future<void> _subscriptionsCommand(Object? command) async {
     await db.writeTransaction((tx) {
-      return db.execute(
+      return tx.execute(
         'SELECT powersync_control(?, ?)',
         ['subscriptions', json.encode(command)],
       );

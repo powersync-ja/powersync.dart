@@ -92,7 +92,7 @@ extension type StartSynchronization._(JSObject _) implements JSObject {
 }
 
 @anonymous
-extension type UpdateSubscriptions.__(JSObject _inner) implements JSObject {
+extension type UpdateSubscriptions._raw(JSObject _inner) implements JSObject {
   external factory UpdateSubscriptions._({
     required int requestId,
     required JSArray content,
