@@ -10,11 +10,11 @@ import 'package:shelf/shelf.dart';
 import 'package:shelf_router/shelf_router.dart';
 import 'package:test/test.dart';
 
-import '../bucket_storage_test.dart';
 import '../server/sync_server/in_memory_sync_server.dart';
 import '../utils/abstract_test_utils.dart';
 import '../utils/in_memory_http.dart';
 import '../utils/test_utils_impl.dart';
+import 'utils.dart';
 
 void main() {
   _declareTests(
@@ -967,52 +967,4 @@ void _declareTests(String name, SyncOptions options, bool bson) {
       });
     });
   });
-}
-
-TypeMatcher<SyncStatus> isSyncStatus({
-  Object? downloading,
-  Object? connected,
-  Object? connecting,
-  Object? hasSynced,
-  Object? downloadProgress,
-}) {
-  var matcher = isA<SyncStatus>();
-  if (downloading != null) {
-    matcher = matcher.having((e) => e.downloading, 'downloading', downloading);
-  }
-  if (connected != null) {
-    matcher = matcher.having((e) => e.connected, 'connected', connected);
-  }
-  if (connecting != null) {
-    matcher = matcher.having((e) => e.connecting, 'connecting', connecting);
-  }
-  if (hasSynced != null) {
-    matcher = matcher.having((e) => e.hasSynced, 'hasSynced', hasSynced);
-  }
-  if (downloadProgress != null) {
-    matcher = matcher.having(
-        (e) => e.downloadProgress, 'downloadProgress', downloadProgress);
-  }
-
-  return matcher;
-}
-
-TypeMatcher<SyncDownloadProgress> isSyncDownloadProgress({
-  required Object progress,
-  Map<BucketPriority, Object> priorities = const {},
-}) {
-  var matcher =
-      isA<SyncDownloadProgress>().having((e) => e, 'untilCompletion', progress);
-  priorities.forEach((priority, expected) {
-    matcher = matcher.having(
-        (e) => e.untilPriority(priority), 'untilPriority($priority)', expected);
-  });
-
-  return matcher;
-}
-
-TypeMatcher<ProgressWithOperations> progress(int completed, int total) {
-  return isA<ProgressWithOperations>()
-      .having((e) => e.downloadedOperations, 'completed', completed)
-      .having((e) => e.totalOperations, 'total', total);
 }

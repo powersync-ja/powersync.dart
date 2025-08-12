@@ -208,6 +208,12 @@ final class SyncStatus {
   static const _mapEquality = MapEquality<Object?, Object?>();
 }
 
+@internal
+extension InternalSyncStatusAccess on SyncStatus {
+  List<CoreActiveStreamSubscription>? get internalSubscriptions =>
+      _internalSubscriptions;
+}
+
 final class SyncStreamStatus {
   final ProgressWithOperations? progress;
   final CoreActiveStreamSubscription _internal;
@@ -276,7 +282,7 @@ class UploadQueueStats {
 /// Per-bucket download progress information.
 @internal
 typedef BucketProgress = ({
-  BucketPriority priority,
+  StreamPriority priority,
   int atLast,
   int sinceLast,
   int targetCount,
