@@ -124,8 +124,9 @@ class AttachmentContextImpl implements AbstractAttachmentContext {
     // Delete the archived attachments from the table
     final ids = archivedAttachments.map((a) => a.id).toList();
     if (ids.isNotEmpty) {
-      final placeholders = List.filled(ids.length, '?').join(',');
-      await db.execute('DELETE FROM $table WHERE id IN ($placeholders)', ids);
+      await db.executeBatch('DELETE FROM $table WHERE id = ?', [
+        for (final id in ids) [id],
+      ]);
     }
 
     log.info('Deleted ${archivedAttachments.length} archived attachments.');

@@ -19,7 +19,8 @@ Future<void> initializeAttachmentQueue(PowerSyncDatabase db) async {
     db: db,
     remoteStorage: remoteStorage,
     logger: log,
-    attachmentsDirectory: '${appDocDir.path}/attachments',
+    localStorage: IOLocalStorage(appDocDir.path),
+    // attachmentsDirectory: '${appDocDir.path}/attachments',
     watchAttachments: () => db.watch('''
       SELECT photo_id as id FROM todos WHERE photo_id IS NOT NULL
     ''').map((results) => results

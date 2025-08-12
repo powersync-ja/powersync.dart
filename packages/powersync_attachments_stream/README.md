@@ -44,11 +44,12 @@ Schema schema = Schema(([
 
 ```dart
 final Directory appDocDir = await getApplicationDocumentsDirectory();
+final localStorage = IOLocalStorage('${appDocDir.path}/attachments');
 
 final queue = AttachmentQueue(
     db: db,
     remoteStorage: remoteStorage,
-    attachmentsDirectory: '${appDocDir.path}/attachments',
+    localStorage: localStorage,
     watchAttachments: () => db.watch('''
       SELECT photo_id as id FROM todos WHERE photo_id IS NOT NULL
     ''').map((results) => results
@@ -60,7 +61,7 @@ final queue = AttachmentQueue(
   );
 ```
 
-* The `attachmentsDirectory` specifies where local attachment files should be stored. This directory needs to be provided to the constructor. In Flutter, `path_provider`'s `getApplicationDocumentsDirectory()` with a subdirectory like `/attachments` is a good choice.
+* The `localStorage` is an implementation of `AbstractLocalStorageAdapter` that specifies where and how local attachment files should be stored. For mobile and desktop apps, `IOLocalStorage` can be used, which requires a directory path. In Flutter, `path_provider`'s `getApplicationDocumentsDirectory()` with a subdirectory like `/attachments` is a good choice.
 * The `remoteStorage` is responsible for connecting to the attachments backend. See the `RemoteStorageAdapter` interface definition [here](https://github.com/powersync-ja/powersync.dart/blob/main/packages/powersync_attachments_stream/lib/src/abstractions/remote_storage.dart).
 * `watchAttachments` is a `Stream` of `WatchedAttachmentItem`. The `WatchedAttachmentItem`s represent the attachments which should be present in the application. We recommend using `PowerSync`'s `watch` query as shown above. In this example, we provide the `fileExtension` for all photos. This information could also be obtained from the query if necessary.
 
@@ -69,7 +70,7 @@ final queue = AttachmentQueue(
 ```dart
 final remote = _RemoteStorageAdapter();
 
-class _RemoteStorageAdapter implements RemoteStorageAdapter {
+class _RemoteStorageAdapter implements AbstractRemoteStorageAdapter {
   @override
   Future<void> uploadFile(Stream<List<int>> fileData, Attachment attachment) async {
     // TODO: Implement upload to your backend

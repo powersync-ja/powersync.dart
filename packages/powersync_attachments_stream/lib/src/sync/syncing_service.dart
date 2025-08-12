@@ -35,14 +35,13 @@ class SyncingService {
   final AbstractRemoteStorageAdapter remoteStorage;
   final AbstractLocalStorageAdapter localStorage;
   final AbstractAttachmentService attachmentsService;
-  final Future<String> Function(String) getLocalUri;
   final AbstractSyncErrorHandler? errorHandler;
   final Duration syncThrottle;
   final Duration period;
   final Logger logger;
 
-  StreamSubscription? _syncSubscription;
-  StreamSubscription? _periodicSubscription;
+  StreamSubscription<void>? _syncSubscription;
+  StreamSubscription<void>? _periodicSubscription;
   bool _isClosed = false;
   final _syncTriggerController = StreamController<void>.broadcast();
 
@@ -50,7 +49,6 @@ class SyncingService {
     required this.remoteStorage,
     required this.localStorage,
     required this.attachmentsService,
-    required this.getLocalUri,
     this.errorHandler,
     this.syncThrottle = const Duration(seconds: 5),
     this.period = const Duration(seconds: 30),
@@ -71,8 +69,9 @@ class SyncingService {
     final manualTriggers = _syncTriggerController.stream;
 
     // Merge both streams and apply throttling
-    final mergedStream = StreamGroup.merge([attachmentChanges, manualTriggers])
-        .transform(_throttleTransformer(syncThrottle))
+    final mergedStream =
+        StreamGroup.merge<void>([attachmentChanges, manualTriggers])
+            .transform(_throttleTransformer<void>(syncThrottle))
         .listen((_) async {
           try {
             await attachmentsService.withContext((context) async {
@@ -99,7 +98,8 @@ class SyncingService {
     _syncSubscription = mergedStream;
 
     // Start periodic sync
-    _periodicSubscription = Stream.periodic(period).listen((_) {
+    _periodicSubscription =
+        Stream<void>.periodic(period, (_) => null).listen((_) {
       logger.info('Periodically syncing attachments');
       triggerSync();
     });
@@ -110,7 +110,7 @@ class SyncingService {
       handleData: (data, sink) {
         sink.add(data);
         // Simple throttle implementation - just delay the next event
-        Future.delayed(throttle);
+        Future<void>.delayed(throttle);
       },
     );
   }
@@ -244,7 +244,7 @@ class SyncingService {
     logger.info(
       'Starting download for attachment ${attachment.id}',
     );
-    final attachmentPath = await getLocalUri(attachment.filename);
+    final attachmentPath = attachment.filename;
     try {
       final fileStream = await remoteStorage.downloadFile(attachment);
       await localStorage.saveFile(

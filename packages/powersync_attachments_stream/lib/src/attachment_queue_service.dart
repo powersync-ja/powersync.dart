@@ -7,7 +7,6 @@
 import 'dart:async';
 import 'dart:typed_data';
 import 'package:logging/logging.dart';
-import './storage/io_local_storage.dart';
 import 'package:powersync_core/powersync_core.dart';
 import 'package:sqlite_async/mutex.dart';
 import 'attachment.dart';
@@ -75,7 +74,6 @@ class WatchedAttachmentItem {
 class AttachmentQueue {
   final PowerSyncDatabase db;
   final AbstractRemoteStorageAdapter remoteStorage;
-  final String attachmentsDirectory;
   final Stream<List<WatchedAttachmentItem>> Function() watchAttachments;
   final AbstractLocalStorageAdapter localStorage;
   final String attachmentsQueueTableName;
@@ -90,16 +88,15 @@ class AttachmentQueue {
 
   final Mutex _mutex = Mutex();
   bool _closed = false;
-  StreamSubscription? _syncStatusSubscription;
+  StreamSubscription<List<WatchedAttachmentItem>>? _syncStatusSubscription;
   late final AbstractAttachmentService attachmentsService;
   late final SyncingService syncingService;
 
   AttachmentQueue({
     required this.db,
     required this.remoteStorage,
-    required this.attachmentsDirectory,
     required this.watchAttachments,
-    IOLocalStorage? localStorage,
+    required this.localStorage,
     this.attachmentsQueueTableName = defaultTableName,
     this.errorHandler,
     this.syncInterval = const Duration(seconds: 30),
@@ -107,8 +104,7 @@ class AttachmentQueue {
     this.syncThrottleDuration = const Duration(seconds: 1),
     this.downloadAttachments = true,
     Logger? logger,
-  }) : localStorage = localStorage ?? IOLocalStorage(),
-       logger = logger ?? Logger('AttachmentQueue') {
+  }) : logger = logger ?? Logger('AttachmentQueue') {
     attachmentsService = AttachmentServiceImpl(
       db: db,
       logger: logger ?? Logger('AttachmentQueue'),
@@ -118,9 +114,8 @@ class AttachmentQueue {
 
     syncingService = SyncingService(
       remoteStorage: remoteStorage,
-      localStorage: this.localStorage,
+      localStorage: localStorage,
       attachmentsService: attachmentsService,
-      getLocalUri: (filename) async => getLocalUri(filename),
       errorHandler: errorHandler,
       syncThrottle: syncThrottleDuration,
       period: syncInterval,
@@ -139,7 +134,7 @@ class AttachmentQueue {
 
       await _stopSyncingInternal();
 
-      await localStorage.makeDir(attachmentsDirectory);
+      await localStorage.initialize();
 
       await attachmentsService.withContext((context) async {
         await _verifyAttachments(context);
@@ -256,7 +251,7 @@ class AttachmentQueue {
       }
 
       // Archive any items not specified in the watched items.
-      // For QUEUED_DELETE or QUEUED_UPLOAD states, archive only if hasSynced is true.
+      // For queuedDelete or queuedUpload states, archive only if hasSynced is true.
       // For other states, archive if the record is not found in the items.
       for (final attachment in currentAttachments) {
         final notInWatchedItems = items.every(
@@ -301,10 +296,9 @@ class AttachmentQueue {
       id,
       fileExtension,
     );
-    final String localUri = getLocalUri(filename);
 
     // Write the file to the filesystem.
-    final fileSize = await localStorage.saveFile(localUri, data);
+    final fileSize = await localStorage.saveFile(filename, data);
 
     return await attachmentsService.withContext((attachmentContext) async {
       return await db.writeTransaction((tx) async {
@@ -314,7 +308,7 @@ class AttachmentQueue {
           size: fileSize,
           mediaType: mediaType,
           state: AttachmentState.queuedUpload,
-          localUri: localUri,
+          localUri: filename,
           metaData: metaData,
         );
 
@@ -354,11 +348,6 @@ class AttachmentQueue {
     });
   }
 
-  /// Returns the user's storage directory with the attachment path used to load the file.
-  String getLocalUri(String filename) {
-    return '$attachmentsDirectory/$filename';
-  }
-
   /// Removes all archived items.
   Future<void> expireCache() async {
     await attachmentsService.withContext((context) async {
@@ -374,7 +363,7 @@ class AttachmentQueue {
     await attachmentsService.withContext((context) async {
       await context.clearQueue();
     });
-    await localStorage.rmDir(attachmentsDirectory);
+    await localStorage.clear();
   }
 
   /// Cleans up stale attachments.
