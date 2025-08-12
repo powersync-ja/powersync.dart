@@ -21,6 +21,8 @@ import 'stream_utils.dart';
 import 'sync_status.dart';
 import 'protocol.dart';
 
+typedef SubscribedStream = ({String name, String parameters});
+
 abstract interface class StreamingSync {
   Stream<SyncStatus> get statusStream;
 
@@ -36,6 +38,7 @@ class StreamingSyncImplementation implements StreamingSync {
   final BucketStorage adapter;
   final InternalConnector connector;
   final ResolvedSyncOptions options;
+  final List<SubscribedStream> activeSubscriptions;
 
   final Logger logger;
 
@@ -69,6 +72,7 @@ class StreamingSyncImplementation implements StreamingSync {
     required this.crudUpdateTriggerStream,
     required this.options,
     required http.Client client,
+    this.activeSubscriptions = const [],
     Mutex? syncMutex,
     Mutex? crudMutex,
     Logger? logger,
@@ -589,6 +593,7 @@ typedef BucketDescription = ({
 
 final class _ActiveRustStreamingIteration {
   final StreamingSyncImplementation sync;
+
   var _isActive = true;
   var _hadSyncLine = false;
 
@@ -604,6 +609,9 @@ final class _ActiveRustStreamingIteration {
         convert.json.encode({
           'parameters': sync.options.params,
           'schema': convert.json.decode(sync.schemaJson),
+          'include_defaults': sync.options.includeDefaultStreams,
+          'active_streams': sync.activeSubscriptions
+              .map((s) => {'name': s.name, 'params': s.parameters})
         }),
       );
       assert(_completedStream.isCompleted, 'Should have started streaming');
