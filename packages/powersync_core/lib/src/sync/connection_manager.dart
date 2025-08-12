@@ -25,7 +25,8 @@ final class ConnectionManager {
   final Map<_RawStreamKey, _ActiveSubscription> _locallyActiveSubscriptions =
       {};
 
-  final StreamController<SyncStatus> _statusController = StreamController();
+  final StreamController<SyncStatus> _statusController =
+      StreamController.broadcast();
 
   /// Fires when an entry is added or removed from [_locallyActiveSubscriptions]
   /// while we're connected.
