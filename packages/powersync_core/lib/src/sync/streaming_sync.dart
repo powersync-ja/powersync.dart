@@ -30,6 +30,8 @@ abstract interface class StreamingSync {
 
   /// Close any active streams.
   Future<void> abort();
+
+  void updateSubscriptions(List<SubscribedStream> streams);
 }
 
 @internal
@@ -129,6 +131,7 @@ class StreamingSyncImplementation implements StreamingSync {
     return _abort?.aborted ?? false;
   }
 
+  @override
   void updateSubscriptions(List<SubscribedStream> streams) {
     _activeSubscriptions = streams;
     if (_nonLineSyncEvents.hasListener) {

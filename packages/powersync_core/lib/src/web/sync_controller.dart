@@ -15,6 +15,7 @@ class SyncWorkerHandle implements StreamingSync {
   final PowerSyncBackendConnector connector;
   final SyncOptions options;
   late final WorkerCommunicationChannel _channel;
+  List<SubscribedStream> subscriptions;
 
   final StreamController<SyncStatus> _status = StreamController.broadcast();
 
@@ -24,6 +25,7 @@ class SyncWorkerHandle implements StreamingSync {
     required this.options,
     required MessagePort sendToWorker,
     required SharedWorker worker,
+    required this.subscriptions,
   }) {
     _channel = WorkerCommunicationChannel(
       port: sendToWorker,
@@ -81,6 +83,7 @@ class SyncWorkerHandle implements StreamingSync {
     required PowerSyncBackendConnector connector,
     required Uri workerUri,
     required SyncOptions options,
+    required List<SubscribedStream> subscriptions,
   }) async {
     final worker = SharedWorker(workerUri.toString().toJS);
     final handle = SyncWorkerHandle._(
@@ -89,6 +92,7 @@ class SyncWorkerHandle implements StreamingSync {
       connector: connector,
       sendToWorker: worker.port,
       worker: worker,
+      subscriptions: subscriptions,
     );
 
     // Make sure that the worker is working, or throw immediately.
@@ -116,6 +120,13 @@ class SyncWorkerHandle implements StreamingSync {
       database.database.openFactory.path,
       ResolvedSyncOptions(options),
       database.schema,
+      subscriptions,
     );
+  }
+
+  @override
+  void updateSubscriptions(List<SubscribedStream> streams) {
+    subscriptions = streams;
+    _channel.updateSubscriptions(streams);
   }
 }
