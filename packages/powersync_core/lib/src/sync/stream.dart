@@ -62,18 +62,17 @@ abstract interface class SyncStream extends SyncStreamDescription {
   /// connecting to the sync service.
   ///
   /// The [priority] can be used to override the priority of this stream.
-  Future<void> subscribe({
+  Future<SyncStreamSubscription> subscribe({
     Duration? ttl,
-    BucketPriority? priority,
+    StreamPriority? priority,
   });
 
-  /// Resolves the current subscription state of this stream.
-  Future<SyncStreamSubscription?> get current;
+  Future<void> unsubscribeAll();
 }
 
 /// A [SyncStream] that has been subscribed to.
 abstract interface class SyncStreamSubscription
-    implements SyncStreamDescription, SyncSubscriptionDefinition {
+    implements SyncStreamDescription {
   /// A variant of [PowerSyncDatabase.waitForFirstSync] that is specific to
   /// this stream subscription.
   Future<void> waitForFirstSync();
@@ -93,7 +92,7 @@ final class CoreActiveStreamSubscription implements SyncSubscriptionDefinition {
   final String name;
   @override
   final Map<String, Object?>? parameters;
-  final BucketPriority priority;
+  final StreamPriority priority;
   final List<String> associatedBuckets;
   @override
   final bool active;
@@ -125,7 +124,7 @@ final class CoreActiveStreamSubscription implements SyncSubscriptionDefinition {
     return CoreActiveStreamSubscription._(
       name: json['name'] as String,
       parameters: json['parameters'] as Map<String, Object?>,
-      priority: BucketPriority(json['priority'] as int),
+      priority: StreamPriority(json['priority'] as int),
       associatedBuckets: (json['associated_buckets'] as List).cast(),
       active: json['active'] as bool,
       isDefault: json['is_default'] as bool,

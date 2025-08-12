@@ -133,6 +133,8 @@ class PowerSyncDatabaseImpl
   Future<void> connectInternal({
     required PowerSyncBackendConnector connector,
     required ResolvedSyncOptions options,
+    required List<SubscribedStream> initiallyActiveStreams,
+    required Stream<List<({String name, String parameters})>> activeStreams,
     required AbortController abort,
     required Zone asyncWorkZone,
   }) async {

@@ -121,7 +121,7 @@ final class SyncStatus {
   ///
   /// This returns null when the sync stream is currently being opened and we
   /// don't have reliable information about all included streams yet (in that
-  /// state, [PowerSyncDatabase.activeSubscriptions] can still be used to
+  /// state, [PowerSyncDatabase.subscribedStreams] can still be used to
   /// resolve known subscriptions locally).
   Iterable<SyncStreamStatus>? get activeSubscriptions {
     return _internalSubscriptions?.map((subscription) {
@@ -213,39 +213,42 @@ final class SyncStreamStatus {
   final CoreActiveStreamSubscription _internal;
 
   SyncSubscriptionDefinition get subscription => _internal;
-  BucketPriority get priority => _internal.priority;
+  StreamPriority get priority => _internal.priority;
   bool get isDefault => _internal.isDefault;
 
   SyncStreamStatus._(this._internal, SyncDownloadProgress? progress)
       : progress = progress?._internal._forStream(_internal);
 }
 
-/// The priority of a PowerSync bucket.
-extension type const BucketPriority._(int priorityNumber) {
+@Deprecated('Use StreamPriority instead')
+typedef BucketPriority = StreamPriority;
+
+/// The priority of a PowerSync stream.
+extension type const StreamPriority._(int priorityNumber) {
   static const _highest = 0;
 
-  factory BucketPriority(int i) {
+  factory StreamPriority(int i) {
     assert(i >= _highest);
-    return BucketPriority._(i);
+    return StreamPriority._(i);
   }
 
-  bool operator >(BucketPriority other) => comparator(this, other) > 0;
-  bool operator >=(BucketPriority other) => comparator(this, other) >= 0;
-  bool operator <(BucketPriority other) => comparator(this, other) < 0;
-  bool operator <=(BucketPriority other) => comparator(this, other) <= 0;
+  bool operator >(StreamPriority other) => comparator(this, other) > 0;
+  bool operator >=(StreamPriority other) => comparator(this, other) >= 0;
+  bool operator <(StreamPriority other) => comparator(this, other) < 0;
+  bool operator <=(StreamPriority other) => comparator(this, other) <= 0;
 
-  /// A [Comparator] instance suitable for comparing [BucketPriority] values.
-  static int comparator(BucketPriority a, BucketPriority b) =>
+  /// A [Comparator] instance suitable for comparing [StreamPriority] values.
+  static int comparator(StreamPriority a, StreamPriority b) =>
       -a.priorityNumber.compareTo(b.priorityNumber);
 
   /// The priority used by PowerSync to indicate that a full sync was completed.
-  static const fullSyncPriority = BucketPriority._(2147483647);
+  static const fullSyncPriority = StreamPriority._(2147483647);
 }
 
 /// Partial information about the synchronization status for buckets within a
 /// priority.
 typedef SyncPriorityStatus = ({
-  BucketPriority priority,
+  StreamPriority priority,
   DateTime? lastSyncedAt,
   bool? hasSynced,
 });

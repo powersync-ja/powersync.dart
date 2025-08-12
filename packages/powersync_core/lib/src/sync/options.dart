@@ -27,11 +27,14 @@ final class SyncOptions {
   /// The [SyncClientImplementation] to use.
   final SyncClientImplementation syncImplementation;
 
+  final bool? includeDefaultStreams;
+
   const SyncOptions({
     this.crudThrottleTime,
     this.retryDelay,
     this.params,
     this.syncImplementation = SyncClientImplementation.defaultClient,
+    this.includeDefaultStreams,
   });
 
   SyncOptions _copyWith({
@@ -95,6 +98,8 @@ extension type ResolvedSyncOptions(SyncOptions source) {
   Duration get retryDelay => source.retryDelay ?? const Duration(seconds: 5);
 
   Map<String, dynamic> get params => source.params ?? const {};
+
+  bool get includeDefaultStreams => source.includeDefaultStreams ?? true;
 
   (ResolvedSyncOptions, bool) applyFrom(SyncOptions other) {
     final newOptions = SyncOptions(
