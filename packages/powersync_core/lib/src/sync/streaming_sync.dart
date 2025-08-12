@@ -38,7 +38,7 @@ class StreamingSyncImplementation implements StreamingSync {
   final BucketStorage adapter;
   final InternalConnector connector;
   final ResolvedSyncOptions options;
-  final List<SubscribedStream> activeSubscriptions;
+  List<SubscribedStream> _activeSubscriptions;
 
   final Logger logger;
 
@@ -72,7 +72,7 @@ class StreamingSyncImplementation implements StreamingSync {
     required this.crudUpdateTriggerStream,
     required this.options,
     required http.Client client,
-    this.activeSubscriptions = const [],
+    List<SubscribedStream> activeSubscriptions = const [],
     Mutex? syncMutex,
     Mutex? crudMutex,
     Logger? logger,
@@ -84,7 +84,8 @@ class StreamingSyncImplementation implements StreamingSync {
         syncMutex = syncMutex ?? Mutex(identifier: "sync-$identifier"),
         crudMutex = crudMutex ?? Mutex(identifier: "crud-$identifier"),
         _userAgentHeaders = userAgentHeaders(),
-        logger = logger ?? isolateLogger;
+        logger = logger ?? isolateLogger,
+        _activeSubscriptions = activeSubscriptions;
 
   Duration get _retryDelay => options.retryDelay;
 
@@ -126,6 +127,13 @@ class StreamingSyncImplementation implements StreamingSync {
 
   bool get aborted {
     return _abort?.aborted ?? false;
+  }
+
+  void updateSubscriptions(List<SubscribedStream> streams) {
+    _activeSubscriptions = streams;
+    if (_nonLineSyncEvents.hasListener) {
+      _nonLineSyncEvents.add(const AbortCurrentIteration());
+    }
   }
 
   @override
@@ -610,7 +618,7 @@ final class _ActiveRustStreamingIteration {
           'parameters': sync.options.params,
           'schema': convert.json.decode(sync.schemaJson),
           'include_defaults': sync.options.includeDefaultStreams,
-          'active_streams': sync.activeSubscriptions
+          'active_streams': sync._activeSubscriptions
               .map((s) => {'name': s.name, 'params': s.parameters})
         }),
       );
