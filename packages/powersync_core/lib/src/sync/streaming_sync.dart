@@ -623,6 +623,7 @@ final class _ActiveRustStreamingIteration {
           'include_defaults': sync.options.includeDefaultStreams,
           'active_streams': sync._activeSubscriptions
               .map((s) => {'name': s.name, 'params': s.parameters})
+              .toList(),
         }),
       );
       assert(_completedStream.isCompleted, 'Should have started streaming');
