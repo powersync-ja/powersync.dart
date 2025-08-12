@@ -61,7 +61,6 @@ class WatchedAttachmentItem {
 /// Properties:
 /// - [db]: PowerSync database client.
 /// - [remoteStorage]: Adapter which interfaces with the remote storage backend.
-/// - [attachmentsDirectory]: Directory name where attachment files will be written to disk.
 /// - [watchAttachments]: A stream generator for the current state of local attachments.
 /// - [localStorage]: Provides access to local filesystem storage methods.
 /// - [attachmentsQueueTableName]: SQLite table where attachment state will be recorded.
