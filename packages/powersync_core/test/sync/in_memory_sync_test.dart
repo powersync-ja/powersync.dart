@@ -8,11 +8,11 @@ import 'package:powersync_core/sqlite3_common.dart';
 import 'package:powersync_core/src/sync/protocol.dart';
 import 'package:test/test.dart';
 
-import 'bucket_storage_test.dart';
-import 'server/sync_server/in_memory_sync_server.dart';
-import 'utils/abstract_test_utils.dart';
-import 'utils/in_memory_http.dart';
-import 'utils/test_utils_impl.dart';
+import '../bucket_storage_test.dart';
+import '../server/sync_server/in_memory_sync_server.dart';
+import '../utils/abstract_test_utils.dart';
+import '../utils/in_memory_http.dart';
+import '../utils/test_utils_impl.dart';
 
 void main() {
   _declareTests(
