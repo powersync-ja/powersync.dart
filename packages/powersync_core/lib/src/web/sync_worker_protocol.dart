@@ -9,6 +9,7 @@ import 'package:web/web.dart';
 
 import '../connector.dart';
 import '../log.dart';
+import '../sync/streaming_sync.dart';
 import '../sync/sync_status.dart';
 
 /// Names used in [SyncWorkerMessage]
@@ -19,6 +20,9 @@ enum SyncWorkerMessageType {
   /// starting.
   /// If parameters change, the sync worker reconnects.
   startSynchronization,
+
+  /// Update the active subscriptions that this client is interested in.
+  updateSubscriptions,
 
   /// The [SyncWorkerMessage.payload] for the request is a numeric id, the
   /// response can be anything (void).
@@ -74,6 +78,7 @@ extension type StartSynchronization._(JSObject _) implements JSObject {
     required String implementationName,
     required String schemaJson,
     String? syncParamsEncoded,
+    UpdateSubscriptions? subscriptions,
   });
 
   external String get databaseName;
@@ -83,6 +88,36 @@ extension type StartSynchronization._(JSObject _) implements JSObject {
   external String? get implementationName;
   external String get schemaJson;
   external String? get syncParamsEncoded;
+  external UpdateSubscriptions? get subscriptions;
+}
+
+@anonymous
+extension type UpdateSubscriptions.__(JSObject _inner) implements JSObject {
+  external factory UpdateSubscriptions._({
+    required int requestId,
+    required JSArray content,
+  });
+
+  factory UpdateSubscriptions(int requestId, List<SubscribedStream> streams) {
+    return UpdateSubscriptions._(
+      requestId: requestId,
+      content: streams
+          .map((e) => <JSString>[e.name.toJS, e.parameters.toJS].toJS)
+          .toList()
+          .toJS,
+    );
+  }
+
+  external int get requestId;
+  external JSArray get content;
+
+  List<SubscribedStream> get toDart {
+    return content.toDart.map((e) {
+      final [name, parameters] = (e as JSArray<JSString>).toDart;
+
+      return (name: name.toDart, parameters: parameters.toDart);
+    }).toList();
+  }
 }
 
 @anonymous
@@ -339,6 +374,8 @@ final class WorkerCommunicationChannel {
           return;
         case SyncWorkerMessageType.startSynchronization:
           requestId = (message.payload as StartSynchronization).requestId;
+        case SyncWorkerMessageType.updateSubscriptions:
+          requestId = (message.payload as UpdateSubscriptions).requestId;
         case SyncWorkerMessageType.requestEndpoint:
         case SyncWorkerMessageType.abortSynchronization:
         case SyncWorkerMessageType.credentialsCallback:
@@ -413,7 +450,11 @@ final class WorkerCommunicationChannel {
   }
 
   Future<void> startSynchronization(
-      String databaseName, ResolvedSyncOptions options, Schema schema) async {
+    String databaseName,
+    ResolvedSyncOptions options,
+    Schema schema,
+    List<SubscribedStream> streams,
+  ) async {
     final (id, completion) = _newRequest();
     port.postMessage(SyncWorkerMessage(
       type: SyncWorkerMessageType.startSynchronization.name,
@@ -428,8 +469,19 @@ final class WorkerCommunicationChannel {
           null => null,
           final params => jsonEncode(params),
         },
+        subscriptions: UpdateSubscriptions(-1, streams),
       ),
     ));
+    await completion;
+  }
+
+  Future<void> updateSubscriptions(List<SubscribedStream> streams) async {
+    final (id, completion) = _newRequest();
+    port.postMessage(SyncWorkerMessage(
+      type: SyncWorkerMessageType.updateSubscriptions.name,
+      payload: UpdateSubscriptions(id, streams),
+    ));
+
     await completion;
   }
 

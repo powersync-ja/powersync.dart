@@ -143,6 +143,7 @@ class PowerSyncDatabaseImpl
         connector: connector,
         options: options.source,
         workerUri: Uri.base.resolve('/powersync_sync.worker.js'),
+        subscriptions: initiallyActiveStreams,
       );
     } catch (e) {
       logger.warning(
@@ -159,6 +160,7 @@ class PowerSyncDatabaseImpl
         crudUpdateTriggerStream: crudStream,
         options: options,
         client: BrowserClient(),
+        activeSubscriptions: initiallyActiveStreams,
         // Only allows 1 sync implementation to run at a time per database
         // This should be global (across tabs) when using Navigator locks.
         identifier: database.openFactory.path,
@@ -170,7 +172,10 @@ class PowerSyncDatabaseImpl
     });
     sync.streamingSync();
 
+    final subscriptions = activeStreams.listen(sync.updateSubscriptions);
+
     abort.onAbort.then((_) async {
+      subscriptions.cancel();
       await sync.abort();
       abort.completeAbort();
     }).ignore();
