@@ -9,7 +9,7 @@ import 'package:powersync_flutter_demo/attachments/remote_storage_adapter.dart';
 
 late AttachmentQueue attachmentQueue;
 final remoteStorage = SupabaseStorageAdapter();
-final log = Logger('AttachmentQueue');
+final logger = Logger('AttachmentQueue');
 
 Future<void> initializeAttachmentQueue(PowerSyncDatabase db) async {
   // Use the app's document directory for local storage
@@ -18,9 +18,8 @@ Future<void> initializeAttachmentQueue(PowerSyncDatabase db) async {
   attachmentQueue = AttachmentQueue(
     db: db,
     remoteStorage: remoteStorage,
-    logger: log,
+    logger: logger,
     localStorage: IOLocalStorage(appDocDir.path),
-    // attachmentsDirectory: '${appDocDir.path}/attachments',
     watchAttachments: () => db.watch('''
       SELECT photo_id as id FROM todos WHERE photo_id IS NOT NULL
     ''').map((results) => results
