@@ -123,8 +123,11 @@ final class CoreActiveStreamSubscription implements SyncSubscriptionDefinition {
   factory CoreActiveStreamSubscription.fromJson(Map<String, Object?> json) {
     return CoreActiveStreamSubscription._(
       name: json['name'] as String,
-      parameters: json['parameters'] as Map<String, Object?>,
-      priority: StreamPriority(json['priority'] as int),
+      parameters: json['parameters'] as Map<String, Object?>?,
+      priority: switch (json['priority'] as int?) {
+        final prio? => StreamPriority(prio),
+        null => StreamPriority.fullSyncPriority,
+      },
       associatedBuckets: (json['associated_buckets'] as List).cast(),
       active: json['active'] as bool,
       isDefault: json['is_default'] as bool,

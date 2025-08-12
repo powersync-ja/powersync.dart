@@ -47,6 +47,7 @@ final class SyncOptions {
       retryDelay: retryDelay,
       params: params ?? this.params,
       syncImplementation: syncImplementation,
+      includeDefaultStreams: includeDefaultStreams,
     );
   }
 }
@@ -106,11 +107,14 @@ extension type ResolvedSyncOptions(SyncOptions source) {
       crudThrottleTime: other.crudThrottleTime ?? crudThrottleTime,
       retryDelay: other.retryDelay ?? retryDelay,
       params: other.params ?? params,
+      includeDefaultStreams:
+          other.includeDefaultStreams ?? includeDefaultStreams,
     );
 
     final didChange = !_mapEquality.equals(newOptions.params, params) ||
         newOptions.crudThrottleTime != crudThrottleTime ||
-        newOptions.retryDelay != retryDelay;
+        newOptions.retryDelay != retryDelay ||
+        newOptions.includeDefaultStreams != includeDefaultStreams;
     return (ResolvedSyncOptions(newOptions), didChange);
   }
 
