@@ -26,19 +26,9 @@ abstract class AbstractLocalStorageAdapter {
   /// Returns true if the file exists, false otherwise
   Future<bool> fileExists(String filePath);
 
-  /// Creates a directory at the specified path
-  ///
-  /// [path] - Path of the directory to create
-  Future<void> makeDir(String path);
+  /// Initializes the storage, performing any necessary setup.
+  Future<void> initialize();
 
-  /// Recursively removes a directory and its contents
-  ///
-  /// [path] - Path of the directory to remove
-  Future<void> rmDir(String path);
-
-  /// Copies a file from source to target path
-  ///
-  /// [sourcePath] - Path of the source file
-  /// [targetPath] - Path where the file will be copied
-  Future<void> copyFile(String sourcePath, String targetPath);
+  /// Clears all data from the storage.
+  Future<void> clear();
 }

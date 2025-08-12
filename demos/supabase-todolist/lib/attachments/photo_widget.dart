@@ -1,5 +1,6 @@
 import 'dart:io';
-
+import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as p;
 import 'package:flutter/material.dart';
 import 'package:powersync_attachments_stream/powersync_attachments_stream.dart';
 import 'package:powersync_flutter_demo/attachments/camera_helpers.dart';
@@ -37,7 +38,8 @@ class _PhotoWidgetState extends State<PhotoWidget> {
     if (photoId == null) {
       return _ResolvedPhotoState(photoPath: null, fileExists: false);
     }
-    photoPath = await attachmentQueue.getLocalUri('$photoId.jpg');
+    final appDocDir = await getApplicationDocumentsDirectory();
+    photoPath = p.join(appDocDir.path, '$photoId.jpg');
 
     bool fileExists = await File(photoPath).exists();
 

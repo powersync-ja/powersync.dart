@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:logging/logging.dart';
 import 'package:powersync_core/powersync_core.dart';
+import 'package:sqlite_async/sqlite_async.dart';
 
 import '../abstractions/attachment_service.dart';
 import '../abstractions/attachment_context.dart';
@@ -12,7 +13,7 @@ class AttachmentServiceImpl implements AbstractAttachmentService {
   final Logger logger;
   final int maxArchivedCount;
   final String attachmentsQueueTableName;
-  Future<void> _mutex = Future.value();
+  final Mutex _mutex = Mutex();
 
   late final AbstractAttachmentContext _context;
 
@@ -22,13 +23,18 @@ class AttachmentServiceImpl implements AbstractAttachmentService {
     required this.maxArchivedCount,
     required this.attachmentsQueueTableName,
   }) {
-    _context = AttachmentContextImpl(db, logger, maxArchivedCount, attachmentsQueueTableName);
+    _context = AttachmentContextImpl(
+      db,
+      logger,
+      maxArchivedCount,
+      attachmentsQueueTableName,
+    );
   }
 
   @override
   Stream<void> watchActiveAttachments() async* {
     logger.info('Watching attachments...');
-    
+
     // Watch for attachments with active states (queued for upload, download, or delete)
     final stream = db.watch(
       '''
@@ -54,10 +60,16 @@ class AttachmentServiceImpl implements AbstractAttachmentService {
   }
 
   @override
-  Future<T> withContext<T>(Future<T> Function(AbstractAttachmentContext ctx) action) {
-    // Simple mutex using chained futures
-    final completer = Completer<T>();
-    _mutex = _mutex.then((_) => action(_context)).then(completer.complete).catchError(completer.completeError);
-    return completer.future;
+  Future<T> withContext<T>(
+    Future<T> Function(AbstractAttachmentContext ctx) action,
+  ) async {
+    return await _mutex.lock(() async {
+      try {
+        return await action(_context);
+      } catch (e, stackTrace) {
+        // Re-throw the error to be handled by the caller
+        Error.throwWithStackTrace(e, stackTrace);
+      }
+    });
   }
-} 
+}

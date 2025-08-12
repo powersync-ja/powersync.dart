@@ -23,10 +23,12 @@ import '../abstractions/local_storage.dart';
 ///
 /// Handles file and directory operations for attachments.
 class IOLocalStorage implements AbstractLocalStorageAdapter {
-  final Directory baseDir;
+  final String attachmentsDirectory;
+  late final Directory baseDir;
 
-  IOLocalStorage([Directory? baseDir])
-    : baseDir = baseDir ?? Directory.systemTemp;
+  IOLocalStorage(this.attachmentsDirectory) {
+    baseDir = Directory(attachmentsDirectory);
+  }
 
   File _fileFor(String filePath) => File(p.join(baseDir.path, filePath));
   File _metaFileFor(String filePath) =>
@@ -88,40 +90,15 @@ class IOLocalStorage implements AbstractLocalStorageAdapter {
 
   /// Creates a directory and all necessary parent directories dynamically if they do not exist.
   @override
-  Future<void> makeDir(String path) async {
-    await Directory(p.join(baseDir.path, path)).create(recursive: true);
+  Future<void> initialize() async {
+    await baseDir.create(recursive: true);
   }
 
-  /// Recursively removes a directory and all its contents.
   @override
-  Future<void> rmDir(String path) async {
-    final dir = Directory(p.join(baseDir.path, path));
-    if (await dir.exists()) {
-      await for (final entity in dir.list(recursive: false)) {
-        if (entity is Directory) {
-          await rmDir(p.relative(entity.path, from: baseDir.path));
-        } else if (entity is File) {
-          await entity.delete();
-        }
-      }
-      await dir.delete();
+  Future<void> clear() async {
+    if (await baseDir.exists()) {
+      await baseDir.delete(recursive: true);
     }
-  }
-
-  /// Copies a file and its metadata to a new location.
-  @override
-  Future<void> copyFile(String sourcePath, String targetPath) async {
-    final sourceFile = _fileFor(sourcePath);
-    final targetFile = _fileFor(targetPath);
-    if (!await sourceFile.exists()) {
-      throw FileSystemException('Source file does not exist', sourcePath);
-    }
-    await targetFile.parent.create(recursive: true);
-    await sourceFile.copy(targetFile.path);
-    final sourceMeta = _metaFileFor(sourcePath);
-    final targetMeta = _metaFileFor(targetPath);
-    if (await sourceMeta.exists()) {
-      await sourceMeta.copy(targetMeta.path);
-    }
+    await baseDir.create(recursive: true);
   }
 }
