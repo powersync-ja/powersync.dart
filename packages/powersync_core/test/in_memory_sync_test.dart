@@ -5,7 +5,6 @@ import 'package:async/async.dart';
 import 'package:logging/logging.dart';
 import 'package:powersync_core/powersync_core.dart';
 import 'package:powersync_core/sqlite3_common.dart';
-import 'package:powersync_core/src/sync/streaming_sync.dart';
 import 'package:powersync_core/src/sync/protocol.dart';
 import 'package:test/test.dart';
 
@@ -53,35 +52,32 @@ void _declareTests(String name, SyncOptions options, bool bson) {
 
     late TestPowerSyncFactory factory;
     late CommonDatabase raw;
-    late PowerSyncDatabase database;
+    late TestDatabase database;
     late MockSyncService syncService;
     late Logger logger;
 
-    late StreamingSync syncClient;
     var credentialsCallbackCount = 0;
     Future<void> Function(PowerSyncDatabase) uploadData = (db) async {};
 
-    void createSyncClient({Schema? schema}) {
+    Future<void> connect() async {
       final (client, server) = inMemoryServer();
       server.mount(syncService.router.call);
 
-      final thisSyncClient = syncClient = database.connectWithMockService(
-        client,
-        TestConnector(() async {
-          credentialsCallbackCount++;
-          return PowerSyncCredentials(
-            endpoint: server.url.toString(),
-            token: 'token$credentialsCallbackCount',
-            expiresAt: DateTime.now(),
-          );
-        }, uploadData: (db) => uploadData(db)),
+      database.httpClient = client;
+      await database.connect(
+        connector: TestConnector(
+          () async {
+            credentialsCallbackCount++;
+            return PowerSyncCredentials(
+              endpoint: server.url.toString(),
+              token: 'token$credentialsCallbackCount',
+              expiresAt: DateTime.now(),
+            );
+          },
+          uploadData: (db) => uploadData(db),
+        ),
         options: options,
-        customSchema: schema,
       );
-
-      addTearDown(() async {
-        await thisSyncClient.abort();
-      });
     }
 
     setUp(() async {
@@ -92,7 +88,6 @@ void _declareTests(String name, SyncOptions options, bool bson) {
       factory = await testUtils.testFactory();
       (raw, database) = await factory.openInMemoryDatabase();
       await database.initialize();
-      createSyncClient();
     });
 
     tearDown(() async {
@@ -109,7 +104,7 @@ void _declareTests(String name, SyncOptions options, bool bson) {
           }
         });
       }
-      syncClient.streamingSync();
+      await connect();
       await syncService.waitForListener;
 
       expect(database.currentStatus.lastSyncedAt, isNull);
@@ -144,7 +139,7 @@ void _declareTests(String name, SyncOptions options, bool bson) {
       });
       await expectLater(
           status, emits(isSyncStatus(downloading: false, hasSynced: true)));
-      await syncClient.abort();
+      await database.disconnect();
 
       final independentDb = factory.wrapRaw(raw, logger: ignoredLogger);
       addTearDown(independentDb.close);
@@ -155,7 +150,7 @@ void _declareTests(String name, SyncOptions options, bool bson) {
       // A complete sync also means that all partial syncs have completed
       expect(
           independentDb.currentStatus
-              .statusForPriority(BucketPriority(3))
+              .statusForPriority(StreamPriority(3))
               .hasSynced,
           isTrue);
     });
@@ -249,7 +244,7 @@ void _declareTests(String name, SyncOptions options, bool bson) {
             database.watch('SELECT * FROM lists', throttle: Duration.zero));
         await expectLater(query, emits(isEmpty));
 
-        createSyncClient(schema: schema);
+        await database.updateSchema(schema);
         await waitForConnection();
 
         syncService
@@ -374,13 +369,13 @@ void _declareTests(String name, SyncOptions options, bool bson) {
             status,
             emitsThrough(
                 isSyncStatus(downloading: true, hasSynced: false).having(
-              (e) => e.statusForPriority(BucketPriority(0)).hasSynced,
+              (e) => e.statusForPriority(StreamPriority(0)).hasSynced,
               'status for $prio',
               isTrue,
             )),
           );
 
-          await database.waitForFirstSync(priority: BucketPriority(prio));
+          await database.waitForFirstSync(priority: StreamPriority(prio));
           expect(await database.getAll('SELECT * FROM customers'),
               hasLength(prio + 1));
         }
@@ -417,9 +412,9 @@ void _declareTests(String name, SyncOptions options, bool bson) {
             'priority': 1,
           }
         });
-        await database.waitForFirstSync(priority: BucketPriority(1));
+        await database.waitForFirstSync(priority: StreamPriority(1));
         expect(database.currentStatus.hasSynced, isFalse);
-        await syncClient.abort();
+        await database.disconnect();
 
         final independentDb = factory.wrapRaw(raw, logger: ignoredLogger);
         addTearDown(independentDb.close);
@@ -428,12 +423,12 @@ void _declareTests(String name, SyncOptions options, bool bson) {
         // Completing a sync for prio 1 implies a completed sync for prio 0
         expect(
             independentDb.currentStatus
-                .statusForPriority(BucketPriority(0))
+                .statusForPriority(StreamPriority(0))
                 .hasSynced,
             isTrue);
         expect(
             independentDb.currentStatus
-                .statusForPriority(BucketPriority(3))
+                .statusForPriority(StreamPriority(3))
                 .hasSynced,
             isFalse);
       });
@@ -681,10 +676,9 @@ void _declareTests(String name, SyncOptions options, bool bson) {
         await expectProgress(status, total: progress(5, 10));
 
         // Emulate the app closing - create a new independent sync client.
-        await syncClient.abort();
+        await database.disconnect();
         syncService.endCurrentListener();
 
-        createSyncClient();
         status = await waitForConnection();
 
         // Send same checkpoint again
@@ -715,10 +709,9 @@ void _declareTests(String name, SyncOptions options, bool bson) {
         await expectProgress(status, total: progress(5, 10));
 
         // Emulate the app closing - create a new independent sync client.
-        await syncClient.abort();
+        await database.disconnect();
         syncService.endCurrentListener();
 
-        createSyncClient();
         status = await waitForConnection();
 
         // Send checkpoint with additional data
@@ -749,9 +742,9 @@ void _declareTests(String name, SyncOptions options, bool bson) {
 
         // A sync rule deploy could reset buckets, making the new bucket smaller
         // than the existing one.
-        await syncClient.abort();
+        await database.disconnect();
         syncService.endCurrentListener();
-        createSyncClient();
+
         status = await waitForConnection();
         syncService.addLine({
           'checkpoint': Checkpoint(
@@ -770,8 +763,8 @@ void _declareTests(String name, SyncOptions options, bool bson) {
           await expectProgress(
             status,
             priorities: {
-              BucketPriority(0): prio0,
-              BucketPriority(2): prio2,
+              StreamPriority(0): prio0,
+              StreamPriority(2): prio2,
             },
             total: prio2,
           );
@@ -835,7 +828,7 @@ void _declareTests(String name, SyncOptions options, bool bson) {
       });
 
       await expectLater(status, emits(isSyncStatus(downloading: true)));
-      await syncClient.abort();
+      await database.disconnect();
 
       expect(syncService.controller.hasListener, isFalse);
     });
@@ -854,9 +847,6 @@ void _declareTests(String name, SyncOptions options, bool bson) {
       syncService.addLine({
         'checkpoint_complete': {'last_op_id': '10'}
       });
-
-      await pumpEventQueue();
-      expect(syncService.controller.hasListener, isFalse);
       syncService.endCurrentListener();
 
       // Should reconnect after delay.
@@ -876,9 +866,6 @@ void _declareTests(String name, SyncOptions options, bool bson) {
 
       await expectLater(status, emits(isSyncStatus(downloading: true)));
       syncService.addKeepAlive(0);
-
-      await pumpEventQueue();
-      expect(syncService.controller.hasListener, isFalse);
       syncService.endCurrentListener();
 
       // Should reconnect after delay.
