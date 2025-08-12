@@ -2,11 +2,13 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:meta/meta.dart';
-import 'package:powersync_core/powersync_core.dart';
 import 'package:powersync_core/src/abort_controller.dart';
+import 'package:powersync_core/src/connector.dart';
 import 'package:powersync_core/src/database/active_instances.dart';
 import 'package:powersync_core/src/database/powersync_db_mixin.dart';
 import 'package:powersync_core/src/sync/options.dart';
+import 'package:powersync_core/src/sync/stream.dart';
+import 'package:powersync_core/src/sync/sync_status.dart';
 
 import 'streaming_sync.dart';
 
