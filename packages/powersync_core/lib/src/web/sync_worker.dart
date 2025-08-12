@@ -8,6 +8,7 @@ import 'dart:convert';
 import 'dart:js_interop';
 
 import 'package:async/async.dart';
+import 'package:collection/collection.dart';
 import 'package:http/browser_client.dart';
 import 'package:logging/logging.dart';
 import 'package:powersync_core/powersync_core.dart';
@@ -45,8 +46,12 @@ class _SyncWorker {
     });
   }
 
-  _SyncRunner referenceSyncTask(String databaseIdentifier, SyncOptions options,
-      String schemaJson, _ConnectedClient client) {
+  _SyncRunner referenceSyncTask(
+      String databaseIdentifier,
+      SyncOptions options,
+      String schemaJson,
+      List<SubscribedStream> subscriptions,
+      _ConnectedClient client) {
     return _requestedSyncTasks.putIfAbsent(databaseIdentifier, () {
       return _SyncRunner(databaseIdentifier);
     })
@@ -54,6 +59,7 @@ class _SyncWorker {
         client,
         options,
         schemaJson,
+        subscriptions,
       );
   }
 }
@@ -90,12 +96,19 @@ class _ConnectedClient {
               },
             );
 
-            _runner = _worker.referenceSyncTask(request.databaseName,
-                recoveredOptions, request.schemaJson, this);
+            _runner = _worker.referenceSyncTask(
+              request.databaseName,
+              recoveredOptions,
+              request.schemaJson,
+              request.subscriptions?.toDart ?? const [],
+              this,
+            );
             return (JSObject(), null);
           case SyncWorkerMessageType.abortSynchronization:
             _runner?.disconnectClient(this);
             _runner = null;
+            return (JSObject(), null);
+          case SyncWorkerMessageType.updateSubscriptions:
             return (JSObject(), null);
           default:
             throw StateError('Unexpected message type $type');
@@ -137,9 +150,10 @@ class _SyncRunner {
   final StreamGroup<_RunnerEvent> _group = StreamGroup();
   final StreamController<_RunnerEvent> _mainEvents = StreamController();
 
-  StreamingSync? sync;
+  StreamingSyncImplementation? sync;
   _ConnectedClient? databaseHost;
-  final connections = <_ConnectedClient>[];
+  final connections = <_ConnectedClient, List<SubscribedStream>>{};
+  List<SubscribedStream> currentStreams = [];
 
   _SyncRunner(this.identifier) {
     _group.add(_mainEvents.stream);
@@ -152,8 +166,9 @@ class _SyncRunner {
                 :final client,
                 :final options,
                 :final schemaJson,
+                :final subscriptions,
               ):
-              connections.add(client);
+              connections[client] = subscriptions;
               final (newOptions, reconnect) = this.options.applyFrom(options);
               this.options = newOptions;
               this.schemaJson = schemaJson;
@@ -165,6 +180,8 @@ class _SyncRunner {
                 sync?.abort();
                 sync = null;
                 await _requestDatabase(client);
+              } else {
+                reindexSubscriptions();
               }
             case _RemoveConnection(:final client):
               connections.remove(client);
@@ -191,6 +208,12 @@ class _SyncRunner {
               } else {
                 await _requestDatabase(newHost);
               }
+            case _ClientSubscriptionsChanged(
+                :final client,
+                :final subscriptions
+              ):
+              connections[client] = subscriptions;
+              reindexSubscriptions();
           }
         } catch (e, s) {
           _logger.warning('Error handling $event', e, s);
@@ -199,12 +222,22 @@ class _SyncRunner {
     });
   }
 
+  /// Updates [currentStreams] to the union of values in [connections].
+  void reindexSubscriptions() {
+    final before = currentStreams.toSet();
+    final after = connections.values.flattenedToSet;
+    if (!const SetEquality<SubscribedStream>().equals(before, after)) {
+      currentStreams = after.toList();
+      sync?.updateSubscriptions(currentStreams);
+    }
+  }
+
   /// Pings all current [connections], removing those that don't answer in 5s
   /// (as they are likely closed tabs as well).
   ///
   /// Returns the first client that responds (without waiting for others).
   Future<_ConnectedClient?> _collectActiveClients() async {
-    final candidates = connections.toList();
+    final candidates = connections.keys.toList();
     if (candidates.isEmpty) {
       return null;
     }
@@ -269,6 +302,7 @@ class _SyncRunner {
       );
     }
 
+    currentStreams = connections.values.flattenedToSet.toList();
     sync = StreamingSyncImplementation(
       adapter: WebBucketStorage(database),
       schemaJson: client._runner!.schemaJson,
@@ -283,10 +317,11 @@ class _SyncRunner {
       options: options,
       client: BrowserClient(),
       identifier: identifier,
+      activeSubscriptions: currentStreams,
     );
     sync!.statusStream.listen((event) {
       _logger.fine('Broadcasting sync event: $event');
-      for (final client in connections) {
+      for (final client in connections.keys) {
         client.channel.notify(SyncWorkerMessageType.notifySyncStatus,
             SerializedSyncStatus.from(event));
       }
@@ -294,9 +329,9 @@ class _SyncRunner {
     sync!.streamingSync();
   }
 
-  void registerClient(
-      _ConnectedClient client, SyncOptions options, String schemaJson) {
-    _mainEvents.add(_AddConnection(client, options, schemaJson));
+  void registerClient(_ConnectedClient client, SyncOptions options,
+      String schemaJson, List<SubscribedStream> subscriptions) {
+    _mainEvents.add(_AddConnection(client, options, schemaJson, subscriptions));
   }
 
   /// Remove a client, disconnecting if no clients remain..
@@ -308,6 +343,11 @@ class _SyncRunner {
   void disconnectClient(_ConnectedClient client) {
     _mainEvents.add(_DisconnectClient(client));
   }
+
+  void updateClientSubscriptions(
+      _ConnectedClient client, List<SubscribedStream> subscriptions) {
+    _mainEvents.add(_ClientSubscriptionsChanged(client, subscriptions));
+  }
 }
 
 sealed class _RunnerEvent {}
@@ -316,8 +356,10 @@ final class _AddConnection implements _RunnerEvent {
   final _ConnectedClient client;
   final SyncOptions options;
   final String schemaJson;
+  final List<SubscribedStream> subscriptions;
 
-  _AddConnection(this.client, this.options, this.schemaJson);
+  _AddConnection(
+      this.client, this.options, this.schemaJson, this.subscriptions);
 }
 
 final class _RemoveConnection implements _RunnerEvent {
@@ -330,6 +372,13 @@ final class _DisconnectClient implements _RunnerEvent {
   final _ConnectedClient client;
 
   _DisconnectClient(this.client);
+}
+
+final class _ClientSubscriptionsChanged implements _RunnerEvent {
+  final _ConnectedClient client;
+  final List<SubscribedStream> subscriptions;
+
+  _ClientSubscriptionsChanged(this.client, this.subscriptions);
 }
 
 final class _ActiveDatabaseClosed implements _RunnerEvent {
