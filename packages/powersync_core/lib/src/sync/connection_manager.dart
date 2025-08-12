@@ -9,12 +9,28 @@ import 'package:powersync_core/src/database/powersync_db_mixin.dart';
 import 'package:powersync_core/src/sync/options.dart';
 import 'package:powersync_core/src/sync/stream.dart';
 
+import 'streaming_sync.dart';
+
+/// A (stream name, JSON parameters) pair that uniquely identifies a stream
+/// instantiation to subscribe to.
+typedef _RawStreamKey = (String, String);
+
 @internal
 final class ConnectionManager {
   final PowerSyncDatabaseMixin db;
   final ActiveDatabaseGroup _activeGroup;
 
+  /// All streams (with parameters) for which a subscription has been requested
+  /// explicitly.
+  final Map<_RawStreamKey, _ActiveSubscription> _locallyActiveSubscriptions =
+      {};
+
   final StreamController<SyncStatus> _statusController = StreamController();
+
+  /// Fires when an entry is added or removed from [_locallyActiveSubscriptions]
+  /// while we're connected.
+  StreamController<void>? _subscriptionsChanged;
+
   SyncStatus _currentStatus =
       const SyncStatus(connected: false, lastSyncedAt: null);
 
@@ -28,9 +44,6 @@ final class ConnectionManager {
   /// The controller must only be accessed from within a critical section of the
   /// sync mutex.
   AbortController? _abortActiveSync;
-
-  /// Only to be called in the sync mutex.
-  Future<void> Function()? _connectWithLastOptions;
 
   ConnectionManager(this.db) : _activeGroup = db.group;
 
@@ -60,7 +73,8 @@ final class ConnectionManager {
     // connecting and disconnecting.
     await _activeGroup.syncConnectMutex.lock(() async {
       await _abortCurrentSync();
-      _connectWithLastOptions = null;
+      _subscriptionsChanged?.close();
+      _subscriptionsChanged = null;
     });
 
     manuallyChangeSyncStatus(
@@ -78,18 +92,10 @@ final class ConnectionManager {
     }
   }
 
-  Future<void> reconnect() async {
-    // Also wrap this in the sync mutex to ensure there's no race between us
-    // connecting and disconnecting.
-    await _activeGroup.syncConnectMutex.lock(() async {
-      if (_connectWithLastOptions case final activeSync?) {
-        await _abortCurrentSync();
-        assert(_abortActiveSync == null);
-
-        await activeSync();
-      }
-    });
-  }
+  List<SubscribedStream> get _subscribedStreams => [
+        for (final active in _locallyActiveSubscriptions.values)
+          (name: active.name, parameters: active.encodedParameters)
+      ];
 
   Future<void> connect({
     required PowerSyncBackendConnector connector,
@@ -106,6 +112,8 @@ final class ConnectionManager {
 
     late void Function() retryHandler;
 
+    final subscriptionsChanged = StreamController<void>();
+
     Future<void> connectWithSyncLock() async {
       // Ensure there has not been a subsequent connect() call installing a new
       // sync client.
@@ -117,6 +125,10 @@ final class ConnectionManager {
         connector: connector,
         options: options,
         abort: thisConnectAborter,
+        initiallyActiveStreams: _subscribedStreams,
+        activeStreams: subscriptionsChanged.stream.map((_) {
+          return _subscribedStreams;
+        }),
         // Run follow-up async tasks in the parent zone, a new one is introduced
         // while we hold the lock (and async tasks won't hold the sync lock).
         asyncWorkZone: zone,
@@ -148,7 +160,7 @@ final class ConnectionManager {
       // Disconnect a previous sync client, if one is active.
       await _abortCurrentSync();
       assert(_abortActiveSync == null);
-      _connectWithLastOptions = connectWithSyncLock;
+      _subscriptionsChanged = subscriptionsChanged;
 
       // Install the abort controller for this particular connect call, allowing
       // it to be disconnected.
@@ -187,6 +199,30 @@ final class ConnectionManager {
     }
   }
 
+  _SyncStreamSubscriptionHandle _referenceStreamSubscription(
+      String stream, Map<String, Object?>? parameters) {
+    final key = (stream, json.encode(parameters));
+    _ActiveSubscription active;
+
+    if (_locallyActiveSubscriptions[key] case final current?) {
+      active = current;
+    } else {
+      active = _ActiveSubscription(this,
+          name: stream, parameters: parameters, encodedParameters: key.$2);
+      _locallyActiveSubscriptions[key] = active;
+      _subscriptionsChanged?.add(null);
+    }
+
+    return _SyncStreamSubscriptionHandle(active);
+  }
+
+  void _clearSubscription(_ActiveSubscription subscription) {
+    assert(subscription.refcount == 0);
+    _locallyActiveSubscriptions
+        .remove((subscription.name, subscription.encodedParameters));
+    _subscriptionsChanged?.add(null);
+  }
+
   Future<void> _subscriptionsCommand(Object? command) async {
     await db.writeTransaction((tx) {
       return db.execute(
@@ -194,69 +230,37 @@ final class ConnectionManager {
         ['subscriptions', json.encode(command)],
       );
     });
-
-    await reconnect();
+    _subscriptionsChanged?.add(null);
   }
 
   Future<void> subscribe({
     required String stream,
-    required Object? parameters,
+    required Map<String, Object?>? parameters,
     Duration? ttl,
-    BucketPriority? priority,
+    StreamPriority? priority,
   }) async {
     await _subscriptionsCommand({
       'subscribe': {
-        'stream': stream,
-        'params': parameters,
+        'stream': {
+          'name': stream,
+          'params': parameters,
+        },
         'ttl': ttl?.inSeconds,
         'priority': priority,
       },
     });
   }
 
-  Future<void> unsubscribe({
+  Future<void> unsubscribeAll({
     required String stream,
     required Object? parameters,
   }) async {
     await _subscriptionsCommand({
       'unsubscribe': {
-        'stream': stream,
+        'name': stream,
         'params': parameters,
       },
     });
-  }
-
-  Future<SyncStreamSubscription?> resolveCurrent(
-      String name, Map<String, Object?>? parameters) async {
-    final row = await db.getOptional(
-      'SELECT stream_name, active, is_default, local_priority, local_params, expires_at, last_synced_at, ttl FROM ps_stream_subscriptions WHERE stream_name = ? AND local_params = ?',
-      [name, json.encode(parameters)],
-    );
-
-    if (row == null) {
-      return null;
-    }
-
-    return _SyncStreamSubscription(
-      this,
-      name: name,
-      parameters:
-          json.decode(row['local_params'] as String) as Map<String, Object?>?,
-      active: row['active'] != 0,
-      isDefault: row['is_default'] != 0,
-      hasExplicitSubscription: row['ttl'] != null,
-      expiresAt: switch (row['expires_at']) {
-        null => null,
-        final expiresAt as int =>
-          DateTime.fromMicrosecondsSinceEpoch(expiresAt * 1000),
-      },
-      hasSynced: row['has_synced'] != 0,
-      lastSyncedAt: switch (row['last_synced_at']) {
-        null => null,
-        final lastSyncedAt as int =>
-          DateTime.fromMicrosecondsSinceEpoch(lastSyncedAt * 1000),
-      },
-    );
   }
 
   SyncStream syncStream(String name, Map<String, Object?>? parameters) {
@@ -280,14 +284,9 @@ final class _SyncStreamImplementation implements SyncStream {
   _SyncStreamImplementation(this._connections, this.name, this.parameters);
 
   @override
-  Future<SyncStreamSubscription?> get current {
-    return _connections.resolveCurrent(name, parameters);
-  }
-
-  @override
-  Future<void> subscribe({
+  Future<SyncStreamSubscription> subscribe({
     Duration? ttl,
-    BucketPriority? priority,
+    StreamPriority? priority,
   }) async {
     await _connections.subscribe(
       stream: name,
@@ -295,55 +294,71 @@ final class _SyncStreamImplementation implements SyncStream {
       ttl: ttl,
       priority: priority,
     );
+
+    return _connections._referenceStreamSubscription(name, parameters);
+  }
+
+  @override
+  Future<void> unsubscribeAll() async {
+    await _connections.unsubscribeAll(stream: name, parameters: parameters);
   }
 }
 
-final class _SyncStreamSubscription implements SyncStreamSubscription {
-  final ConnectionManager _connections;
+final class _ActiveSubscription {
+  final ConnectionManager connections;
+  var refcount = 0;
 
-  @override
   final String name;
-  @override
+  final String encodedParameters;
   final Map<String, Object?>? parameters;
 
-  @override
-  final bool active;
-  @override
-  final bool isDefault;
-  @override
-  final bool hasExplicitSubscription;
-  @override
-  final DateTime? expiresAt;
-  @override
-  final bool hasSynced;
-  @override
-  final DateTime? lastSyncedAt;
-
-  _SyncStreamSubscription(
-    this._connections, {
+  _ActiveSubscription(
+    this.connections, {
     required this.name,
+    required this.encodedParameters,
     required this.parameters,
-    required this.active,
-    required this.isDefault,
-    required this.hasExplicitSubscription,
-    required this.expiresAt,
-    required this.hasSynced,
-    required this.lastSyncedAt,
   });
+
+  void decrementRefCount() {
+    refcount--;
+    if (refcount == 0) {
+      connections._clearSubscription(this);
+    }
+  }
+}
+
+final class _SyncStreamSubscriptionHandle implements SyncStreamSubscription {
+  final _ActiveSubscription _source;
+
+  _SyncStreamSubscriptionHandle(this._source) {
+    _source.refcount++;
+
+    // This is not unreliable, but can help decrementing refcounts on the inner
+    // subscription when this handle is deallocated without [unsubscribe] being
+    // called.
+    _finalizer.attach(this, _source, detach: this);
+  }
+
+  @override
+  String get name => _source.name;
+
+  @override
+  Map<String, Object?>? get parameters => _source.parameters;
 
   @override
   Future<void> unsubscribe() async {
-    await _connections.unsubscribe(stream: name, parameters: parameters);
+    _finalizer.detach(this);
+    _source.decrementRefCount();
   }
 
   @override
   Future<void> waitForFirstSync() async {
-    if (hasSynced) {
-      return;
-    }
-    return _connections.firstStatusMatching((status) {
+    return _source.connections.firstStatusMatching((status) {
       final currentProgress = status.statusFor(this);
       return currentProgress?.subscription.hasSynced ?? false;
     });
   }
+
+  static final Finalizer<_ActiveSubscription> _finalizer =
+      Finalizer((sub) => sub.decrementRefCount());
 }

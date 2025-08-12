@@ -19,6 +19,7 @@ import 'package:powersync_core/src/sync/options.dart';
 import 'package:powersync_core/src/sync/sync_status.dart';
 
 import '../sync/stream.dart';
+import '../sync/streaming_sync.dart';
 
 mixin PowerSyncDatabaseMixin implements SqliteConnection {
   /// Schema used for the local database.
@@ -131,7 +132,7 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
     return isInitialized;
   }
 
-  Future<List<SyncStreamSubscription>> get activeSubscriptions {
+  Future<List<SyncStream>> get subscribedStreams {
     throw UnimplementedError();
   }
 
@@ -273,6 +274,8 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
   Future<void> connectInternal({
     required PowerSyncBackendConnector connector,
     required ResolvedSyncOptions options,
+    required List<SubscribedStream> initiallyActiveStreams,
+    required Stream<List<SubscribedStream>> activeStreams,
     required AbortController abort,
     required Zone asyncWorkZone,
   });
