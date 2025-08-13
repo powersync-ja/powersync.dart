@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:async/async.dart';
 import 'package:logging/logging.dart';
@@ -15,6 +16,8 @@ import 'package:powersync_core/src/schema.dart';
 import 'package:powersync_core/src/schema_logic.dart';
 import 'package:powersync_core/src/schema_logic.dart' as schema_logic;
 import 'package:powersync_core/src/sync/connection_manager.dart';
+import 'package:powersync_core/src/sync/instruction.dart';
+import 'package:powersync_core/src/sync/mutable_sync_status.dart';
 import 'package:powersync_core/src/sync/options.dart';
 import 'package:powersync_core/src/sync/sync_status.dart';
 
@@ -138,42 +141,15 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
 
   Future<void> _updateHasSynced() async {
     // Query the database to see if any data has been synced.
-    final result = await database.getAll(
-      'SELECT priority, last_synced_at FROM ps_sync_state ORDER BY priority;',
+    final row = await database.get(
+      'SELECT powersync_offline_sync_status() AS r;',
     );
-    const prioritySentinel = 2147483647;
-    var hasSynced = false;
-    DateTime? lastCompleteSync;
-    final priorityStatusEntries = <SyncPriorityStatus>[];
 
-    DateTime parseDateTime(String sql) {
-      return DateTime.parse('${sql}Z').toLocal();
-    }
+    final status = CoreSyncStatus.fromJson(
+        json.decode(row['r'] as String) as Map<String, Object?>);
 
-    for (final row in result) {
-      final priority = row.columnAt(0) as int;
-      final lastSyncedAt = parseDateTime(row.columnAt(1) as String);
-
-      if (priority == prioritySentinel) {
-        hasSynced = true;
-        lastCompleteSync = lastSyncedAt;
-      } else {
-        priorityStatusEntries.add((
-          hasSynced: true,
-          lastSyncedAt: lastSyncedAt,
-          priority: BucketPriority(priority)
-        ));
-      }
-    }
-
-    if (hasSynced != currentStatus.hasSynced) {
-      final status = SyncStatus(
-        hasSynced: hasSynced,
-        lastSyncedAt: lastCompleteSync,
-        priorityStatusEntries: priorityStatusEntries,
-      );
-      setStatus(status);
-    }
+    setStatus((MutableSyncStatus()..applyFromCore(status))
+        .immutableSnapshot(setLastSynced: true));
   }
 
   /// Returns a [Future] which will resolve once at least one full sync cycle
@@ -181,10 +157,10 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
   /// reached across all buckets).
   ///
   /// When [priority] is null (the default), this method waits for the first
-  /// full sync checkpoint to complete. When set to a [BucketPriority] however,
+  /// full sync checkpoint to complete. When set to a [StreamPriority] however,
   /// it completes once all buckets within that priority (as well as those in
   /// higher priorities) have been synchronized at least once.
-  Future<void> waitForFirstSync({BucketPriority? priority}) async {
+  Future<void> waitForFirstSync({StreamPriority? priority}) async {
     bool matches(SyncStatus status) {
       if (priority == null) {
         return status.hasSynced == true;
