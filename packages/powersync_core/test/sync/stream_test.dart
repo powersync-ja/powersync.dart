@@ -211,4 +211,12 @@ void main() {
     await pumpEventQueue();
     expect(syncService.controller.hasListener, isTrue);
   });
+
+  test('subscriptions update while offline', () async {
+    final stream = StreamQueue(database.statusStream);
+
+    final subscription = await database.syncStream('foo').subscribe();
+    var status = await stream.next;
+    expect(status.statusFor(subscription), isNotNull);
+  });
 }

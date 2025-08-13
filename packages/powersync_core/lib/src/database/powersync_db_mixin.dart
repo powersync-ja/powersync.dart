@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:async/async.dart';
 import 'package:logging/logging.dart';
@@ -16,8 +15,6 @@ import 'package:powersync_core/src/schema.dart';
 import 'package:powersync_core/src/schema_logic.dart';
 import 'package:powersync_core/src/schema_logic.dart' as schema_logic;
 import 'package:powersync_core/src/sync/connection_manager.dart';
-import 'package:powersync_core/src/sync/instruction.dart';
-import 'package:powersync_core/src/sync/mutable_sync_status.dart';
 import 'package:powersync_core/src/sync/options.dart';
 import 'package:powersync_core/src/sync/sync_status.dart';
 
@@ -109,7 +106,7 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
     await _checkVersion();
     await database.execute('SELECT powersync_init()');
     await updateSchema(schema);
-    await _updateHasSynced();
+    await _connections.resolveOfflineSyncStatus();
   }
 
   /// Check that a supported version of the powersync extension is loaded.
@@ -133,23 +130,6 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
   /// While initializing is automatic, this helps to catch and report initialization errors.
   Future<void> initialize() {
     return isInitialized;
-  }
-
-  Future<List<SyncStream>> get subscribedStreams {
-    throw UnimplementedError();
-  }
-
-  Future<void> _updateHasSynced() async {
-    // Query the database to see if any data has been synced.
-    final row = await database.get(
-      'SELECT powersync_offline_sync_status() AS r;',
-    );
-
-    final status = CoreSyncStatus.fromJson(
-        json.decode(row['r'] as String) as Map<String, Object?>);
-
-    setStatus((MutableSyncStatus()..applyFromCore(status))
-        .immutableSnapshot(setLastSynced: true));
   }
 
   /// Returns a [Future] which will resolve once at least one full sync cycle
