@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:io';
-import 'dart:typed_data';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
@@ -47,17 +46,17 @@ class _TakePhotoWidgetState extends State<TakePhotoWidget> {
       await _initializeControllerFuture;
       final XFile photo = await _cameraController.takePicture();
       
-      // Read the photo data as a stream
+      // Read the photo data as bytes
       final photoFile = File(photo.path);
       if (!await photoFile.exists()) {
         log.warning('Photo file does not exist: ${photo.path}');
         return;
       }
       
-      final photoDataStream = photoFile.openRead().cast<Uint8List>();
+      final photoData = await photoFile.readAsBytes();
       
-      // Save the photo attachment directly with the data stream
-      final attachment = await savePhotoAttachment(photoDataStream, widget.todoId);
+      // Save the photo attachment with the byte data
+      final attachment = await savePhotoAttachment(photoData, widget.todoId);
       
       log.info('Photo attachment saved with ID: ${attachment.id}');
     } catch (e) {

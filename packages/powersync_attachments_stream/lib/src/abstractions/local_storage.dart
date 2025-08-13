@@ -4,9 +4,9 @@ abstract class AbstractLocalStorageAdapter {
   /// Saves binary data stream to storage at the specified file path
   ///
   /// [filePath] - Path where the file will be stored
-  /// [data] - Stream of binary data to store
+  /// [data] - List of binary data to store
   /// Returns the total size of the written data in bytes
-  Future<int> saveFile(String filePath, Stream<Uint8List> data);
+  Future<int> saveFile(String filePath, List<int> data);
 
   /// Retrieves binary data stream from storage at the specified file path
   ///

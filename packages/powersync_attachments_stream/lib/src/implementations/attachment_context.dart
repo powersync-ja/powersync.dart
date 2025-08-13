@@ -1,8 +1,9 @@
-import '../abstractions/attachment_context.dart';
-import '../attachment.dart';
 import 'package:powersync_core/powersync_core.dart';
 import 'package:powersync_core/sqlite3_common.dart';
 import 'package:logging/logging.dart';
+
+import '../abstractions/attachment_context.dart';
+import '../attachment.dart';
 
 class AttachmentContextImpl implements AbstractAttachmentContext {
   final PowerSyncDatabase db;

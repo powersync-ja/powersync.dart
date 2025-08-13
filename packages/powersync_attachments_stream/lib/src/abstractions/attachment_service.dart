@@ -4,7 +4,7 @@ import 'attachment_context.dart';
 abstract class AbstractAttachmentService {
   /// Watcher for changes to attachments table.
   /// Once a change is detected it will initiate a sync of the attachments.
-  Stream<void> watchActiveAttachments();
+  Stream<void> watchActiveAttachments({Duration? throttle});
 
   /// Executes a callback with an exclusive lock on all attachment operations.
   /// This helps prevent race conditions between different updates.

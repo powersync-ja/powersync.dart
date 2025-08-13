@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'dart:io';
-import 'dart:typed_data';
+
 import 'package:logging/logging.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:powersync/powersync.dart';
@@ -34,7 +34,7 @@ Future<void> initializeAttachmentQueue(PowerSyncDatabase db) async {
 }
 
 Future<Attachment> savePhotoAttachment(
-    Stream<Uint8List> photoData, String todoId,
+    List<int> photoData, String todoId,
     {String mediaType = 'image/jpeg'}) async {
   // Save the file using the AttachmentQueue API
   return await attachmentQueue.saveFile(

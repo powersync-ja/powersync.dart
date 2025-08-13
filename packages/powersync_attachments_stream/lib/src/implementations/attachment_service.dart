@@ -1,4 +1,5 @@
 import 'dart:async';
+
 import 'package:logging/logging.dart';
 import 'package:powersync_core/powersync_core.dart';
 import 'package:sqlite_async/sqlite_async.dart';
@@ -6,7 +7,7 @@ import 'package:sqlite_async/sqlite_async.dart';
 import '../abstractions/attachment_service.dart';
 import '../abstractions/attachment_context.dart';
 import '../attachment.dart';
-import 'attachment_context.dart';
+import './attachment_context.dart';
 
 class AttachmentServiceImpl implements AbstractAttachmentService {
   final PowerSyncDatabase db;
@@ -32,7 +33,7 @@ class AttachmentServiceImpl implements AbstractAttachmentService {
   }
 
   @override
-  Stream<void> watchActiveAttachments() async* {
+  Stream<void> watchActiveAttachments({Duration? throttle}) async* {
     logger.info('Watching attachments...');
 
     // Watch for attachments with active states (queued for upload, download, or delete)
@@ -54,6 +55,7 @@ class AttachmentServiceImpl implements AbstractAttachmentService {
         AttachmentState.queuedDownload.index,
         AttachmentState.queuedDelete.index,
       ],
+      throttle: throttle ?? const Duration(milliseconds: 30),
     );
 
     yield* stream;

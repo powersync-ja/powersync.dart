@@ -5,10 +5,12 @@
 // It provides hooks for error handling, cache management, and custom filename resolution.
 
 import 'dart:async';
-import 'dart:typed_data';
+
 import 'package:logging/logging.dart';
 import 'package:powersync_core/powersync_core.dart';
 import 'package:sqlite_async/mutex.dart';
+
+ 
 import 'attachment.dart';
 import 'abstractions/attachment_service.dart';
 import 'abstractions/attachment_context.dart';
@@ -265,7 +267,6 @@ class AttachmentQueue {
                   attachment.copyWith(state: AttachmentState.archived),
                 );
               }
-              break;
             default:
               attachmentUpdates.add(
                 attachment.copyWith(state: AttachmentState.archived),
@@ -281,7 +282,7 @@ class AttachmentQueue {
   /// Creates a new attachment locally and queues it for upload.
   /// The filename is resolved using [resolveNewAttachmentFilename].
   Future<Attachment> saveFile({
-    required Stream<Uint8List> data,
+    required List<int> data,
     required String mediaType,
     String? fileExtension,
     String? metaData,

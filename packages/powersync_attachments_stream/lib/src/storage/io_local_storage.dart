@@ -1,22 +1,9 @@
-/// Local storage adapter for handling file operations on the device filesystem.
-///
-/// This file implements the [IOLocalStorage] class, which provides methods for
-/// saving, reading, deleting, copying, and managing files and directories using
-/// the Dart IO library. It is used as the local storage backend for attachments
-/// in the PowerSync attachments system.
-///
-/// Features:
-/// - Save files from streams (creates directories and all necessary parents dynamically if they do not exist)
-/// - Read files as streams
-/// - Delete files and their metadata
-/// - Copy files and their metadata
-/// - Create and remove directories (creates all necessary parents dynamically)
-/// - Check file existence
-
 import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
+
 import 'package:path/path.dart' as p;
+
 import '../abstractions/local_storage.dart';
 
 /// Implements [AbstractLocalStorageAdapter] for device filesystem using Dart IO.
@@ -38,21 +25,11 @@ class IOLocalStorage implements AbstractLocalStorageAdapter {
   /// Creates the file's directory and all necessary parent directories dynamically if they do not exist.
   /// Returns the total number of bytes written.
   @override
-  Future<int> saveFile(String filePath, Stream<Uint8List> data) async {
+  Future<int> saveFile(String filePath, List<int> data) async {
     final file = _fileFor(filePath);
     await file.parent.create(recursive: true);
-    var totalSize = 0;
-    final sink = file.openWrite();
-    try {
-      await for (final chunk in data) {
-        sink.add(chunk);
-        totalSize += chunk.length;
-      }
-      await sink.flush();
-    } finally {
-      await sink.close();
-    }
-    return totalSize;
+    await file.writeAsBytes(data, flush: true);
+    return data.length;
   }
 
   /// Reads a file as a stream of [Uint8List] chunks.

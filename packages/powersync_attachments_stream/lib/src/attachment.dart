@@ -4,6 +4,7 @@
 
 import 'package:powersync_core/sqlite3_common.dart' show Row;
 import 'package:powersync_core/powersync_core.dart';
+
 import './attachment_queue_service.dart';
 
 /// Represents the state of an attachment.
