@@ -183,4 +183,32 @@ void main() {
       ),
     );
   });
+
+  test('changes subscriptions dynamically', () async {
+    await waitForConnection();
+    syncService.addKeepAlive();
+
+    final subscription = await database.syncStream('a').subscribe();
+    syncService.endCurrentListener();
+    final request = await syncService.waitForListener;
+    expect(
+      json.decode(await request.readAsString()),
+      containsPair(
+        'streams',
+        containsPair('subscriptions', [
+          {
+            'stream': 'a',
+            'parameters': null,
+            'override_priority': null,
+          },
+        ]),
+      ),
+    );
+
+    // Given that the subscription has a TTL, dropping the handle should not
+    // re-subscribe.
+    await subscription.unsubscribe();
+    await pumpEventQueue();
+    expect(syncService.controller.hasListener, isTrue);
+  });
 }
