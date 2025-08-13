@@ -10,6 +10,8 @@ import 'package:powersync_core/src/sync/options.dart';
 import 'package:powersync_core/src/sync/stream.dart';
 import 'package:powersync_core/src/sync/sync_status.dart';
 
+import 'instruction.dart';
+import 'mutable_sync_status.dart';
 import 'streaming_sync.dart';
 
 /// A (stream name, JSON parameters) pair that uniquely identifies a stream
@@ -252,6 +254,15 @@ final class ConnectionManager {
         'priority': priority,
       },
     });
+
+    await _activeGroup.syncMutex.lock(() async {
+      if (_abortActiveSync == null) {
+        // Since we're not connected, update the offline sync status to reflect
+        // the new subscription.
+        // With a connection, the sync client would include it in its state.
+        await resolveOfflineSyncStatus();
+      }
+    });
   }
 
   Future<void> unsubscribeAll({
@@ -264,6 +275,18 @@ final class ConnectionManager {
         'params': parameters,
       },
     });
+  }
+
+  Future<void> resolveOfflineSyncStatus() async {
+    final row = await db.database.get(
+      'SELECT powersync_offline_sync_status() AS r;',
+    );
+
+    final status = CoreSyncStatus.fromJson(
+        json.decode(row['r'] as String) as Map<String, Object?>);
+
+    manuallyChangeSyncStatus((MutableSyncStatus()..applyFromCore(status))
+        .immutableSnapshot(setLastSynced: true));
   }
 
   SyncStream syncStream(String name, Map<String, Object?>? parameters) {
