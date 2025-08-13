@@ -135,7 +135,7 @@ class StreamingSyncImplementation implements StreamingSync {
   void updateSubscriptions(List<SubscribedStream> streams) {
     _activeSubscriptions = streams;
     if (_nonLineSyncEvents.hasListener) {
-      _nonLineSyncEvents.add(const AbortCurrentIteration());
+      _nonLineSyncEvents.add(HandleChangedSubscriptions(streams));
     }
   }
 
@@ -464,6 +464,7 @@ class StreamingSyncImplementation implements StreamingSync {
           _state.updateStatus((s) => s.setConnected());
           await handleLine(line as StreamingSyncLine);
         case UploadCompleted():
+        case HandleChangedSubscriptions():
           // Only relevant for the Rust sync implementation.
           break;
         case AbortCurrentIteration():
@@ -613,6 +614,12 @@ final class _ActiveRustStreamingIteration {
 
   _ActiveRustStreamingIteration(this.sync);
 
+  List<Object?> _encodeSubscriptions(List<SubscribedStream> subscriptions) {
+    return sync._activeSubscriptions
+        .map((s) => {'name': s.name, 'params': s.parameters})
+        .toList();
+  }
+
   Future<void> syncIteration() async {
     try {
       await _control(
@@ -621,9 +628,7 @@ final class _ActiveRustStreamingIteration {
           'parameters': sync.options.params,
           'schema': convert.json.decode(sync.schemaJson),
           'include_defaults': sync.options.includeDefaultStreams,
-          'active_streams': sync._activeSubscriptions
-              .map((s) => {'name': s.name, 'params': s.parameters})
-              .toList(),
+          'active_streams': _encodeSubscriptions(sync._activeSubscriptions),
         }),
       );
       assert(_completedStream.isCompleted, 'Should have started streaming');
@@ -673,6 +678,9 @@ final class _ActiveRustStreamingIteration {
           break loop;
         case TokenRefreshComplete():
           await _control('refreshed_token');
+        case HandleChangedSubscriptions(:final currentSubscriptions):
+          await _control('update_subscriptions',
+              convert.json.encode(_encodeSubscriptions(currentSubscriptions)));
       }
     }
   }
@@ -761,4 +769,10 @@ final class TokenRefreshComplete implements SyncEvent {
 
 final class AbortCurrentIteration implements SyncEvent {
   const AbortCurrentIteration();
+}
+
+final class HandleChangedSubscriptions implements SyncEvent {
+  final List<SubscribedStream> currentSubscriptions;
+
+  HandleChangedSubscriptions(this.currentSubscriptions);
 }

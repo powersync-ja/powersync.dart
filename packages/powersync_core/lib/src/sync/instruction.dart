@@ -85,8 +85,8 @@ final class CoreSyncStatus {
         null => null,
         final raw as Map<String, Object?> => DownloadProgress.fromJson(raw),
       },
-      streams: (json['streams'] as List<Object?>?)
-          ?.map((e) =>
+      streams: (json['streams'] as List<Object?>)
+          .map((e) =>
               CoreActiveStreamSubscription.fromJson(e as Map<String, Object?>))
           .toList(),
     );

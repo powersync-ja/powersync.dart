@@ -97,7 +97,7 @@ final class MutableSyncStatus {
     streams = status.streams;
   }
 
-  SyncStatus immutableSnapshot() {
+  SyncStatus immutableSnapshot({bool setLastSynced = false}) {
     return SyncStatus(
       connected: connected,
       connecting: connecting,
@@ -106,7 +106,7 @@ final class MutableSyncStatus {
       downloadProgress: downloadProgress?.asSyncDownloadProgress,
       priorityStatusEntries: UnmodifiableListView(priorityStatusEntries),
       lastSyncedAt: lastSyncedAt,
-      hasSynced: null, // Stream client is not supposed to set this value.
+      hasSynced: setLastSynced ? lastSyncedAt != null : null,
       uploadError: uploadError,
       downloadError: downloadError,
       streamSubscriptions: streams,

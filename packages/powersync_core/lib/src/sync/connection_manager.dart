@@ -197,7 +197,7 @@ final class ConnectionManager {
       // would be equal and don't require an event. So, check again.
       if (newStatus != currentStatus) {
         _currentStatus = newStatus;
-        _statusController.add(currentStatus);
+        _statusController.add(_currentStatus);
       }
     }
   }
