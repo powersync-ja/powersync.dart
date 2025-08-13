@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
+ 
 import 'package:test/test.dart';
 import 'package:path/path.dart' as p;
 import 'package:powersync_attachments_stream/src/storage/io_local_storage.dart';
@@ -20,12 +21,10 @@ void main() {
     });
 
     group('saveFile and readFile', () {
-      test('saves and reads binary data stream successfully', () async {
+      test('saves and reads binary data successfully', () async {
         const filePath = 'test_file';
         final data = Uint8List.fromList([1, 2, 3, 4, 5]);
-        final dataStream = Stream.fromIterable([data]);
-
-        final size = await storage.saveFile(filePath, dataStream);
+        final size = await storage.saveFile(filePath, data);
         expect(size, equals(data.length));
 
         final resultStream = storage.readFile(filePath);
@@ -51,11 +50,10 @@ void main() {
         const filePath = 'subdir/nested/test';
         final nonExistentDir = Directory(p.join(d.sandbox, 'subdir', 'nested'));
         final data = Uint8List.fromList([1, 2, 3]);
-        final dataStream = Stream.fromIterable([data]);
 
         expect(await nonExistentDir.exists(), isFalse);
 
-        final size = await storage.saveFile(filePath, dataStream);
+        final size = await storage.saveFile(filePath, data);
         expect(size, equals(data.length));
         expect(await nonExistentDir.exists(), isTrue);
 
@@ -73,11 +71,10 @@ void main() {
           p.join(d.sandbox, 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j'),
         );
         final data = Uint8List.fromList([42, 43, 44]);
-        final dataStream = Stream.fromIterable([data]);
 
         expect(await nestedDir.exists(), isFalse);
 
-        final size = await storage.saveFile(filePath, dataStream);
+        final size = await storage.saveFile(filePath, data);
         expect(size, equals(data.length));
         expect(await nestedDir.exists(), isTrue);
 
@@ -95,11 +92,9 @@ void main() {
         const filePath = 'overwrite_test';
         final originalData = Uint8List.fromList([1, 2, 3]);
         final newData = Uint8List.fromList([4, 5, 6, 7]);
-        final originalStream = Stream.fromIterable([originalData]);
-        final newStream = Stream.fromIterable([newData]);
 
-        await storage.saveFile(filePath, originalStream);
-        final size = await storage.saveFile(filePath, newStream);
+        await storage.saveFile(filePath, originalData);
+        final size = await storage.saveFile(filePath, newData);
         expect(size, equals(newData.length));
 
         final resultStream = storage.readFile(filePath);
@@ -112,11 +107,11 @@ void main() {
     });
 
     group('edge cases and robustness', () {
-      test('saveFile with empty stream writes empty file and returns 0 size', () async {
+      test('saveFile with empty data writes empty file and returns 0 size', () async {
         const filePath = 'empty_file';
-        final emptyStream = Stream<Uint8List>.fromIterable(const []);
+        final emptyBytes = Uint8List(0);
 
-        final size = await storage.saveFile(filePath, emptyStream);
+        final size = await storage.saveFile(filePath, emptyBytes);
         expect(size, 0);
 
         final resultStream = storage.readFile(filePath);
@@ -135,21 +130,19 @@ void main() {
           Uint8List.fromList([3, 4]),
           Uint8List.fromList([5, 6, 7, 8]),
         ];
-        await storage.saveFile(filePath, Stream.fromIterable(chunks));
+        final expectedBytes = Uint8List.fromList(chunks.expand((c) => c).toList());
+        await storage.saveFile(filePath, expectedBytes);
 
         final outChunks = await storage.readFile(filePath).toList();
         final outBytes = Uint8List.fromList(
           outChunks.expand((c) => c).toList(),
-        );
-        final expectedBytes = Uint8List.fromList(
-          chunks.expand((c) => c).toList(),
         );
         expect(outBytes, equals(expectedBytes));
       });
 
       test('fileExists becomes false after deleteFile', () async {
         const filePath = 'exists_then_delete';
-        await storage.saveFile(filePath, Stream.value(Uint8List.fromList([1])));
+        await storage.saveFile(filePath, Uint8List.fromList([1]));
         expect(await storage.fileExists(filePath), isTrue);
         await storage.deleteFile(filePath);
         expect(await storage.fileExists(filePath), isFalse);
@@ -161,7 +154,7 @@ void main() {
 
         // Create a file, then re-initialize again
         const filePath = 'idempotent_test';
-        await storage.saveFile(filePath, Stream.value(Uint8List.fromList([9])));
+        await storage.saveFile(filePath, Uint8List.fromList([9]));
         await storage.initialize();
 
         // File should still exist (initialize should not clear data)
@@ -185,7 +178,7 @@ void main() {
       test('supports unicode and emoji filenames', () async {
         const filePath = '測試_файл_📷.bin';
         final bytes = Uint8List.fromList([10, 20, 30, 40]);
-        await storage.saveFile(filePath, Stream.value(bytes));
+        await storage.saveFile(filePath, bytes);
 
         final out = await storage.readFile(filePath).toList();
         expect(out, equals([bytes]));
@@ -196,7 +189,7 @@ void main() {
       test('readFile accepts mediaType parameter (ignored by IO impl)', () async {
         const filePath = 'with_media_type';
         final data = Uint8List.fromList([1, 2, 3]);
-        await storage.saveFile(filePath, Stream.value(data));
+        await storage.saveFile(filePath, data);
 
         final result = await storage.readFile(filePath, mediaType: 'image/jpeg').toList();
         expect(result, equals([data]));
@@ -207,9 +200,8 @@ void main() {
       test('deletes existing file', () async {
         const filePath = 'delete_test';
         final data = Uint8List.fromList([1, 2, 3]);
-        final dataStream = Stream.fromIterable([data]);
 
-        await storage.saveFile(filePath, dataStream);
+        await storage.saveFile(filePath, data);
         expect(await storage.fileExists(filePath), isTrue);
 
         await storage.deleteFile(filePath);
@@ -256,9 +248,8 @@ void main() {
       test('returns true for existing file', () async {
         const filePath = 'exists_test';
         final data = Uint8List.fromList([1, 2, 3]);
-        final dataStream = Stream.fromIterable([data]);
 
-        await storage.saveFile(filePath, dataStream);
+        await storage.saveFile(filePath, data);
         expect(await storage.fileExists(filePath), isTrue);
 
         await d.file(filePath, data).validate();
@@ -275,9 +266,8 @@ void main() {
       test('handles special characters in file path', () async {
         const filePath = 'file with spaces & symbols!@#';
         final data = Uint8List.fromList([1, 2, 3]);
-        final dataStream = Stream.fromIterable([data]);
 
-        final size = await storage.saveFile(filePath, dataStream);
+        final size = await storage.saveFile(filePath, data);
         expect(size, equals(data.length));
 
         final resultStream = storage.readFile(filePath);
@@ -302,9 +292,7 @@ void main() {
             ),
           );
         }
-        final dataStream = Stream.fromIterable(chunks);
-
-        final size = await storage.saveFile(filePath, dataStream);
+        final size = await storage.saveFile(filePath, data);
         expect(size, equals(data.length));
 
         final resultStream = storage.readFile(filePath);
@@ -324,7 +312,7 @@ void main() {
 
         for (int i = 0; i < fileCount; i++) {
           final data = Uint8List.fromList([i, i + 1, i + 2]);
-          futures.add(storage.saveFile('file_$i', Stream.fromIterable([data])));
+          futures.add(storage.saveFile('file_$i', data));
         }
 
         await Future.wait(futures);
@@ -349,8 +337,8 @@ void main() {
         final data1 = Uint8List.fromList([1, 2, 3]);
         final data2 = Uint8List.fromList([4, 5, 6]);
         final futures = [
-          storage.saveFile(filePath, Stream.fromIterable([data1])),
-          storage.saveFile(filePath, Stream.fromIterable([data2])),
+          storage.saveFile(filePath, data1),
+          storage.saveFile(filePath, data2),
         ];
 
         await Future.wait(futures);
