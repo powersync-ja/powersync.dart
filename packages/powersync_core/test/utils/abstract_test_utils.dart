@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:http/http.dart';
 import 'package:logging/logging.dart';
 import 'package:powersync_core/powersync_core.dart';
@@ -49,7 +51,7 @@ Logger _makeTestLogger({Level level = Level.ALL, String? name}) {
       // Hack to fail the test if a SEVERE error is logged.
       // Not ideal, but works to catch "Sync Isolate error".
       uncaughtError() async {
-        throw record.error!;
+        throw 'Unexpected severe error on logger: ${record.error!}';
       }
 
       uncaughtError();
@@ -74,7 +76,7 @@ abstract mixin class TestPowerSyncFactory implements PowerSyncOpenFactory {
       schema: schema,
       database: SqliteDatabase.singleConnection(
           SqliteConnection.synchronousWrapper(raw)),
-      loggers: logger,
+      logger: logger,
     );
   }
 }
@@ -151,9 +153,11 @@ extension MockSync on PowerSyncDatabase {
     PowerSyncBackendConnector connector, {
     Logger? logger,
     SyncOptions options = const SyncOptions(retryDelay: Duration(seconds: 5)),
+    Schema? customSchema,
   }) {
     final impl = StreamingSyncImplementation(
       adapter: BucketStorage(this),
+      schemaJson: jsonEncode(customSchema ?? schema),
       client: client,
       options: ResolvedSyncOptions(options),
       connector: InternalConnector.wrap(connector, this),

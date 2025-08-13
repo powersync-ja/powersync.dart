@@ -1,8 +1,8 @@
 #!/bin/sh
 set -e
 
-SQLITE_VERSION="2.7.6"
-POWERSYNC_CORE_VERSION="0.4.0"
+SQLITE_VERSION="2.9.0"
+POWERSYNC_CORE_VERSION="0.4.4"
 SQLITE_PATH="sqlite3.dart"
 
 if [ -d "$SQLITE_PATH" ]; then
@@ -16,7 +16,6 @@ cd $SQLITE_PATH
 git apply ../patches/*
 
 cd "sqlite3/"
-dart pub get # We need the analyzer dependency resolved to extract required symbols
 
 cmake -Dwasi_sysroot=/opt/homebrew/share/wasi-sysroot \
     -Dclang=/opt/homebrew/opt/llvm/bin/clang\

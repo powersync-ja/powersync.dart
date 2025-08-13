@@ -1,3 +1,22 @@
+## 1.15.1
+
+ - Support latest versions of `package:sqlite3` and `package:sqlite_async`.
+ - Stream client: Improve `disconnect()` while a connection is being opened.
+ - Stream client: Support binary sync lines with Rust client and compatible PowerSync service versions.
+ - Sync client: Improve parsing error responses.
+
+## 1.15.0
+
+ - Update the PowerSync core extension to `0.4.2`.
+ - Add support for [raw tables](https://docs.powersync.com/usage/use-case-examples/raw-tables), which are user-managed
+   regular SQLite tables instead of the JSON-based views managed by PowerSync.
+
+## 1.14.1
+
+ - Rust client: Fix uploading local writs after reconnect.
+ - `PowerSyncDatabase.withDatabase`: Rename `loggers` parameter to `logger` for consistency.
+ - Fix parsing HTTP errors for sync service unavailability.
+
 ## 1.14.0
 
 Add a new sync client implementation written in Rust instead of Dart. While

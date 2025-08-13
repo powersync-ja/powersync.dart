@@ -7,6 +7,8 @@ import 'package:powersync_core/powersync_core.dart';
 import 'package:powersync_core/sqlite3_common.dart';
 import 'package:powersync_core/src/sync/streaming_sync.dart';
 import 'package:powersync_core/src/sync/protocol.dart';
+import 'package:shelf/shelf.dart';
+import 'package:shelf_router/shelf_router.dart';
 import 'package:test/test.dart';
 
 import 'bucket_storage_test.dart';
@@ -19,20 +21,33 @@ void main() {
   _declareTests(
     'dart sync client',
     SyncOptions(
-        // ignore: deprecated_member_use_from_same_package
-        syncImplementation: SyncClientImplementation.dart,
-        retryDelay: Duration(milliseconds: 200)),
+      // ignore: deprecated_member_use_from_same_package
+      syncImplementation: SyncClientImplementation.dart,
+      retryDelay: Duration(milliseconds: 200),
+    ),
+    false,
   );
 
-  _declareTests(
-    'rust sync client',
-    SyncOptions(
-        syncImplementation: SyncClientImplementation.rust,
-        retryDelay: Duration(milliseconds: 200)),
-  );
+  group('rust sync client', () {
+    _declareTests(
+      'json',
+      SyncOptions(
+          syncImplementation: SyncClientImplementation.rust,
+          retryDelay: Duration(milliseconds: 200)),
+      false,
+    );
+
+    _declareTests(
+      'bson',
+      SyncOptions(
+          syncImplementation: SyncClientImplementation.rust,
+          retryDelay: Duration(milliseconds: 200)),
+      true,
+    );
+  });
 }
 
-void _declareTests(String name, SyncOptions options) {
+void _declareTests(String name, SyncOptions options, bool bson) {
   final ignoredLogger = Logger.detached('powersync.test')..level = Level.OFF;
 
   group(name, () {
@@ -48,9 +63,9 @@ void _declareTests(String name, SyncOptions options) {
     var credentialsCallbackCount = 0;
     Future<void> Function(PowerSyncDatabase) uploadData = (db) async {};
 
-    void createSyncClient() {
+    void createSyncClient({Schema? schema}) {
       final (client, server) = inMemoryServer();
-      server.mount(syncService.router.call);
+      server.mount((req) => syncService.router(req));
 
       final thisSyncClient = syncClient = database.connectWithMockService(
         client,
@@ -63,6 +78,7 @@ void _declareTests(String name, SyncOptions options) {
           );
         }, uploadData: (db) => uploadData(db)),
         options: options,
+        customSchema: schema,
       );
 
       addTearDown(() async {
@@ -73,7 +89,7 @@ void _declareTests(String name, SyncOptions options) {
     setUp(() async {
       logger = Logger.detached('powersync.active')..level = Level.ALL;
       credentialsCallbackCount = 0;
-      syncService = MockSyncService();
+      syncService = MockSyncService(useBson: bson);
 
       factory = await testUtils.testFactory();
       (raw, database) = await factory.openInMemoryDatabase();
@@ -104,8 +120,8 @@ void _declareTests(String name, SyncOptions options) {
       addTearDown(status.cancel);
 
       syncService.addKeepAlive();
-      await expectLater(
-          status, emits(isSyncStatus(connected: true, hasSynced: false)));
+      await expectLater(status,
+          emitsThrough(isSyncStatus(connected: true, hasSynced: false)));
       return status;
     }
 
@@ -206,6 +222,103 @@ void _declareTests(String name, SyncOptions options) {
         // The two buckets should have been inserted in a single transaction
         // because the messages were received in quick succession.
         expect(commits, 1);
+      });
+    } else {
+      // raw tables are only supported by the rust sync client
+      test('raw tables', () async {
+        final schema = Schema(const [], rawTables: [
+          RawTable(
+            name: 'lists',
+            put: PendingStatement(
+              sql: 'INSERT OR REPLACE INTO lists (id, name) VALUES (?, ?)',
+              params: [
+                PendingStatementValue.id(),
+                PendingStatementValue.column('name'),
+              ],
+            ),
+            delete: PendingStatement(
+              sql: 'DELETE FROM lists WHERE id = ?',
+              params: [
+                PendingStatementValue.id(),
+              ],
+            ),
+          ),
+        ]);
+
+        await database.execute(
+            'CREATE TABLE lists (id TEXT NOT NULL PRIMARY KEY, name TEXT);');
+        final query = StreamQueue(
+            database.watch('SELECT * FROM lists', throttle: Duration.zero));
+        await expectLater(query, emits(isEmpty));
+
+        createSyncClient(schema: schema);
+        await waitForConnection();
+
+        syncService
+          ..addLine({
+            'checkpoint': Checkpoint(
+              lastOpId: '1',
+              writeCheckpoint: null,
+              checksums: [
+                BucketChecksum(bucket: 'a', priority: 3, checksum: 0)
+              ],
+            )
+          })
+          ..addLine({
+            'data': {
+              'bucket': 'a',
+              'data': [
+                {
+                  'checksum': 0,
+                  'data': json.encode({'name': 'custom list'}),
+                  'op': 'PUT',
+                  'op_id': '1',
+                  'object_id': 'my_list',
+                  'object_type': 'lists'
+                }
+              ]
+            }
+          })
+          ..addLine({
+            'checkpoint_complete': {'last_op_id': '1'}
+          });
+
+        await expectLater(
+          query,
+          emits([
+            {'id': 'my_list', 'name': 'custom list'}
+          ]),
+        );
+
+        syncService
+          ..addLine({
+            'checkpoint': Checkpoint(
+              lastOpId: '2',
+              writeCheckpoint: null,
+              checksums: [
+                BucketChecksum(bucket: 'a', priority: 3, checksum: 0)
+              ],
+            )
+          })
+          ..addLine({
+            'data': {
+              'bucket': 'a',
+              'data': [
+                {
+                  'checksum': 0,
+                  'op': 'REMOVE',
+                  'op_id': '2',
+                  'object_id': 'my_list',
+                  'object_type': 'lists'
+                }
+              ]
+            }
+          })
+          ..addLine({
+            'checkpoint_complete': {'last_op_id': '2'}
+          });
+
+        await expectLater(query, emits(isEmpty));
       });
     }
 
@@ -773,6 +886,98 @@ void _declareTests(String name, SyncOptions options) {
       // Should reconnect after delay.
       await Future<void>.delayed(const Duration(milliseconds: 500));
       expect(syncService.controller.hasListener, isTrue);
+    });
+
+    test('uploads writes made while offline', () async {
+      // Local write while not connected
+      await database.execute(
+          'insert into customers (id, name) values (uuid(), ?)',
+          ['local customer']);
+      uploadData = (db) async {
+        final batch = await db.getNextCrudTransaction();
+        if (batch != null) {
+          await batch.complete();
+        }
+      };
+      syncService.writeCheckpoint = () => {
+            'data': {'write_checkpoint': '1'}
+          };
+
+      final query = StreamQueue(database
+          .watch('SELECT name FROM customers')
+          .map((e) => e.single['name']));
+      expect(await query.next, 'local customer');
+
+      await waitForConnection();
+
+      syncService
+        ..addLine({
+          'checkpoint': Checkpoint(
+            lastOpId: '1',
+            writeCheckpoint: '1',
+            checksums: [BucketChecksum(bucket: 'a', priority: 3, checksum: 0)],
+          )
+        })
+        ..addLine({
+          'data': {
+            'bucket': 'a',
+            'data': <Map<String, Object?>>[
+              {
+                'op_id': '1',
+                'op': 'PUT',
+                'object_type': 'customers',
+                'object_id': '1',
+                'checksum': 0,
+                'data': json.encode({'name': 'from server'}),
+              }
+            ],
+          }
+        })
+        ..addLine({
+          'checkpoint_complete': {'last_op_id': '1'}
+        });
+
+      expect(await query.next, 'from server');
+    });
+
+    group('abort', () {
+      test('during connect', () async {
+        final requestStarted = Completer<void>();
+
+        syncService.router = Router()
+          ..post('/sync/stream', expectAsync1((Request request) async {
+            requestStarted.complete();
+
+            // emulate a network that never connects
+            await Completer<void>().future;
+          }));
+
+        syncClient.streamingSync();
+        await requestStarted.future;
+        expect(database.currentStatus, isSyncStatus(connecting: true));
+
+        await syncClient.abort();
+        expect(database.currentStatus.anyError, isNull);
+      });
+
+      test('during stream', () async {
+        final status = await waitForConnection();
+        syncService.addLine({
+          'checkpoint': {
+            'last_op_id': '0',
+            'buckets': [
+              {
+                'bucket': 'bkt',
+                'checksum': 0,
+              }
+            ],
+          },
+        });
+        await expectLater(status, emits(isSyncStatus(downloading: true)));
+
+        await syncClient.abort();
+        expect(database.currentStatus.anyError, isNull);
+      });
     });
   });
 }

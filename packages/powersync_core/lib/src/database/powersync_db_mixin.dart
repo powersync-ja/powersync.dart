@@ -297,6 +297,13 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
       params: params,
     );
 
+    if (schema.rawTables.isNotEmpty &&
+        resolvedOptions.source.syncImplementation !=
+            SyncClientImplementation.rust) {
+      throw UnsupportedError(
+          'Raw tables are only supported by the Rust client.');
+    }
+
     // ignore: deprecated_member_use_from_same_package
     clientParams = params;
     var thisConnectAborter = AbortController();

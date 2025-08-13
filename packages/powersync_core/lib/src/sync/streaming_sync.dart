@@ -32,6 +32,7 @@ abstract interface class StreamingSync {
 
 @internal
 class StreamingSyncImplementation implements StreamingSync {
+  final String schemaJson;
   final BucketStorage adapter;
   final InternalConnector connector;
   final ResolvedSyncOptions options;
@@ -62,6 +63,7 @@ class StreamingSyncImplementation implements StreamingSync {
   String? clientId;
 
   StreamingSyncImplementation({
+    required this.schemaJson,
     required this.adapter,
     required this.connector,
     required this.crudUpdateTriggerStream,
@@ -504,16 +506,23 @@ class StreamingSyncImplementation implements StreamingSync {
     }
   }
 
-  Future<http.StreamedResponse?> _postStreamRequest(Object? data) async {
+  Future<http.StreamedResponse?> _postStreamRequest(
+      Object? data, bool acceptBson) async {
+    const ndJson = 'application/x-ndjson';
+    const bson = 'application/vnd.powersync.bson-stream';
+
     final credentials = await connector.getCredentialsCached();
     if (credentials == null) {
       throw CredentialsException('Not logged in');
     }
     final uri = credentials.endpointUri('sync/stream');
 
-    final request = http.Request('POST', uri);
+    final request =
+        http.AbortableRequest('POST', uri, abortTrigger: _abort!.onAbort);
     request.headers['Content-Type'] = 'application/json';
     request.headers['Authorization'] = "Token ${credentials.token}";
+    request.headers['Accept'] =
+        acceptBson ? '$bson;q=0.9,$ndJson;q=0.8' : ndJson;
     request.headers.addAll(_userAgentHeaders);
 
     request.body = convert.jsonEncode(data);
@@ -533,18 +542,13 @@ class StreamingSyncImplementation implements StreamingSync {
     return res;
   }
 
-  Stream<String> _rawStreamingSyncRequest(Object? data) async* {
-    final response = await _postStreamRequest(data);
-    if (response != null) {
-      yield* response.stream.lines;
-    }
-  }
-
   Stream<StreamingSyncLine> _streamingSyncRequest(StreamingSyncRequest data) {
-    return _rawStreamingSyncRequest(data)
-        .parseJson
-        .cast<Map<String, dynamic>>()
-        .transform(StreamingSyncLine.reader);
+    return streamFromFutureAwaitInCancellation(_postStreamRequest(data, false))
+        .asyncExpand((response) {
+      return response?.stream.lines.parseJson
+          .cast<Map<String, dynamic>>()
+          .transform(StreamingSyncLine.reader);
+    });
   }
 
   /// Delays the standard `retryDelay` Duration, but exits early if
@@ -586,6 +590,7 @@ typedef BucketDescription = ({
 final class _ActiveRustStreamingIteration {
   final StreamingSyncImplementation sync;
   var _isActive = true;
+  var _hadSyncLine = false;
 
   StreamSubscription<void>? _completedUploads;
   final Completer<void> _completedStream = Completer();
@@ -595,7 +600,12 @@ final class _ActiveRustStreamingIteration {
   Future<void> syncIteration() async {
     try {
       await _control(
-          'start', convert.json.encode({'parameters': sync.options.params}));
+        'start',
+        convert.json.encode({
+          'parameters': sync.options.params,
+          'schema': convert.json.decode(sync.schemaJson),
+        }),
+      );
       assert(_completedStream.isCompleted, 'Should have started streaming');
       await _completedStream.future;
     } finally {
@@ -606,7 +616,18 @@ final class _ActiveRustStreamingIteration {
   }
 
   Stream<ReceivedLine> _receiveLines(Object? data) {
-    return sync._rawStreamingSyncRequest(data).map(ReceivedLine.new);
+    return streamFromFutureAwaitInCancellation(
+            sync._postStreamRequest(data, true))
+        .asyncExpand<Object /* Uint8List | String */ >((response) {
+      if (response == null) {
+        return null;
+      } else {
+        final contentType = response.headers['content-type'];
+        final isBson = contentType == 'application/vnd.powersync.bson-stream';
+
+        return isBson ? response.stream.bsonDocuments : response.stream.lines;
+      }
+    }).map(ReceivedLine.new);
   }
 
   Future<void> _handleLines(EstablishSyncStream request) async {
@@ -621,8 +642,10 @@ final class _ActiveRustStreamingIteration {
 
       switch (event) {
         case ReceivedLine(line: final Uint8List line):
+          _triggerCrudUploadOnFirstLine();
           await _control('line_binary', line);
         case ReceivedLine(line: final line as String):
+          _triggerCrudUploadOnFirstLine();
           await _control('line_text', line);
         case UploadCompleted():
           await _control('completed_upload');
@@ -631,6 +654,17 @@ final class _ActiveRustStreamingIteration {
         case TokenRefreshComplete():
           await _control('refreshed_token');
       }
+    }
+  }
+
+  /// Triggers a local CRUD upload when the first sync line has been received.
+  ///
+  /// This allows uploading local changes that have been made while offline or
+  /// disconnected.
+  void _triggerCrudUploadOnFirstLine() {
+    if (!_hadSyncLine) {
+      sync._internalCrudTriggerController.add(null);
+      _hadSyncLine = true;
     }
   }
 

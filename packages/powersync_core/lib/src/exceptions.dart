@@ -38,15 +38,11 @@ class SyncResponseException implements Exception {
       http.StreamedResponse response) async {
     try {
       final body = await response.stream.bytesToString();
-      final decoded = convert.jsonDecode(body);
-      final details = _stringOrFirst(decoded['error']?['details']) ?? body;
-      final message = '${response.reasonPhrase ?? "Request failed"}: $details';
-      return SyncResponseException(response.statusCode, message);
-    } on Error catch (_) {
-      return SyncResponseException(
-        response.statusCode,
-        response.reasonPhrase ?? "Request failed",
-      );
+      return _fromResponseBody(response, body);
+    } on Exception catch (_) {
+      // Could be FormatException, stream issues, or possibly other exceptions.
+      // Fallback to just using the response header.
+      return _fromResponseHeader(response);
     }
   }
 
@@ -54,21 +50,63 @@ class SyncResponseException implements Exception {
   static SyncResponseException fromResponse(http.Response response) {
     try {
       final body = response.body;
-      final decoded = convert.jsonDecode(body);
-      final details = _stringOrFirst(decoded['error']?['details']) ?? body;
-      final message = '${response.reasonPhrase ?? "Request failed"}: $details';
-      return SyncResponseException(response.statusCode, message);
-    } on FormatException catch (_) {
-      return SyncResponseException(
-        response.statusCode,
-        response.reasonPhrase ?? "Request failed",
-      );
-    } on Error catch (_) {
-      return SyncResponseException(
-        response.statusCode,
-        response.reasonPhrase ?? "Request failed",
-      );
+      return _fromResponseBody(response, body);
+    } on Exception catch (_) {
+      // Could be FormatException, or possibly other exceptions.
+      // Fallback to just using the response header.
+      return _fromResponseHeader(response);
     }
+  }
+
+  static SyncResponseException _fromResponseBody(
+      http.BaseResponse response, String body) {
+    final decoded = convert.jsonDecode(body);
+    final details = switch (decoded['error']) {
+          final Map<String, Object?> details => _errorDescription(details),
+          _ => null,
+        } ??
+        body;
+
+    final message = '${response.reasonPhrase ?? "Request failed"}: $details';
+    return SyncResponseException(response.statusCode, message);
+  }
+
+  static SyncResponseException _fromResponseHeader(http.BaseResponse response) {
+    return SyncResponseException(
+      response.statusCode,
+      response.reasonPhrase ?? "Request failed",
+    );
+  }
+
+  /// Extracts an error description from an error resonse looking like
+  /// `{"code":"PSYNC_S2106","status":401,"description":"Authentication required","name":"AuthorizationError"}`.
+  static String? _errorDescription(Map<String, Object?> raw) {
+    final code = raw['code']; // Required, string
+    final description = raw['description']; // Required, string
+
+    final name = raw['name']; // Optional, string
+    final details = raw['details']; // Optional, string
+
+    if (code is! String || description is! String) {
+      return null;
+    }
+
+    final fullDescription = StringBuffer(code);
+    if (name is String) {
+      fullDescription.write('($name)');
+    }
+
+    fullDescription
+      ..write(': ')
+      ..write(description);
+
+    if (details is String) {
+      fullDescription
+        ..write(', ')
+        ..write(details);
+    }
+
+    return fullDescription.toString();
   }
 
   int statusCode;
@@ -79,18 +117,6 @@ class SyncResponseException implements Exception {
   @override
   toString() {
     return 'SyncResponseException: $statusCode $description';
-  }
-}
-
-String? _stringOrFirst(Object? details) {
-  if (details == null) {
-    return null;
-  } else if (details is String) {
-    return details;
-  } else if (details case [final String first, ...]) {
-    return first;
-  } else {
-    return null;
   }
 }
 

@@ -1,6 +1,6 @@
 name: powersync_flutter_libs
 description: PowerSync core binaries for the PowerSync Flutter SDK. Needs to be included for Flutter apps.
-version: 0.4.9
+version: 0.4.11
 repository: https://github.com/powersync-ja/powersync.dart
 homepage: https://www.powersync.com/
 
