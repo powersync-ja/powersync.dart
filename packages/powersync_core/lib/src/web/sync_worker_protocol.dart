@@ -5,6 +5,7 @@ import 'dart:js_interop';
 import 'package:logging/logging.dart';
 import 'package:powersync_core/src/schema.dart';
 import 'package:powersync_core/src/sync/options.dart';
+import 'package:powersync_core/src/sync/stream.dart';
 import 'package:web/web.dart';
 
 import '../connector.dart';
@@ -247,6 +248,7 @@ extension type SerializedSyncStatus._(JSObject _) implements JSObject {
     required String? downloadError,
     required JSArray? priorityStatusEntries,
     required JSArray<SerializedBucketProgress>? syncProgress,
+    required JSString streamSubscriptions,
   });
 
   factory SerializedSyncStatus.from(SyncStatus status) {
@@ -272,6 +274,7 @@ extension type SerializedSyncStatus._(JSObject _) implements JSObject {
         var other => SerializedBucketProgress.serialize(
             InternalSyncDownloadProgress.ofPublic(other).buckets),
       },
+      streamSubscriptions: json.encode(status.internalSubscriptions).toJS,
     );
   }
 
@@ -285,8 +288,11 @@ extension type SerializedSyncStatus._(JSObject _) implements JSObject {
   external String? downloadError;
   external JSArray? priorityStatusEntries;
   external JSArray<SerializedBucketProgress>? syncProgress;
+  external JSString? streamSubscriptions;
 
   SyncStatus asSyncStatus() {
+    final streamSubscriptions = this.streamSubscriptions?.toDart;
+
     return SyncStatus(
       connected: connected,
       connecting: connecting,
@@ -306,7 +312,7 @@ extension type SerializedSyncStatus._(JSObject _) implements JSObject {
             final syncedMillis = (rawSynced as JSNumber?)?.toDartInt;
 
             return (
-              priority: BucketPriority((rawPriority as JSNumber).toDartInt),
+              priority: StreamPriority((rawPriority as JSNumber).toDartInt),
               lastSyncedAt: syncedMillis != null
                   ? DateTime.fromMicrosecondsSinceEpoch(syncedMillis)
                   : null,
@@ -319,6 +325,13 @@ extension type SerializedSyncStatus._(JSObject _) implements JSObject {
         final serializedProgress => InternalSyncDownloadProgress(
                 SerializedBucketProgress.deserialize(serializedProgress))
             .asSyncDownloadProgress,
+      },
+      streamSubscriptions: switch (streamSubscriptions) {
+        null => null,
+        final serialized => (json.decode(serialized) as List)
+            .map((e) => CoreActiveStreamSubscription.fromJson(
+                e as Map<String, Object?>))
+            .toList(),
       },
     );
   }
