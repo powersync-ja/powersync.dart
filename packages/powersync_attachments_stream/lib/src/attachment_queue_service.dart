@@ -223,7 +223,7 @@ class AttachmentQueue {
               id: item.id,
               filename: filename,
               state: AttachmentState.queuedDownload,
-              metaData: item.metaData
+              metaData: item.metaData,
             ),
           );
         } else if (existingQueueItem.state == AttachmentState.archived) {
