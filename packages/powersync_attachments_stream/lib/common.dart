@@ -5,3 +5,4 @@ export 'src/abstractions/attachment_service.dart';
 export 'src/abstractions/attachment_context.dart';
 export 'src/abstractions/local_storage.dart';
 export 'src/abstractions/remote_storage.dart'; 
+export 'src/attachment_queue_service.dart';
