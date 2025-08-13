@@ -376,7 +376,7 @@ Future<void> _syncIsolate(_PowerSyncDatabaseIsolateArgs args) async {
         await shutdown();
       } else if (action == 'changed_subscriptions') {
         openedStreamingSync
-            ?.updateSubscriptions(action[1] as List<SubscribedStream>);
+            ?.updateSubscriptions(message[1] as List<SubscribedStream>);
       }
     }
   });

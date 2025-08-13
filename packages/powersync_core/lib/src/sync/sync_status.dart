@@ -58,6 +58,7 @@ final class SyncStatus {
 
   final List<CoreActiveStreamSubscription>? _internalSubscriptions;
 
+  @internal
   const SyncStatus({
     this.connected = false,
     this.connecting = false,
