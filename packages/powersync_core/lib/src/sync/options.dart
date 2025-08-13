@@ -107,6 +107,7 @@ extension type ResolvedSyncOptions(SyncOptions source) {
       crudThrottleTime: other.crudThrottleTime ?? crudThrottleTime,
       retryDelay: other.retryDelay ?? retryDelay,
       params: other.params ?? params,
+      syncImplementation: other.syncImplementation,
       includeDefaultStreams:
           other.includeDefaultStreams ?? includeDefaultStreams,
     );
@@ -114,6 +115,7 @@ extension type ResolvedSyncOptions(SyncOptions source) {
     final didChange = !_mapEquality.equals(newOptions.params, params) ||
         newOptions.crudThrottleTime != crudThrottleTime ||
         newOptions.retryDelay != retryDelay ||
+        newOptions.syncImplementation != source.syncImplementation ||
         newOptions.includeDefaultStreams != includeDefaultStreams;
     return (ResolvedSyncOptions(newOptions), didChange);
   }

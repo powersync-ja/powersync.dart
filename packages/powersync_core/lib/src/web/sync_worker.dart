@@ -109,6 +109,8 @@ class _ConnectedClient {
             _runner = null;
             return (JSObject(), null);
           case SyncWorkerMessageType.updateSubscriptions:
+            _runner?.updateClientSubscriptions(
+                this, (payload as UpdateSubscriptions).toDart);
             return (JSObject(), null);
           default:
             throw StateError('Unexpected message type $type');

@@ -144,4 +144,24 @@ final class CoreActiveStreamSubscription implements SyncSubscriptionDefinition {
       },
     );
   }
+
+  Map<String, Object?> toJson() {
+    return {
+      'name': name,
+      'parameters': parameters,
+      'priority': priority.priorityNumber,
+      'associated_buckets': associatedBuckets,
+      'active': active,
+      'is_default': isDefault,
+      'has_explicit_subscription': hasExplicitSubscription,
+      'expires_at': switch (expiresAt) {
+        null => null,
+        final expiresAt => expiresAt.millisecondsSinceEpoch / 1000,
+      },
+      'last_synced_at': switch (lastSyncedAt) {
+        null => null,
+        final lastSyncedAt => lastSyncedAt.millisecondsSinceEpoch / 1000,
+      }
+    };
+  }
 }

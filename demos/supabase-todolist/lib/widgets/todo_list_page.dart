@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:powersync/powersync.dart';
 
 import '../powersync.dart';
 import './status_app_bar.dart';
@@ -38,30 +39,82 @@ class TodoListPage extends StatelessWidget {
   }
 }
 
-class TodoListWidget extends StatelessWidget {
+class TodoListWidget extends StatefulWidget {
   final TodoList list;
 
   const TodoListWidget({super.key, required this.list});
 
   @override
+  State<TodoListWidget> createState() => _TodoListWidgetState();
+}
+
+class _TodoListWidgetState extends State<TodoListWidget> {
+  SyncStreamSubscription? _listSubscription;
+
+  void _subscribe(String listId) {
+    db
+        .syncStream('todos', {'list': listId})
+        .subscribe(ttl: const Duration(hours: 1))
+        .then((sub) {
+          if (mounted && widget.list.id == listId) {
+            setState(() {
+              _listSubscription = sub;
+            });
+          } else {
+            sub.unsubscribe();
+          }
+        });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _subscribe(widget.list.id);
+  }
+
+  @override
+  void didUpdateWidget(covariant TodoListWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _subscribe(widget.list.id);
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+    _listSubscription?.unsubscribe();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return StreamBuilder(
-      stream: TodoList.watchSyncStatus().map((e) => e.hasSynced),
-      initialData: db.currentStatus.hasSynced,
+      stream: db.statusStream,
+      initialData: db.currentStatus,
       builder: (context, snapshot) {
-        return StreamBuilder(
-          stream: list.watchItems(),
-          builder: (context, snapshot) {
-            final items = snapshot.data ?? const [];
+        final hasSynced = switch (_listSubscription) {
+              null => null,
+              final sub => snapshot.requireData.statusFor(sub),
+            }
+                ?.subscription
+                .hasSynced ??
+            false;
 
-            return ListView(
-              padding: const EdgeInsets.symmetric(vertical: 8.0),
-              children: items.map((todo) {
-                return TodoItemWidget(todo: todo);
-              }).toList(),
-            );
-          },
-        );
+        if (!hasSynced) {
+          return const CircularProgressIndicator();
+        } else {
+          return StreamBuilder(
+            stream: widget.list.watchItems(),
+            builder: (context, snapshot) {
+              final items = snapshot.data ?? const [];
+
+              return ListView(
+                padding: const EdgeInsets.symmetric(vertical: 8.0),
+                children: items.map((todo) {
+                  return TodoItemWidget(todo: todo);
+                }).toList(),
+              );
+            },
+          );
+        }
       },
     );
   }
