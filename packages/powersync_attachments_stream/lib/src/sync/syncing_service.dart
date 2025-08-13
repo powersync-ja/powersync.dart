@@ -30,8 +30,7 @@ import '../abstractions/sync_error_handler.dart';
 /// - [remoteStorage]: The remote storage implementation for handling file operations.
 /// - [localStorage]: The local storage implementation for managing files locally.
 /// - [attachmentsService]: The service for managing attachment states and operations.
-/// - [getLocalUri]: A function to resolve the local URI for a given filename.
-/// - [onDownloadError], [onUploadError], [onDeleteError]: Optional error handlers for managing sync-related errors.
+/// - [errorHandler]: Optional error handler for managing sync-related errors.
 class SyncingService {
   final AbstractRemoteStorageAdapter remoteStorage;
   final AbstractLocalStorageAdapter localStorage;
