@@ -33,8 +33,7 @@ Future<void> initializeAttachmentQueue(PowerSyncDatabase db) async {
   await attachmentQueue.startSync();
 }
 
-Future<Attachment> savePhotoAttachment(
-    List<int> photoData, String todoId,
+Future<Attachment> savePhotoAttachment(List<int> photoData, String todoId,
     {String mediaType = 'image/jpeg'}) async {
   // Save the file using the AttachmentQueue API
   return await attachmentQueue.saveFile(

@@ -8,7 +8,6 @@ import 'dart:async';
 
 import 'package:logging/logging.dart';
 import 'package:powersync_core/powersync_core.dart';
-import 'package:sqlite_async/mutex.dart';
 import 'package:sqlite_async/sqlite_async.dart';
 
 import 'attachment.dart';
@@ -108,11 +107,10 @@ class AttachmentQueue {
   }) : logger = logger ?? Logger('AttachmentQueue') {
     attachmentsService = AttachmentServiceImpl(
       db: db,
-      logger: logger ?? Logger('AttachmentQueue'),
+      logger: this.logger,
       maxArchivedCount: archivedCacheLimit,
       attachmentsQueueTableName: attachmentsQueueTableName,
     );
-
     syncingService = SyncingService(
       remoteStorage: remoteStorage,
       localStorage: localStorage,

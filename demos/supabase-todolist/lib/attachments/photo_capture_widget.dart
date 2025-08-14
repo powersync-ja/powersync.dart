@@ -9,7 +9,8 @@ class TakePhotoWidget extends StatefulWidget {
   final String todoId;
   final CameraDescription camera;
 
-  const TakePhotoWidget({super.key, required this.todoId, required this.camera});
+  const TakePhotoWidget(
+      {super.key, required this.todoId, required this.camera});
 
   @override
   State<StatefulWidget> createState() {
@@ -45,19 +46,19 @@ class _TakePhotoWidgetState extends State<TakePhotoWidget> {
       log.info('Taking photo for todo: ${widget.todoId}');
       await _initializeControllerFuture;
       final XFile photo = await _cameraController.takePicture();
-      
+
       // Read the photo data as bytes
       final photoFile = File(photo.path);
       if (!await photoFile.exists()) {
         log.warning('Photo file does not exist: ${photo.path}');
         return;
       }
-      
+
       final photoData = await photoFile.readAsBytes();
-      
+
       // Save the photo attachment with the byte data
       final attachment = await savePhotoAttachment(photoData, widget.todoId);
-      
+
       log.info('Photo attachment saved with ID: ${attachment.id}');
     } catch (e) {
       log.severe('Error taking photo: $e');
