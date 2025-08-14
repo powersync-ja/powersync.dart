@@ -10,7 +10,7 @@ dependencies:
   flutter:
     sdk: flutter
 
-  powersync_core: ^1.5.1
+  powersync_core: ^1.5.2
   logging: ^1.2.0
   path_provider: ^2.0.13
 
