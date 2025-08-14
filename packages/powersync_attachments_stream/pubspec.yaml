@@ -5,7 +5,7 @@ repository: https://github.com/powersync-ja/powersync.dart
 homepage: https://www.powersync.com/
 
 environment:
-  sdk: ^3.8.1
+  sdk: ^3.4.0
 
 dependencies:
   flutter:
@@ -16,6 +16,7 @@ dependencies:
   logging: ^1.2.0
   sqlite_async: ^0.11.0
   path_provider: ^2.0.13
+  sqlite3: ^2.9.0
 
 dev_dependencies:
   flutter_test:

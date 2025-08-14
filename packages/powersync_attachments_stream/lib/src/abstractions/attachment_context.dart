@@ -1,3 +1,5 @@
+import 'package:sqlite_async/sqlite_async.dart';
+
 import '../attachment.dart';
 
 /// Context for performing Attachment operations.
@@ -8,8 +10,7 @@ abstract class AbstractAttachmentContext {
   /// Delete the attachment from the attachment queue.
   ///
   /// [id]: The ID of the attachment to delete.
-  /// [tx]: The database context to use for the operation.
-  Future<void> deleteAttachment(String id, dynamic context);
+  Future<void> deleteAttachment(String id);
 
   /// Set the state of the attachment to ignore.
   Future<void> ignoreAttachment(String id);
@@ -38,12 +39,14 @@ abstract class AbstractAttachmentContext {
   /// Delete attachments which have been archived.
   ///
   /// Returns true if all items have been deleted. Returns false if there might be more archived items remaining.
-  Future<bool> deleteArchivedAttachments(Future<void> Function(List<Attachment>) callback);
+  Future<bool> deleteArchivedAttachments(
+      Future<void> Function(List<Attachment>) callback);
 
   /// Upserts an attachment record given a database connection context.
   ///
   /// [attachment]: The attachment to upsert.
   /// [context]: The database transaction/context to use for the operation.
   /// Returns the upserted [Attachment].
-  Future<Attachment> upsertAttachment(Attachment attachment, dynamic context);
+  Future<Attachment> upsertAttachment(
+      Attachment attachment, SqliteWriteContext context);
 }

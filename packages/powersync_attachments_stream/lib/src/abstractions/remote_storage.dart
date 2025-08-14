@@ -1,5 +1,5 @@
 import 'dart:async';
- 
+
 import '../attachment.dart';
 
 /// Adapter for interfacing with remote attachment storage.

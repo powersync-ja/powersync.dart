@@ -33,9 +33,9 @@ import '../abstractions/sync_error_handler.dart';
 /// - [errorHandler]: Optional error handler for managing sync-related errors.
 class SyncingService {
   final AbstractRemoteStorageAdapter remoteStorage;
-  final AbstractLocalStorageAdapter localStorage;
+  final LocalStorageAdapter localStorage;
   final AbstractAttachmentService attachmentsService;
-  final AbstractSyncErrorHandler? errorHandler;
+  final SyncErrorHandler? errorHandler;
   final Duration syncThrottle;
   final Duration period;
   final Logger logger;
@@ -75,27 +75,27 @@ class SyncingService {
     // Merge both streams and apply throttling
     final mergedStream =
         StreamGroup.merge<void>([attachmentChanges, manualTriggers]).listen((
-          _,
-        ) async {
-          try {
-            await attachmentsService.withContext((context) async {
-              final attachments = await context.getActiveAttachments();
-              logger.info('Found ${attachments.length} active attachments');
-              await handleSync(attachments, context);
-              await deleteArchivedAttachments(context);
-            });
-          } catch (e, st) {
-            if (e is! StateError && e.toString().contains('cancelled')) {
-              logger.severe(
-                'Caught exception when processing attachments',
-                e,
-                st,
-              );
-            } else {
-              rethrow;
-            }
-          }
+      _,
+    ) async {
+      try {
+        await attachmentsService.withContext((context) async {
+          final attachments = await context.getActiveAttachments();
+          logger.info('Found ${attachments.length} active attachments');
+          await handleSync(attachments, context);
+          await deleteArchivedAttachments(context);
         });
+      } catch (e, st) {
+        if (e is! StateError && e.toString().contains('cancelled')) {
+          logger.severe(
+            'Caught exception when processing attachments',
+            e,
+            st,
+          );
+        } else {
+          rethrow;
+        }
+      }
+    });
 
     _syncSubscription = mergedStream;
 
@@ -155,7 +155,7 @@ class SyncingService {
             break;
           case AttachmentState.queuedDelete:
             logger.info('Deleting [${attachment.filename}]');
-            updatedAttachments.add(await deleteAttachment(attachment));
+            updatedAttachments.add(await deleteAttachment(attachment, context));
             break;
           case AttachmentState.synced:
             logger.info('Attachment ${attachment.id} is already synced');
@@ -257,7 +257,7 @@ class SyncingService {
   ///
   /// [attachment]: The attachment to delete.
   /// Returns the updated attachment with its new state.
-  Future<Attachment> deleteAttachment(Attachment attachment) async {
+  Future<Attachment> deleteAttachment(Attachment attachment, AbstractAttachmentContext context) async {
     try {
       logger.info('Deleting attachment ${attachment.id} from remote storage');
       await remoteStorage.deleteFile(attachment);
@@ -266,6 +266,8 @@ class SyncingService {
           await localStorage.fileExists(attachment.localUri!)) {
         await localStorage.deleteFile(attachment.localUri!);
       }
+      // Remove the attachment record from the queue in a transaction.
+      await context.deleteAttachment(attachment.id);
       return attachment.copyWith(state: AttachmentState.archived);
     } catch (e, st) {
       if (errorHandler != null) {

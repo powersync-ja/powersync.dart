@@ -567,13 +567,6 @@ packages:
       relative: true
     source: path
     version: "1.15.0"
-  powersync_attachments_helper:
-    dependency: "direct overridden"
-    description:
-      path: "../../packages/powersync_attachments_helper"
-      relative: true
-    source: path
-    version: "0.6.18+11"
   powersync_attachments_stream:
     dependency: "direct main"
     description:
@@ -764,10 +757,10 @@ packages:
     dependency: transitive
     description:
       name: sqlite3
-      sha256: "310af39c40dd0bb2058538333c9d9840a2725ae0b9f77e4fd09ad6696aa8f66e"
+      sha256: f393d92c71bdcc118d6203d07c991b9be0f84b1a6f89dd4f7eed348131329924
       url: "https://pub.dev"
     source: hosted
-    version: "2.7.5"
+    version: "2.9.0"
   sqlite3_flutter_libs:
     dependency: transitive
     description:
@@ -1057,5 +1050,5 @@ packages:
     source: hosted
     version: "2.1.0"
 sdks:
-  dart: ">=3.8.1 <4.0.0"
+  dart: ">=3.7.0 <4.0.0"
   flutter: ">=3.27.0"

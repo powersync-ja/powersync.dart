@@ -8,5 +8,6 @@ abstract class AbstractAttachmentService {
 
   /// Executes a callback with an exclusive lock on all attachment operations.
   /// This helps prevent race conditions between different updates.
-  Future<R> withContext<R>(Future<R> Function(AbstractAttachmentContext context) action);
+  Future<R> withContext<R>(
+      Future<R> Function(AbstractAttachmentContext context) action);
 }
