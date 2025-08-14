@@ -1,3 +1,7 @@
+## 0.1.11+1
+
+ - Fix excessive memory consumption during large sync.
+
 ## 0.1.11
 
  - Support latest versions of `package:sqlite3` and `package:sqlite_async`.

@@ -1,3 +1,7 @@
+## 1.15.2
+
+ - Fix excessive memory consumption during large sync.
+
 ## 1.15.1
 
  - Support latest versions of `package:sqlite3` and `package:sqlite_async`.

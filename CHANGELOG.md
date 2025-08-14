@@ -3,6 +3,37 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 2025-08-14
+
+### Changes
+
+---
+
+Packages with breaking changes:
+
+ - There are no breaking changes in this release.
+
+Packages with other changes:
+
+ - [`powersync_core` - `v1.5.2`](#powersync_core---v152)
+ - [`powersync` - `v1.15.2`](#powersync---v1152)
+ - [`powersync_sqlcipher` - `v0.1.11+1`](#powersync_sqlcipher---v01111)
+
+---
+
+#### `powersync_core` - `v1.5.2`
+
+ - Fix excessive memory consumption during large sync.
+
+#### `powersync` - `v1.15.2`
+
+ - Fix excessive memory consumption during large sync.
+
+#### `powersync_sqlcipher` - `v0.1.11+1`
+
+ - Fix excessive memory consumption during large sync.
+
+
 ## 2025-08-11
 
 ### Changes
