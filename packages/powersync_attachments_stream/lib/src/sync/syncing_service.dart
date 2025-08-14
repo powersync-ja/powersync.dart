@@ -56,11 +56,7 @@ class SyncingService {
   }) : logger = logger ?? Logger('SyncingService');
 
   /// Starts the syncing process, including periodic and event-driven sync operations.
-  ///
-  /// [period] is the interval at which periodic sync operations are triggered.
-  Future<void> startSync({
-    Duration period = const Duration(seconds: 30),
-  }) async {
+  Future<void> startSync() async {
     if (_isClosed) return;
 
     _syncSubscription?.cancel();
@@ -99,8 +95,8 @@ class SyncingService {
 
     _syncSubscription = mergedStream;
 
-    // Start periodic sync
-    _periodicSubscription = Stream<void>.periodic(period, (_) => null).listen((
+    // Start periodic sync using instance period
+    _periodicSubscription = Stream<void>.periodic(period, (_) {}).listen((
       _,
     ) {
       logger.info('Periodically syncing attachments');
@@ -257,7 +253,8 @@ class SyncingService {
   ///
   /// [attachment]: The attachment to delete.
   /// Returns the updated attachment with its new state.
-  Future<Attachment> deleteAttachment(Attachment attachment, AbstractAttachmentContext context) async {
+  Future<Attachment> deleteAttachment(
+      Attachment attachment, AbstractAttachmentContext context) async {
     try {
       logger.info('Deleting attachment ${attachment.id} from remote storage');
       await remoteStorage.deleteFile(attachment);
