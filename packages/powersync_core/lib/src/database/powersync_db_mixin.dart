@@ -544,7 +544,26 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
   /// stream until that point as completed.
   ///
   /// This can be used to upload multiple transactions in a single batch, e.g.
-  /// with:AbortController
+  /// with:
+  ///
+  /// ```dart
+  /// CrudTransaction? lastTransaction;
+  /// final batch = <CrudEntry>[];
+  ///
+  /// await for (final transaction in powersync.nextCrudTransactions()) {
+  ///   batch.addAll(transaction.crud);
+  ///   lastTransaction = transaction;
+  ///
+  ///   if (batch.length > 100) {
+  ///     break;
+  ///   }
+  /// }
+  ///
+  /// if (batch.isNotEmpty) {
+  ///   await uploadBatch(batch);
+  ///   lastTransaction!.complete();
+  /// }
+  /// ```
   ///
   /// If there is no local data to upload, the stream emits a single `onDone`
   /// event.
