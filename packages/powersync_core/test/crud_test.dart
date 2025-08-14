@@ -271,6 +271,39 @@ void main() {
       expect(await powersync.getNextCrudTransaction(), equals(null));
     });
 
+    test('nextCrudTransactions', () async {
+      Future<void> createTransaction(int size) {
+        return powersync.writeTransaction((tx) async {
+          for (var i = 0; i < size; i++) {
+            await tx.execute('INSERT INTO assets (id) VALUES (uuid())');
+          }
+        });
+      }
+
+      await expectLater(powersync.nextCrudTransactions(), emitsDone);
+
+      await createTransaction(5);
+      await createTransaction(10);
+      await createTransaction(15);
+
+      CrudTransaction? lastTransaction;
+      final batch = <CrudEntry>[];
+      await for (final transaction in powersync.nextCrudTransactions()) {
+        batch.addAll(transaction.crud);
+        lastTransaction = transaction;
+
+        if (batch.length > 10) {
+          break;
+        }
+      }
+
+      expect(batch, hasLength(15));
+      await lastTransaction!.complete();
+
+      final remainingTransaction = await powersync.getNextCrudTransaction();
+      expect(remainingTransaction?.crud, hasLength(15));
+    });
+
     test('include metadata', () async {
       await powersync.updateSchema(Schema([
         Table(
