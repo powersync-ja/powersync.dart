@@ -438,7 +438,7 @@ Future<void> _syncIsolate(_PowerSyncDatabaseIsolateArgs args) async {
       }
     }
 
-    localUpdatesSubscription = db!.updates.listen((event) {
+    localUpdatesSubscription = db!.updatesSync.listen((event) {
       updatedTables.add(event.tableName);
 
       updateDebouncer ??=
