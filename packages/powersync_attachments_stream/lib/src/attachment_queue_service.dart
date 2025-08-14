@@ -9,8 +9,8 @@ import 'dart:async';
 import 'package:logging/logging.dart';
 import 'package:powersync_core/powersync_core.dart';
 import 'package:sqlite_async/mutex.dart';
+import 'package:sqlite_async/sqlite_async.dart';
 
- 
 import 'attachment.dart';
 import 'abstractions/attachment_service.dart';
 import 'abstractions/attachment_context.dart';
@@ -50,9 +50,9 @@ class WatchedAttachmentItem {
     this.filename,
     this.metaData,
   }) : assert(
-         fileExtension != null || filename != null,
-         'Either fileExtension or filename must be provided.',
-       );
+          fileExtension != null || filename != null,
+          'Either fileExtension or filename must be provided.',
+        );
 }
 
 /// Class used to implement the attachment queue.
@@ -76,9 +76,9 @@ class AttachmentQueue {
   final PowerSyncDatabase db;
   final AbstractRemoteStorageAdapter remoteStorage;
   final Stream<List<WatchedAttachmentItem>> Function() watchAttachments;
-  final AbstractLocalStorageAdapter localStorage;
+  final LocalStorageAdapter localStorage;
   final String attachmentsQueueTableName;
-  final AbstractSyncErrorHandler? errorHandler;
+  final SyncErrorHandler? errorHandler;
   final Duration syncInterval;
   final int archivedCacheLimit;
   final Duration syncThrottleDuration;
@@ -188,9 +188,7 @@ class AttachmentQueue {
     String attachmentId,
     String? fileExtension,
   ) async {
-    return fileExtension != null
-        ? '$attachmentId.$fileExtension'
-        : '$attachmentId.dat';
+    return '$attachmentId.${fileExtension ?? 'dat'}';
   }
 
   /// Processes attachment items returned from [watchAttachments].
@@ -204,20 +202,15 @@ class AttachmentQueue {
       final List<Attachment> attachmentUpdates = [];
 
       for (final item in items) {
-        final existingQueueItem = currentAttachments
-            .cast<Attachment?>()
-            .firstWhere(
-              (a) => a != null && a.id == item.id,
-              orElse: () => null,
-            );
+        final existingQueueItem =
+            currentAttachments.where((a) => a.id == item.id).firstOrNull;
 
         if (existingQueueItem == null) {
           if (!downloadAttachments) continue;
 
           // This item should be added to the queue.
           // This item is assumed to be coming from an upstream sync.
-          final String filename =
-              item.filename ??
+          final String filename = item.filename ??
               await resolveNewAttachmentFilename(item.id, item.fileExtension);
 
           attachmentUpdates.add(
@@ -286,8 +279,9 @@ class AttachmentQueue {
     required String mediaType,
     String? fileExtension,
     String? metaData,
-    required Future<void> Function(dynamic context, Attachment attachment)
-    updateHook,
+    required Future<void> Function(
+            SqliteWriteContext context, Attachment attachment)
+        updateHook,
   }) async {
     final row = await db.get('SELECT uuid() as id');
     final id = row['id'] as String;
@@ -323,8 +317,9 @@ class AttachmentQueue {
   /// The default implementation assumes the attachment record already exists locally.
   Future<Attachment> deleteFile({
     required String attachmentId,
-    required Future<void> Function(dynamic context, Attachment attachment)
-    updateHook,
+    required Future<void> Function(
+            SqliteWriteContext context, Attachment attachment)
+        updateHook,
   }) async {
     return await attachmentsService.withContext((attachmentContext) async {
       final attachment = await attachmentContext.getAttachment(attachmentId);

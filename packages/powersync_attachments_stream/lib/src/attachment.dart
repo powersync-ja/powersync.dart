@@ -57,20 +57,28 @@ const defaultAttachmentsQueueTableName = AttachmentQueue.defaultTableName;
 class Attachment {
   /// Unique identifier for the attachment.
   final String id;
+
   /// Timestamp of the last record update.
   final int timestamp;
+
   /// Name of the attachment file, e.g., `[id].jpg`.
   final String filename;
+
   /// Current state of the attachment, represented as an ordinal of [AttachmentState].
   final AttachmentState state;
+
   /// Local URI pointing to the attachment file, if available.
   final String? localUri;
+
   /// Media type of the attachment, typically represented as a MIME type.
   final String? mediaType;
+
   /// Size of the attachment in bytes, if available.
   final int? size;
+
   /// Indicates whether the attachment has been synced locally before.
   final bool hasSynced;
+
   /// Additional metadata associated with the attachment.
   final String? metaData;
 
@@ -139,19 +147,19 @@ class AttachmentsQueueTable extends Table {
     List<Index> indexes = const [],
     String? viewName,
   }) : super.localOnly(
-         attachmentsQueueTableName,
-         [
-           const Column.text('filename'),
-           const Column.text('local_uri'),
-           const Column.integer('timestamp'),
-           const Column.integer('size'),
-           const Column.text('media_type'),
-           const Column.integer('state'),
-           const Column.integer('has_synced'),
-           const Column.text('meta_data'),
-           ...additionalColumns,
-         ],
-         viewName: viewName,
-         indexes: indexes,
-       );
+          attachmentsQueueTableName,
+          [
+            const Column.text('filename'),
+            const Column.text('local_uri'),
+            const Column.integer('timestamp'),
+            const Column.integer('size'),
+            const Column.text('media_type'),
+            const Column.integer('state'),
+            const Column.integer('has_synced'),
+            const Column.text('meta_data'),
+            ...additionalColumns,
+          ],
+          viewName: viewName,
+          indexes: indexes,
+        );
 }

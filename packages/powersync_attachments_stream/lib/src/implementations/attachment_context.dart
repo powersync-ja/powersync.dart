@@ -1,6 +1,7 @@
 import 'package:powersync_core/powersync_core.dart';
 import 'package:powersync_core/sqlite3_common.dart';
 import 'package:logging/logging.dart';
+import 'package:sqlite_async/sqlite_async.dart';
 
 import '../abstractions/attachment_context.dart';
 import '../attachment.dart';
@@ -24,9 +25,11 @@ class AttachmentContextImpl implements AbstractAttachmentContext {
   }
 
   @override
-  Future<void> deleteAttachment(String id, dynamic context) async {
+  Future<void> deleteAttachment(String id) async {
     log.info('deleteAttachment: $id');
-    await context.execute('DELETE FROM $table WHERE id = ?', [id]);
+    await db.writeTransaction((tx) async {
+      await tx.execute('DELETE FROM $table WHERE id = ?', [id]);
+    });
   }
 
   @override
@@ -112,13 +115,15 @@ class AttachmentContextImpl implements AbstractAttachmentContext {
         maxArchivedCount,
       ],
     );
-    final archivedAttachments = results.map((row) => Attachment.fromRow(row)).toList();
+    final archivedAttachments =
+        results.map((row) => Attachment.fromRow(row)).toList();
 
     if (archivedAttachments.isEmpty) {
       return false;
     }
 
-    log.info('Deleting ${archivedAttachments.length} archived attachments (exceeding maxArchivedCount=$maxArchivedCount)...');
+    log.info(
+        'Deleting ${archivedAttachments.length} archived attachments (exceeding maxArchivedCount=$maxArchivedCount)...');
     // Call the callback with the list of archived attachments before deletion
     await callback(archivedAttachments);
 
@@ -137,9 +142,8 @@ class AttachmentContextImpl implements AbstractAttachmentContext {
   @override
   Future<Attachment> upsertAttachment(
     Attachment attachment,
-    dynamic context,
+    SqliteWriteContext context,
   ) async {
-
     await context.execute(
       '''INSERT OR REPLACE INTO 
                     $table (id, timestamp, filename, local_uri, media_type, size, state, has_synced, meta_data) 

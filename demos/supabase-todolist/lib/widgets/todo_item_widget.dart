@@ -27,7 +27,7 @@ class TodoItemWidget extends StatelessWidget {
       await attachmentQueue.deleteFile(
         attachmentId: todo.photoId!,
         updateHook: (context, attachment) async {
-          // await context.execute("UPDATE todos SET photo_id = NULL WHERE id = ?", [todo.id]);
+          await context.execute("UPDATE todos SET photo_id = NULL WHERE id = ?", [todo.id]);
         },
       );
     }

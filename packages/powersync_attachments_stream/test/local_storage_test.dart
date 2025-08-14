@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
- 
+
 import 'package:test/test.dart';
 import 'package:path/path.dart' as p;
 import 'package:powersync_attachments_stream/src/storage/io_local_storage.dart';
@@ -107,7 +107,8 @@ void main() {
     });
 
     group('edge cases and robustness', () {
-      test('saveFile with empty data writes empty file and returns 0 size', () async {
+      test('saveFile with empty data writes empty file and returns 0 size',
+          () async {
         const filePath = 'empty_file';
         final emptyBytes = Uint8List(0);
 
@@ -130,7 +131,8 @@ void main() {
           Uint8List.fromList([3, 4]),
           Uint8List.fromList([5, 6, 7, 8]),
         ];
-        final expectedBytes = Uint8List.fromList(chunks.expand((c) => c).toList());
+        final expectedBytes =
+            Uint8List.fromList(chunks.expand((c) => c).toList());
         await storage.saveFile(filePath, expectedBytes);
 
         final outChunks = await storage.readFile(filePath).toList();
@@ -161,7 +163,8 @@ void main() {
         expect(await storage.fileExists(filePath), isTrue);
       });
 
-      test('clear works even if base directory was removed externally', () async {
+      test('clear works even if base directory was removed externally',
+          () async {
         await storage.initialize();
 
         // Remove the base dir manually
@@ -186,12 +189,14 @@ void main() {
         await d.file(filePath, bytes).validate();
       });
 
-      test('readFile accepts mediaType parameter (ignored by IO impl)', () async {
+      test('readFile accepts mediaType parameter (ignored by IO impl)',
+          () async {
         const filePath = 'with_media_type';
         final data = Uint8List.fromList([1, 2, 3]);
         await storage.saveFile(filePath, data);
 
-        final result = await storage.readFile(filePath, mediaType: 'image/jpeg').toList();
+        final result =
+            await storage.readFile(filePath, mediaType: 'image/jpeg').toList();
         expect(result, equals([data]));
       });
     });

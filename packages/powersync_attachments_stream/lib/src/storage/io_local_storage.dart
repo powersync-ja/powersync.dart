@@ -6,10 +6,10 @@ import 'package:path/path.dart' as p;
 
 import '../abstractions/local_storage.dart';
 
-/// Implements [AbstractLocalStorageAdapter] for device filesystem using Dart IO.
+/// Implements [LocalStorageAdapter] for device filesystem using Dart IO.
 ///
 /// Handles file and directory operations for attachments.
-class IOLocalStorage implements AbstractLocalStorageAdapter {
+class IOLocalStorage implements LocalStorageAdapter {
   final String attachmentsDirectory;
   late final Directory baseDir;
 
