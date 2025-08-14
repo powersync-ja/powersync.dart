@@ -527,7 +527,7 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
   /// Unlike [getCrudBatch], this only returns data from a single transaction at a time.
   /// All data for the transaction is loaded into memory.
   Future<CrudTransaction?> getNextCrudTransaction() {
-    return nextCrudTransactions().firstOrNull;
+    return getCrudTransactions().firstOrNull;
   }
 
   /// Returns a stream of completed transactions with local writes against the
@@ -567,7 +567,7 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
   ///
   /// If there is no local data to upload, the stream emits a single `onDone`
   /// event.
-  Stream<CrudTransaction> nextCrudTransactions() async* {
+  Stream<CrudTransaction> getCrudTransactions() async* {
     var lastCrudItemId = -1;
     const sql = '''
 WITH RECURSIVE crud_entries AS (

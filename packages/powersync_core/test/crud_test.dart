@@ -280,7 +280,7 @@ void main() {
         });
       }
 
-      await expectLater(powersync.nextCrudTransactions(), emitsDone);
+      await expectLater(powersync.getCrudTransactions(), emitsDone);
 
       await createTransaction(5);
       await createTransaction(10);
@@ -288,7 +288,7 @@ void main() {
 
       CrudTransaction? lastTransaction;
       final batch = <CrudEntry>[];
-      await for (final transaction in powersync.nextCrudTransactions()) {
+      await for (final transaction in powersync.getCrudTransactions()) {
         batch.addAll(transaction.crud);
         lastTransaction = transaction;
 
