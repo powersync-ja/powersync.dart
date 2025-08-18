@@ -78,7 +78,7 @@ class _OfflineBoardsState extends State<OfflineBoards> with Service {
         onTap: () {},
         trailing: Switch(
           value: brd[j].availableOffline ?? false,
-          activeColor: brandColor,
+          activeThumbColor: brandColor,
           onChanged: (bool value) {
             setState(() {
               brd[j].availableOffline = value;
