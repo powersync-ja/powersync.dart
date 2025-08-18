@@ -537,7 +537,7 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
   /// method. Each entry emitted by the stream is a full transaction containing
   /// all local writes made while that transaction was active.
   ///
-  /// Unlike [getNextCrudTransaction], which awalys returns the oldest
+  /// Unlike [getNextCrudTransaction], which always returns the oldest
   /// transaction that hasn't been [CrudTransaction.complete]d yet, this stream
   /// can be used to receive multiple transactions. Calling
   /// [CrudTransaction.complete] will mark that transaction and all prior
