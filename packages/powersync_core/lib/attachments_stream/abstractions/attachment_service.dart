@@ -1,6 +1,9 @@
+import 'package:meta/meta.dart';
+
 import 'attachment_context.dart';
 
 /// Service for interacting with the local attachment records.
+@experimental
 abstract class AbstractAttachmentService {
   /// Watcher for changes to attachments table.
   /// Once a change is detected it will initiate a sync of the attachments.

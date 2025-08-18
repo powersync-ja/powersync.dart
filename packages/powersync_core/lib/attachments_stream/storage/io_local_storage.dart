@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:meta/meta.dart';
 import 'package:path/path.dart' as p;
 
 import '../abstractions/local_storage.dart';
@@ -9,6 +10,7 @@ import '../abstractions/local_storage.dart';
 /// Implements [LocalStorageAdapter] for device filesystem using Dart IO.
 ///
 /// Handles file and directory operations for attachments.
+@experimental
 class IOLocalStorage implements LocalStorageAdapter {
   final String attachmentsDirectory;
   late final Directory baseDir;

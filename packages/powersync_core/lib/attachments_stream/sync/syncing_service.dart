@@ -1,15 +1,7 @@
-// Service responsible for syncing attachments between local and remote storage.
-//
-// This service handles downloading, uploading, and deleting attachments, as well as
-// periodically syncing attachment states. It ensures proper lifecycle management
-// of sync operations and provides mechanisms for error handling and retries.
-//
-// The class provides a default implementation for syncing operations, which can be
-// extended or customized as needed.
-
 import 'dart:async';
 import 'dart:typed_data';
 
+import 'package:meta/meta.dart';
 import 'package:logging/logging.dart';
 import 'package:async/async.dart';
 
@@ -31,6 +23,7 @@ import '../abstractions/sync_error_handler.dart';
 /// - [localStorage]: The local storage implementation for managing files locally.
 /// - [attachmentsService]: The service for managing attachment states and operations.
 /// - [errorHandler]: Optional error handler for managing sync-related errors.
+@experimental
 class SyncingService {
   final AbstractRemoteStorageAdapter remoteStorage;
   final LocalStorageAdapter localStorage;

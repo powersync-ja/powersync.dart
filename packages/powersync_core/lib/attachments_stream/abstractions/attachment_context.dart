@@ -1,4 +1,5 @@
 import 'package:sqlite_async/sqlite_async.dart';
+import 'package:meta/meta.dart';
 
 import '../attachment.dart';
 
@@ -6,6 +7,7 @@ import '../attachment.dart';
 ///
 /// This is typically provided through a locking/exclusivity method and allows
 /// safe, transactional operations on the attachment queue.
+@experimental
 abstract class AbstractAttachmentContext {
   /// Delete the attachment from the attachment queue.
   ///

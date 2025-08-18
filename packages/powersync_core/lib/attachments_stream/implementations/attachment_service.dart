@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:meta/meta.dart';
 import 'package:logging/logging.dart';
 import 'package:powersync_core/powersync_core.dart';
 import 'package:sqlite_async/sqlite_async.dart';
@@ -9,6 +10,7 @@ import '../abstractions/attachment_context.dart';
 import '../attachment.dart';
 import './attachment_context.dart';
 
+@experimental
 class AttachmentServiceImpl implements AbstractAttachmentService {
   final PowerSyncDatabase db;
   final Logger logger;

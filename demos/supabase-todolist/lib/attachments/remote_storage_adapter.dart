@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:typed_data';
-import 'package:powersync_attachments_stream/powersync_attachments_stream.dart';
+import 'package:powersync_core/attachments_stream/attachment.dart';
+import 'package:powersync_core/attachments_stream/abstractions/remote_storage.dart';
 import 'package:powersync_flutter_demo/app_config.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:logging/logging.dart';

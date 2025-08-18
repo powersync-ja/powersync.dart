@@ -1,5 +1,8 @@
 import 'dart:typed_data';
 
+import 'package:meta/meta.dart';
+
+@experimental
 abstract interface class LocalStorageAdapter {
   /// Saves binary data stream to storage at the specified file path
   ///

@@ -4,7 +4,9 @@ import 'dart:io';
 import 'package:logging/logging.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:powersync/powersync.dart';
-import 'package:powersync_attachments_stream/powersync_attachments_stream.dart';
+import 'package:powersync_core/attachments_stream/attachment_queue_service.dart';
+import 'package:powersync_core/attachments_stream/storage/io_local_storage.dart';
+import 'package:powersync_core/attachments_stream/attachment.dart';
 import 'package:powersync_flutter_demo/attachments/remote_storage_adapter.dart';
 
 late AttachmentQueue attachmentQueue;

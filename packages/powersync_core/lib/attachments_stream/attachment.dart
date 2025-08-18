@@ -2,12 +2,14 @@
 ///
 /// Includes metadata, state, and utility methods for working with attachments.
 
+import 'package:meta/meta.dart';
 import 'package:powersync_core/sqlite3_common.dart' show Row;
 import 'package:powersync_core/powersync_core.dart';
 
 import './attachment_queue_service.dart';
 
 /// Represents the state of an attachment.
+@experimental
 enum AttachmentState {
   /// The attachment is queued for download from the remote storage.
   queuedDownload,
@@ -54,6 +56,7 @@ const defaultAttachmentsQueueTableName = AttachmentQueue.defaultTableName;
 /// - [size]: Size of the attachment in bytes, if available.
 /// - [hasSynced]: Indicates whether the attachment has been synced locally before.
 /// - [metaData]: Additional metadata associated with the attachment.
+@experimental
 class Attachment {
   /// Unique identifier for the attachment.
   final String id;
@@ -140,6 +143,7 @@ class Attachment {
 }
 
 /// Table definition for the attachments queue.
+@experimental
 class AttachmentsQueueTable extends Table {
   AttachmentsQueueTable({
     String attachmentsQueueTableName = defaultAttachmentsQueueTableName,

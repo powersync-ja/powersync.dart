@@ -1,8 +1,11 @@
 import 'dart:async';
 
+import 'package:meta/meta.dart';
+
 import '../attachment.dart';
 
 /// Adapter for interfacing with remote attachment storage.
+@experimental
 abstract class AbstractRemoteStorageAdapter {
   /// Uploads a file to remote storage.
   ///

@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 import 'package:flutter/material.dart';
-import 'package:powersync_attachments_stream/powersync_attachments_stream.dart';
+import 'package:powersync_core/attachments_stream/attachment.dart';
 import 'package:powersync_flutter_demo/attachments/camera_helpers.dart';
 import 'package:powersync_flutter_demo/attachments/photo_capture_widget.dart';
 import 'package:powersync_flutter_demo/attachments/queue.dart';
@@ -101,7 +101,7 @@ class _PhotoWidgetState extends State<PhotoWidget> {
           String? filePath = data.photoPath;
           bool fileIsDownloading = !data.fileExists;
           bool fileArchived =
-              data.attachment?.state == AttachmentState.archived.index;
+              data.attachment?.state == AttachmentState.archived;
 
           if (fileArchived) {
             return Column(

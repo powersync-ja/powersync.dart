@@ -4,7 +4,7 @@ import 'dart:typed_data';
 
 import 'package:test/test.dart';
 import 'package:path/path.dart' as p;
-import 'package:powersync_attachments_stream/src/storage/io_local_storage.dart';
+import 'package:powersync_core/attachments_stream/storage/io_local_storage.dart';
 import 'package:test_descriptor/test_descriptor.dart' as d;
 
 void main() {

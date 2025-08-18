@@ -567,15 +567,8 @@ packages:
       relative: true
     source: path
     version: "1.15.0"
-  powersync_attachments_stream:
-    dependency: "direct main"
-    description:
-      path: "../../packages/powersync_attachments_stream"
-      relative: true
-    source: path
-    version: "0.0.1"
   powersync_core:
-    dependency: "direct overridden"
+    dependency: "direct main"
     description:
       path: "../../packages/powersync_core"
       relative: true

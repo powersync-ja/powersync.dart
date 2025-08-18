@@ -7,6 +7,7 @@
 import 'dart:async';
 
 import 'package:logging/logging.dart';
+import 'package:meta/meta.dart';
 import 'package:powersync_core/powersync_core.dart';
 import 'package:sqlite_async/sqlite_async.dart';
 
@@ -27,6 +28,7 @@ import 'sync/syncing_service.dart';
 /// - [fileExtension]: File extension used to determine an internal filename for storage if no [filename] is provided.
 /// - [filename]: Filename to store the attachment with.
 /// - [metaData]: Optional metadata for the attachment record.
+@experimental
 class WatchedAttachmentItem {
   /// Id for the attachment record.
   final String id;
@@ -71,6 +73,7 @@ class WatchedAttachmentItem {
 /// - [syncThrottleDuration]: Throttles remote sync operations triggering.
 /// - [downloadAttachments]: Should attachments be downloaded.
 /// - [logger]: Logging interface used for all log operations.
+@experimental
 class AttachmentQueue {
   final PowerSyncDatabase db;
   final AbstractRemoteStorageAdapter remoteStorage;
