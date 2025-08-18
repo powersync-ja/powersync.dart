@@ -1,3 +1,7 @@
+## 0.6.19
+
+ - Remove direct dependency on `sqlite_async`.
+
 ## 0.6.18+11
 
  - Update a dependency to the latest release.

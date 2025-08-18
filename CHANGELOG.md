@@ -3,6 +3,27 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 2025-08-18
+
+### Changes
+
+---
+
+Packages with breaking changes:
+
+ - There are no breaking changes in this release.
+
+Packages with other changes:
+
+ - [`powersync_attachments_helper` - `v0.6.19`](#powersync_attachments_helper---v0619)
+
+---
+
+#### `powersync_attachments_helper` - `v0.6.19`
+
+ - Remove direct dependency on `sqlite_async`.
+
+
 ## 2025-08-14
 
 ### Changes
