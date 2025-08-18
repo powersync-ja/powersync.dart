@@ -540,8 +540,8 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
   /// Unlike [getNextCrudTransaction], which awalys returns the oldest
   /// transaction that hasn't been [CrudTransaction.complete]d yet, this stream
   /// can be used to receive multiple transactions. Calling
-  /// [CrudTransaction.complete] will mark _all_ transactions emitted by the
-  /// stream until that point as completed.
+  /// [CrudTransaction.complete] will mark that transaction and all prior
+  /// transactions emitted by the stream as completed.
   ///
   /// This can be used to upload multiple transactions in a single batch, e.g.
   /// with:
