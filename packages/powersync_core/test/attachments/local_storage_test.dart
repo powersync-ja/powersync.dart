@@ -1,10 +1,13 @@
+@TestOn('vm')
+library;
+
 import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:test/test.dart';
 import 'package:path/path.dart' as p;
-import 'package:powersync_core/attachments_stream/storage/io_local_storage.dart';
+import 'package:powersync_core/src/attachments/io_local_storage.dart';
 import 'package:test_descriptor/test_descriptor.dart' as d;
 
 void main() {
@@ -12,7 +15,7 @@ void main() {
     late IOLocalStorage storage;
 
     setUp(() async {
-      storage = IOLocalStorage(d.sandbox);
+      storage = IOLocalStorage(Directory(d.sandbox));
     });
 
     tearDown(() async {
@@ -225,7 +228,8 @@ void main() {
 
     group('initialize and clear', () {
       test('initialize creates the base directory', () async {
-        final newStorage = IOLocalStorage(p.join(d.sandbox, 'new_dir'));
+        final newStorage =
+            IOLocalStorage(Directory(p.join(d.sandbox, 'new_dir')));
         final baseDir = Directory(p.join(d.sandbox, 'new_dir'));
 
         expect(await baseDir.exists(), isFalse);

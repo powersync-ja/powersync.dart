@@ -3,12 +3,12 @@ import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 import 'package:flutter/material.dart';
-import 'package:powersync_core/attachments_stream/attachment.dart';
+import 'package:powersync_core/attachments.dart';
 import 'package:powersync_flutter_demo/attachments/camera_helpers.dart';
 import 'package:powersync_flutter_demo/attachments/photo_capture_widget.dart';
-import 'package:powersync_flutter_demo/attachments/queue.dart';
 
 import '../models/todo_item.dart';
+import '../powersync.dart';
 
 class PhotoWidget extends StatefulWidget {
   final TodoItem todo;
@@ -44,7 +44,7 @@ class _PhotoWidgetState extends State<PhotoWidget> {
 
     bool fileExists = await File(photoPath).exists();
 
-    final row = await attachmentQueue.db
+    final row = await db
         .getOptional('SELECT * FROM attachments_queue WHERE id = ?', [photoId]);
 
     if (row != null) {

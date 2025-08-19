@@ -11,12 +11,9 @@ import 'package:meta/meta.dart';
 import 'package:powersync_core/powersync_core.dart';
 import 'package:sqlite_async/sqlite_async.dart';
 
-import 'attachment.dart';
-import 'abstractions/attachment_service.dart';
-import 'abstractions/attachment_context.dart';
-import 'abstractions/local_storage.dart';
-import 'abstractions/remote_storage.dart';
-import 'abstractions/sync_error_handler.dart';
+import '../../attachments.dart';
+import 'implementations/attachment_context.dart';
+import 'sync_error_handler.dart';
 import 'implementations/attachment_service.dart';
 import 'sync/syncing_service.dart';
 
@@ -29,7 +26,7 @@ import 'sync/syncing_service.dart';
 /// - [filename]: Filename to store the attachment with.
 /// - [metaData]: Optional metadata for the attachment record.
 @experimental
-class WatchedAttachmentItem {
+final class WatchedAttachmentItem {
   /// Id for the attachment record.
   final String id;
 
@@ -60,67 +57,89 @@ class WatchedAttachmentItem {
 ///
 /// Manages the lifecycle of attachment records, including watching for new attachments,
 /// syncing with remote storage, handling uploads, downloads, and deletes, and managing local storage.
-///
-/// Properties:
-/// - [db]: PowerSync database client.
-/// - [remoteStorage]: Adapter which interfaces with the remote storage backend.
-/// - [watchAttachments]: A stream generator for the current state of local attachments.
-/// - [localStorage]: Provides access to local filesystem storage methods.
-/// - [attachmentsQueueTableName]: SQLite table where attachment state will be recorded.
-/// - [errorHandler]: Attachment operation error handler. Specifies if failed attachment operations should be retried.
-/// - [syncInterval]: Periodic interval to trigger attachment sync operations.
-/// - [archivedCacheLimit]: Defines how many archived records are retained as a cache.
-/// - [syncThrottleDuration]: Throttles remote sync operations triggering.
-/// - [downloadAttachments]: Should attachments be downloaded.
-/// - [logger]: Logging interface used for all log operations.
 @experimental
-class AttachmentQueue {
-  final PowerSyncDatabase db;
-  final AbstractRemoteStorageAdapter remoteStorage;
-  final Stream<List<WatchedAttachmentItem>> Function() watchAttachments;
-  final LocalStorageAdapter localStorage;
-  final String attachmentsQueueTableName;
-  final SyncErrorHandler? errorHandler;
-  final Duration syncInterval;
-  final int archivedCacheLimit;
-  final Duration syncThrottleDuration;
-  final bool downloadAttachments;
-  final Logger logger;
-
-  static const String defaultTableName = 'attachments_queue';
+base class AttachmentQueue {
+  final PowerSyncDatabase _db;
+  final Stream<List<WatchedAttachmentItem>> Function() _watchAttachments;
+  final LocalStorageAdapter _localStorage;
+  final bool _downloadAttachments;
+  final Logger _logger;
 
   final Mutex _mutex = Mutex();
   bool _closed = false;
   StreamSubscription<List<WatchedAttachmentItem>>? _syncStatusSubscription;
-  late final AbstractAttachmentService attachmentsService;
-  late final SyncingService syncingService;
+  final AttachmentService _attachmentsService;
+  final SyncingService _syncingService;
 
-  AttachmentQueue({
-    required this.db,
-    required this.remoteStorage,
-    required this.watchAttachments,
-    required this.localStorage,
-    this.attachmentsQueueTableName = defaultTableName,
-    this.errorHandler,
-    this.syncInterval = const Duration(seconds: 30),
-    this.archivedCacheLimit = 100,
-    this.syncThrottleDuration = const Duration(seconds: 1),
-    this.downloadAttachments = true,
+  AttachmentQueue._(
+      {required PowerSyncDatabase db,
+      required Stream<List<WatchedAttachmentItem>> Function() watchAttachments,
+      required LocalStorageAdapter localStorage,
+      required bool downloadAttachments,
+      required Logger logger,
+      required AttachmentService attachmentsService,
+      required SyncingService syncingService})
+      : _db = db,
+        _watchAttachments = watchAttachments,
+        _localStorage = localStorage,
+        _downloadAttachments = downloadAttachments,
+        _logger = logger,
+        _attachmentsService = attachmentsService,
+        _syncingService = syncingService;
+
+  /// Creates a new attachment queue.
+  ///
+  /// Parameters:
+  ///
+  /// - [db]: PowerSync database client.
+  /// - [remoteStorage]: Adapter which interfaces with the remote storage backend.
+  /// - [watchAttachments]: A stream generator for the current state of local attachments.
+  /// - [localStorage]: Provides access to local filesystem storage methods.
+  /// - [attachmentsQueueTableName]: SQLite table where attachment state will be recorded.
+  /// - [errorHandler]: Attachment operation error handler. Specifies if failed attachment operations should be retried.
+  /// - [syncInterval]: Periodic interval to trigger attachment sync operations.
+  /// - [archivedCacheLimit]: Defines how many archived records are retained as a cache.
+  /// - [syncThrottleDuration]: Throttles remote sync operations triggering.
+  /// - [downloadAttachments]: Should attachments be downloaded.
+  /// - [logger]: Logging interface used for all log operations.
+  factory AttachmentQueue({
+    required PowerSyncDatabase db,
+    required RemoteAttachmentStorage remoteStorage,
+    required Stream<List<WatchedAttachmentItem>> Function() watchAttachments,
+    required LocalStorageAdapter localStorage,
+    String attachmentsQueueTableName = AttachmentsQueueTable.defaultTableName,
+    AttachmentErrorHandler? errorHandler,
+    Duration syncInterval = const Duration(seconds: 30),
+    int archivedCacheLimit = 100,
+    Duration syncThrottleDuration = const Duration(seconds: 1),
+    bool downloadAttachments = true,
     Logger? logger,
-  }) : logger = logger ?? Logger('AttachmentQueue') {
-    attachmentsService = AttachmentServiceImpl(
+  }) {
+    final resolvedLogger = logger ?? db.logger;
+
+    final attachmentsService = AttachmentService(
       db: db,
-      logger: this.logger,
+      logger: resolvedLogger,
       maxArchivedCount: archivedCacheLimit,
       attachmentsQueueTableName: attachmentsQueueTableName,
     );
-    syncingService = SyncingService(
+    final syncingService = SyncingService(
       remoteStorage: remoteStorage,
       localStorage: localStorage,
       attachmentsService: attachmentsService,
       errorHandler: errorHandler,
       syncThrottle: syncThrottleDuration,
       period: syncInterval,
+    );
+
+    return AttachmentQueue._(
+      db: db,
+      watchAttachments: watchAttachments,
+      localStorage: localStorage,
+      downloadAttachments: downloadAttachments,
+      logger: resolvedLogger,
+      attachmentsService: attachmentsService,
+      syncingService: syncingService,
     );
   }
 
@@ -136,20 +155,20 @@ class AttachmentQueue {
 
       await _stopSyncingInternal();
 
-      await localStorage.initialize();
+      await _localStorage.initialize();
 
-      await attachmentsService.withContext((context) async {
+      await _attachmentsService.withContext((context) async {
         await _verifyAttachments(context);
       });
 
-      await syncingService.startSync();
+      await _syncingService.startSync();
 
       // Listen for connectivity changes and watched attachments
-      _syncStatusSubscription = watchAttachments().listen((items) async {
+      _syncStatusSubscription = _watchAttachments().listen((items) async {
         await _processWatchedAttachments(items);
       });
 
-      logger.info('AttachmentQueue started syncing.');
+      _logger.info('AttachmentQueue started syncing.');
     });
   }
 
@@ -165,9 +184,9 @@ class AttachmentQueue {
 
     await _syncStatusSubscription?.cancel();
     _syncStatusSubscription = null;
-    await syncingService.stopSync();
+    await _syncingService.stopSync();
 
-    logger.info('AttachmentQueue stopped syncing.');
+    _logger.info('AttachmentQueue stopped syncing.');
   }
 
   /// Closes the queue. The queue cannot be used after closing.
@@ -176,10 +195,10 @@ class AttachmentQueue {
       if (_closed) return;
 
       await _syncStatusSubscription?.cancel();
-      await syncingService.close();
+      await _syncingService.close();
       _closed = true;
 
-      logger.info('AttachmentQueue closed.');
+      _logger.info('AttachmentQueue closed.');
     });
   }
 
@@ -192,13 +211,14 @@ class AttachmentQueue {
     return '$attachmentId.${fileExtension ?? 'dat'}';
   }
 
-  /// Processes attachment items returned from [watchAttachments].
-  /// The default implementation asserts the items returned from [watchAttachments] as the definitive
-  /// state for local attachments.
+  /// Processes attachment items returned from `watchAttachments`.
+  ///
+  /// The default implementation asserts the items returned from
+  /// `watchAttachments` as the definitive state for local attachments.
   Future<void> _processWatchedAttachments(
     List<WatchedAttachmentItem> items,
   ) async {
-    await attachmentsService.withContext((context) async {
+    await _attachmentsService.withContext((context) async {
       final currentAttachments = await context.getAttachments();
       final List<Attachment> attachmentUpdates = [];
 
@@ -207,7 +227,7 @@ class AttachmentQueue {
             currentAttachments.where((a) => a.id == item.id).firstOrNull;
 
         if (existingQueueItem == null) {
-          if (!downloadAttachments) continue;
+          if (!_downloadAttachments) continue;
 
           // This item should be added to the queue.
           // This item is assumed to be coming from an upstream sync.
@@ -284,7 +304,7 @@ class AttachmentQueue {
             SqliteWriteContext context, Attachment attachment)
         updateHook,
   }) async {
-    final row = await db.get('SELECT uuid() as id');
+    final row = await _db.get('SELECT uuid() as id');
     final id = row['id'] as String;
     final String filename = await resolveNewAttachmentFilename(
       id,
@@ -292,10 +312,10 @@ class AttachmentQueue {
     );
 
     // Write the file to the filesystem.
-    final fileSize = await localStorage.saveFile(filename, data);
+    final fileSize = await _localStorage.saveFile(filename, data);
 
-    return await attachmentsService.withContext((attachmentContext) async {
-      return await db.writeTransaction((tx) async {
+    return await _attachmentsService.withContext((attachmentContext) async {
+      return await _db.writeTransaction((tx) async {
         final attachment = Attachment(
           id: id,
           filename: filename,
@@ -322,7 +342,7 @@ class AttachmentQueue {
             SqliteWriteContext context, Attachment attachment)
         updateHook,
   }) async {
-    return await attachmentsService.withContext((attachmentContext) async {
+    return await _attachmentsService.withContext((attachmentContext) async {
       final attachment = await attachmentContext.getAttachment(attachmentId);
       if (attachment == null) {
         throw Exception(
@@ -330,7 +350,7 @@ class AttachmentQueue {
         );
       }
 
-      return await db.writeTransaction((tx) async {
+      return await _db.writeTransaction((tx) async {
         await updateHook(tx, attachment);
         return await attachmentContext.upsertAttachment(
           attachment.copyWith(
@@ -345,24 +365,24 @@ class AttachmentQueue {
 
   /// Removes all archived items.
   Future<void> expireCache() async {
-    await attachmentsService.withContext((context) async {
+    await _attachmentsService.withContext((context) async {
       bool done;
       do {
-        done = await syncingService.deleteArchivedAttachments(context);
+        done = await _syncingService.deleteArchivedAttachments(context);
       } while (!done);
     });
   }
 
   /// Clears the attachment queue and deletes all attachment files.
   Future<void> clearQueue() async {
-    await attachmentsService.withContext((context) async {
+    await _attachmentsService.withContext((context) async {
       await context.clearQueue();
     });
-    await localStorage.clear();
+    await _localStorage.clear();
   }
 
   /// Cleans up stale attachments.
-  Future<void> _verifyAttachments(AbstractAttachmentContext context) async {
+  Future<void> _verifyAttachments(AttachmentContext context) async {
     final attachments = await context.getActiveAttachments();
     final List<Attachment> updates = [];
 
@@ -373,7 +393,7 @@ class AttachmentQueue {
         continue;
       }
 
-      final exists = await localStorage.fileExists(attachment.localUri!);
+      final exists = await _localStorage.fileExists(attachment.localUri!);
       if ((attachment.state == AttachmentState.synced ||
               attachment.state == AttachmentState.queuedUpload) &&
           !exists) {

@@ -1,12 +1,12 @@
-/// Defines attachment states and the Attachment model for the PowerSync attachments system.
+/// Defines attachment states and the Attachment model for the PowerSync
+/// attachments system.
 ///
 /// Includes metadata, state, and utility methods for working with attachments.
+library;
 
 import 'package:meta/meta.dart';
 import 'package:powersync_core/sqlite3_common.dart' show Row;
 import 'package:powersync_core/powersync_core.dart';
-
-import './attachment_queue_service.dart';
 
 /// Represents the state of an attachment.
 @experimental
@@ -40,8 +40,6 @@ enum AttachmentState {
   int toInt() => index;
 }
 
-const defaultAttachmentsQueueTableName = AttachmentQueue.defaultTableName;
-
 /// Represents an attachment with metadata and state information.
 ///
 /// {@category Attachments}
@@ -57,7 +55,7 @@ const defaultAttachmentsQueueTableName = AttachmentQueue.defaultTableName;
 /// - [hasSynced]: Indicates whether the attachment has been synced locally before.
 /// - [metaData]: Additional metadata associated with the attachment.
 @experimental
-class Attachment {
+final class Attachment {
   /// Unique identifier for the attachment.
   final String id;
 
@@ -144,9 +142,9 @@ class Attachment {
 
 /// Table definition for the attachments queue.
 @experimental
-class AttachmentsQueueTable extends Table {
+final class AttachmentsQueueTable extends Table {
   AttachmentsQueueTable({
-    String attachmentsQueueTableName = defaultAttachmentsQueueTableName,
+    String attachmentsQueueTableName = defaultTableName,
     List<Column> additionalColumns = const [],
     List<Index> indexes = const [],
     String? viewName,
@@ -166,4 +164,6 @@ class AttachmentsQueueTable extends Table {
           viewName: viewName,
           indexes: indexes,
         );
+
+  static const defaultTableName = 'attachments_queue';
 }

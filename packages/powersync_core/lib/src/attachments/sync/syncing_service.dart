@@ -5,12 +5,12 @@ import 'package:meta/meta.dart';
 import 'package:logging/logging.dart';
 import 'package:async/async.dart';
 
-import '../abstractions/attachment_service.dart';
-import '../abstractions/attachment_context.dart';
 import '../attachment.dart';
-import '../abstractions/local_storage.dart';
-import '../abstractions/remote_storage.dart';
-import '../abstractions/sync_error_handler.dart';
+import '../implementations/attachment_context.dart';
+import '../implementations/attachment_service.dart';
+import '../local_storage.dart';
+import '../remote_storage.dart';
+import '../sync_error_handler.dart';
 
 /// SyncingService is responsible for syncing attachments between local and remote storage.
 ///
@@ -23,12 +23,12 @@ import '../abstractions/sync_error_handler.dart';
 /// - [localStorage]: The local storage implementation for managing files locally.
 /// - [attachmentsService]: The service for managing attachment states and operations.
 /// - [errorHandler]: Optional error handler for managing sync-related errors.
-@experimental
-class SyncingService {
-  final AbstractRemoteStorageAdapter remoteStorage;
+@internal
+final class SyncingService {
+  final RemoteAttachmentStorage remoteStorage;
   final LocalStorageAdapter localStorage;
-  final AbstractAttachmentService attachmentsService;
-  final SyncErrorHandler? errorHandler;
+  final AttachmentService attachmentsService;
+  final AttachmentErrorHandler? errorHandler;
   final Duration syncThrottle;
   final Duration period;
   final Logger logger;
@@ -62,31 +62,17 @@ class SyncingService {
     final manualTriggers = _syncTriggerController.stream;
 
     // Merge both streams and apply throttling
-    final mergedStream =
+    _syncSubscription =
         StreamGroup.merge<void>([attachmentChanges, manualTriggers]).listen((
       _,
     ) async {
-      try {
-        await attachmentsService.withContext((context) async {
-          final attachments = await context.getActiveAttachments();
-          logger.info('Found ${attachments.length} active attachments');
-          await handleSync(attachments, context);
-          await deleteArchivedAttachments(context);
-        });
-      } catch (e, st) {
-        if (e is! StateError && e.toString().contains('cancelled')) {
-          logger.severe(
-            'Caught exception when processing attachments',
-            e,
-            st,
-          );
-        } else {
-          rethrow;
-        }
-      }
+      await attachmentsService.withContext((context) async {
+        final attachments = await context.getActiveAttachments();
+        logger.info('Found ${attachments.length} active attachments');
+        await handleSync(attachments, context);
+        await deleteArchivedAttachments(context);
+      });
     });
-
-    _syncSubscription = mergedStream;
 
     // Start periodic sync using instance period
     _periodicSubscription = Stream<void>.periodic(period, (_) {}).listen((
@@ -123,7 +109,7 @@ class SyncingService {
   /// [context]: The attachment context used for managing attachment states.
   Future<void> handleSync(
     List<Attachment> attachments,
-    AbstractAttachmentContext context,
+    AttachmentContext context,
   ) async {
     logger.info('Starting handleSync with ${attachments.length} attachments');
     final updatedAttachments = <Attachment>[];
@@ -247,7 +233,7 @@ class SyncingService {
   /// [attachment]: The attachment to delete.
   /// Returns the updated attachment with its new state.
   Future<Attachment> deleteAttachment(
-      Attachment attachment, AbstractAttachmentContext context) async {
+      Attachment attachment, AttachmentContext context) async {
     try {
       logger.info('Deleting attachment ${attachment.id} from remote storage');
       await remoteStorage.deleteFile(attachment);
@@ -277,7 +263,7 @@ class SyncingService {
   /// [context]: The attachment context used to retrieve and manage archived attachments.
   /// Returns `true` if all archived attachments were successfully deleted, `false` otherwise.
   Future<bool> deleteArchivedAttachments(
-    AbstractAttachmentContext context,
+    AttachmentContext context,
   ) async {
     return context.deleteArchivedAttachments((pendingDelete) async {
       for (final attachment in pendingDelete) {

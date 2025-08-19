@@ -4,9 +4,9 @@ import 'dart:io';
 import 'package:logging/logging.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:powersync/powersync.dart';
-import 'package:powersync_core/attachments_stream/attachment_queue_service.dart';
-import 'package:powersync_core/attachments_stream/storage/io_local_storage.dart';
-import 'package:powersync_core/attachments_stream/attachment.dart';
+import 'package:powersync_core/attachments.dart';
+import 'package:powersync_core/attachments/io.dart';
+
 import 'package:powersync_flutter_demo/attachments/remote_storage_adapter.dart';
 
 late AttachmentQueue attachmentQueue;
@@ -21,15 +21,18 @@ Future<void> initializeAttachmentQueue(PowerSyncDatabase db) async {
     db: db,
     remoteStorage: remoteStorage,
     logger: logger,
-    localStorage: IOLocalStorage(appDocDir.path),
+    localStorage: IOLocalStorage(appDocDir),
     watchAttachments: () => db.watch('''
       SELECT photo_id as id FROM todos WHERE photo_id IS NOT NULL
-    ''').map((results) => results
-        .map((row) => WatchedAttachmentItem(
-              id: row['id'] as String,
-              fileExtension: 'jpg',
-            ))
-        .toList()),
+    ''').map(
+      (results) => [
+        for (final row in results)
+          WatchedAttachmentItem(
+            id: row['id'] as String,
+            fileExtension: 'jpg',
+          )
+      ],
+    ),
   );
 
   await attachmentQueue.startSync();

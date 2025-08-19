@@ -1,0 +1,5 @@
+dartdoc:
+  categories:
+    attachments:
+      displayName: Attachments
+      markdown: doc/attachments.md

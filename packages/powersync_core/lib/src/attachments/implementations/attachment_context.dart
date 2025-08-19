@@ -4,17 +4,16 @@ import 'package:logging/logging.dart';
 import 'package:sqlite_async/sqlite_async.dart';
 import 'package:meta/meta.dart';
 
-import '../abstractions/attachment_context.dart';
 import '../attachment.dart';
 
-@experimental
-class AttachmentContextImpl implements AbstractAttachmentContext {
+@internal
+final class AttachmentContext {
   final PowerSyncDatabase db;
   final Logger log;
   final int maxArchivedCount;
   final String attachmentsQueueTableName;
 
-  AttachmentContextImpl(
+  AttachmentContext(
     this.db,
     this.log,
     this.maxArchivedCount,
@@ -26,7 +25,6 @@ class AttachmentContextImpl implements AbstractAttachmentContext {
     return attachmentsQueueTableName;
   }
 
-  @override
   Future<void> deleteAttachment(String id) async {
     log.info('deleteAttachment: $id');
     await db.writeTransaction((tx) async {
@@ -34,7 +32,6 @@ class AttachmentContextImpl implements AbstractAttachmentContext {
     });
   }
 
-  @override
   Future<void> ignoreAttachment(String id) async {
     await db.execute(
       'UPDATE $table SET state = ${AttachmentState.archived.index} WHERE id = ?',
@@ -42,7 +39,6 @@ class AttachmentContextImpl implements AbstractAttachmentContext {
     );
   }
 
-  @override
   Future<Attachment?> getAttachment(String id) async {
     final row = await db.getOptional('SELECT * FROM $table WHERE id = ?', [id]);
     if (row == null) {
@@ -51,14 +47,12 @@ class AttachmentContextImpl implements AbstractAttachmentContext {
     return Attachment.fromRow(row);
   }
 
-  @override
   Future<Attachment> saveAttachment(Attachment attachment) async {
     return await db.writeLock((ctx) async {
       return await upsertAttachment(attachment, ctx);
     });
   }
 
-  @override
   Future<void> saveAttachments(List<Attachment> attachments) async {
     if (attachments.isEmpty) {
       log.info('No attachments to save.');
@@ -71,7 +65,6 @@ class AttachmentContextImpl implements AbstractAttachmentContext {
     });
   }
 
-  @override
   Future<List<String>> getAttachmentIds() async {
     ResultSet results = await db.getAll(
       'SELECT id FROM $table WHERE id IS NOT NULL',
@@ -82,13 +75,11 @@ class AttachmentContextImpl implements AbstractAttachmentContext {
     return ids;
   }
 
-  @override
   Future<List<Attachment>> getAttachments() async {
     final results = await db.getAll('SELECT * FROM $table');
     return results.map((row) => Attachment.fromRow(row)).toList();
   }
 
-  @override
   Future<List<Attachment>> getActiveAttachments() async {
     // Return all attachments that are not archived (i.e., state != AttachmentState.archived)
     final results = await db.getAll('SELECT * FROM $table WHERE state != ?', [
@@ -97,13 +88,11 @@ class AttachmentContextImpl implements AbstractAttachmentContext {
     return results.map((row) => Attachment.fromRow(row)).toList();
   }
 
-  @override
   Future<void> clearQueue() async {
     log.info('Clearing attachment queue...');
     await db.execute('DELETE FROM $table');
   }
 
-  @override
   Future<bool> deleteArchivedAttachments(
     Future<void> Function(List<Attachment>) callback,
   ) async {
@@ -141,7 +130,6 @@ class AttachmentContextImpl implements AbstractAttachmentContext {
     return archivedAttachments.length < limit;
   }
 
-  @override
   Future<Attachment> upsertAttachment(
     Attachment attachment,
     SqliteWriteContext context,

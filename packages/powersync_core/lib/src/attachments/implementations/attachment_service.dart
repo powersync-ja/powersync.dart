@@ -5,28 +5,26 @@ import 'package:logging/logging.dart';
 import 'package:powersync_core/powersync_core.dart';
 import 'package:sqlite_async/sqlite_async.dart';
 
-import '../abstractions/attachment_service.dart';
-import '../abstractions/attachment_context.dart';
 import '../attachment.dart';
-import './attachment_context.dart';
+import 'attachment_context.dart';
 
-@experimental
-class AttachmentServiceImpl implements AbstractAttachmentService {
+@internal
+final class AttachmentService {
   final PowerSyncDatabase db;
   final Logger logger;
   final int maxArchivedCount;
   final String attachmentsQueueTableName;
   final Mutex _mutex = Mutex();
 
-  late final AbstractAttachmentContext _context;
+  late final AttachmentContext _context;
 
-  AttachmentServiceImpl({
+  AttachmentService({
     required this.db,
     required this.logger,
     required this.maxArchivedCount,
     required this.attachmentsQueueTableName,
   }) {
-    _context = AttachmentContextImpl(
+    _context = AttachmentContext(
       db,
       logger,
       maxArchivedCount,
@@ -34,7 +32,6 @@ class AttachmentServiceImpl implements AbstractAttachmentService {
     );
   }
 
-  @override
   Stream<void> watchActiveAttachments({Duration? throttle}) async* {
     logger.info('Watching attachments...');
 
@@ -63,9 +60,8 @@ class AttachmentServiceImpl implements AbstractAttachmentService {
     yield* stream;
   }
 
-  @override
   Future<T> withContext<T>(
-    Future<T> Function(AbstractAttachmentContext ctx) action,
+    Future<T> Function(AttachmentContext ctx) action,
   ) async {
     return await _mutex.lock(() async {
       try {

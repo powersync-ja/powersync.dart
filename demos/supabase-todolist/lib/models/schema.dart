@@ -1,5 +1,5 @@
 import 'package:powersync/powersync.dart';
-import 'package:powersync_core/attachments_stream/attachment.dart';
+import 'package:powersync_core/attachments.dart';
 
 const todosTable = 'todos';
 
@@ -22,6 +22,5 @@ Schema schema = Schema(([
     Column.text('name'),
     Column.text('owner_id')
   ]),
-  AttachmentsQueueTable(
-      attachmentsQueueTableName: defaultAttachmentsQueueTableName)
+  AttachmentsQueueTable()
 ]));
