@@ -21,7 +21,7 @@ abstract interface class LocalStorageAdapter {
   /// [filePath] - Path where the file will be stored
   /// [data] - List of binary data to store
   /// Returns the total size of the written data in bytes
-  Future<int> saveFile(String filePath, List<int> data);
+  Future<int> saveFile(String filePath, Stream<List<int>> data);
 
   /// Retrieves binary data stream from storage at the specified file path
   ///

@@ -1,9 +1,9 @@
 import 'package:powersync/powersync.dart';
-import 'package:powersync_core/attachments.dart';
+import 'package:powersync_core/attachments/attachments.dart';
 
 const todosTable = 'todos';
 
-Schema schema = Schema(([
+Schema schema = Schema([
   const Table(todosTable, [
     Column.text('list_id'),
     Column.text('photo_id'),
@@ -23,4 +23,4 @@ Schema schema = Schema(([
     Column.text('owner_id')
   ]),
   AttachmentsQueueTable()
-]));
+]);

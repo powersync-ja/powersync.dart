@@ -9,6 +9,8 @@ pubspec_overrides.yaml
 .flutter-plugins-dependencies
 .flutter-plugins
 build
+**/doc/api
+
 
 # Shared assets
 assets/*

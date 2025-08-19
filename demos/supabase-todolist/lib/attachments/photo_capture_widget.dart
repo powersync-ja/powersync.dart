@@ -54,7 +54,7 @@ class _TakePhotoWidgetState extends State<TakePhotoWidget> {
         return;
       }
 
-      final photoData = await photoFile.readAsBytes();
+      final photoData = photoFile.openRead();
 
       // Save the photo attachment with the byte data
       final attachment = await savePhotoAttachment(photoData, widget.todoId);

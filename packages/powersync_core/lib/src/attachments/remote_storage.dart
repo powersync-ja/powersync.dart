@@ -10,7 +10,7 @@ import 'attachment.dart';
 ///
 /// {@category attachments}
 @experimental
-abstract interface class RemoteAttachmentStorage {
+abstract interface class RemoteStorageAdapter {
   /// Uploads a file to remote storage.
   ///
   /// [fileData] is a stream of byte arrays representing the file data.

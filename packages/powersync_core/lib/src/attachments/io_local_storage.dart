@@ -10,6 +10,8 @@ import 'local_storage.dart';
 /// Implements [LocalStorageAdapter] for device filesystem using Dart IO.
 ///
 /// Handles file and directory operations for attachments.
+///
+/// {@category attachments}
 @experimental
 final class IOLocalStorage implements LocalStorageAdapter {
   final Directory _root;
@@ -19,11 +21,10 @@ final class IOLocalStorage implements LocalStorageAdapter {
   File _fileFor(String filePath) => File(p.join(_root.path, filePath));
 
   @override
-  Future<int> saveFile(String filePath, List<int> data) async {
+  Future<int> saveFile(String filePath, Stream<List<int>> data) async {
     final file = _fileFor(filePath);
     await file.parent.create(recursive: true);
-    await file.writeAsBytes(data, flush: true);
-    return data.length;
+    return (await data.pipe(_LengthTrackingSink(file.openWrite()))) as int;
   }
 
   @override
@@ -63,5 +64,26 @@ final class IOLocalStorage implements LocalStorageAdapter {
       await _root.delete(recursive: true);
     }
     await _root.create(recursive: true);
+  }
+}
+
+final class _LengthTrackingSink implements StreamConsumer<List<int>> {
+  final StreamConsumer<List<int>> inner;
+  var bytesWritten = 0;
+
+  _LengthTrackingSink(this.inner);
+
+  @override
+  Future<void> addStream(Stream<List<int>> stream) {
+    return inner.addStream(stream.map((event) {
+      bytesWritten += event.length;
+      return event;
+    }));
+  }
+
+  @override
+  Future<int> close() async {
+    await inner.close();
+    return bytesWritten;
   }
 }

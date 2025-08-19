@@ -11,8 +11,10 @@ import 'package:meta/meta.dart';
 import 'package:powersync_core/powersync_core.dart';
 import 'package:sqlite_async/sqlite_async.dart';
 
-import '../../attachments.dart';
+import 'attachment.dart';
 import 'implementations/attachment_context.dart';
+import 'local_storage.dart';
+import 'remote_storage.dart';
 import 'sync_error_handler.dart';
 import 'implementations/attachment_service.dart';
 import 'sync/syncing_service.dart';
@@ -25,6 +27,8 @@ import 'sync/syncing_service.dart';
 /// - [fileExtension]: File extension used to determine an internal filename for storage if no [filename] is provided.
 /// - [filename]: Filename to store the attachment with.
 /// - [metaData]: Optional metadata for the attachment record.
+///
+/// {@category attachments}
 @experimental
 final class WatchedAttachmentItem {
   /// Id for the attachment record.
@@ -57,6 +61,8 @@ final class WatchedAttachmentItem {
 ///
 /// Manages the lifecycle of attachment records, including watching for new attachments,
 /// syncing with remote storage, handling uploads, downloads, and deletes, and managing local storage.
+///
+/// {@category attachments}
 @experimental
 base class AttachmentQueue {
   final PowerSyncDatabase _db;
@@ -104,7 +110,7 @@ base class AttachmentQueue {
   /// - [logger]: Logging interface used for all log operations.
   factory AttachmentQueue({
     required PowerSyncDatabase db,
-    required RemoteAttachmentStorage remoteStorage,
+    required RemoteStorageAdapter remoteStorage,
     required Stream<List<WatchedAttachmentItem>> Function() watchAttachments,
     required LocalStorageAdapter localStorage,
     String attachmentsQueueTableName = AttachmentsQueueTable.defaultTableName,
@@ -293,21 +299,28 @@ base class AttachmentQueue {
     });
   }
 
+  /// Generates a random attachment id.
+  Future<String> generateAttachmentId() async {
+    final row = await _db.get('SELECT uuid() as id');
+    return row['id'] as String;
+  }
+
   /// Creates a new attachment locally and queues it for upload.
   /// The filename is resolved using [resolveNewAttachmentFilename].
   Future<Attachment> saveFile({
-    required List<int> data,
+    required Stream<List<int>> data,
     required String mediaType,
     String? fileExtension,
     String? metaData,
+    String? id,
     required Future<void> Function(
             SqliteWriteContext context, Attachment attachment)
         updateHook,
   }) async {
-    final row = await _db.get('SELECT uuid() as id');
-    final id = row['id'] as String;
+    final resolvedId = id ?? await generateAttachmentId();
+
     final String filename = await resolveNewAttachmentFilename(
-      id,
+      resolvedId,
       fileExtension,
     );
 
@@ -317,7 +330,7 @@ base class AttachmentQueue {
     return await _attachmentsService.withContext((attachmentContext) async {
       return await _db.writeTransaction((tx) async {
         final attachment = Attachment(
-          id: id,
+          id: resolvedId,
           filename: filename,
           size: fileSize,
           mediaType: mediaType,

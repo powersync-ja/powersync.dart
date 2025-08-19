@@ -4,7 +4,7 @@ import 'dart:io';
 import 'package:logging/logging.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:powersync/powersync.dart';
-import 'package:powersync_core/attachments.dart';
+import 'package:powersync_core/attachments/attachments.dart';
 import 'package:powersync_core/attachments/io.dart';
 
 import 'package:powersync_flutter_demo/attachments/remote_storage_adapter.dart';
@@ -38,7 +38,8 @@ Future<void> initializeAttachmentQueue(PowerSyncDatabase db) async {
   await attachmentQueue.startSync();
 }
 
-Future<Attachment> savePhotoAttachment(List<int> photoData, String todoId,
+Future<Attachment> savePhotoAttachment(
+    Stream<List<int>> photoData, String todoId,
     {String mediaType = 'image/jpeg'}) async {
   // Save the file using the AttachmentQueue API
   return await attachmentQueue.saveFile(

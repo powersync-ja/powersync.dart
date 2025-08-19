@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:typed_data';
 
 import 'package:meta/meta.dart';
 import 'package:logging/logging.dart';
@@ -25,7 +24,7 @@ import '../sync_error_handler.dart';
 /// - [errorHandler]: Optional error handler for managing sync-related errors.
 @internal
 final class SyncingService {
-  final RemoteAttachmentStorage remoteStorage;
+  final RemoteStorageAdapter remoteStorage;
   final LocalStorageAdapter localStorage;
   final AttachmentService attachmentsService;
   final AttachmentErrorHandler? errorHandler;
@@ -197,13 +196,7 @@ final class SyncingService {
     final attachmentPath = attachment.filename;
     try {
       final fileStream = await remoteStorage.downloadFile(attachment);
-      // Collect the stream into a single List<int> to satisfy localStorage API.
-      final builder = BytesBuilder(copy: false);
-      await for (final chunk in fileStream) {
-        builder.add(chunk);
-      }
-      final bytes = builder.takeBytes();
-      await localStorage.saveFile(attachmentPath, bytes);
+      await localStorage.saveFile(attachmentPath, fileStream);
       logger.info('Successfully downloaded file "${attachment.id}"');
 
       return attachment.copyWith(

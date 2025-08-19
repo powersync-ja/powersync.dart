@@ -9,6 +9,8 @@ import 'package:powersync_core/sqlite3_common.dart' show Row;
 import 'package:powersync_core/powersync_core.dart';
 
 /// Represents the state of an attachment.
+///
+/// {@category attachments}
 @experimental
 enum AttachmentState {
   /// The attachment is queued for download from the remote storage.
@@ -54,6 +56,8 @@ enum AttachmentState {
 /// - [size]: Size of the attachment in bytes, if available.
 /// - [hasSynced]: Indicates whether the attachment has been synced locally before.
 /// - [metaData]: Additional metadata associated with the attachment.
+///
+/// {@category attachments}
 @experimental
 final class Attachment {
   /// Unique identifier for the attachment.
@@ -141,6 +145,11 @@ final class Attachment {
 }
 
 /// Table definition for the attachments queue.
+///
+/// The columns in this table are used by the attachments implementation to
+/// store which attachments have been download and tracks metadata for state.
+///
+/// {@category attachments}
 @experimental
 final class AttachmentsQueueTable extends Table {
   AttachmentsQueueTable({
