@@ -41,6 +41,10 @@ abstract class AbstractAttachmentQueue {
   /// when the attachment queue is initialized.
   List<String>? subdirectories;
 
+  /// File extension to be used for the attachments queue
+  /// Can be left null if no extension is used or if extension is part of the filename
+  String? fileExtension;
+
   AbstractAttachmentQueue(
       {required this.db,
       required this.remoteStorage,
@@ -49,7 +53,8 @@ abstract class AbstractAttachmentQueue {
       this.onDownloadError,
       this.onUploadError,
       this.intervalInMinutes = 5,
-      this.subdirectories}) {
+      this.subdirectories,
+      this.fileExtension}) {
     attachmentsService = AttachmentsService(
         db, localStorage, attachmentDirectoryName, attachmentsQueueTableName);
     syncingService = SyncingService(
@@ -59,7 +64,7 @@ abstract class AbstractAttachmentQueue {
 
   /// Create watcher to get list of ID's from a table to be used for syncing in the attachment queue.
   /// Set the file extension if you are using a different file type
-  StreamSubscription<void> watchIds({String fileExtension = 'jpg'});
+  StreamSubscription<void> watchIds({String? fileExtension});
 
   /// Create a function to save files using the attachment queue
   Future<Attachment> saveFile(String fileId, int size);
@@ -82,7 +87,7 @@ abstract class AbstractAttachmentQueue {
       }
     }
 
-    watchIds();
+    watchIds(fileExtension: fileExtension);
     syncingService.watchAttachments();
     syncingService.startPeriodicSync(intervalInMinutes);
 
