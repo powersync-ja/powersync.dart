@@ -24,8 +24,8 @@ import '../sync_error_handler.dart';
 /// - [errorHandler]: Optional error handler for managing sync-related errors.
 @internal
 final class SyncingService {
-  final RemoteStorageAdapter remoteStorage;
-  final LocalStorageAdapter localStorage;
+  final RemoteStorage remoteStorage;
+  final LocalStorage localStorage;
   final AttachmentService attachmentsService;
   final AttachmentErrorHandler? errorHandler;
   final Duration syncThrottle;
@@ -44,8 +44,8 @@ final class SyncingService {
     this.errorHandler,
     this.syncThrottle = const Duration(seconds: 5),
     this.period = const Duration(seconds: 30),
-    Logger? logger,
-  }) : logger = logger ?? Logger('SyncingService');
+    required this.logger,
+  });
 
   /// Starts the syncing process, including periodic and event-driven sync operations.
   Future<void> startSync() async {
@@ -60,11 +60,11 @@ final class SyncingService {
     );
     final manualTriggers = _syncTriggerController.stream;
 
-    // Merge both streams and apply throttling
-    _syncSubscription =
-        StreamGroup.merge<void>([attachmentChanges, manualTriggers]).listen((
-      _,
-    ) async {
+    late StreamSubscription<void> sub;
+    final syncStream =
+        StreamGroup.merge<void>([attachmentChanges, manualTriggers])
+            .takeWhile((_) => sub == _syncSubscription)
+            .asyncMap((_) async {
       await attachmentsService.withContext((context) async {
         final attachments = await context.getActiveAttachments();
         logger.info('Found ${attachments.length} active attachments');
@@ -72,6 +72,8 @@ final class SyncingService {
         await deleteArchivedAttachments(context);
       });
     });
+
+    _syncSubscription = sub = syncStream.listen(null);
 
     // Start periodic sync using instance period
     _periodicSubscription = Stream<void>.periodic(period, (_) {}).listen((
@@ -90,8 +92,16 @@ final class SyncingService {
 
   /// Stops all ongoing sync operations.
   Future<void> stopSync() async {
-    await _syncSubscription?.cancel();
     await _periodicSubscription?.cancel();
+
+    final subscription = _syncSubscription;
+    // Add a trigger event after clearing the subscription, which will make
+    // the takeWhile() callback cancel. This allows us to use asFuture() here,
+    // ensuring that we only complete this future when the stream is actually
+    // done.
+    _syncSubscription = null;
+    _syncTriggerController.add(null);
+    await subscription?.asFuture<void>();
   }
 
   /// Closes the syncing service, stopping all operations and releasing resources.
@@ -177,7 +187,8 @@ final class SyncingService {
         st,
       );
       if (errorHandler != null) {
-        final shouldRetry = await errorHandler!.onUploadError(attachment, e);
+        final shouldRetry =
+            await errorHandler!.onUploadError(attachment, e, st);
         if (!shouldRetry) {
           logger.info('Attachment with ID ${attachment.id} has been archived');
           return attachment.copyWith(state: AttachmentState.archived);
@@ -206,7 +217,8 @@ final class SyncingService {
       );
     } catch (e, st) {
       if (errorHandler != null) {
-        final shouldRetry = await errorHandler!.onDownloadError(attachment, e);
+        final shouldRetry =
+            await errorHandler!.onDownloadError(attachment, e, st);
         if (!shouldRetry) {
           logger.info('Attachment with ID ${attachment.id} has been archived');
           return attachment.copyWith(state: AttachmentState.archived);
@@ -240,7 +252,8 @@ final class SyncingService {
       return attachment.copyWith(state: AttachmentState.archived);
     } catch (e, st) {
       if (errorHandler != null) {
-        final shouldRetry = await errorHandler!.onDeleteError(attachment, e);
+        final shouldRetry =
+            await errorHandler!.onDeleteError(attachment, e, st);
         if (!shouldRetry) {
           logger.info('Attachment with ID ${attachment.id} has been archived');
           return attachment.copyWith(state: AttachmentState.archived);

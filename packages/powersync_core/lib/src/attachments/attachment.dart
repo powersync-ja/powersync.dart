@@ -142,6 +142,11 @@ final class Attachment {
       metaData: metaData ?? this.metaData,
     );
   }
+
+  @override
+  String toString() {
+    return 'Attachment(id: $id, state: $state, localUri: $localUri, metadata: $metaData)';
+  }
 }
 
 /// Table definition for the attachments queue.

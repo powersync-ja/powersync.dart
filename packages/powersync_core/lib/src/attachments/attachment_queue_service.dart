@@ -46,7 +46,7 @@ final class WatchedAttachmentItem {
   /// Creates a [WatchedAttachmentItem].
   ///
   /// Either [fileExtension] or [filename] must be provided.
-  WatchedAttachmentItem({
+  const WatchedAttachmentItem({
     required this.id,
     this.fileExtension,
     this.filename,
@@ -67,7 +67,7 @@ final class WatchedAttachmentItem {
 base class AttachmentQueue {
   final PowerSyncDatabase _db;
   final Stream<List<WatchedAttachmentItem>> Function() _watchAttachments;
-  final LocalStorageAdapter _localStorage;
+  final LocalStorage _localStorage;
   final bool _downloadAttachments;
   final Logger _logger;
 
@@ -80,7 +80,7 @@ base class AttachmentQueue {
   AttachmentQueue._(
       {required PowerSyncDatabase db,
       required Stream<List<WatchedAttachmentItem>> Function() watchAttachments,
-      required LocalStorageAdapter localStorage,
+      required LocalStorage localStorage,
       required bool downloadAttachments,
       required Logger logger,
       required AttachmentService attachmentsService,
@@ -110,9 +110,9 @@ base class AttachmentQueue {
   /// - [logger]: Logging interface used for all log operations.
   factory AttachmentQueue({
     required PowerSyncDatabase db,
-    required RemoteStorageAdapter remoteStorage,
+    required RemoteStorage remoteStorage,
     required Stream<List<WatchedAttachmentItem>> Function() watchAttachments,
-    required LocalStorageAdapter localStorage,
+    required LocalStorage localStorage,
     String attachmentsQueueTableName = AttachmentsQueueTable.defaultTableName,
     AttachmentErrorHandler? errorHandler,
     Duration syncInterval = const Duration(seconds: 30),
@@ -136,6 +136,7 @@ base class AttachmentQueue {
       errorHandler: errorHandler,
       syncThrottle: syncThrottleDuration,
       period: syncInterval,
+      logger: resolvedLogger,
     );
 
     return AttachmentQueue._(
@@ -156,7 +157,7 @@ base class AttachmentQueue {
   Future<void> startSync() async {
     await _mutex.lock(() async {
       if (_closed) {
-        throw Exception('Attachment queue has been closed');
+        throw StateError('Attachment queue has been closed');
       }
 
       await _stopSyncingInternal();
@@ -186,7 +187,7 @@ base class AttachmentQueue {
   }
 
   Future<void> _stopSyncingInternal() async {
-    if (_closed) return;
+    if (_closed || _syncStatusSubscription == null) return;
 
     await _syncStatusSubscription?.cancel();
     _syncStatusSubscription = null;
@@ -200,10 +201,8 @@ base class AttachmentQueue {
     await _mutex.lock(() async {
       if (_closed) return;
 
-      await _syncStatusSubscription?.cancel();
-      await _syncingService.close();
+      await _stopSyncingInternal();
       _closed = true;
-
       _logger.info('AttachmentQueue closed.');
     });
   }
@@ -319,7 +318,7 @@ base class AttachmentQueue {
   }) async {
     final resolvedId = id ?? await generateAttachmentId();
 
-    final String filename = await resolveNewAttachmentFilename(
+    final filename = await resolveNewAttachmentFilename(
       resolvedId,
       fileExtension,
     );

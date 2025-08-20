@@ -7,13 +7,13 @@ import 'package:path/path.dart' as p;
 
 import 'local_storage.dart';
 
-/// Implements [LocalStorageAdapter] for device filesystem using Dart IO.
+/// Implements [LocalStorage] for device filesystem using Dart IO.
 ///
 /// Handles file and directory operations for attachments.
 ///
 /// {@category attachments}
 @experimental
-final class IOLocalStorage implements LocalStorageAdapter {
+final class IOLocalStorage implements LocalStorage {
   final Directory _root;
 
   const IOLocalStorage(this._root);

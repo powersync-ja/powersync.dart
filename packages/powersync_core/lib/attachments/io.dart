@@ -1,7 +1,7 @@
 /// A platform-specific import supporting attachments on native platforms.
 ///
 /// This library exports the [IOLocalStorage] class, implementing the
-/// [LocalStorageAdapter] interface by storing files under a root directory.
+/// [LocalStorage] interface by storing files under a root directory.
 ///
 /// {@category attachments}
 library;

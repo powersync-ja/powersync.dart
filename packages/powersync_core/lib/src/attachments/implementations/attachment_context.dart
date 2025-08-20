@@ -55,7 +55,7 @@ final class AttachmentContext {
 
   Future<void> saveAttachments(List<Attachment> attachments) async {
     if (attachments.isEmpty) {
-      log.info('No attachments to save.');
+      log.finer('No attachments to save.');
       return;
     }
     await db.writeTransaction((tx) async {
@@ -98,6 +98,7 @@ final class AttachmentContext {
   ) async {
     // Only delete archived attachments exceeding the maxArchivedCount, ordered by timestamp DESC
     const limit = 1000;
+
     final results = await db.getAll(
       'SELECT * FROM $table WHERE state = ? ORDER BY timestamp DESC LIMIT ? OFFSET ?',
       [
@@ -134,6 +135,8 @@ final class AttachmentContext {
     Attachment attachment,
     SqliteWriteContext context,
   ) async {
+    log.finest('Updating attachment ${attachment.id}: ${attachment.state}');
+
     await context.execute(
       '''INSERT OR REPLACE INTO 
                     $table (id, timestamp, filename, local_uri, media_type, size, state, has_synced, meta_data) 

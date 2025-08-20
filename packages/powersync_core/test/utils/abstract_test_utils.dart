@@ -63,17 +63,21 @@ Logger _makeTestLogger({Level level = Level.ALL, String? name}) {
 abstract mixin class TestPowerSyncFactory implements PowerSyncOpenFactory {
   Future<CommonDatabase> openRawInMemoryDatabase();
 
-  Future<(CommonDatabase, PowerSyncDatabase)> openInMemoryDatabase() async {
+  Future<(CommonDatabase, PowerSyncDatabase)> openInMemoryDatabase({
+    Schema? schema,
+    Logger? logger,
+  }) async {
     final raw = await openRawInMemoryDatabase();
-    return (raw, wrapRaw(raw));
+    return (raw, wrapRaw(raw, customSchema: schema, logger: logger));
   }
 
   PowerSyncDatabase wrapRaw(
     CommonDatabase raw, {
     Logger? logger,
+    Schema? customSchema,
   }) {
     return PowerSyncDatabase.withDatabase(
-      schema: schema,
+      schema: customSchema ?? schema,
       database: SqliteDatabase.singleConnection(
           SqliteConnection.synchronousWrapper(raw)),
       logger: logger,

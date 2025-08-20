@@ -4,6 +4,7 @@ library;
 import 'dart:typed_data';
 
 import 'package:meta/meta.dart';
+import 'package:path/path.dart' as p;
 
 /// An interface responsible for storing attachment data locally.
 ///
@@ -15,7 +16,10 @@ import 'package:meta/meta.dart';
 ///
 /// {@category attachments}
 @experimental
-abstract interface class LocalStorageAdapter {
+abstract interface class LocalStorage {
+  /// Returns an in-memory [LocalStorage] implementation, suitable for testing.
+  factory LocalStorage.inMemory() = _InMemoryStorage;
+
   /// Saves binary data stream to storage at the specified file path
   ///
   /// [filePath] - Path where the file will be stored
@@ -47,4 +51,52 @@ abstract interface class LocalStorageAdapter {
 
   /// Clears all data from the storage.
   Future<void> clear();
+}
+
+final class _InMemoryStorage implements LocalStorage {
+  final Map<String, Uint8List> content = {};
+
+  String _keyForPath(String path) {
+    return p.normalize(path);
+  }
+
+  @override
+  Future<void> clear() async {
+    content.clear();
+  }
+
+  @override
+  Future<void> deleteFile(String filePath) async {
+    content.remove(_keyForPath(filePath));
+  }
+
+  @override
+  Future<bool> fileExists(String filePath) async {
+    return content.containsKey(_keyForPath(filePath));
+  }
+
+  @override
+  Future<void> initialize() async {}
+
+  @override
+  Stream<Uint8List> readFile(String filePath, {String? mediaType}) {
+    return switch (content[_keyForPath(filePath)]) {
+      null =>
+        Stream.error('file at $filePath does not exist in in-memory storage'),
+      final contents => Stream.value(contents),
+    };
+  }
+
+  @override
+  Future<int> saveFile(String filePath, Stream<List<int>> data) async {
+    var length = 0;
+    final builder = BytesBuilder(copy: false);
+    await for (final chunk in data) {
+      length += chunk.length;
+      builder.add(chunk);
+    }
+
+    content[_keyForPath(filePath)] = builder.takeBytes();
+    return length;
+  }
 }

@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 import 'package:flutter/material.dart';
-import 'package:powersync_core/attachments.dart';
+import 'package:powersync_core/attachments/attachments.dart';
 import 'package:powersync_flutter_demo/attachments/camera_helpers.dart';
 import 'package:powersync_flutter_demo/attachments/photo_capture_widget.dart';
 
