@@ -30,9 +30,9 @@ abstract interface class LocalStorage {
   /// Retrieves binary data stream from storage at the specified file path
   ///
   /// [filePath] - Path of the file to read
-  /// [mediaType] - Optional MIME type of the data
+  ///
   /// Returns a stream of binary data
-  Stream<Uint8List> readFile(String filePath, {String? mediaType});
+  Stream<Uint8List> readFile(String filePath);
 
   /// Deletes a file at the specified path
   ///
@@ -79,7 +79,7 @@ final class _InMemoryStorage implements LocalStorage {
   Future<void> initialize() async {}
 
   @override
-  Stream<Uint8List> readFile(String filePath, {String? mediaType}) {
+  Stream<Uint8List> readFile(String filePath) {
     return switch (content[_keyForPath(filePath)]) {
       null =>
         Stream.error('file at $filePath does not exist in in-memory storage'),
