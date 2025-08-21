@@ -6,7 +6,7 @@ import 'package:powersync_flutter_demo/app_config.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:logging/logging.dart';
 
-class SupabaseStorageAdapter implements RemoteStorageAdapter {
+class SupabaseStorageAdapter implements RemoteStorage {
   static final _log = Logger('SupabaseStorageAdapter');
 
   @override
