@@ -24,7 +24,8 @@ void main() {
         .map(
           (rs) => [
             for (final row in rs)
-              WatchedAttachmentItem(id: row[0] as String, fileExtension: 'jpg')
+              WatchedAttachmentItem(
+                  id: row['photo_id'] as String, fileExtension: 'jpg')
           ],
         );
   }
