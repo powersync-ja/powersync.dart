@@ -148,9 +148,9 @@ final class SyncStatus {
   /// information extracted from the lower priority `2` since each partial sync
   /// in priority `2` necessarily includes a consistent view over data in
   /// priority `1`.
-  SyncPriorityStatus statusForPriority(BucketPriority priority) {
+  SyncPriorityStatus statusForPriority(StreamPriority priority) {
     assert(priorityStatusEntries.isSortedByCompare(
-        (e) => e.priority, BucketPriority.comparator));
+        (e) => e.priority, StreamPriority.comparator));
 
     for (final known in priorityStatusEntries) {
       // Lower-priority buckets are synchronized after higher-priority buckets,
@@ -309,7 +309,7 @@ final class InternalSyncDownloadProgress extends ProgressWithOperations {
       final sinceLast = savedProgress?.sinceLast ?? 0;
 
       buckets[bucket.bucket] = (
-        priority: BucketPriority._(bucket.priority),
+        priority: StreamPriority._(bucket.priority),
         atLast: atLast,
         sinceLast: sinceLast,
         targetCount: bucket.count ?? 0,
@@ -324,7 +324,7 @@ final class InternalSyncDownloadProgress extends ProgressWithOperations {
           return InternalSyncDownloadProgress({
             for (final bucket in target.checksums)
               bucket.bucket: (
-                priority: BucketPriority(bucket.priority),
+                priority: StreamPriority(bucket.priority),
                 atLast: 0,
                 sinceLast: 0,
                 targetCount: knownCount,
@@ -343,7 +343,7 @@ final class InternalSyncDownloadProgress extends ProgressWithOperations {
 
   /// Sums the total target and completed operations for all buckets up until
   /// the given [priority] (inclusive).
-  ProgressWithOperations untilPriority(BucketPriority priority) {
+  ProgressWithOperations untilPriority(StreamPriority priority) {
     final (total, downloaded) = buckets.values
         .where((e) => e.priority >= priority)
         .fold((0, 0), _addProgress);
@@ -352,18 +352,7 @@ final class InternalSyncDownloadProgress extends ProgressWithOperations {
   }
 
   ProgressWithOperations _forStream(CoreActiveStreamSubscription subscription) {
-    final (total, downloaded) = subscription.associatedBuckets.fold(
-      (0, 0),
-      (prev, bucket) {
-        final foundProgress = buckets[bucket];
-        if (foundProgress == null) {
-          return prev;
-        }
-
-        return _addProgress(prev, foundProgress);
-      },
-    );
-
+    final (:total, :downloaded) = subscription.progress;
     return ProgressWithOperations._(total, downloaded);
   }
 
@@ -475,7 +464,7 @@ extension type SyncDownloadProgress._(InternalSyncDownloadProgress _internal)
   /// The returned [ProgressWithOperations] tracks the target amount of
   /// operations that need to be downloaded in total and how many of them have
   /// already been received.
-  ProgressWithOperations untilPriority(BucketPriority priority) {
+  ProgressWithOperations untilPriority(StreamPriority priority) {
     return _internal.untilPriority(priority);
   }
 }

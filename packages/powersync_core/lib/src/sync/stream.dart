@@ -93,7 +93,7 @@ final class CoreActiveStreamSubscription implements SyncSubscriptionDefinition {
   @override
   final Map<String, Object?>? parameters;
   final StreamPriority priority;
-  final List<String> associatedBuckets;
+  final ({int total, int downloaded}) progress;
   @override
   final bool active;
   @override
@@ -112,7 +112,7 @@ final class CoreActiveStreamSubscription implements SyncSubscriptionDefinition {
     required this.name,
     required this.parameters,
     required this.priority,
-    required this.associatedBuckets,
+    required this.progress,
     required this.active,
     required this.isDefault,
     required this.hasExplicitSubscription,
@@ -128,7 +128,7 @@ final class CoreActiveStreamSubscription implements SyncSubscriptionDefinition {
         final prio? => StreamPriority(prio),
         null => StreamPriority.fullSyncPriority,
       },
-      associatedBuckets: (json['associated_buckets'] as List).cast(),
+      progress: _progressFromJson(json['progress'] as Map<String, Object?>),
       active: json['active'] as bool,
       isDefault: json['is_default'] as bool,
       hasExplicitSubscription: json['has_explicit_subscription'] as bool,
@@ -150,7 +150,10 @@ final class CoreActiveStreamSubscription implements SyncSubscriptionDefinition {
       'name': name,
       'parameters': parameters,
       'priority': priority.priorityNumber,
-      'associated_buckets': associatedBuckets,
+      'progress': {
+        'total': progress.total,
+        'downloaded': progress.downloaded,
+      },
       'active': active,
       'is_default': isDefault,
       'has_explicit_subscription': hasExplicitSubscription,
@@ -163,5 +166,10 @@ final class CoreActiveStreamSubscription implements SyncSubscriptionDefinition {
         final lastSyncedAt => lastSyncedAt.millisecondsSinceEpoch / 1000,
       }
     };
+  }
+
+  static ({int total, int downloaded}) _progressFromJson(
+      Map<String, Object?> json) {
+    return (total: json['total'] as int, downloaded: json['downloaded'] as int);
   }
 }
