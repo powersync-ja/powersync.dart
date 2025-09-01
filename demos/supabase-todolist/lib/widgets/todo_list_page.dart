@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:powersync/powersync.dart';
 
+import '../app_config.dart';
 import '../powersync.dart';
 import './status_app_bar.dart';
 import './todo_item_dialog.dart';
@@ -33,22 +34,54 @@ class TodoListPage extends StatelessWidget {
     );
 
     return Scaffold(
-        appBar: StatusAppBar(title: Text(list.name)),
-        floatingActionButton: button,
-        body: TodoListWidget(list: list));
+      appBar: StatusAppBar(title: Text(list.name)),
+      floatingActionButton: button,
+      body: AppConfig.hasSyncStreams
+          ? _SyncStreamTodoListWidget(list: list)
+          : TodoListWidget(list: list),
+    );
   }
 }
 
-class TodoListWidget extends StatefulWidget {
+class TodoListWidget extends StatelessWidget {
   final TodoList list;
 
   const TodoListWidget({super.key, required this.list});
 
   @override
-  State<TodoListWidget> createState() => _TodoListWidgetState();
+  Widget build(BuildContext context) {
+    return StreamBuilder(
+      stream: TodoList.watchSyncStatus().map((e) => e.hasSynced),
+      initialData: db.currentStatus.hasSynced,
+      builder: (context, snapshot) {
+        return StreamBuilder(
+          stream: list.watchItems(),
+          builder: (context, snapshot) {
+            final items = snapshot.data ?? const [];
+
+            return ListView(
+              padding: const EdgeInsets.symmetric(vertical: 8.0),
+              children: items.map((todo) {
+                return TodoItemWidget(todo: todo);
+              }).toList(),
+            );
+          },
+        );
+      },
+    );
+  }
 }
 
-class _TodoListWidgetState extends State<TodoListWidget> {
+class _SyncStreamTodoListWidget extends StatefulWidget {
+  final TodoList list;
+
+  const _SyncStreamTodoListWidget({required this.list});
+
+  @override
+  State<_SyncStreamTodoListWidget> createState() => _SyncStreamTodosState();
+}
+
+class _SyncStreamTodosState extends State<_SyncStreamTodoListWidget> {
   SyncStreamSubscription? _listSubscription;
 
   void _subscribe(String listId) {
@@ -73,7 +106,7 @@ class _TodoListWidgetState extends State<TodoListWidget> {
   }
 
   @override
-  void didUpdateWidget(covariant TodoListWidget oldWidget) {
+  void didUpdateWidget(covariant _SyncStreamTodoListWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
     _subscribe(widget.list.id);
   }
