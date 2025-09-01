@@ -21,8 +21,8 @@ A new Flutter FFI plugin project.
   s.source_files = 'powersync_flutter_libs/Sources/powersync_flutter_libs/**/*.swift'
   s.ios.dependency 'Flutter'
   s.osx.dependency 'FlutterMacOS'
-  s.ios.deployment_target = '12.0'
-  s.osx.deployment_target = '10.14'
+  s.ios.deployment_target = '13.0'
+  s.osx.deployment_target = '10.15'
 
   # NOTE: Always update Package.swift as well when updating this!
   s.dependency "powersync-sqlite-core", "~> 0.4.5"
