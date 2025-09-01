@@ -25,7 +25,7 @@ jobs:
         uses: dart-lang/setup-dart@v1
       - name: Setup macOS build dependencies
         if: steps.cache_build.outputs.cache-hit != 'true'
-        run: brew install cmake llvm lld binaryen wasi-libc wasi-runtimes
+        run: brew install llvm lld binaryen wasi-libc wasi-runtimes
       - name: Compile sqlite3.wasm on macOS
         if: steps.cache_build.outputs.cache-hit != 'true'
         working-directory: packages/sqlite3_wasm_build
