@@ -25,9 +25,11 @@ flutter:
         pluginClass: PowersyncFlutterLibsPlugin
       ios:
         pluginClass: PowersyncFlutterLibsPlugin
-      linux:
-        pluginClass: PowersyncFlutterLibsPlugin
+        sharedDarwinSource: true
       macos:
+        pluginClass: PowersyncFlutterLibsPlugin
+        sharedDarwinSource: true
+      linux:
         pluginClass: PowersyncFlutterLibsPlugin
       windows:
         pluginClass: PowersyncFlutterLibsPlugin
