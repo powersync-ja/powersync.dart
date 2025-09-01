@@ -309,7 +309,12 @@ class StreamingSyncImplementation implements StreamingSync {
   }
 
   Future<void> _rustStreamingSyncIteration() async {
-    await _ActiveRustStreamingIteration(this).syncIteration();
+    logger.info('Starting Rust sync iteration');
+    final response = await _ActiveRustStreamingIteration(this).syncIteration();
+    logger.info(
+        'Ending Rust sync iteration. Immediate restart: ${response.immediateRestart}');
+    // Note: With the current loop in streamingSync(), any return value that
+    // isn't an exception triggers an immediate restart.
   }
 
   Future<(List<BucketRequest>, Map<String, BucketDescription?>)>
@@ -610,7 +615,7 @@ final class _ActiveRustStreamingIteration {
   var _hadSyncLine = false;
 
   StreamSubscription<void>? _completedUploads;
-  final Completer<void> _completedStream = Completer();
+  final Completer<RustSyncIterationResult> _completedStream = Completer();
 
   _ActiveRustStreamingIteration(this.sync);
 
@@ -620,7 +625,7 @@ final class _ActiveRustStreamingIteration {
         .toList();
   }
 
-  Future<void> syncIteration() async {
+  Future<RustSyncIterationResult> syncIteration() async {
     try {
       await _control(
         'start',
@@ -632,7 +637,7 @@ final class _ActiveRustStreamingIteration {
         }),
       );
       assert(_completedStream.isCompleted, 'Should have started streaming');
-      await _completedStream.future;
+      return await _completedStream.future;
     } finally {
       _isActive = false;
       _completedUploads?.cancel();
@@ -655,10 +660,12 @@ final class _ActiveRustStreamingIteration {
     }).map(ReceivedLine.new);
   }
 
-  Future<void> _handleLines(EstablishSyncStream request) async {
+  Future<RustSyncIterationResult> _handleLines(
+      EstablishSyncStream request) async {
     final events = addBroadcast(
         _receiveLines(request.request), sync._nonLineSyncEvents.stream);
 
+    var needsImmediateRestart = false;
     loop:
     await for (final event in events) {
       if (!_isActive || sync.aborted) {
@@ -674,7 +681,8 @@ final class _ActiveRustStreamingIteration {
           await _control('line_text', line);
         case UploadCompleted():
           await _control('completed_upload');
-        case AbortCurrentIteration():
+        case AbortCurrentIteration(:final hideDisconnectState):
+          needsImmediateRestart = hideDisconnectState;
           break loop;
         case TokenRefreshComplete():
           await _control('refreshed_token');
@@ -683,6 +691,8 @@ final class _ActiveRustStreamingIteration {
               convert.json.encode(_encodeSubscriptions(currentSubscriptions)));
       }
     }
+
+    return (immediateRestart: needsImmediateRestart);
   }
 
   /// Triggers a local CRUD upload when the first sync line has been received.
@@ -736,10 +746,11 @@ final class _ActiveRustStreamingIteration {
             sync.logger.warning('Could not prefetch credentials', e, s);
           });
         }
-      case CloseSyncStream():
+      case CloseSyncStream(:final hideDisconnect):
         if (!sync.aborted) {
           _isActive = false;
-          sync._nonLineSyncEvents.add(const AbortCurrentIteration());
+          sync._nonLineSyncEvents
+              .add(AbortCurrentIteration(hideDisconnectState: hideDisconnect));
         }
       case FlushFileSystem():
         await sync.adapter.flushFileSystem();
@@ -750,6 +761,8 @@ final class _ActiveRustStreamingIteration {
     }
   }
 }
+
+typedef RustSyncIterationResult = ({bool immediateRestart});
 
 sealed class SyncEvent {}
 
@@ -768,7 +781,14 @@ final class TokenRefreshComplete implements SyncEvent {
 }
 
 final class AbortCurrentIteration implements SyncEvent {
-  const AbortCurrentIteration();
+  /// Whether we should immediately disconnect and hide the `disconnected`
+  /// state.
+  ///
+  /// This is used when we're changing subscription, to hide the brief downtime
+  /// we have while reconnecting.
+  final bool hideDisconnectState;
+
+  const AbortCurrentIteration({this.hideDisconnectState = false});
 }
 
 final class HandleChangedSubscriptions implements SyncEvent {

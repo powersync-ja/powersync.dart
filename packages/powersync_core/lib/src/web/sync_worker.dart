@@ -229,6 +229,8 @@ class _SyncRunner {
     final before = currentStreams.toSet();
     final after = connections.values.flattenedToSet;
     if (!const SetEquality<SubscribedStream>().equals(before, after)) {
+      _logger.info(
+          'Subscriptions across tabs have changed, checking whether a reconnect is necessary');
       currentStreams = after.toList();
       sync?.updateSubscriptions(currentStreams);
     }
@@ -320,6 +322,7 @@ class _SyncRunner {
       client: BrowserClient(),
       identifier: identifier,
       activeSubscriptions: currentStreams,
+      logger: _logger,
     );
     sync!.statusStream.listen((event) {
       _logger.fine('Broadcasting sync event: $event');

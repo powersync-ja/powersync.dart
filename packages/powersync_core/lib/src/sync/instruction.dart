@@ -14,7 +14,8 @@ sealed class Instruction {
         EstablishSyncStream.fromJson(establish as Map<String, Object?>),
       {'FetchCredentials': final creds} =>
         FetchCredentials.fromJson(creds as Map<String, Object?>),
-      {'CloseSyncStream': _} => const CloseSyncStream(),
+      {'CloseSyncStream': final closeOptions as Map<String, Object?>} =>
+        CloseSyncStream(closeOptions['hide_disconnect'] as bool),
       {'FlushFileSystem': _} => const FlushFileSystem(),
       {'DidCompleteSync': _} => const DidCompleteSync(),
       _ => UnknownSyncInstruction(json)
@@ -142,7 +143,9 @@ final class FetchCredentials implements Instruction {
 }
 
 final class CloseSyncStream implements Instruction {
-  const CloseSyncStream();
+  final bool hideDisconnect;
+
+  const CloseSyncStream(this.hideDisconnect);
 }
 
 final class FlushFileSystem implements Instruction {
