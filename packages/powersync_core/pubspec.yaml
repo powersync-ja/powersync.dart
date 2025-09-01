@@ -19,7 +19,7 @@ dependencies:
   uuid: ^4.2.0
   async: ^2.10.0
   logging: ^1.1.1
-  collection: ^1.17.0
+  collection: ^1.19.0
   web: ^1.0.0
 
   # Only used internally to download WASM / worker files.
