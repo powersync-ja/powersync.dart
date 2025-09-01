@@ -132,7 +132,7 @@ class _SyncStreamTodosState extends State<_SyncStreamTodoListWidget> {
             false;
 
         if (!hasSynced) {
-          return const CircularProgressIndicator();
+          return const Center(child: CircularProgressIndicator());
         } else {
           return StreamBuilder(
             stream: widget.list.watchItems(),

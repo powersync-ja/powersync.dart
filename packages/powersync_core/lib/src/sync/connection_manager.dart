@@ -255,7 +255,7 @@ final class ConnectionManager {
       },
     });
 
-    await _activeGroup.syncMutex.lock(() async {
+    await _activeGroup.syncConnectMutex.lock(() async {
       if (_abortActiveSync == null) {
         // Since we're not connected, update the offline sync status to reflect
         // the new subscription.
