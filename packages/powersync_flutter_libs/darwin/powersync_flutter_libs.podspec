@@ -9,19 +9,22 @@ Pod::Spec.new do |s|
   s.description      = <<-DESC
 A new Flutter FFI plugin project.
                        DESC
-  s.homepage         = 'http://example.com'
+  s.homepage         = 'https://powersync.com'
   s.license          = { :file => '../LICENSE' }
-  s.author           = { 'Your Company' => 'email@example.com' }
+  s.author           = { 'Journey Mobile, Inc' => 'hello@powersync.com' }
 
   # This will ensure the source files in Classes/ are included in the native
   # builds of apps using this FFI plugin. Podspec does not support relative
   # paths, so Classes contains a forwarder C file that relatively imports
   # `../src/*` so that the C sources can be shared among all target platforms.
   s.source           = { :path => '.' }
-  s.source_files = 'Classes/**/*'
-  s.dependency 'Flutter'
-  s.platform = :ios, '11.0'
+  s.source_files = 'powersync_flutter_libs/Sources/powersync_flutter_libs/**/*.swift'
+  s.ios.dependency 'Flutter'
+  s.osx.dependency 'FlutterMacOS'
+  s.ios.deployment_target = '12.0'
+  s.osx.deployment_target = '10.14'
 
+  # NOTE: Always update Package.swift as well when updating this!
   s.dependency "powersync-sqlite-core", "~> 0.4.5"
 
   # Flutter.framework does not contain a i386 slice.
