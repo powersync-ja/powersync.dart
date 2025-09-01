@@ -618,7 +618,7 @@ void _declareTests(String name, SyncOptions options, bool bson) {
       Future<void> expectProgress(
         StreamQueue<SyncStatus> status, {
         required Object total,
-        Map<BucketPriority, Object> priorities = const {},
+        Map<StreamPriority, Object> priorities = const {},
       }) async {
         await expectLater(
           status,

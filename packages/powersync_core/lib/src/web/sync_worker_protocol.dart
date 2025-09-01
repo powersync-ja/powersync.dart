@@ -226,7 +226,7 @@ extension type SerializedBucketProgress._(JSObject _) implements JSObject {
     return {
       for (final entry in array.toDart)
         entry.name: (
-          priority: BucketPriority(entry.priority),
+          priority: StreamPriority(entry.priority),
           atLast: entry.atLast,
           sinceLast: entry.sinceLast,
           targetCount: entry.targetCount,

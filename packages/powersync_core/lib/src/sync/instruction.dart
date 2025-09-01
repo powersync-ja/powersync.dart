@@ -94,7 +94,7 @@ final class CoreSyncStatus {
 
   static SyncPriorityStatus _priorityStatusFromJson(Map<String, Object?> json) {
     return (
-      priority: BucketPriority(json['priority'] as int),
+      priority: StreamPriority(json['priority'] as int),
       hasSynced: json['has_synced'] as bool?,
       lastSyncedAt: switch (json['last_synced_at']) {
         null => null,
@@ -123,7 +123,7 @@ final class DownloadProgress {
 
   static BucketProgress _bucketProgressFromJson(Map<String, Object?> json) {
     return (
-      priority: BucketPriority(json['priority'] as int),
+      priority: StreamPriority(json['priority'] as int),
       atLast: json['at_last'] as int,
       sinceLast: json['since_last'] as int,
       targetCount: json['target_count'] as int,
