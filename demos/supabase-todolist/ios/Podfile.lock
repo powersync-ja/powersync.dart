@@ -10,6 +10,7 @@ PODS:
   - powersync-sqlite-core (0.4.5)
   - powersync_flutter_libs (0.0.1):
     - Flutter
+    - FlutterMacOS
     - powersync-sqlite-core (~> 0.4.5)
   - shared_preferences_foundation (0.0.1):
     - Flutter
@@ -47,7 +48,7 @@ DEPENDENCIES:
   - camera_avfoundation (from `.symlinks/plugins/camera_avfoundation/ios`)
   - Flutter (from `Flutter`)
   - path_provider_foundation (from `.symlinks/plugins/path_provider_foundation/darwin`)
-  - powersync_flutter_libs (from `.symlinks/plugins/powersync_flutter_libs/ios`)
+  - powersync_flutter_libs (from `.symlinks/plugins/powersync_flutter_libs/darwin`)
   - shared_preferences_foundation (from `.symlinks/plugins/shared_preferences_foundation/darwin`)
   - sqlite3_flutter_libs (from `.symlinks/plugins/sqlite3_flutter_libs/darwin`)
   - url_launcher_ios (from `.symlinks/plugins/url_launcher_ios/ios`)
@@ -67,7 +68,7 @@ EXTERNAL SOURCES:
   path_provider_foundation:
     :path: ".symlinks/plugins/path_provider_foundation/darwin"
   powersync_flutter_libs:
-    :path: ".symlinks/plugins/powersync_flutter_libs/ios"
+    :path: ".symlinks/plugins/powersync_flutter_libs/darwin"
   shared_preferences_foundation:
     :path: ".symlinks/plugins/shared_preferences_foundation/darwin"
   sqlite3_flutter_libs:
@@ -81,7 +82,7 @@ SPEC CHECKSUMS:
   Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
   path_provider_foundation: 080d55be775b7414fd5a5ef3ac137b97b097e564
   powersync-sqlite-core: 6f32860379009d2a37cadc9e9427a431bdbd83c8
-  powersync_flutter_libs: 7684a62208907328906eb932f1fc8b3d8879974e
+  powersync_flutter_libs: b2cd15651535031defb8f2799fa05e07d9514ecd
   shared_preferences_foundation: 9e1978ff2562383bd5676f64ec4e9aa8fa06a6f7
   sqlite3: 73513155ec6979715d3904ef53a8d68892d4032b
   sqlite3_flutter_libs: 83f8e9f5b6554077f1d93119fe20ebaa5f3a9ef1
