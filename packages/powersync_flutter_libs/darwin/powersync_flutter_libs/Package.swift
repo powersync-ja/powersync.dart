@@ -6,11 +6,11 @@ import PackageDescription
 let package = Package(
     name: "powersync_flutter_libs",
     platforms: [
-        .iOS("12.0"),
-        .macOS("10.14")
+        .iOS("13.0"),
+        .macOS("10.15")
     ],
     products: [
-        .library(name: "powersync_flutter_libs", type: .static, targets: ["powersync_flutter_libs"])
+        .library(name: "powersync-flutter-libs", type: .static, targets: ["powersync_flutter_libs"])
     ],
     dependencies: [
        .package(
@@ -22,7 +22,9 @@ let package = Package(
     targets: [
         .target(
             name: "powersync_flutter_libs",
-            dependencies: ["PowerSyncSQLiteCore"],
+            dependencies: [
+                .product(name: "PowerSyncSQLiteCore", package: "powersync-sqlite-core-swift")
+            ],
             resources: []
         )
     ]
