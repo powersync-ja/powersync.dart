@@ -1,0 +1,22 @@
+{
+  "pins" : [
+    {
+      "identity" : "csqlite",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/simolus3/CSQLite.git",
+      "state" : {
+        "revision" : "a8d28afef08ad8faa4ee9ef7845f61c2e8ac5810"
+      }
+    },
+    {
+      "identity" : "powersync-sqlite-core-swift",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/powersync-ja/powersync-sqlite-core-swift.git",
+      "state" : {
+        "revision" : "00776db5157c8648671b00e6673603144fafbfeb",
+        "version" : "0.4.5"
+      }
+    }
+  ],
+  "version" : 2
+}
