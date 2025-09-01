@@ -385,7 +385,7 @@ class StreamingSyncImplementation implements StreamingSync {
             // checkpoint later.
           } else {
             _updateStatusForPriority((
-              priority: BucketPriority(bucketPriority),
+              priority: StreamPriority(bucketPriority),
               lastSyncedAt: DateTime.now(),
               hasSynced: true,
             ));

@@ -618,7 +618,7 @@ void _declareTests(String name, SyncOptions options, bool bson) {
       Future<void> expectProgress(
         StreamQueue<SyncStatus> status, {
         required Object total,
-        Map<BucketPriority, Object> priorities = const {},
+        Map<StreamPriority, Object> priorities = const {},
       }) async {
         await expectLater(
           status,
@@ -939,11 +939,11 @@ void _declareTests(String name, SyncOptions options, bool bson) {
             await Completer<void>().future;
           }));
 
-        syncClient.streamingSync();
+        await connect();
         await requestStarted.future;
         expect(database.currentStatus, isSyncStatus(connecting: true));
 
-        await syncClient.abort();
+        await database.disconnect();
         expect(database.currentStatus.anyError, isNull);
       });
 
@@ -962,7 +962,7 @@ void _declareTests(String name, SyncOptions options, bool bson) {
         });
         await expectLater(status, emits(isSyncStatus(downloading: true)));
 
-        await syncClient.abort();
+        await database.disconnect();
         expect(database.currentStatus.anyError, isNull);
       });
     });
