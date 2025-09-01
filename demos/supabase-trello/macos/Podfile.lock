@@ -9,10 +9,10 @@ PODS:
   - path_provider_foundation (0.0.1):
     - Flutter
     - FlutterMacOS
-  - powersync-sqlite-core (0.4.4)
+  - powersync-sqlite-core (0.4.5)
   - powersync_flutter_libs (0.0.1):
     - FlutterMacOS
-    - powersync-sqlite-core (~> 0.4.4)
+    - powersync-sqlite-core (~> 0.4.5)
   - shared_preferences_foundation (0.0.1):
     - Flutter
     - FlutterMacOS
@@ -81,15 +81,15 @@ SPEC CHECKSUMS:
   app_links: afe860c55c7ef176cea7fb630a2b7d7736de591d
   file_picker: 7584aae6fa07a041af2b36a2655122d42f578c1a
   file_selector_macos: 6280b52b459ae6c590af5d78fc35c7267a3c4b31
-  FlutterMacOS: 8f6f14fa908a6fb3fba0cd85dbd81ec4b251fb24
+  FlutterMacOS: d0db08ddef1a9af05a5ec4b724367152bb0500b1
   path_provider_foundation: 080d55be775b7414fd5a5ef3ac137b97b097e564
-  powersync-sqlite-core: 954b7c4f068e21e6e759a7f487f0d7da4062e858
-  powersync_flutter_libs: e8debf4b25a998c233cf7992d17cd49b407c56d1
+  powersync-sqlite-core: 6f32860379009d2a37cadc9e9427a431bdbd83c8
+  powersync_flutter_libs: 41d8a7b193abf15e46f95f0ec1229d86b6893171
   shared_preferences_foundation: 9e1978ff2562383bd5676f64ec4e9aa8fa06a6f7
   sqlite3: 3c950dc86011117c307eb0b28c4a7bb449dce9f1
   sqlite3_flutter_libs: f6acaa2172e6bb3e2e70c771661905080e8ebcf2
   url_launcher_macos: 0fba8ddabfc33ce0a9afe7c5fef5aab3d8d2d673
 
-PODFILE CHECKSUM: 236401fc2c932af29a9fcf0e97baeeb2d750d367
+PODFILE CHECKSUM: 9ebaf0ce3d369aaa26a9ea0e159195ed94724cf3
 
 COCOAPODS: 1.16.2
