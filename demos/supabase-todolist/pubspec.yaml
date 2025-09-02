@@ -30,3 +30,7 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  config:
+    # PowerSync supports SPM, but we want to disable it in this demo so that we can keep testing
+    # the CocoaPods parts of powersync_flutter_libs.
+    enable-swift-package-manager: false
