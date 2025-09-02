@@ -154,6 +154,11 @@ class TestConnector extends PowerSyncBackendConnector {
   }
 }
 
+/// A [PowerSyncDatabase] implemented by a single in-memory database connection
+/// and a mock-HTTP sync client.
+///
+/// This ensures tests for sync cover the `ConnectionManager` and other methods
+/// exposed by the mixin.
 final class TestDatabase
     with SqliteQueries, PowerSyncDatabaseMixin
     implements PowerSyncDatabase {
