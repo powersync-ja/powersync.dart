@@ -85,9 +85,8 @@ final class SyncingService {
   }
 
   /// Enqueues a sync operation (manual trigger).
-  Future<void> triggerSync() async {
-    if (_isClosed) return;
-    _syncTriggerController.add(null);
+  void triggerSync() {
+    if (!_isClosed) _syncTriggerController.add(null);
   }
 
   /// Stops all ongoing sync operations.

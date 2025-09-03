@@ -91,7 +91,7 @@ Next, start the sync process by calling `attachmentQueue.startSync()`.
 
 To create a new attachment locally, call `AttachmentQueue.saveFile`. To represent the attachment, this method takes
 the contents to store, the media type, an optional file extension and id.
-The queue will store the contents in a local file and mark is as queued for uploads. It also invokes a callback
+The queue will store the contents in a local file and mark it as queued for upload. It also invokes a callback
 responsible for referencing the id of the generated attachment in the primary data model:
 
 ```dart

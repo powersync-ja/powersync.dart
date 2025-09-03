@@ -73,7 +73,8 @@ base class AttachmentQueue {
 
   final Mutex _mutex = Mutex();
   bool _closed = false;
-  StreamSubscription<List<WatchedAttachmentItem>>? _syncStatusSubscription;
+  StreamSubscription<void>? _syncStatusSubscription;
+  StreamSubscription<void>? _watchedAttachmentsSubscription;
   final AttachmentService _attachmentsService;
   final SyncingService _syncingService;
 
@@ -168,10 +169,23 @@ base class AttachmentQueue {
         await _verifyAttachments(context);
       });
 
+      // Listen for connectivity changes and watched attachments
       await _syncingService.startSync();
 
-      // Listen for connectivity changes and watched attachments
-      _syncStatusSubscription = _watchAttachments().listen((items) async {
+      _watchedAttachmentsSubscription =
+          _watchAttachments().listen((items) async {
+        await _processWatchedAttachments(items);
+      });
+
+      var previouslyConnected = _db.currentStatus.connected;
+      _syncStatusSubscription = _db.statusStream.listen((status) {
+        if (!previouslyConnected && status.connected) {
+          _syncingService.triggerSync();
+        }
+
+        previouslyConnected = status.connected;
+      });
+      _watchAttachments().listen((items) async {
         await _processWatchedAttachments(items);
       });
 
@@ -187,10 +201,19 @@ base class AttachmentQueue {
   }
 
   Future<void> _stopSyncingInternal() async {
-    if (_closed || _syncStatusSubscription == null) return;
+    if (_closed ||
+        _syncStatusSubscription == null ||
+        _watchedAttachmentsSubscription == null) {
+      return;
+    }
 
-    await _syncStatusSubscription?.cancel();
+    await (
+      _syncStatusSubscription!.cancel(),
+      _watchedAttachmentsSubscription!.cancel(),
+    ).wait;
+
     _syncStatusSubscription = null;
+    _watchedAttachmentsSubscription = null;
     await _syncingService.stopSync();
 
     _logger.info('AttachmentQueue stopped syncing.');
