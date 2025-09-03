@@ -219,7 +219,7 @@ final class SyncStreamStatus {
   final ProgressWithOperations? progress;
   final CoreActiveStreamSubscription _internal;
 
-  SyncSubscriptionDefinition get subscription => _internal;
+  SyncSubscriptionDescription get subscription => _internal;
   StreamPriority get priority => _internal.priority;
   bool get isDefault => _internal.isDefault;
 
