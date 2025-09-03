@@ -170,7 +170,7 @@ void main() {
       status,
       emits(
         isSyncStatus(
-          activeSubscriptions: [
+          subscriptions: [
             isStreamStatus(
               subscription: isSyncSubscription(
                 name: 'default_stream',
