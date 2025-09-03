@@ -2,7 +2,6 @@ import 'dart:math';
 
 import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
-import '../database/powersync_database.dart';
 
 import 'bucket_storage.dart';
 import 'protocol.dart';
@@ -120,10 +119,8 @@ final class SyncStatus {
 
   /// All sync streams currently being tracked in this subscription.
   ///
-  /// This returns null when the sync stream is currently being opened and we
-  /// don't have reliable information about all included streams yet (in that
-  /// state, [PowerSyncDatabase.subscribedStreams] can still be used to
-  /// resolve known subscriptions locally).
+  /// This returns null when the database is currently being opened and we
+  /// don't have reliable information about all included streams yet.
   Iterable<SyncStreamStatus>? get activeSubscriptions {
     return _internalSubscriptions?.map((subscription) {
       return SyncStreamStatus._(subscription, downloadProgress);
@@ -221,7 +218,6 @@ final class SyncStreamStatus {
 
   SyncSubscriptionDescription get subscription => _internal;
   StreamPriority get priority => _internal.priority;
-  bool get isDefault => _internal.isDefault;
 
   SyncStreamStatus._(this._internal, SyncDownloadProgress? progress)
       : progress = progress?._internal._forStream(_internal);
