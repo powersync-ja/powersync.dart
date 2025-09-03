@@ -121,7 +121,7 @@ final class SyncStatus {
   ///
   /// This returns null when the database is currently being opened and we
   /// don't have reliable information about all included streams yet.
-  Iterable<SyncStreamStatus>? get activeSubscriptions {
+  Iterable<SyncStreamStatus>? get subscriptions {
     return _internalSubscriptions?.map((subscription) {
       return SyncStreamStatus._(subscription, downloadProgress);
     });
