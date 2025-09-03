@@ -175,8 +175,8 @@ void main() {
               subscription: isSyncSubscription(
                 name: 'default_stream',
                 parameters: null,
+                isDefault: true,
               ),
-              isDefault: true,
             ),
           ],
         ),
@@ -207,7 +207,7 @@ void main() {
 
     // Given that the subscription has a TTL, dropping the handle should not
     // re-subscribe.
-    await subscription.unsubscribe();
+    subscription.unsubscribe();
     await pumpEventQueue();
     expect(syncService.controller.hasListener, isTrue);
   });

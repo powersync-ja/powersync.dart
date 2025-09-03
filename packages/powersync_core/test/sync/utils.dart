@@ -58,15 +58,11 @@ TypeMatcher<ProgressWithOperations> progress(int completed, int total) {
 TypeMatcher<SyncStreamStatus> isStreamStatus({
   required Object? subscription,
   Object? progress,
-  Object? isDefault,
 }) {
   var matcher = isA<SyncStreamStatus>()
       .having((e) => e.subscription, 'subscription', subscription);
   if (progress case final progress?) {
     matcher = matcher.having((e) => e.progress, 'progress', progress);
-  }
-  if (isDefault case final isDefault?) {
-    matcher = matcher.having((e) => e.isDefault, 'isDefault', isDefault);
   }
 
   return matcher;
@@ -75,10 +71,17 @@ TypeMatcher<SyncStreamStatus> isStreamStatus({
 TypeMatcher<SyncSubscriptionDescription> isSyncSubscription({
   required Object name,
   required Object? parameters,
+  bool? isDefault,
 }) {
-  return isA<SyncSubscriptionDescription>()
+  var matcher = isA<SyncSubscriptionDescription>()
       .having((e) => e.name, 'name', name)
       .having((e) => e.parameters, 'parameters', parameters);
+
+  if (isDefault != null) {
+    matcher = matcher.having((e) => e.isDefault, 'isDefault', isDefault);
+  }
+
+  return matcher;
 }
 
 BucketChecksum checksum(

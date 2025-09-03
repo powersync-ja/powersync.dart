@@ -372,7 +372,7 @@ final class _SyncStreamSubscriptionHandle implements SyncStreamSubscription {
   Map<String, Object?>? get parameters => _source.parameters;
 
   @override
-  Future<void> unsubscribe() async {
+  void unsubscribe() async {
     _finalizer.detach(this);
     _source.decrementRefCount();
   }

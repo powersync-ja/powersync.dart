@@ -77,12 +77,12 @@ abstract interface class SyncStreamSubscription
   /// this stream subscription.
   Future<void> waitForFirstSync();
 
-  /// Removes this stream subscription from the database, if it has been
-  /// subscribed to explicitly.
+  /// Removes this subscription.
   ///
-  /// The subscription may still be included for a while, until the client
-  /// reconnects and receives new snapshots from the sync service.
-  Future<void> unsubscribe();
+  /// Once all [SyncStreamSubscription]s for a [SyncStream] have been
+  /// unsubscribed, the `ttl` for that stream starts running. When it expires
+  /// without subscribing again, the stream will be evicted.
+  void unsubscribe();
 }
 
 /// An `ActiveStreamSubscription` as part of the sync status in Rust.
