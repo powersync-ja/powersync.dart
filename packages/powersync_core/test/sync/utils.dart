@@ -72,11 +72,11 @@ TypeMatcher<SyncStreamStatus> isStreamStatus({
   return matcher;
 }
 
-TypeMatcher<SyncSubscriptionDefinition> isSyncSubscription({
+TypeMatcher<SyncSubscriptionDescription> isSyncSubscription({
   required Object name,
   required Object? parameters,
 }) {
-  return isA<SyncSubscriptionDefinition>()
+  return isA<SyncSubscriptionDescription>()
       .having((e) => e.name, 'name', name)
       .having((e) => e.parameters, 'parameters', parameters);
 }

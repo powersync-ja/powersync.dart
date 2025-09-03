@@ -21,7 +21,7 @@ abstract interface class SyncStreamDescription {
 ///
 /// This includes the [SyncStreamDescription] along with information about the
 /// current sync status.
-abstract interface class SyncSubscriptionDefinition
+abstract interface class SyncSubscriptionDescription
     extends SyncStreamDescription {
   /// Whether this stream is active, meaning that the subscription has been
   /// acknownledged by the sync serivce.
@@ -87,7 +87,8 @@ abstract interface class SyncStreamSubscription
 
 /// An `ActiveStreamSubscription` as part of the sync status in Rust.
 @internal
-final class CoreActiveStreamSubscription implements SyncSubscriptionDefinition {
+final class CoreActiveStreamSubscription
+    implements SyncSubscriptionDescription {
   @override
   final String name;
   @override
