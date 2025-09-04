@@ -5,10 +5,12 @@ import 'dart:js_interop';
 import 'package:logging/logging.dart';
 import 'package:powersync_core/src/schema.dart';
 import 'package:powersync_core/src/sync/options.dart';
+import 'package:powersync_core/src/sync/stream.dart';
 import 'package:web/web.dart';
 
 import '../connector.dart';
 import '../log.dart';
+import '../sync/streaming_sync.dart';
 import '../sync/sync_status.dart';
 
 /// Names used in [SyncWorkerMessage]
@@ -19,6 +21,9 @@ enum SyncWorkerMessageType {
   /// starting.
   /// If parameters change, the sync worker reconnects.
   startSynchronization,
+
+  /// Update the active subscriptions that this client is interested in.
+  updateSubscriptions,
 
   /// The [SyncWorkerMessage.payload] for the request is a numeric id, the
   /// response can be anything (void).
@@ -74,6 +79,7 @@ extension type StartSynchronization._(JSObject _) implements JSObject {
     required String implementationName,
     required String schemaJson,
     String? syncParamsEncoded,
+    UpdateSubscriptions? subscriptions,
   });
 
   external String get databaseName;
@@ -83,6 +89,36 @@ extension type StartSynchronization._(JSObject _) implements JSObject {
   external String? get implementationName;
   external String get schemaJson;
   external String? get syncParamsEncoded;
+  external UpdateSubscriptions? get subscriptions;
+}
+
+@anonymous
+extension type UpdateSubscriptions._raw(JSObject _inner) implements JSObject {
+  external factory UpdateSubscriptions._({
+    required int requestId,
+    required JSArray content,
+  });
+
+  factory UpdateSubscriptions(int requestId, List<SubscribedStream> streams) {
+    return UpdateSubscriptions._(
+      requestId: requestId,
+      content: streams
+          .map((e) => <JSString>[e.name.toJS, e.parameters.toJS].toJS)
+          .toList()
+          .toJS,
+    );
+  }
+
+  external int get requestId;
+  external JSArray get content;
+
+  List<SubscribedStream> get toDart {
+    return content.toDart.map((e) {
+      final [name, parameters] = (e as JSArray<JSString>).toDart;
+
+      return (name: name.toDart, parameters: parameters.toDart);
+    }).toList();
+  }
 }
 
 @anonymous
@@ -190,7 +226,7 @@ extension type SerializedBucketProgress._(JSObject _) implements JSObject {
     return {
       for (final entry in array.toDart)
         entry.name: (
-          priority: BucketPriority(entry.priority),
+          priority: StreamPriority(entry.priority),
           atLast: entry.atLast,
           sinceLast: entry.sinceLast,
           targetCount: entry.targetCount,
@@ -212,6 +248,7 @@ extension type SerializedSyncStatus._(JSObject _) implements JSObject {
     required String? downloadError,
     required JSArray? priorityStatusEntries,
     required JSArray<SerializedBucketProgress>? syncProgress,
+    required JSString streamSubscriptions,
   });
 
   factory SerializedSyncStatus.from(SyncStatus status) {
@@ -237,6 +274,7 @@ extension type SerializedSyncStatus._(JSObject _) implements JSObject {
         var other => SerializedBucketProgress.serialize(
             InternalSyncDownloadProgress.ofPublic(other).buckets),
       },
+      streamSubscriptions: json.encode(status.internalSubscriptions).toJS,
     );
   }
 
@@ -250,8 +288,11 @@ extension type SerializedSyncStatus._(JSObject _) implements JSObject {
   external String? downloadError;
   external JSArray? priorityStatusEntries;
   external JSArray<SerializedBucketProgress>? syncProgress;
+  external JSString? streamSubscriptions;
 
   SyncStatus asSyncStatus() {
+    final streamSubscriptions = this.streamSubscriptions?.toDart;
+
     return SyncStatus(
       connected: connected,
       connecting: connecting,
@@ -271,7 +312,7 @@ extension type SerializedSyncStatus._(JSObject _) implements JSObject {
             final syncedMillis = (rawSynced as JSNumber?)?.toDartInt;
 
             return (
-              priority: BucketPriority((rawPriority as JSNumber).toDartInt),
+              priority: StreamPriority((rawPriority as JSNumber).toDartInt),
               lastSyncedAt: syncedMillis != null
                   ? DateTime.fromMicrosecondsSinceEpoch(syncedMillis)
                   : null,
@@ -284,6 +325,13 @@ extension type SerializedSyncStatus._(JSObject _) implements JSObject {
         final serializedProgress => InternalSyncDownloadProgress(
                 SerializedBucketProgress.deserialize(serializedProgress))
             .asSyncDownloadProgress,
+      },
+      streamSubscriptions: switch (streamSubscriptions) {
+        null => null,
+        final serialized => (json.decode(serialized) as List)
+            .map((e) => CoreActiveStreamSubscription.fromJson(
+                e as Map<String, Object?>))
+            .toList(),
       },
     );
   }
@@ -339,6 +387,8 @@ final class WorkerCommunicationChannel {
           return;
         case SyncWorkerMessageType.startSynchronization:
           requestId = (message.payload as StartSynchronization).requestId;
+        case SyncWorkerMessageType.updateSubscriptions:
+          requestId = (message.payload as UpdateSubscriptions).requestId;
         case SyncWorkerMessageType.requestEndpoint:
         case SyncWorkerMessageType.abortSynchronization:
         case SyncWorkerMessageType.credentialsCallback:
@@ -413,7 +463,11 @@ final class WorkerCommunicationChannel {
   }
 
   Future<void> startSynchronization(
-      String databaseName, ResolvedSyncOptions options, Schema schema) async {
+    String databaseName,
+    ResolvedSyncOptions options,
+    Schema schema,
+    List<SubscribedStream> streams,
+  ) async {
     final (id, completion) = _newRequest();
     port.postMessage(SyncWorkerMessage(
       type: SyncWorkerMessageType.startSynchronization.name,
@@ -428,8 +482,19 @@ final class WorkerCommunicationChannel {
           null => null,
           final params => jsonEncode(params),
         },
+        subscriptions: UpdateSubscriptions(-1, streams),
       ),
     ));
+    await completion;
+  }
+
+  Future<void> updateSubscriptions(List<SubscribedStream> streams) async {
+    final (id, completion) = _newRequest();
+    port.postMessage(SyncWorkerMessage(
+      type: SyncWorkerMessageType.updateSubscriptions.name,
+      payload: UpdateSubscriptions(id, streams),
+    ));
+
     await completion;
   }
 

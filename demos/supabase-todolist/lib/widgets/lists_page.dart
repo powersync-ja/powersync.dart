@@ -66,5 +66,5 @@ class ListsWidget extends StatelessWidget {
     );
   }
 
-  static final _listsPriority = BucketPriority(1);
+  static final _listsPriority = StreamPriority(1);
 }

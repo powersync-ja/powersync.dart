@@ -1,3 +1,4 @@
+import 'stream.dart';
 import 'sync_status.dart';
 
 /// An internal instruction emitted by the sync client in the core extension in
@@ -13,7 +14,8 @@ sealed class Instruction {
         EstablishSyncStream.fromJson(establish as Map<String, Object?>),
       {'FetchCredentials': final creds} =>
         FetchCredentials.fromJson(creds as Map<String, Object?>),
-      {'CloseSyncStream': _} => const CloseSyncStream(),
+      {'CloseSyncStream': final closeOptions as Map<String, Object?>} =>
+        CloseSyncStream(closeOptions['hide_disconnect'] as bool),
       {'FlushFileSystem': _} => const FlushFileSystem(),
       {'DidCompleteSync': _} => const DidCompleteSync(),
       _ => UnknownSyncInstruction(json)
@@ -62,12 +64,14 @@ final class CoreSyncStatus {
   final bool connecting;
   final List<SyncPriorityStatus> priorityStatus;
   final DownloadProgress? downloading;
+  final List<CoreActiveStreamSubscription>? streams;
 
   CoreSyncStatus({
     required this.connected,
     required this.connecting,
     required this.priorityStatus,
     required this.downloading,
+    required this.streams,
   });
 
   factory CoreSyncStatus.fromJson(Map<String, Object?> json) {
@@ -82,12 +86,16 @@ final class CoreSyncStatus {
         null => null,
         final raw as Map<String, Object?> => DownloadProgress.fromJson(raw),
       },
+      streams: (json['streams'] as List<Object?>)
+          .map((e) =>
+              CoreActiveStreamSubscription.fromJson(e as Map<String, Object?>))
+          .toList(),
     );
   }
 
   static SyncPriorityStatus _priorityStatusFromJson(Map<String, Object?> json) {
     return (
-      priority: BucketPriority(json['priority'] as int),
+      priority: StreamPriority(json['priority'] as int),
       hasSynced: json['has_synced'] as bool?,
       lastSyncedAt: switch (json['last_synced_at']) {
         null => null,
@@ -116,7 +124,7 @@ final class DownloadProgress {
 
   static BucketProgress _bucketProgressFromJson(Map<String, Object?> json) {
     return (
-      priority: BucketPriority(json['priority'] as int),
+      priority: StreamPriority(json['priority'] as int),
       atLast: json['at_last'] as int,
       sinceLast: json['since_last'] as int,
       targetCount: json['target_count'] as int,
@@ -135,7 +143,9 @@ final class FetchCredentials implements Instruction {
 }
 
 final class CloseSyncStream implements Instruction {
-  const CloseSyncStream();
+  final bool hideDisconnect;
+
+  const CloseSyncStream(this.hideDisconnect);
 }
 
 final class FlushFileSystem implements Instruction {

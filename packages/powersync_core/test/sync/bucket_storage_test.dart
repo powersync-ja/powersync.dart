@@ -4,8 +4,9 @@ import 'package:powersync_core/src/sync/protocol.dart';
 import 'package:sqlite_async/sqlite3_common.dart';
 import 'package:test/test.dart';
 
-import 'utils/abstract_test_utils.dart';
-import 'utils/test_utils_impl.dart';
+import '../utils/abstract_test_utils.dart';
+import '../utils/test_utils_impl.dart';
+import 'utils.dart';
 
 final testUtils = TestUtils();
 
@@ -38,11 +39,6 @@ const removeAsset1_4 = OplogEntry(
 
 const removeAsset1_5 = OplogEntry(
     opId: '5', op: OpType.remove, rowType: 'assets', rowId: 'O1', checksum: 5);
-
-BucketChecksum checksum(
-    {required String bucket, required int checksum, int priority = 1}) {
-  return BucketChecksum(bucket: bucket, priority: priority, checksum: checksum);
-}
 
 SyncDataBatch syncDataBatch(List<SyncBucketData> data) {
   return SyncDataBatch(data);

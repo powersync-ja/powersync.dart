@@ -47,18 +47,19 @@ Future<PowerSyncDatabase> powerSyncInstance(Ref ref) async {
   return db;
 }
 
-final _syncStatusInternal = StreamProvider((ref) {
+final _syncStatusInternal = StreamProvider<SyncStatus?>((ref) {
   return Stream.fromFuture(
     ref.watch(powerSyncInstanceProvider.future),
-  ).asyncExpand((db) => db.statusStream).startWith(const SyncStatus());
+  ).asyncExpand<SyncStatus?>((db) => db.statusStream).startWith(null);
 });
 
 final syncStatus = Provider((ref) {
+  // ignore: invalid_use_of_internal_member
   return ref.watch(_syncStatusInternal).value ?? const SyncStatus();
 });
 
 @riverpod
-bool didCompleteSync(Ref ref, [BucketPriority? priority]) {
+bool didCompleteSync(Ref ref, [StreamPriority? priority]) {
   final status = ref.watch(syncStatus);
   if (priority != null) {
     return status.statusForPriority(priority).hasSynced ?? false;
