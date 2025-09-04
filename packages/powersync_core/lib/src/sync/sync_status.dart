@@ -117,11 +117,11 @@ final class SyncStatus {
     );
   }
 
-  /// All sync streams currently being tracked in this subscription.
+  /// All sync streams currently being tracked in the database.
   ///
   /// This returns null when the database is currently being opened and we
   /// don't have reliable information about all included streams yet.
-  Iterable<SyncStreamStatus>? get subscriptions {
+  Iterable<SyncStreamStatus>? get syncStreams {
     return _internalSubscriptions?.map((subscription) {
       return SyncStreamStatus._(subscription, downloadProgress);
     });
@@ -166,9 +166,9 @@ final class SyncStatus {
     );
   }
 
-  /// If the [stream] appears in [activeSubscriptions], returns the current
-  /// status for that stream.
-  SyncStreamStatus? statusFor(SyncStreamDescription stream) {
+  /// If the [stream] appears in [syncStreams], returns the current status for
+  /// that stream.
+  SyncStreamStatus? forStream(SyncStreamDescription stream) {
     final raw = _internalSubscriptions?.firstWhereOrNull(
       (e) =>
           e.name == stream.name &&

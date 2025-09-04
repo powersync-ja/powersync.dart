@@ -380,7 +380,7 @@ final class _SyncStreamSubscriptionHandle implements SyncStreamSubscription {
   @override
   Future<void> waitForFirstSync() async {
     return _source.connections.firstStatusMatching((status) {
-      final currentProgress = status.statusFor(this);
+      final currentProgress = status.forStream(this);
       return currentProgress?.subscription.hasSynced ?? false;
     });
   }

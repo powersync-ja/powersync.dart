@@ -142,18 +142,18 @@ void main() {
 
     var status = await statusStream.next;
     for (final subscription in [a, b]) {
-      expect(status.statusFor(subscription)!.subscription.active, true);
-      expect(status.statusFor(subscription)!.subscription.lastSyncedAt, isNull);
+      expect(status.forStream(subscription)!.subscription.active, true);
+      expect(status.forStream(subscription)!.subscription.lastSyncedAt, isNull);
       expect(
-        status.statusFor(subscription)!.subscription.hasExplicitSubscription,
+        status.forStream(subscription)!.subscription.hasExplicitSubscription,
         true,
       );
     }
 
     syncService.addLine(checkpointComplete(priority: 1));
     status = await statusStream.next;
-    expect(status.statusFor(a)!.subscription.lastSyncedAt, isNull);
-    expect(status.statusFor(b)!.subscription.lastSyncedAt, isNotNull);
+    expect(status.forStream(a)!.subscription.lastSyncedAt, isNull);
+    expect(status.forStream(b)!.subscription.lastSyncedAt, isNotNull);
     await b.waitForFirstSync();
 
     syncService.addLine(checkpointComplete());
@@ -170,7 +170,7 @@ void main() {
       status,
       emits(
         isSyncStatus(
-          subscriptions: [
+          syncStreams: [
             isStreamStatus(
               subscription: isSyncSubscription(
                 name: 'default_stream',
@@ -217,6 +217,6 @@ void main() {
 
     final subscription = await database.syncStream('foo').subscribe();
     var status = await stream.next;
-    expect(status.statusFor(subscription), isNotNull);
+    expect(status.forStream(subscription), isNotNull);
   });
 }

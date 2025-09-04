@@ -8,7 +8,7 @@ TypeMatcher<SyncStatus> isSyncStatus({
   Object? connecting,
   Object? hasSynced,
   Object? downloadProgress,
-  Object? subscriptions,
+  Object? syncStreams,
 }) {
   var matcher = isA<SyncStatus>();
   if (downloading != null) {
@@ -27,9 +27,8 @@ TypeMatcher<SyncStatus> isSyncStatus({
     matcher = matcher.having(
         (e) => e.downloadProgress, 'downloadProgress', downloadProgress);
   }
-  if (subscriptions != null) {
-    matcher =
-        matcher.having((e) => e.subscriptions, 'subscriptions', subscriptions);
+  if (syncStreams != null) {
+    matcher = matcher.having((e) => e.syncStreams, 'syncStreams', syncStreams);
   }
 
   return matcher;
