@@ -125,7 +125,7 @@ class _SyncStreamTodosState extends State<_SyncStreamTodoListWidget> {
       builder: (context, snapshot) {
         final hasSynced = switch (_listSubscription) {
               null => null,
-              final sub => snapshot.requireData.statusFor(sub),
+              final sub => snapshot.requireData.forStream(sub),
             }
                 ?.subscription
                 .hasSynced ??
