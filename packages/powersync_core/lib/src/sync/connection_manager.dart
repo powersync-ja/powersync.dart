@@ -358,10 +358,6 @@ final class _SyncStreamSubscriptionHandle implements SyncStreamSubscription {
 
   _SyncStreamSubscriptionHandle(this._source) {
     _source.refcount++;
-
-    // This is not unreliable, but can help decrementing refcounts on the inner
-    // subscription when this handle is deallocated without [unsubscribe] being
-    // called.
     _finalizer.attach(this, _source, detach: this);
   }
 
@@ -385,6 +381,12 @@ final class _SyncStreamSubscriptionHandle implements SyncStreamSubscription {
     });
   }
 
-  static final Finalizer<_ActiveSubscription> _finalizer =
-      Finalizer((sub) => sub.decrementRefCount());
+  static final Finalizer<_ActiveSubscription> _finalizer = Finalizer((sub) {
+    sub.connections.db.logger.warning(
+        'A subscription to ${sub.name} (with parameters ${sub.parameters}) '
+        'leaked! Please ensure calling SyncStreamSubscription.unsubscribe() '
+        "when you don't need a subscription anymore. For global "
+        'subscriptions, consider storing them in global fields to avoid this '
+        'warning.');
+  });
 }
