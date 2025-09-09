@@ -504,6 +504,9 @@ SELECT * FROM crud_entries;
     await database.refreshSchema();
   }
 
+  /// Create a [SyncStream] instance for the given [name] and [parameters].
+  ///
+  /// Use [SyncStream.subscribe] to subscribe to the returned stream.
   SyncStream syncStream(String name, [Map<String, Object?>? parameters]) {
     return _connections.syncStream(name, parameters);
   }

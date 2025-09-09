@@ -27,6 +27,10 @@ final class SyncOptions {
   /// The [SyncClientImplementation] to use.
   final SyncClientImplementation syncImplementation;
 
+  /// Whether streams that have been defined with `auto_subscribe: true` should
+  /// be synced when they don't have an explicit subscription.
+  ///
+  /// This is enabled by default.
   final bool? includeDefaultStreams;
 
   const SyncOptions({

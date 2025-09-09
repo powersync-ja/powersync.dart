@@ -622,7 +622,8 @@ final class _ActiveRustStreamingIteration {
 
   List<Object?> _encodeSubscriptions(List<SubscribedStream> subscriptions) {
     return sync._activeSubscriptions
-        .map((s) => {'name': s.name, 'params': s.parameters})
+        .map((s) =>
+            {'name': s.name, 'params': convert.json.decode(s.parameters)})
         .toList();
   }
 

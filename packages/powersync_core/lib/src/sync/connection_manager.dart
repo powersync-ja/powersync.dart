@@ -355,6 +355,7 @@ final class _ActiveSubscription {
 
 final class _SyncStreamSubscriptionHandle implements SyncStreamSubscription {
   final _ActiveSubscription _source;
+  var _active = true;
 
   _SyncStreamSubscriptionHandle(this._source) {
     _source.refcount++;
@@ -368,9 +369,12 @@ final class _SyncStreamSubscriptionHandle implements SyncStreamSubscription {
   Map<String, Object?>? get parameters => _source.parameters;
 
   @override
-  void unsubscribe() async {
-    _finalizer.detach(this);
-    _source.decrementRefCount();
+  void unsubscribe() {
+    if (_active) {
+      _active = false;
+      _finalizer.detach(this);
+      _source.decrementRefCount();
+    }
   }
 
   @override
