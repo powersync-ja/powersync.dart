@@ -219,4 +219,45 @@ void main() {
     var status = await stream.next;
     expect(status.forStream(subscription), isNotNull);
   });
+
+  test('unsubscribing multiple times has no effect', () async {
+    final a = await database.syncStream('a').subscribe();
+    final aAgain = await database.syncStream('a').subscribe();
+    a.unsubscribe();
+    a.unsubscribe(); // Should not decrement the refcount again
+
+    // Pretend the streams are expired - they should still be requested because
+    // the core extension extends the lifetime of streams currently referenced
+    // before connecting.
+    await database.execute(
+        'UPDATE ps_stream_subscriptions SET expires_at = unixepoch() - 1000');
+
+    await waitForConnection();
+    final request = await syncService.waitForListener;
+    expect(
+      json.decode(await request.readAsString()),
+      containsPair(
+        'streams',
+        containsPair('subscriptions', isNotEmpty),
+      ),
+    );
+    aAgain.unsubscribe();
+  });
+
+  test('unsubscribeAll', () async {
+    final a = await database.syncStream('a').subscribe();
+    await database.syncStream('a').unsubscribeAll();
+
+    // Despite a being active, it should not be requested.
+    await waitForConnection();
+    final request = await syncService.waitForListener;
+    expect(
+      json.decode(await request.readAsString()),
+      containsPair(
+        'streams',
+        containsPair('subscriptions', isEmpty),
+      ),
+    );
+    a.unsubscribe();
+  });
 }

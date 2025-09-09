@@ -24,7 +24,7 @@ abstract interface class SyncStreamDescription {
 abstract interface class SyncSubscriptionDescription
     extends SyncStreamDescription {
   /// Whether this stream is active, meaning that the subscription has been
-  /// acknownledged by the sync serivce.
+  /// acknowledged by the sync serivce.
   bool get active;
 
   /// Whether this stream subscription is included by default, regardless of

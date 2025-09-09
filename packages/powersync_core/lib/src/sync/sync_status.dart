@@ -212,11 +212,21 @@ extension InternalSyncStatusAccess on SyncStatus {
       _internalSubscriptions;
 }
 
+/// Current information about a [SyncStream] that the sync client is subscribed
+/// to.
 final class SyncStreamStatus {
+  /// If the [SyncStatus] is currently [SyncStatus.downloading], download
+  /// progress for this stream.
   final ProgressWithOperations? progress;
   final CoreActiveStreamSubscription _internal;
 
+  /// The [SyncSubscriptionDescription] providing information about the current
+  /// stream state.
   SyncSubscriptionDescription get subscription => _internal;
+
+  /// The [StreamPriority] of the current stream.
+  ///
+  /// New data on higher-priority streams can interrupt lower-priority streams.
   StreamPriority get priority => _internal.priority;
 
   SyncStreamStatus._(this._internal, SyncDownloadProgress? progress)
