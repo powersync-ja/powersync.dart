@@ -57,10 +57,13 @@ extension type const PowerSyncCoreVersion((int, int, int) _tuple) {
   /// The minimum version of the sqlite core extensions we support. We check
   /// this version when opening databases to fail early and with an actionable
   /// error message.
-  // Note: When updating this, also update the download URL in
-  // scripts/init_powersync_core_binary.dart and the version ref in
-  // packages/sqlite3_wasm_build/build.sh
-  static const minimum = PowerSyncCoreVersion((0, 4, 5));
+  // Note: When updating this, also update:
+  //
+  //  - scripts/init_powersync_core_binary.dart
+  //  - scripts/download_core_binary_demos.dart
+  //  - packages/sqlite3_wasm_build/build.sh
+  //  - Android and Darwin (CocoaPods and SwiftPM) in powersync_flutter_libs
+  static const minimum = PowerSyncCoreVersion((0, 4, 6));
 
   /// The first version of the core extensions that this version of the Dart
   /// SDK doesn't support.
