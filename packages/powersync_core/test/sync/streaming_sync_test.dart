@@ -9,10 +9,10 @@ import 'package:logging/logging.dart';
 import 'package:powersync_core/powersync_core.dart';
 import 'package:test/test.dart';
 
-import 'server/sync_server/in_memory_sync_server.dart';
-import 'test_server.dart';
-import 'utils/abstract_test_utils.dart';
-import 'utils/test_utils_impl.dart';
+import '../server/sync_server/in_memory_sync_server.dart';
+import '../test_server.dart';
+import '../utils/abstract_test_utils.dart';
+import '../utils/test_utils_impl.dart';
 
 final testUtils = TestUtils();
 

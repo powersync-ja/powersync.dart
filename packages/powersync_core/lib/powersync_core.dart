@@ -11,6 +11,7 @@ export 'src/log.dart';
 export 'src/open_factory.dart';
 export 'src/schema.dart';
 export 'src/sync/options.dart' hide ResolvedSyncOptions;
+export 'src/sync/stream.dart' hide CoreActiveStreamSubscription;
 export 'src/sync/sync_status.dart'
-    hide BucketProgress, InternalSyncDownloadProgress;
+    hide BucketProgress, InternalSyncDownloadProgress, InternalSyncStatusAccess;
 export 'src/uuid.dart';

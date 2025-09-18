@@ -27,11 +27,18 @@ final class SyncOptions {
   /// The [SyncClientImplementation] to use.
   final SyncClientImplementation syncImplementation;
 
+  /// Whether streams that have been defined with `auto_subscribe: true` should
+  /// be synced when they don't have an explicit subscription.
+  ///
+  /// This is enabled by default.
+  final bool? includeDefaultStreams;
+
   const SyncOptions({
     this.crudThrottleTime,
     this.retryDelay,
     this.params,
     this.syncImplementation = SyncClientImplementation.defaultClient,
+    this.includeDefaultStreams,
   });
 
   SyncOptions _copyWith({
@@ -44,6 +51,7 @@ final class SyncOptions {
       retryDelay: retryDelay,
       params: params ?? this.params,
       syncImplementation: syncImplementation,
+      includeDefaultStreams: includeDefaultStreams,
     );
   }
 }
@@ -96,16 +104,23 @@ extension type ResolvedSyncOptions(SyncOptions source) {
 
   Map<String, dynamic> get params => source.params ?? const {};
 
+  bool get includeDefaultStreams => source.includeDefaultStreams ?? true;
+
   (ResolvedSyncOptions, bool) applyFrom(SyncOptions other) {
     final newOptions = SyncOptions(
       crudThrottleTime: other.crudThrottleTime ?? crudThrottleTime,
       retryDelay: other.retryDelay ?? retryDelay,
       params: other.params ?? params,
+      syncImplementation: other.syncImplementation,
+      includeDefaultStreams:
+          other.includeDefaultStreams ?? includeDefaultStreams,
     );
 
     final didChange = !_mapEquality.equals(newOptions.params, params) ||
         newOptions.crudThrottleTime != crudThrottleTime ||
-        newOptions.retryDelay != retryDelay;
+        newOptions.retryDelay != retryDelay ||
+        newOptions.syncImplementation != source.syncImplementation ||
+        newOptions.includeDefaultStreams != includeDefaultStreams;
     return (ResolvedSyncOptions(newOptions), didChange);
   }
 

@@ -7,6 +7,7 @@ import 'package:powersync_core/src/abort_controller.dart';
 import 'package:powersync_core/src/database/powersync_db_mixin.dart';
 import 'package:powersync_core/src/open_factory/abstract_powersync_open_factory.dart';
 import '../sync/options.dart';
+import '../sync/streaming_sync.dart';
 import 'powersync_database.dart';
 
 import '../connector.dart';
@@ -115,6 +116,8 @@ class PowerSyncDatabaseImpl
   Future<void> connectInternal({
     required PowerSyncBackendConnector connector,
     required AbortController abort,
+    required List<SubscribedStream> initiallyActiveStreams,
+    required Stream<List<SubscribedStream>> activeStreams,
     required Zone asyncWorkZone,
     required ResolvedSyncOptions options,
   }) {

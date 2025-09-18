@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:collection/collection.dart';
 
 import 'instruction.dart';
+import 'stream.dart';
 import 'sync_status.dart';
 import 'bucket_storage.dart';
 import 'protocol.dart';
@@ -15,6 +16,7 @@ final class MutableSyncStatus {
 
   InternalSyncDownloadProgress? downloadProgress;
   List<SyncPriorityStatus> priorityStatusEntries = const [];
+  List<CoreActiveStreamSubscription>? streams;
 
   DateTime? lastSyncedAt;
 
@@ -51,9 +53,9 @@ final class MutableSyncStatus {
           hasSynced: true,
           lastSyncedAt: now,
           priority: maxBy(
-            applied.checksums.map((cs) => BucketPriority(cs.priority)),
+            applied.checksums.map((cs) => StreamPriority(cs.priority)),
             (priority) => priority,
-            compare: BucketPriority.comparator,
+            compare: StreamPriority.comparator,
           )!,
         )
     ];
@@ -90,11 +92,12 @@ final class MutableSyncStatus {
       final downloading => InternalSyncDownloadProgress(downloading.buckets),
     };
     lastSyncedAt = status.priorityStatus
-        .firstWhereOrNull((s) => s.priority == BucketPriority.fullSyncPriority)
+        .firstWhereOrNull((s) => s.priority == StreamPriority.fullSyncPriority)
         ?.lastSyncedAt;
+    streams = status.streams;
   }
 
-  SyncStatus immutableSnapshot() {
+  SyncStatus immutableSnapshot({bool setLastSynced = false}) {
     return SyncStatus(
       connected: connected,
       connecting: connecting,
@@ -103,9 +106,10 @@ final class MutableSyncStatus {
       downloadProgress: downloadProgress?.asSyncDownloadProgress,
       priorityStatusEntries: UnmodifiableListView(priorityStatusEntries),
       lastSyncedAt: lastSyncedAt,
-      hasSynced: null, // Stream client is not supposed to set this value.
+      hasSynced: setLastSynced ? lastSyncedAt != null : null,
       uploadError: uploadError,
       downloadError: downloadError,
+      streamSubscriptions: streams,
     );
   }
 }

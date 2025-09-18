@@ -35,7 +35,7 @@ final class _ListsWidget extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final lists = ref.watch(listsNotifierProvider);
-    final didSync = ref.watch(didCompleteSyncProvider(BucketPriority(1)));
+    final didSync = ref.watch(didCompleteSyncProvider(StreamPriority(1)));
 
     if (!didSync) {
       return const Text('Busy with sync...');

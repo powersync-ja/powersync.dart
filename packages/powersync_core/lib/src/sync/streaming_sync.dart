@@ -21,6 +21,8 @@ import 'stream_utils.dart';
 import 'sync_status.dart';
 import 'protocol.dart';
 
+typedef SubscribedStream = ({String name, String parameters});
+
 abstract interface class StreamingSync {
   Stream<SyncStatus> get statusStream;
 
@@ -28,6 +30,8 @@ abstract interface class StreamingSync {
 
   /// Close any active streams.
   Future<void> abort();
+
+  void updateSubscriptions(List<SubscribedStream> streams);
 }
 
 @internal
@@ -36,6 +40,7 @@ class StreamingSyncImplementation implements StreamingSync {
   final BucketStorage adapter;
   final InternalConnector connector;
   final ResolvedSyncOptions options;
+  List<SubscribedStream> _activeSubscriptions;
 
   final Logger logger;
 
@@ -69,6 +74,7 @@ class StreamingSyncImplementation implements StreamingSync {
     required this.crudUpdateTriggerStream,
     required this.options,
     required http.Client client,
+    List<SubscribedStream> activeSubscriptions = const [],
     Mutex? syncMutex,
     Mutex? crudMutex,
     Logger? logger,
@@ -80,7 +86,8 @@ class StreamingSyncImplementation implements StreamingSync {
         syncMutex = syncMutex ?? Mutex(identifier: "sync-$identifier"),
         crudMutex = crudMutex ?? Mutex(identifier: "crud-$identifier"),
         _userAgentHeaders = userAgentHeaders(),
-        logger = logger ?? isolateLogger;
+        logger = logger ?? isolateLogger,
+        _activeSubscriptions = activeSubscriptions;
 
   Duration get _retryDelay => options.retryDelay;
 
@@ -122,6 +129,14 @@ class StreamingSyncImplementation implements StreamingSync {
 
   bool get aborted {
     return _abort?.aborted ?? false;
+  }
+
+  @override
+  void updateSubscriptions(List<SubscribedStream> streams) {
+    _activeSubscriptions = streams;
+    if (_nonLineSyncEvents.hasListener) {
+      _nonLineSyncEvents.add(HandleChangedSubscriptions(streams));
+    }
   }
 
   @override
@@ -294,7 +309,12 @@ class StreamingSyncImplementation implements StreamingSync {
   }
 
   Future<void> _rustStreamingSyncIteration() async {
-    await _ActiveRustStreamingIteration(this).syncIteration();
+    logger.info('Starting Rust sync iteration');
+    final response = await _ActiveRustStreamingIteration(this).syncIteration();
+    logger.info(
+        'Ending Rust sync iteration. Immediate restart: ${response.immediateRestart}');
+    // Note: With the current loop in streamingSync(), any return value that
+    // isn't an exception triggers an immediate restart.
   }
 
   Future<(List<BucketRequest>, Map<String, BucketDescription?>)>
@@ -370,7 +390,7 @@ class StreamingSyncImplementation implements StreamingSync {
             // checkpoint later.
           } else {
             _updateStatusForPriority((
-              priority: BucketPriority(bucketPriority),
+              priority: StreamPriority(bucketPriority),
               lastSyncedAt: DateTime.now(),
               hasSynced: true,
             ));
@@ -449,6 +469,7 @@ class StreamingSyncImplementation implements StreamingSync {
           _state.updateStatus((s) => s.setConnected());
           await handleLine(line as StreamingSyncLine);
         case UploadCompleted():
+        case HandleChangedSubscriptions():
           // Only relevant for the Rust sync implementation.
           break;
         case AbortCurrentIteration():
@@ -507,7 +528,8 @@ class StreamingSyncImplementation implements StreamingSync {
   }
 
   Future<http.StreamedResponse?> _postStreamRequest(
-      Object? data, bool acceptBson) async {
+      Object? data, bool acceptBson,
+      {Future<void>? onAbort}) async {
     const ndJson = 'application/x-ndjson';
     const bson = 'application/vnd.powersync.bson-stream';
 
@@ -517,8 +539,8 @@ class StreamingSyncImplementation implements StreamingSync {
     }
     final uri = credentials.endpointUri('sync/stream');
 
-    final request =
-        http.AbortableRequest('POST', uri, abortTrigger: _abort!.onAbort);
+    final request = http.AbortableRequest('POST', uri,
+        abortTrigger: onAbort ?? _abort!.onAbort);
     request.headers['Content-Type'] = 'application/json';
     request.headers['Authorization'] = "Token ${credentials.token}";
     request.headers['Accept'] =
@@ -589,25 +611,35 @@ typedef BucketDescription = ({
 
 final class _ActiveRustStreamingIteration {
   final StreamingSyncImplementation sync;
+
   var _isActive = true;
   var _hadSyncLine = false;
 
   StreamSubscription<void>? _completedUploads;
-  final Completer<void> _completedStream = Completer();
+  final Completer<RustSyncIterationResult> _completedStream = Completer();
 
   _ActiveRustStreamingIteration(this.sync);
 
-  Future<void> syncIteration() async {
+  List<Object?> _encodeSubscriptions(List<SubscribedStream> subscriptions) {
+    return sync._activeSubscriptions
+        .map((s) =>
+            {'name': s.name, 'params': convert.json.decode(s.parameters)})
+        .toList();
+  }
+
+  Future<RustSyncIterationResult> syncIteration() async {
     try {
       await _control(
         'start',
         convert.json.encode({
           'parameters': sync.options.params,
           'schema': convert.json.decode(sync.schemaJson),
+          'include_defaults': sync.options.includeDefaultStreams,
+          'active_streams': _encodeSubscriptions(sync._activeSubscriptions),
         }),
       );
       assert(_completedStream.isCompleted, 'Should have started streaming');
-      await _completedStream.future;
+      return await _completedStream.future;
     } finally {
       _isActive = false;
       _completedUploads?.cancel();
@@ -615,9 +647,10 @@ final class _ActiveRustStreamingIteration {
     }
   }
 
-  Stream<ReceivedLine> _receiveLines(Object? data) {
+  Stream<ReceivedLine> _receiveLines(Object? data,
+      {required Future<void> onAbort}) {
     return streamFromFutureAwaitInCancellation(
-            sync._postStreamRequest(data, true))
+            sync._postStreamRequest(data, true, onAbort: onAbort))
         .asyncExpand<Object /* Uint8List | String */ >((response) {
       if (response == null) {
         return null;
@@ -630,31 +663,72 @@ final class _ActiveRustStreamingIteration {
     }).map(ReceivedLine.new);
   }
 
-  Future<void> _handleLines(EstablishSyncStream request) async {
+  Future<RustSyncIterationResult> _handleLines(
+      EstablishSyncStream request) async {
+    // This is a workaround for https://github.com/dart-lang/http/issues/1820:
+    // When cancelling the stream subscription of an HTTP response with the
+    // fetch-based client implementation, cancelling the subscription is delayed
+    // until the next chunk (typically a token_expires_in message in our case).
+    // So, before cancelling, we complete an abort controller for the request to
+    // speed things up. This is not an issue in most cases because the abort
+    // controller on this stream would be completed when disconnecting. But
+    // when switching sync streams, that's not the case and we need a second
+    // abort controller for the inner iteration.
+    final innerAbort = Completer<void>.sync();
     final events = addBroadcast(
-        _receiveLines(request.request), sync._nonLineSyncEvents.stream);
+      _receiveLines(
+        request.request,
+        onAbort: Future.any([
+          sync._abort!.onAbort,
+          innerAbort.future,
+        ]),
+      ),
+      sync._nonLineSyncEvents.stream,
+    );
 
+    var needsImmediateRestart = false;
     loop:
-    await for (final event in events) {
-      if (!_isActive || sync.aborted) {
-        break;
-      }
+    try {
+      await for (final event in events) {
+        if (!_isActive || sync.aborted) {
+          innerAbort.complete();
+          break;
+        }
 
-      switch (event) {
-        case ReceivedLine(line: final Uint8List line):
-          _triggerCrudUploadOnFirstLine();
-          await _control('line_binary', line);
-        case ReceivedLine(line: final line as String):
-          _triggerCrudUploadOnFirstLine();
-          await _control('line_text', line);
-        case UploadCompleted():
-          await _control('completed_upload');
-        case AbortCurrentIteration():
-          break loop;
-        case TokenRefreshComplete():
-          await _control('refreshed_token');
+        switch (event) {
+          case ReceivedLine(line: final Uint8List line):
+            _triggerCrudUploadOnFirstLine();
+            await _control('line_binary', line);
+          case ReceivedLine(line: final line as String):
+            _triggerCrudUploadOnFirstLine();
+            await _control('line_text', line);
+          case UploadCompleted():
+            await _control('completed_upload');
+          case AbortCurrentIteration(:final hideDisconnectState):
+            innerAbort.complete();
+            needsImmediateRestart = hideDisconnectState;
+            break loop;
+          case TokenRefreshComplete():
+            await _control('refreshed_token');
+          case HandleChangedSubscriptions(:final currentSubscriptions):
+            await _control(
+                'update_subscriptions',
+                convert.json
+                    .encode(_encodeSubscriptions(currentSubscriptions)));
+        }
+      }
+    } on http.RequestAbortedException {
+      // Unlike a regular cancellation, cancelling via the abort controller
+      // emits an error. We did mean to just cancel the stream, so we can
+      // safely ignore that.
+      if (innerAbort.isCompleted) {
+        // ignore
+      } else {
+        rethrow;
       }
     }
+
+    return (immediateRestart: needsImmediateRestart);
   }
 
   /// Triggers a local CRUD upload when the first sync line has been received.
@@ -708,10 +782,11 @@ final class _ActiveRustStreamingIteration {
             sync.logger.warning('Could not prefetch credentials', e, s);
           });
         }
-      case CloseSyncStream():
+      case CloseSyncStream(:final hideDisconnect):
         if (!sync.aborted) {
           _isActive = false;
-          sync._nonLineSyncEvents.add(const AbortCurrentIteration());
+          sync._nonLineSyncEvents
+              .add(AbortCurrentIteration(hideDisconnectState: hideDisconnect));
         }
       case FlushFileSystem():
         await sync.adapter.flushFileSystem();
@@ -722,6 +797,8 @@ final class _ActiveRustStreamingIteration {
     }
   }
 }
+
+typedef RustSyncIterationResult = ({bool immediateRestart});
 
 sealed class SyncEvent {}
 
@@ -740,5 +817,18 @@ final class TokenRefreshComplete implements SyncEvent {
 }
 
 final class AbortCurrentIteration implements SyncEvent {
-  const AbortCurrentIteration();
+  /// Whether we should immediately disconnect and hide the `disconnected`
+  /// state.
+  ///
+  /// This is used when we're changing subscription, to hide the brief downtime
+  /// we have while reconnecting.
+  final bool hideDisconnectState;
+
+  const AbortCurrentIteration({this.hideDisconnectState = false});
+}
+
+final class HandleChangedSubscriptions implements SyncEvent {
+  final List<SubscribedStream> currentSubscriptions;
+
+  HandleChangedSubscriptions(this.currentSubscriptions);
 }
