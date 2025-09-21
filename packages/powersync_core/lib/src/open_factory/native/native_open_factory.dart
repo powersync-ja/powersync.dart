@@ -1,8 +1,9 @@
+import 'dart:io';
+import 'dart:io' as io;
 import 'dart:ffi';
 
 import 'package:powersync_core/src/exceptions.dart';
 import 'package:powersync_core/src/log.dart';
-import 'package:universal_io/io.dart';
 import 'dart:isolate';
 import 'package:powersync_core/src/open_factory/abstract_powersync_open_factory.dart';
 import 'package:sqlite_async/sqlite3.dart' as sqlite;
@@ -108,5 +109,10 @@ class PowerSyncOpenFactory extends AbstractPowerSyncOpenFactory {
           'Please open an issue on GitHub to request it.',
         );
     }
+  }
+
+  @override
+  void sleep(Duration duration) {
+    io.sleep(duration);
   }
 }

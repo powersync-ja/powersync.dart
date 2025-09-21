@@ -14,7 +14,6 @@ dependencies:
   sqlite3: ^2.4.6
   # We implement a database controller, which is an interface of sqlite3_web.
   sqlite3_web: ^0.3.2
-  universal_io: ^2.0.0
   meta: ^1.0.0
   http: ^1.5.0
   uuid: ^4.2.0
