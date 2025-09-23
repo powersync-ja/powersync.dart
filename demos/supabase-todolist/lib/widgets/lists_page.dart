@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:powersync/powersync.dart';
 
+import '../app_config.dart';
 import './list_item.dart';
 import './list_item_dialog.dart';
 import '../main.dart';
 import '../models/todo_list.dart';
 import 'guard_by_sync.dart';
+import 'list_item_sync_stream.dart';
 
 void _showAddDialog(BuildContext context) async {
   return showDialog<void>(
@@ -55,7 +57,9 @@ class ListsWidget extends StatelessWidget {
             return ListView(
               padding: const EdgeInsets.symmetric(vertical: 8.0),
               children: todoLists.map((list) {
-                return ListItemWidget(list: list);
+                return AppConfig.hasSyncStreams
+                    ? SyncStreamsAwareListItem(list: list)
+                    : ListItemWidget(list: list);
               }).toList(),
             );
           } else {
