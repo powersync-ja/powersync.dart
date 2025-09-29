@@ -433,7 +433,7 @@ base class AttachmentQueue {
               attachment.state == AttachmentState.queuedUpload) &&
           !exists) {
         updates.add(
-          attachment.copyWith(state: AttachmentState.archived, localUri: null),
+          attachment.markAsUnavailableLocally(AttachmentState.archived),
         );
       }
     }

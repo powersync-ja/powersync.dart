@@ -108,6 +108,62 @@ void main() {
     expect(await localStorage.fileExists(localUri), isFalse);
   });
 
+  test('stores relative paths', () async {
+    // Regression test we had in the Kotlin/Swift implementation:
+    // https://github.com/powersync-ja/powersync-swift/pull/74
+    await queue.startSync();
+    await db.execute(
+      'INSERT INTO users (id, name, email, photo_id) VALUES (uuid(), ?, ?, ?)',
+      ['steven', 'steven@journeyapps.com', 'picture_id'],
+    );
+
+    // Wait for attachment to sync.
+    await expectLater(
+        attachments,
+        emitsThrough([
+          isA<Attachment>()
+              .having((e) => e.state, 'state', AttachmentState.synced)
+        ]));
+
+    expect(await localStorage.fileExists('picture_id.jpg'), isTrue);
+  });
+
+  test('recovers from deleted local files', () async {
+    // Create an attachments record which has an invalid local_uri.
+    await db.execute(
+      'INSERT OR REPLACE INTO attachments_queue '
+      '(id, timestamp, filename, local_uri, media_type, size, state, has_synced, meta_data) '
+      'VALUES (uuid(), current_timestamp, ?, ?, ?, ?, ?, ?, ?)',
+      [
+        'attachment.jpg',
+        'invalid/dir/attachment.jpg',
+        'application/jpeg',
+        1,
+        AttachmentState.synced.toInt(),
+        1,
+        ""
+      ],
+    );
+    await attachments.next;
+
+    queue = AttachmentQueue(
+      db: db,
+      remoteStorage: remoteStorage,
+      watchAttachments: watchAttachments,
+      localStorage: localStorage,
+      archivedCacheLimit: 1,
+    );
+
+    // The attachment should be marked as archived, and the local URI should be
+    // removed.
+    await queue.startSync();
+
+    final [attachment] = await attachments.next;
+    expect(attachment.filename, 'attachment.jpg');
+    expect(attachment.localUri, isNull);
+    expect(attachment.state, AttachmentState.archived);
+  });
+
   test('uploads attachments', () async {
     await queue.startSync();
 

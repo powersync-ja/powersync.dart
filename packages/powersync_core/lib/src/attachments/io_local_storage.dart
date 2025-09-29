@@ -9,7 +9,11 @@ import 'local_storage.dart';
 
 /// Implements [LocalStorage] for device filesystem using Dart IO.
 ///
-/// Handles file and directory operations for attachments.
+/// Handles file and directory operations for attachments. The database only
+/// stores relative paths for attachments that this implementation resolves
+/// against the root path provided as a constructor argument. For that reason,
+/// it's important that the root directory stays consistent, as data may be lost
+/// otherwise.
 ///
 /// {@category attachments}
 @experimental

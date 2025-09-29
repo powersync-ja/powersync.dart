@@ -143,6 +143,20 @@ final class Attachment {
     );
   }
 
+  Attachment markAsUnavailableLocally(AttachmentState newState) {
+    return Attachment(
+      id: id,
+      timestamp: timestamp,
+      filename: filename,
+      state: newState,
+      localUri: null,
+      mediaType: mediaType,
+      size: size,
+      hasSynced: false,
+      metaData: metaData,
+    );
+  }
+
   @override
   String toString() {
     return 'Attachment(id: $id, state: $state, localUri: $localUri, metadata: $metaData)';
