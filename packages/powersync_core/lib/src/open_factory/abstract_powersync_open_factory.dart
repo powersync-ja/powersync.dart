@@ -1,7 +1,7 @@
 import 'dart:async';
-import 'package:universal_io/io.dart';
 import 'dart:math';
 
+import 'package:meta/meta.dart';
 import 'package:powersync_core/sqlite_async.dart';
 import 'package:powersync_core/src/open_factory/common_db_functions.dart';
 import 'package:sqlite_async/sqlite3_common.dart';
@@ -70,6 +70,11 @@ abstract class AbstractPowerSyncOpenFactory extends DefaultSqliteOpenFactory {
   /// Returns the library name for the current platform.
   /// [path] is optional and is used when the library is not in the default location.
   String getLibraryForPlatform({String? path});
+
+  /// On native platforms, synchronously pauses the current isolate for the
+  /// given [Duration].
+  @visibleForOverriding
+  void sleep(Duration duration) {}
 }
 
 /// Advanced: Define custom setup for each SQLite connection.

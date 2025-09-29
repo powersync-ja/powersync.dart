@@ -11,7 +11,7 @@ dependencies:
   flutter:
     sdk: flutter
 
-  sqlite3_flutter_libs: ^0.5.23
+  sqlite3_flutter_libs: ^0.5.39
   powersync_core: ^1.5.2
   powersync_flutter_libs: ^0.4.11
   collection: ^1.17.0
