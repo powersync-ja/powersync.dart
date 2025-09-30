@@ -1,90 +1,64 @@
 import 'dart:async';
 
+import 'package:logging/logging.dart';
 import 'package:powersync/powersync.dart';
-import 'package:powersync_attachments_helper/powersync_attachments_helper.dart';
-import 'package:powersync_flutter_demo/app_config.dart';
+import 'package:powersync_core/attachments/attachments.dart';
+
 import 'package:powersync_flutter_demo/attachments/remote_storage_adapter.dart';
 
-import 'package:powersync_flutter_demo/models/schema.dart';
+import 'local_storage_unsupported.dart'
+    if (dart.library.io) 'local_storage_native.dart';
 
-/// Global reference to the queue
-late final PhotoAttachmentQueue attachmentQueue;
+late AttachmentQueue attachmentQueue;
 final remoteStorage = SupabaseStorageAdapter();
+final logger = Logger('AttachmentQueue');
 
-/// Function to handle errors when downloading attachments
-/// Return false if you want to archive the attachment
-Future<bool> onDownloadError(Attachment attachment, Object exception) async {
-  if (exception.toString().contains('Object not found')) {
-    return false;
-  }
-  return true;
+Future<void> initializeAttachmentQueue(PowerSyncDatabase db) async {
+  attachmentQueue = AttachmentQueue(
+    db: db,
+    remoteStorage: remoteStorage,
+    logger: logger,
+    localStorage: await localAttachmentStorage(),
+    watchAttachments: () => db.watch('''
+      SELECT photo_id as id FROM todos WHERE photo_id IS NOT NULL
+    ''').map(
+      (results) => [
+        for (final row in results)
+          WatchedAttachmentItem(
+            id: row['id'] as String,
+            fileExtension: 'jpg',
+          )
+      ],
+    ),
+  );
+
+  await attachmentQueue.startSync();
 }
 
-class PhotoAttachmentQueue extends AbstractAttachmentQueue {
-  PhotoAttachmentQueue(db, remoteStorage)
-      : super(
-            db: db,
-            remoteStorage: remoteStorage,
-            onDownloadError: onDownloadError);
-
-  @override
-  init() async {
-    if (AppConfig.supabaseStorageBucket.isEmpty) {
-      log.info(
-          'No Supabase bucket configured, skip setting up PhotoAttachmentQueue watches');
-      return;
-    }
-
-    await super.init();
-  }
-
-  @override
-  Future<Attachment> saveFile(String fileId, int size,
-      {mediaType = 'image/jpeg'}) async {
-    String filename = '$fileId.jpg';
-
-    Attachment photoAttachment = Attachment(
-      id: fileId,
-      filename: filename,
-      state: AttachmentState.queuedUpload.index,
-      mediaType: mediaType,
-      localUri: getLocalFilePathSuffix(filename),
-      size: size,
-    );
-
-    return attachmentsService.saveAttachment(photoAttachment);
-  }
-
-  @override
-  Future<Attachment> deleteFile(String fileId) async {
-    String filename = '$fileId.jpg';
-
-    Attachment photoAttachment = Attachment(
-        id: fileId,
-        filename: filename,
-        state: AttachmentState.queuedDelete.index);
-
-    return attachmentsService.saveAttachment(photoAttachment);
-  }
-
-  @override
-  StreamSubscription<void> watchIds({String fileExtension = 'jpg'}) {
-    log.info('Watching photos in $todosTable...');
-    return db.watch('''
-      SELECT photo_id FROM $todosTable
-      WHERE photo_id IS NOT NULL
-    ''').map((results) {
-      return results.map((row) => row['photo_id'] as String).toList();
-    }).listen((ids) async {
-      List<String> idsInQueue = await attachmentsService.getAttachmentIds();
-      List<String> relevantIds =
-          ids.where((element) => !idsInQueue.contains(element)).toList();
-      syncingService.processIds(relevantIds, fileExtension);
-    });
-  }
+Future<Attachment> savePhotoAttachment(
+    Stream<List<int>> photoData, String todoId,
+    {String mediaType = 'image/jpeg'}) async {
+  // Save the file using the AttachmentQueue API
+  return await attachmentQueue.saveFile(
+    data: photoData,
+    mediaType: mediaType,
+    fileExtension: 'jpg',
+    metaData: 'Photo attachment for todo: $todoId',
+    updateHook: (context, attachment) async {
+      // Update the todo item to reference this attachment
+      await context.execute(
+        'UPDATE todos SET photo_id = ? WHERE id = ?',
+        [attachment.id, todoId],
+      );
+    },
+  );
 }
 
-initializeAttachmentQueue(PowerSyncDatabase db) async {
-  attachmentQueue = PhotoAttachmentQueue(db, remoteStorage);
-  await attachmentQueue.init();
+Future<Attachment> deletePhotoAttachment(String fileId) async {
+  return await attachmentQueue.deleteFile(
+    attachmentId: fileId,
+    updateHook: (context, attachment) async {
+      // Optionally update relationships in the same transaction
+    },
+  );
 }

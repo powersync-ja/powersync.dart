@@ -10,8 +10,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  powersync_attachments_helper: ^0.6.19
   powersync: ^1.15.2
+  powersync_core: ^1.5.2
   path_provider: ^2.1.1
   supabase_flutter: ^2.0.1
   path: ^1.8.3
@@ -26,6 +26,7 @@ dev_dependencies:
     sdk: flutter
 
   flutter_lints: ^3.0.1
+  test: ^1.25.15
 
 flutter:
   uses-material-design: true
