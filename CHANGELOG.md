@@ -3,6 +3,45 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 2025-10-02
+
+### Changes
+
+---
+
+Packages with breaking changes:
+
+ - There are no breaking changes in this release.
+
+Packages with other changes:
+
+ - [`powersync_attachments_helper` - `v0.6.20`](#powersync_attachments_helper---v0620)
+ - [`powersync` - `v1.16.0`](#powersync---v1160)
+ - [`powersync_core` - `v1.6.0`](#powersync_core---v160)
+ - [`powersync_flutter_libs` - `v0.4.12`](#powersync_flutter_libs---v0412)
+ - [`powersync_sqlcipher` - `v0.1.12`](#powersync_sqlcipher---v0112)
+
+---
+
+#### `powersync_attachments_helper` - `v0.6.20`
+
+ - Add note about new attachment queue system in core package.
+
+#### `powersync` - `v1.16.0`
+#### `powersync_core` - `v1.6.0`
+#### `powersync_sqlcipher` - `v0.1.12`
+
+- Add `getCrudTransactions()` returning a stream of completed transactions for uploads.
+- Add experimental support for [sync streams](https://docs.powersync.com/usage/sync-streams).
+- Add new attachments helper implementation in `package:powersync_core/attachments/attachments.dart`.
+- Add SwiftPM support.
+- Add support for compiling `powersync_core` with `build_web_compilers`.
+
+#### `powersync_flutter_libs` - `v0.4.12`
+
+ - Update core extension.
+ - Add support for SwiftPM.
+
 ## 2025-08-18
 
 ### Changes
