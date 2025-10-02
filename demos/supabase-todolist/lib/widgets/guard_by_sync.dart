@@ -7,9 +7,9 @@ import 'package:powersync_flutter_demo/powersync.dart';
 class GuardBySync extends StatelessWidget {
   final Widget child;
 
-  /// When set, wait only for a complete sync within the [BucketPriority]
+  /// When set, wait only for a complete sync within the [StreamPriority]
   /// instead of a full sync.
-  final BucketPriority? priority;
+  final StreamPriority? priority;
 
   const GuardBySync({
     super.key,

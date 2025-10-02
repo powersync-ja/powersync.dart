@@ -133,6 +133,8 @@ class PowerSyncDatabaseImpl
   Future<void> connectInternal({
     required PowerSyncBackendConnector connector,
     required ResolvedSyncOptions options,
+    required List<SubscribedStream> initiallyActiveStreams,
+    required Stream<List<({String name, String parameters})>> activeStreams,
     required AbortController abort,
     required Zone asyncWorkZone,
   }) async {
@@ -140,6 +142,7 @@ class PowerSyncDatabaseImpl
 
     bool triedSpawningIsolate = false;
     StreamSubscription<UpdateNotification>? crudUpdateSubscription;
+    StreamSubscription<void>? activeStreamsSubscription;
     final receiveMessages = ReceivePort();
     final receiveUnhandledErrors = ReceivePort();
     final receiveExit = ReceivePort();
@@ -157,6 +160,7 @@ class PowerSyncDatabaseImpl
 
       // Cleanup
       crudUpdateSubscription?.cancel();
+      activeStreamsSubscription?.cancel();
       receiveMessages.close();
       receiveUnhandledErrors.close();
       receiveExit.close();
@@ -197,6 +201,10 @@ class PowerSyncDatabaseImpl
               .onChange(['ps_crud'], throttle: options.crudThrottleTime);
           crudUpdateSubscription = crudStream.listen((event) {
             port.send(['update']);
+          });
+
+          activeStreamsSubscription = activeStreams.listen((streams) {
+            port.send(['changed_subscriptions', streams]);
           });
         } else if (action == 'uploadCrud') {
           await (data[1] as PortCompleter).handle(() async {
@@ -366,6 +374,9 @@ Future<void> _syncIsolate(_PowerSyncDatabaseIsolateArgs args) async {
         }
       } else if (action == 'close') {
         await shutdown();
+      } else if (action == 'changed_subscriptions') {
+        openedStreamingSync
+            ?.updateSubscriptions(message[1] as List<SubscribedStream>);
       }
     }
   });

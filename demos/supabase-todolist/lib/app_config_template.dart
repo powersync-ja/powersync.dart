@@ -6,4 +6,7 @@ class AppConfig {
   static const String powersyncUrl = 'https://foo.powersync.journeyapps.com';
   static const String supabaseStorageBucket =
       ''; // Optional. Only required when syncing attachments and using Supabase Storage. See packages/powersync_attachments_helper.
+  // Whether the PowerSync instance uses sync streams to make fetching todo
+  // items optional.
+  static const bool hasSyncStreams = false;
 }

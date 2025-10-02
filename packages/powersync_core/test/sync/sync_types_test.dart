@@ -216,11 +216,11 @@ void main() {
       }
     });
 
-    test('bucket priority comparisons', () {
-      expect(BucketPriority(0) < BucketPriority(3), isFalse);
-      expect(BucketPriority(0) > BucketPriority(3), isTrue);
-      expect(BucketPriority(0) >= BucketPriority(3), isTrue);
-      expect(BucketPriority(0) >= BucketPriority(0), isTrue);
+    test('stream priority comparisons', () {
+      expect(StreamPriority(0) < StreamPriority(3), isFalse);
+      expect(StreamPriority(0) > StreamPriority(3), isTrue);
+      expect(StreamPriority(0) >= StreamPriority(3), isTrue);
+      expect(StreamPriority(0) >= StreamPriority(0), isTrue);
     });
   });
 }

@@ -1,8 +1,11 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart';
 import 'package:logging/logging.dart';
 import 'package:powersync_core/powersync_core.dart';
+import 'package:powersync_core/src/abort_controller.dart';
+import 'package:powersync_core/src/database/powersync_db_mixin.dart';
 import 'package:powersync_core/src/sync/bucket_storage.dart';
 import 'package:powersync_core/src/sync/internal_connector.dart';
 import 'package:powersync_core/src/sync/options.dart';
@@ -63,7 +66,7 @@ Logger _makeTestLogger({Level level = Level.ALL, String? name}) {
 abstract mixin class TestPowerSyncFactory implements PowerSyncOpenFactory {
   Future<CommonDatabase> openRawInMemoryDatabase();
 
-  Future<(CommonDatabase, PowerSyncDatabase)> openInMemoryDatabase({
+  Future<(CommonDatabase, TestDatabase)> openInMemoryDatabase({
     Schema? schema,
     Logger? logger,
   }) async {
@@ -71,16 +74,16 @@ abstract mixin class TestPowerSyncFactory implements PowerSyncOpenFactory {
     return (raw, wrapRaw(raw, customSchema: schema, logger: logger));
   }
 
-  PowerSyncDatabase wrapRaw(
+  TestDatabase wrapRaw(
     CommonDatabase raw, {
     Logger? logger,
     Schema? customSchema,
   }) {
-    return PowerSyncDatabase.withDatabase(
-      schema: customSchema ?? schema,
+    return TestDatabase(
       database: SqliteDatabase.singleConnection(
           SqliteConnection.synchronousWrapper(raw)),
-      logger: logger,
+      logger: logger ?? Logger.detached('PowerSync.test'),
+      schema: customSchema ?? schema,
     );
   }
 }
@@ -148,6 +151,83 @@ class TestConnector extends PowerSyncBackendConnector {
   @override
   Future<void> uploadData(PowerSyncDatabase database) async {
     await uploadDataCallback?.call(database);
+  }
+}
+
+/// A [PowerSyncDatabase] implemented by a single in-memory database connection
+/// and a mock-HTTP sync client.
+///
+/// This ensures tests for sync cover the `ConnectionManager` and other methods
+/// exposed by the mixin.
+final class TestDatabase
+    with SqliteQueries, PowerSyncDatabaseMixin
+    implements PowerSyncDatabase {
+  @override
+  final SqliteDatabase database;
+  @override
+  final Logger logger;
+  @override
+  Schema schema;
+
+  @override
+  late final Future<void> isInitialized;
+
+  Client? httpClient;
+
+  TestDatabase({
+    required this.database,
+    required this.logger,
+    required this.schema,
+  }) {
+    isInitialized = baseInit();
+  }
+
+  @override
+  Future<void> connectInternal({
+    required PowerSyncBackendConnector connector,
+    required ResolvedSyncOptions options,
+    required List<SubscribedStream> initiallyActiveStreams,
+    required Stream<List<SubscribedStream>> activeStreams,
+    required AbortController abort,
+    required Zone asyncWorkZone,
+  }) async {
+    final impl = StreamingSyncImplementation(
+      adapter: BucketStorage(this),
+      schemaJson: jsonEncode(schema),
+      client: httpClient!,
+      options: options,
+      connector: InternalConnector.wrap(connector, this),
+      logger: logger,
+      crudUpdateTriggerStream: database
+          .onChange(['ps_crud'], throttle: const Duration(milliseconds: 10)),
+      activeSubscriptions: initiallyActiveStreams,
+    );
+    impl.statusStream.listen(setStatus);
+
+    asyncWorkZone.run(impl.streamingSync);
+    final subscriptions = activeStreams.listen(impl.updateSubscriptions);
+
+    abort.onAbort.then((_) async {
+      subscriptions.cancel();
+      await impl.abort();
+      abort.completeAbort();
+    }).ignore();
+  }
+
+  @override
+  Future<T> readLock<T>(Future<T> Function(SqliteReadContext tx) callback,
+      {String? debugContext, Duration? lockTimeout}) async {
+    await isInitialized;
+    return database.readLock(callback,
+        debugContext: debugContext, lockTimeout: lockTimeout);
+  }
+
+  @override
+  Future<T> writeLock<T>(Future<T> Function(SqliteWriteContext tx) callback,
+      {String? debugContext, Duration? lockTimeout}) async {
+    await isInitialized;
+    return database.writeLock(callback,
+        debugContext: debugContext, lockTimeout: lockTimeout);
   }
 }
 

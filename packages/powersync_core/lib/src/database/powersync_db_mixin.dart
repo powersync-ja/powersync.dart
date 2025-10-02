@@ -14,8 +14,12 @@ import 'package:powersync_core/src/powersync_update_notification.dart';
 import 'package:powersync_core/src/schema.dart';
 import 'package:powersync_core/src/schema_logic.dart';
 import 'package:powersync_core/src/schema_logic.dart' as schema_logic;
+import 'package:powersync_core/src/sync/connection_manager.dart';
 import 'package:powersync_core/src/sync/options.dart';
 import 'package:powersync_core/src/sync/sync_status.dart';
+
+import '../sync/stream.dart';
+import '../sync/streaming_sync.dart';
 
 mixin PowerSyncDatabaseMixin implements SqliteConnection {
   /// Schema used for the local database.
@@ -42,16 +46,13 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
   @Deprecated("This field is unused, pass params to connect() instead")
   Map<String, dynamic>? clientParams;
 
+  late final ConnectionManager _connections;
+
   /// Current connection status.
-  SyncStatus currentStatus =
-      const SyncStatus(connected: false, lastSyncedAt: null);
+  SyncStatus get currentStatus => _connections.currentStatus;
 
   /// Use this stream to subscribe to connection status updates.
-  late final Stream<SyncStatus> statusStream;
-
-  @protected
-  StreamController<SyncStatus> statusStreamController =
-      StreamController<SyncStatus>.broadcast();
+  Stream<SyncStatus> get statusStream => _connections.statusStream;
 
   late final ActiveDatabaseGroup _activeGroup;
 
@@ -81,15 +82,6 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
   @protected
   Future<void> get isInitialized;
 
-  /// The abort controller for the current sync iteration.
-  ///
-  /// null when disconnected, present when connecting or connected.
-  ///
-  /// The controller must only be accessed from within a critical section of the
-  /// sync mutex.
-  @protected
-  AbortController? _abortActiveSync;
-
   @protected
   Future<void> baseInit() async {
     String identifier = 'memory';
@@ -107,15 +99,14 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
         'instantiation logic if this is not intentional',
       );
     }
-
-    statusStream = statusStreamController.stream;
+    _connections = ConnectionManager(this);
     updates = powerSyncUpdateNotifications(database.updates);
 
     await database.initialize();
     await _checkVersion();
     await database.execute('SELECT powersync_init()');
     await updateSchema(schema);
-    await _updateHasSynced();
+    await _connections.resolveOfflineSyncStatus();
   }
 
   /// Check that a supported version of the powersync extension is loaded.
@@ -141,55 +132,15 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
     return isInitialized;
   }
 
-  Future<void> _updateHasSynced() async {
-    // Query the database to see if any data has been synced.
-    final result = await database.getAll(
-      'SELECT priority, last_synced_at FROM ps_sync_state ORDER BY priority;',
-    );
-    const prioritySentinel = 2147483647;
-    var hasSynced = false;
-    DateTime? lastCompleteSync;
-    final priorityStatusEntries = <SyncPriorityStatus>[];
-
-    DateTime parseDateTime(String sql) {
-      return DateTime.parse('${sql}Z').toLocal();
-    }
-
-    for (final row in result) {
-      final priority = row.columnAt(0) as int;
-      final lastSyncedAt = parseDateTime(row.columnAt(1) as String);
-
-      if (priority == prioritySentinel) {
-        hasSynced = true;
-        lastCompleteSync = lastSyncedAt;
-      } else {
-        priorityStatusEntries.add((
-          hasSynced: true,
-          lastSyncedAt: lastSyncedAt,
-          priority: BucketPriority(priority)
-        ));
-      }
-    }
-
-    if (hasSynced != currentStatus.hasSynced) {
-      final status = SyncStatus(
-        hasSynced: hasSynced,
-        lastSyncedAt: lastCompleteSync,
-        priorityStatusEntries: priorityStatusEntries,
-      );
-      setStatus(status);
-    }
-  }
-
   /// Returns a [Future] which will resolve once at least one full sync cycle
   /// has completed (meaninng that the first consistent checkpoint has been
   /// reached across all buckets).
   ///
   /// When [priority] is null (the default), this method waits for the first
-  /// full sync checkpoint to complete. When set to a [BucketPriority] however,
+  /// full sync checkpoint to complete. When set to a [StreamPriority] however,
   /// it completes once all buckets within that priority (as well as those in
   /// higher priorities) have been synchronized at least once.
-  Future<void> waitForFirstSync({BucketPriority? priority}) async {
+  Future<void> waitForFirstSync({StreamPriority? priority}) async {
     bool matches(SyncStatus status) {
       if (priority == null) {
         return status.hasSynced == true;
@@ -198,46 +149,13 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
       }
     }
 
-    if (matches(currentStatus)) {
-      return;
-    }
-    await for (final result in statusStream) {
-      if (matches(result)) {
-        break;
-      }
-    }
+    return _connections.firstStatusMatching(matches);
   }
 
   @protected
   @visibleForTesting
   void setStatus(SyncStatus status) {
-    if (status != currentStatus) {
-      final newStatus = SyncStatus(
-        connected: status.connected,
-        downloading: status.downloading,
-        uploading: status.uploading,
-        connecting: status.connecting,
-        uploadError: status.uploadError,
-        downloadError: status.downloadError,
-        priorityStatusEntries: status.priorityStatusEntries,
-        downloadProgress: status.downloadProgress,
-        // Note that currently the streaming sync implementation will never set
-        // hasSynced. lastSyncedAt implies that syncing has completed at some
-        // point (hasSynced = true).
-        // The previous values of hasSynced should be preserved here.
-        lastSyncedAt: status.lastSyncedAt ?? currentStatus.lastSyncedAt,
-        hasSynced: status.lastSyncedAt != null
-            ? true
-            : status.hasSynced ?? currentStatus.hasSynced,
-      );
-
-      // If the absence of hasSynced was the only difference, the new states
-      // would be equal and don't require an event. So, check again.
-      if (newStatus != currentStatus) {
-        currentStatus = newStatus;
-        statusStreamController.add(currentStatus);
-      }
-    }
+    _connections.manuallyChangeSyncStatus(status);
   }
 
   @override
@@ -262,9 +180,9 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
       // Now we can close the database
       await database.close();
 
-      // If there are paused subscriptionso n the status stream, don't delay
+      // If there are paused subscriptions on the status stream, don't delay
       // closing the database because of that.
-      unawaited(statusStreamController.close());
+      _connections.close();
       await _activeGroup.close();
     }
   }
@@ -298,67 +216,7 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
       params: params,
     );
 
-    if (schema.rawTables.isNotEmpty &&
-        resolvedOptions.source.syncImplementation !=
-            SyncClientImplementation.rust) {
-      throw UnsupportedError(
-          'Raw tables are only supported by the Rust client.');
-    }
-
-    // ignore: deprecated_member_use_from_same_package
-    clientParams = params;
-    var thisConnectAborter = AbortController();
-    final zone = Zone.current;
-
-    late void Function() retryHandler;
-
-    Future<void> connectWithSyncLock() async {
-      // Ensure there has not been a subsequent connect() call installing a new
-      // sync client.
-      assert(identical(_abortActiveSync, thisConnectAborter));
-      assert(!thisConnectAborter.aborted);
-
-      await connectInternal(
-        connector: connector,
-        options: resolvedOptions,
-        abort: thisConnectAborter,
-        // Run follow-up async tasks in the parent zone, a new one is introduced
-        // while we hold the lock (and async tasks won't hold the sync lock).
-        asyncWorkZone: zone,
-      );
-
-      thisConnectAborter.onCompletion.whenComplete(retryHandler);
-    }
-
-    // If the sync encounters a failure without being aborted, retry
-    retryHandler = Zone.current.bindCallback(() async {
-      _activeGroup.syncConnectMutex.lock(() async {
-        // Is this still supposed to be active? (abort is only called within
-        // mutex)
-        if (!thisConnectAborter.aborted) {
-          // We only change _abortActiveSync after disconnecting, which resets
-          // the abort controller.
-          assert(identical(_abortActiveSync, thisConnectAborter));
-
-          // We need a new abort controller for this attempt
-          _abortActiveSync = thisConnectAborter = AbortController();
-
-          logger.warning('Sync client failed, retrying...');
-          await connectWithSyncLock();
-        }
-      });
-    });
-
-    await _activeGroup.syncConnectMutex.lock(() async {
-      // Disconnect a previous sync client, if one is active.
-      await _abortCurrentSync();
-      assert(_abortActiveSync == null);
-
-      // Install the abort controller for this particular connect call, allowing
-      // it to be disconnected.
-      _abortActiveSync = thisConnectAborter;
-      await connectWithSyncLock();
-    });
+    await _connections.connect(connector: connector, options: resolvedOptions);
   }
 
   /// Internal method to establish a sync client connection.
@@ -372,6 +230,8 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
   Future<void> connectInternal({
     required PowerSyncBackendConnector connector,
     required ResolvedSyncOptions options,
+    required List<SubscribedStream> initiallyActiveStreams,
+    required Stream<List<SubscribedStream>> activeStreams,
     required AbortController abort,
     required Zone asyncWorkZone,
   });
@@ -380,27 +240,7 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
   ///
   /// Use [connect] to connect again.
   Future<void> disconnect() async {
-    // Also wrap this in the sync mutex to ensure there's no race between us
-    // connecting and disconnecting.
-    await _activeGroup.syncConnectMutex.lock(_abortCurrentSync);
-
-    setStatus(
-        SyncStatus(connected: false, lastSyncedAt: currentStatus.lastSyncedAt));
-  }
-
-  Future<void> _abortCurrentSync() async {
-    if (_abortActiveSync case final disconnector?) {
-      /// Checking `disconnecter.aborted` prevents race conditions
-      /// where multiple calls to `disconnect` can attempt to abort
-      /// the controller more than once before it has finished aborting.
-      if (disconnector.aborted == false) {
-        await disconnector.abort();
-        _abortActiveSync = null;
-      } else {
-        /// Wait for the abort to complete. Continue updating the sync status after completed
-        await disconnector.onCompletion;
-      }
-    }
+    await _connections.disconnect();
   }
 
   /// Disconnect and clear the database.
@@ -418,8 +258,7 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
       await tx.execute('select powersync_clear(?)', [clearLocal ? 1 : 0]);
     });
     // The data has been deleted - reset these
-    currentStatus = SyncStatus(lastSyncedAt: null, hasSynced: false);
-    statusStreamController.add(currentStatus);
+    setStatus(SyncStatus(lastSyncedAt: null, hasSynced: false));
   }
 
   @Deprecated('Use [disconnectAndClear] instead.')
@@ -441,9 +280,7 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
     schema.validate();
 
     await _activeGroup.syncConnectMutex.lock(() async {
-      if (_abortActiveSync != null) {
-        throw AssertionError('Cannot update schema while connected');
-      }
+      _connections.checkNotConnected();
 
       this.schema = schema;
       await database.writeLock((tx) => schema_logic.updateSchema(tx, schema));
@@ -665,6 +502,13 @@ SELECT * FROM crud_entries;
   @override
   Future<void> refreshSchema() async {
     await database.refreshSchema();
+  }
+
+  /// Create a [SyncStream] instance for the given [name] and [parameters].
+  ///
+  /// Use [SyncStream.subscribe] to subscribe to the returned stream.
+  SyncStream syncStream(String name, [Map<String, Object?>? parameters]) {
+    return _connections.syncStream(name, parameters);
   }
 }
 
