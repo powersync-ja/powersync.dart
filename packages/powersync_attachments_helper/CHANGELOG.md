@@ -1,3 +1,7 @@
+## 0.6.20
+
+ - Add note about new attachment queue system in core package.
+
 ## 0.6.19
 
  - Remove direct dependency on `sqlite_async`.

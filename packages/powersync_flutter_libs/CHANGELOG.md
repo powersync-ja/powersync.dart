@@ -1,3 +1,7 @@
+## 0.4.12
+
+ - Update core extension, add support for SwiftPM.
+
 ## 0.4.11
 
  - Update PowerSync core extension to version 0.4.4.

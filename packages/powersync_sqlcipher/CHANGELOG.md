@@ -1,3 +1,10 @@
+## 0.1.12
+
+- Add `getCrudTransactions()` returning a stream of completed transactions for uploads.
+- Add experimental support for [sync streams](https://docs.powersync.com/usage/sync-streams).
+- Add new attachments helper implementation in `package:powersync_core/attachments/attachments.dart`.
+- Add SwiftPM support.
+
 ## 0.1.11+1
 
  - Fix excessive memory consumption during large sync.

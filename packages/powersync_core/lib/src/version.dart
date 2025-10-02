@@ -1,1 +1,1 @@
-const String libraryVersion = '1.5.2';
+const String libraryVersion = '1.6.0';
