@@ -2,6 +2,12 @@
 
 [PowerSync Attachments Helper](https://pub.dev/packages/powersync_attachments_helper) is a package that assist in keeping files in sync with local and remote storage.
 
+> [!WARNING]  
+> There is a new attachments helper library in the core PowerSync package, available under
+> `package:powersync_core/attachments/attachments.dart`. While this package will continue to receive
+> bugfixes, new feature development will only happen in the other package.
+
+
 ## Features
 
 - Handles syncing uploads, downloads and deletes between local and remote storage.
