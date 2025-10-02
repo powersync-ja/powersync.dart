@@ -180,7 +180,7 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
       // Now we can close the database
       await database.close();
 
-      // If there are paused subscriptionso n the status stream, don't delay
+      // If there are paused subscriptions on the status stream, don't delay
       // closing the database because of that.
       _connections.close();
       await _activeGroup.close();
