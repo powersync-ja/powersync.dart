@@ -83,7 +83,7 @@ abstract mixin class TestPowerSyncFactory implements PowerSyncOpenFactory {
       database: SqliteDatabase.singleConnection(
           SqliteConnection.synchronousWrapper(raw)),
       logger: logger ?? Logger.detached('PowerSync.test'),
-      schema: schema,
+      schema: customSchema ?? schema,
     );
   }
 }
