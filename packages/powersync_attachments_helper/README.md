@@ -1,11 +1,19 @@
 # PowerSync Attachments Helper for Dart/Flutter
 
-[PowerSync Attachments Helper](https://pub.dev/packages/powersync_attachments_helper) is a package that assist in keeping files in sync with local and remote storage.
+[PowerSync Attachments Helper](https://pub.dev/packages/powersync_attachments_helper) is a package that assists in keeping files in sync between local and remote storage.
 
 > [!WARNING]  
-> There is a new attachments helper library in the core PowerSync package, available under
-> `package:powersync_core/attachments/attachments.dart`. While this package will continue to receive
-> bugfixes, new feature development will only happen in the other package.
+> This package will eventually be replaced by a new attachments helper library in the core PowerSync package, available through:
+> ```dart
+> package:powersync_core/attachments/attachments.dart
+> ```
+>
+> The `powersync_core/attachments` library is in alpha and brings improved APIs and functionality that is more in line with our other SDKs, such as the ability to write your own local storage implementation.
+>
+> Check out the [docs here](/packages/powersync_core/doc/attachments.md) to get started.
+>
+> While the `powersync_attachments_helper` package will still get bug fixes if you need them,
+> new features will only be developed on `powersync_core/attachments`.
 
 
 ## Features
@@ -89,5 +97,3 @@ initializeAttachmentQueue(PowerSyncDatabase db) async {
   await attachmentQueue.init();
 }
 ```
-
-See our [Supabase Flutter To-Do List example app](../../demos/supabase-todolist/README.md) for a concrete implementation of the above.

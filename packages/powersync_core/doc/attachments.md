@@ -5,7 +5,7 @@ PowerSync.
 Embedding this data directly in your source databases is [inefficient and not recommended](https://docs.powersync.com/usage/use-case-examples/attachments).
 
 Instead, the PowerSync SDK for Dart and Flutter provides utilities you can use to _reference_ this binary data
-in your primary data model, and then download it from a secondary data store such as S3.
+in your local database, and then download it from a secondary data store such as Supabase Storage or S3.
 Because binary data is not directly stored in the source database in this model, we call these files _attachments_.
 
 ## Alpha release
@@ -31,8 +31,7 @@ The attachments' state is stored in a local-only attachments table.
 
 ### Example implementation
 
-See the [supabase todolist](https://github.com/powersync-ja/powersync.dart/tree/main/demos/supabase-todolist) demo for
-a basic example of attachment syncing.
+See the [supabase-todolist](https://github.com/powersync-ja/powersync.dart/tree/main/demos/supabase-todolist) demo for a basic example of attachment syncing.
 
 ### Setup
 
@@ -77,7 +76,6 @@ final attachmentQueue = AttachmentQueue(
 ```
 
 Here,
-
  - An instance of `LocalStorageAdapter`, such as the `IOLocalStorage` provided by the SDK, is responsible for storing
    attachment contents locally.
  - An instance of `RemoteStorageAdapter` is responsible for downloading and uploading attachment contents to the secondary
