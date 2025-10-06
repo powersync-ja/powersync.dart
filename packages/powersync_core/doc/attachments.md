@@ -43,6 +43,11 @@ The attachments' state is stored in a local-only attachments table.
 
 See the [supabase-todolist](https://github.com/powersync-ja/powersync.dart/tree/main/demos/supabase-todolist) demo for a basic example of attachment syncing.
 
+In particular, relevant snippets from that example are:
+
+- The attachment queue is set up [here](https://github.com/powersync-ja/powersync.dart/blob/98d73e2f157a697786373fef755576505abc74a5/demos/supabase-todolist/lib/attachments/queue.dart#L16-L36), using conditional imports to store attachments in the file system on native platforms and in-memory for web.
+- When a new attachment is added, `saveFile` is called [here](https://github.com/powersync-ja/powersync.dart/blob/98d73e2f157a697786373fef755576505abc74a5/demos/supabase-todolist/lib/attachments/queue.dart#L38-L55) and automatically updates references in the main schema to reference the attachment.
+
 ### Setup
 
 First, add a table storing local attachment state to your database schema.

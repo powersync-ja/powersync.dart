@@ -53,12 +53,3 @@ Future<Attachment> savePhotoAttachment(
     },
   );
 }
-
-Future<Attachment> deletePhotoAttachment(String fileId) async {
-  return await attachmentQueue.deleteFile(
-    attachmentId: fileId,
-    updateHook: (context, attachment) async {
-      // Optionally update relationships in the same transaction
-    },
-  );
-}
