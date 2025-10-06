@@ -29,6 +29,7 @@ void main() {
         final data = Uint8List.fromList([1, 2, 3, 4, 5]);
         final size = await storage.saveFile(filePath, Stream.value(data));
         expect(size, equals(data.length));
+        expect(storage.pathFor(filePath), d.path('test_file'));
 
         final resultStream = storage.readFile(filePath);
         final result = await resultStream.toList();
