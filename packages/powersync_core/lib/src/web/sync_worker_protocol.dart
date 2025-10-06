@@ -328,8 +328,8 @@ extension type SerializedSyncStatus._(JSObject _) implements JSObject {
       },
       streamSubscriptions: switch (streamSubscriptions) {
         null => null,
-        final serialized => (json.decode(serialized) as List)
-            .map((e) => CoreActiveStreamSubscription.fromJson(
+        final serialized => (json.decode(serialized) as List?)
+            ?.map((e) => CoreActiveStreamSubscription.fromJson(
                 e as Map<String, Object?>))
             .toList(),
       },
