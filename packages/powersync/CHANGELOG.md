@@ -1,3 +1,7 @@
+## 1.16.1
+
+ - Web: Fix decoding sync streams on status.
+
 ## 1.16.0
 
 - Add `getCrudTransactions()` returning a stream of completed transactions for uploads.

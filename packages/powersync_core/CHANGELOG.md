@@ -1,3 +1,9 @@
+## 1.6.1
+
+ - Web: Fix decoding sync streams on status.
+
+ - **DOCS**: Point to uses in example. ([4f4da24e](https://github.com/powersync-ja/powersync.dart/commit/4f4da24e580dec6b1d29a5e0907b83ba7c55e3d8))
+
 ## 1.6.0
 
 - Add `getCrudTransactions()` returning a stream of completed transactions for uploads.

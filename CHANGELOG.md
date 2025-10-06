@@ -3,6 +3,39 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 2025-10-06
+
+### Changes
+
+---
+
+Packages with breaking changes:
+
+ - There are no breaking changes in this release.
+
+Packages with other changes:
+
+ - [`powersync` - `v1.16.1`](#powersync---v1161)
+ - [`powersync_core` - `v1.6.1`](#powersync_core---v161)
+ - [`powersync_sqlcipher` - `v0.1.13`](#powersync_sqlcipher---v0113)
+
+---
+
+#### `powersync` - `v1.16.1`
+
+ - Web: Fix decoding sync streams on status.
+
+#### `powersync_core` - `v1.6.1`
+
+ - Web: Fix decoding sync streams on status.
+
+ - **DOCS**: Point to uses in example. ([4f4da24e](https://github.com/powersync-ja/powersync.dart/commit/4f4da24e580dec6b1d29a5e0907b83ba7c55e3d8))
+
+#### `powersync_sqlcipher` - `v0.1.13`
+
+ - Web: Fix decoding sync streams on status.
+
+
 ## 2025-10-02
 
 ### Changes
