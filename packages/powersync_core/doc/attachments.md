@@ -5,16 +5,26 @@ PowerSync.
 Embedding this data directly in your source databases is [inefficient and not recommended](https://docs.powersync.com/usage/use-case-examples/attachments).
 
 Instead, the PowerSync SDK for Dart and Flutter provides utilities you can use to _reference_ this binary data
-in your local database, and then download it from a secondary data store such as Supabase Storage or S3.
+in your regular database schema, and then download it from a secondary data store such as Supabase Storage or S3.
 Because binary data is not directly stored in the source database in this model, we call these files _attachments_.
+
+
+> [!NOTE]  
+> These attachment utilities are recommended over our legacy [PowerSync Attachments Helper](https://pub.dev/packages/powersync_attachments_helper) package. The new utilities provide cleaner APIs that are more aligned with similar helpers in our other SDKs, and include improved features such as:
+> - Support for writing your own local storage implementation
+> - Support for dynamic nested directories and custom per-attachment file extensions out of the box
+> - Ability to add optional `metaData` to attachments
+> - No longer depends on `dart:io` 
+> 
+> If you are new to handling attachments, we recommend starting with these utilities. If you currently use the legacy `powersync_attachments_helper` package, a fairly simple migration would be to adopt the new utilities with a different table name and drop the legacy package. This means existing attachments are lost, but they should be downloaded again.
 
 ## Alpha release
 
-The attachment helpers described in this document are currently in an alpha state, intended for testing.
+The attachment utilities described in this document are currently in an alpha state, intended for testing.
 Expect breaking changes and instability as development continues.
 The attachments API is marked as `@experimental` for this reason.
 
-Do not rely on these libraries for production use.
+Do not rely on these utilities for production use.
 
 ## Usage
 

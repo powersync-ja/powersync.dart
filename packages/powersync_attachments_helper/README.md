@@ -10,7 +10,7 @@
 >
 > The `powersync_core/attachments` library is in alpha and brings improved APIs and functionality that is more in line with our other SDKs, such as the ability to write your own local storage implementation.
 >
-> Check out the [docs here](/packages/powersync_core/doc/attachments.md) to get started.
+> Check out the [docs here](https://pub.dev/documentation/powersync_core/latest/topics/attachments-topic.html) to get started.
 >
 > While the `powersync_attachments_helper` package will still get bug fixes if you need them,
 > new features will only be developed on `powersync_core/attachments`.
