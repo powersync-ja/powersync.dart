@@ -6,7 +6,7 @@
 /// {@category attachments}
 library;
 
-import '../src/attachments/io_local_storage.dart';
-import '../src/attachments/local_storage.dart';
+import '../src/attachments/storage/io_local_storage.dart';
+import '../src/attachments/storage/local_storage.dart';
 
-export '../src/attachments/io_local_storage.dart';
+export '../src/attachments/storage/io_local_storage.dart';
