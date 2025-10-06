@@ -1,7 +1,10 @@
+import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:powersync_core/attachments/attachments.dart';
+import 'package:powersync_core/attachments/io.dart';
 import 'package:powersync_flutter_demo/attachments/camera_helpers.dart';
 import 'package:powersync_flutter_demo/attachments/photo_capture_widget.dart';
 
@@ -44,19 +47,38 @@ class PhotoWidget extends StatelessWidget {
           );
         }
 
-        return AttachmentImage(attachment: attachment);
+        if (!data.fileExists) {
+          return const Text('Downloading...');
+        }
+
+        if (kIsWeb) {
+          // We can't use Image.file on the web, so fall back to loading the
+          // image from OPFS.
+          return _WebAttachmentImage(attachment: attachment);
+        } else {
+          final path =
+              (localStorage as IOLocalStorage).pathFor(attachment.filename);
+          return Image.file(
+            key: ValueKey(attachment),
+            File(path),
+            width: 50,
+            height: 50,
+          );
+        }
       },
     );
   }
 
   static Stream<_AttachmentState> _attachmentState(String? id) {
     return db.watch('SELECT * FROM attachments_queue WHERE id = ?',
-        parameters: [id]).map((rows) {
+        parameters: [id]).asyncMap((rows) async {
       if (rows.isEmpty) {
-        return const _AttachmentState(null);
+        return const _AttachmentState(null, false);
       }
 
-      return _AttachmentState(Attachment.fromRow(rows.single));
+      final attachment = Attachment.fromRow(rows.single);
+      final exists = await localStorage.fileExists(attachment.filename);
+      return _AttachmentState(attachment, exists);
     });
   }
 }
@@ -98,25 +120,24 @@ class TakePhotoButton extends StatelessWidget {
 
 final class _AttachmentState {
   final Attachment? attachment;
+  final bool fileExists;
 
-  const _AttachmentState(this.attachment);
+  const _AttachmentState(this.attachment, this.fileExists);
 }
 
-/// A widget showing an [Attachment] as an image.
+/// A widget showing an [Attachment] as an image by loading it into memory.
 ///
-/// For better web support, always loads the attachment into memory first. If
-/// you're only targeting native platforms, a more efficient mechanism would be
-/// to use `IOLocalStorage.pathFor` with an [Image.file] image.
-class AttachmentImage extends StatefulWidget {
+/// On native platforms, using a file path is more efficient.
+class _WebAttachmentImage extends StatefulWidget {
   final Attachment attachment;
 
-  const AttachmentImage({super.key, required this.attachment});
+  const _WebAttachmentImage({required this.attachment});
 
   @override
-  State<AttachmentImage> createState() => _AttachmentImageState();
+  State<_WebAttachmentImage> createState() => _AttachmentImageState();
 }
 
-class _AttachmentImageState extends State<AttachmentImage> {
+class _AttachmentImageState extends State<_WebAttachmentImage> {
   Future<Uint8List?>? _imageBytes;
 
   void _loadBytes() {
@@ -142,7 +163,7 @@ class _AttachmentImageState extends State<AttachmentImage> {
   }
 
   @override
-  void didUpdateWidget(covariant AttachmentImage oldWidget) {
+  void didUpdateWidget(covariant _WebAttachmentImage oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.attachment != widget.attachment) {
       _loadBytes();
@@ -154,16 +175,12 @@ class _AttachmentImageState extends State<AttachmentImage> {
     return FutureBuilder(
       future: _imageBytes,
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.done) {
-          if (snapshot.data case final bytes?) {
-            return Image.memory(
-              bytes,
-              width: 50,
-              height: 50,
-            );
-          } else {
-            return const Text('Downloading...');
-          }
+        if (snapshot.data case final bytes?) {
+          return Image.memory(
+            bytes,
+            width: 50,
+            height: 50,
+          );
         } else {
           return Container();
         }
