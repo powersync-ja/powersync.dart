@@ -160,6 +160,14 @@ Future<void> openDatabase() async {
   db = PowerSyncDatabase(
       schema: schema, path: await getDatabasePath(), logger: attachedLogger);
   await db.initialize();
+  await db.execute('''
+CREATE TABLE IF NOT EXISTS lists (
+  id TEXT NOT NULL PRIMARY KEY,
+  created_at TEXT,
+  name TEXT,
+  owner_id TEXT
+) STRICT;
+''');
 
   await loadSupabase();
 
@@ -190,7 +198,7 @@ Future<void> openDatabase() async {
 
   // Demo using SQLite Full-Text Search with PowerSync.
   // See https://docs.powersync.com/usage-examples/full-text-search for more details
-  await configureFts(db);
+  //await configureFts(db);
 }
 
 /// Explicit sign out - clear database and log out.

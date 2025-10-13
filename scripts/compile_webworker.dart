@@ -23,7 +23,7 @@ Future<void> main() async {
         'js',
         '-o',
         dbWorkerOutputPath,
-        '-O4',
+//        '-O4',
         workerSourcePath,
       ],
       workingDirectory: cwd);
@@ -47,7 +47,7 @@ Future<void> main() async {
         'js',
         '-o',
         syncWorkerOutputPath,
-        '-O4',
+//        '-O4',
         syncWorkerSourcePath,
       ],
       workingDirectory: cwd);

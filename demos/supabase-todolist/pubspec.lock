@@ -566,28 +566,28 @@ packages:
       path: "../../packages/powersync"
       relative: true
     source: path
-    version: "1.15.2"
+    version: "1.16.1"
   powersync_attachments_helper:
     dependency: "direct overridden"
     description:
       path: "../../packages/powersync_attachments_helper"
       relative: true
     source: path
-    version: "0.6.19"
+    version: "0.6.20"
   powersync_core:
     dependency: "direct main"
     description:
       path: "../../packages/powersync_core"
       relative: true
     source: path
-    version: "1.5.2"
+    version: "1.6.1"
   powersync_flutter_libs:
     dependency: "direct overridden"
     description:
       path: "../../packages/powersync_flutter_libs"
       relative: true
     source: path
-    version: "0.4.11"
+    version: "0.4.12"
   pub_semver:
     dependency: transitive
     description:
