@@ -44,9 +44,8 @@ final class TestServer {
     maxConnectionCount = max(connectionCount, maxConnectionCount);
 
     stream() async* {
-      var blob = "*" * 5000;
       for (var i = 0; i < 50; i++) {
-        yield {"token_expires_in": tokenExpiresIn, "blob": blob};
+        yield {"token_expires_in": tokenExpiresIn};
         await Future<void>.delayed(Duration(microseconds: 1));
       }
     }
