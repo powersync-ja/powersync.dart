@@ -98,23 +98,9 @@ void main() {
       // Create a new completer to await the next upload
       uploadTriggeredCompleter = Completer();
 
-      // Connect the PowerSync instance
-      final connectedCompleter = Completer<void>();
-      // The first connection attempt will fail
-      final connectedErroredCompleter = Completer<void>();
-
-      db.statusStream.listen((status) {
-        if (status.connected && !connectedCompleter.isCompleted) {
-          connectedCompleter.complete();
-        }
-        if (status.downloadError != null &&
-            !connectedErroredCompleter.isCompleted) {
-          connectedErroredCompleter.complete();
-        }
-      });
-
       // The first command will not be valid, this simulates a failed connection
       testServer.addEvent('asdf\n');
+      // Connect the PowerSync instance. The first connection attempt will fail
       await db.connect(connector: connector);
 
       // The connect operation should have triggered an upload (even though it fails to connect)
@@ -124,14 +110,20 @@ void main() {
       uploadTriggeredCompleter = Completer();
 
       // Connection attempt should initially fail
-      await connectedErroredCompleter.future;
-      expect(db.currentStatus.anyError, isNotNull);
+      await expectLater(
+        db.statusStream,
+        emitsThrough(isA<SyncStatus>()
+            .having((e) => e.downloadError, 'downloadError', isNotNull)),
+      );
 
       // Now send a valid command. Which will result in successful connection
       await testServer.clearEvents();
       testServer.addEvent('{"token_expires_in": 3600}\n');
-      await connectedCompleter.future;
-      expect(db.connected, isTrue);
+      await expectLater(
+        db.statusStream,
+        emitsThrough(
+            isA<SyncStatus>().having((e) => e.connected, 'connected', isTrue)),
+      );
 
       await uploadTriggeredCompleter.future;
       expect(uploadCounter, equals(2));
