@@ -94,7 +94,7 @@ void _declareTests(String name, SyncOptions options, bool bson) {
     });
 
     Future<StreamQueue<SyncStatus>> waitForConnection(
-        {bool expectNoWarnings = true}) async {
+        {bool expectNoWarnings = true, bool addKeepLive = true}) async {
       if (expectNoWarnings) {
         logger.onRecord.listen((e) {
           if (e.level >= Level.WARNING) {
@@ -110,7 +110,10 @@ void _declareTests(String name, SyncOptions options, bool bson) {
       final status = StreamQueue(database.statusStream);
       addTearDown(status.cancel);
 
-      syncService.addKeepAlive();
+      if (addKeepLive) {
+        syncService.addKeepAlive();
+      }
+
       await expectLater(status,
           emitsThrough(isSyncStatus(connected: true, hasSynced: false)));
       return status;
@@ -310,6 +313,11 @@ void _declareTests(String name, SyncOptions options, bool bson) {
           });
 
         await expectLater(query, emits(isEmpty));
+      });
+
+      test('marks as connected even without sync line', () async {
+        await waitForConnection(addKeepLive: false);
+        expect(database.currentStatus.connected, isTrue);
       });
     }
 

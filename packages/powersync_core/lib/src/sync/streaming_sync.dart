@@ -470,6 +470,7 @@ class StreamingSyncImplementation implements StreamingSync {
           await handleLine(line as StreamingSyncLine);
         case UploadCompleted():
         case HandleChangedSubscriptions():
+        case ConnectionEvent():
           // Only relevant for the Rust sync implementation.
           break;
         case AbortCurrentIteration():
@@ -647,20 +648,24 @@ final class _ActiveRustStreamingIteration {
     }
   }
 
-  Stream<ReceivedLine> _receiveLines(Object? data,
+  Stream<SyncEvent> _receiveLines(Object? data,
       {required Future<void> onAbort}) {
     return streamFromFutureAwaitInCancellation(
             sync._postStreamRequest(data, true, onAbort: onAbort))
-        .asyncExpand<Object /* Uint8List | String */ >((response) {
+        .asyncExpand<SyncEvent>((response) async* {
       if (response == null) {
-        return null;
+        return;
       } else {
+        yield ConnectionEvent.established;
+
         final contentType = response.headers['content-type'];
         final isBson = contentType == 'application/vnd.powersync.bson-stream';
 
-        return isBson ? response.stream.bsonDocuments : response.stream.lines;
+        yield* (isBson ? response.stream.bsonDocuments : response.stream.lines)
+            .map(ReceivedLine.new);
+        yield ConnectionEvent.end;
       }
-    }).map(ReceivedLine.new);
+    });
   }
 
   Future<RustSyncIterationResult> _handleLines(
@@ -696,6 +701,8 @@ final class _ActiveRustStreamingIteration {
         }
 
         switch (event) {
+          case ConnectionEvent():
+            await _control('connection', event.name);
           case ReceivedLine(line: final Uint8List line):
             _triggerCrudUploadOnFirstLine();
             await _control('line_binary', line);
@@ -801,6 +808,11 @@ final class _ActiveRustStreamingIteration {
 typedef RustSyncIterationResult = ({bool immediateRestart});
 
 sealed class SyncEvent {}
+
+enum ConnectionEvent implements SyncEvent {
+  established,
+  end,
+}
 
 final class ReceivedLine implements SyncEvent {
   final Object /* String|Uint8List|StreamingSyncLine */ line;
