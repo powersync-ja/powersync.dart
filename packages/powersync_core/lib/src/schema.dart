@@ -1,3 +1,6 @@
+/// @docImport 'database/powersync_db_mixin.dart';
+library;
+
 import 'crud.dart';
 import 'schema_logic.dart';
 
@@ -368,16 +371,25 @@ final class RawTable {
   /// used here must all be [PendingStatementValue.id].
   final PendingStatement delete;
 
+  /// An optional SQL statement to run when a PowerSync database is cleared.
+  ///
+  /// When this value is unset, clearing the database (via
+  /// [PowerSyncDatabaseMixin.disconnectAndClear]) would not affect the raw
+  /// table.
+  final String? clear;
+
   const RawTable({
     required this.name,
     required this.put,
     required this.delete,
+    this.clear,
   });
 
   Map<String, dynamic> toJson() => {
         'name': name,
         'put': put,
         'delete': delete,
+        'clear': clear,
       };
 }
 

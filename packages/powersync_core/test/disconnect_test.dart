@@ -69,5 +69,61 @@ void main() {
       final changes = await changesFuture;
       expect(changes.first, equals(UpdateNotification({'customers'})));
     });
+
+    test('soft clear', () async {
+      final db = await testUtils.setupPowerSync(path: path, schema: testSchema);
+      addTearDown(db.close);
+
+      await db.execute(
+          'INSERT INTO customers (id, name) VALUES(uuid(), ?)', ['testuser']);
+      await db.execute(
+        'INSERT INTO ps_buckets (name, last_applied_op) VALUES (?, ?)',
+        ['bkt', 10],
+      );
+
+      // Doing a soft-clear should delete data but keep the bucket around.
+      await db.disconnectAndClear(soft: true);
+      expect(await db.getAll('SELECT * FROM ps_buckets'), hasLength(1));
+
+      // Doing a default clear also deletes buckets.
+      await db.disconnectAndClear();
+      expect(await db.getAll('SELECT * FROM ps_buckets'), isEmpty);
+    });
+
+    test('clear raw tables', () async {
+      final db = await testUtils.setupPowerSync(
+        path: path,
+        schema: Schema(
+          rawTables: [
+            RawTable(
+              name: 'lists',
+              put: PendingStatement(
+                sql: 'INSERT OR REPLACE INTO lists (id, name) VALUES (?, ?)',
+                params: [
+                  PendingStatementValue.id(),
+                  PendingStatementValue.column('name')
+                ],
+              ),
+              delete: PendingStatement(
+                sql: 'DELETE FROM lists WHERE id = ?',
+                params: [PendingStatementValue.id()],
+              ),
+              clear: 'DELETE FROM lists',
+            ),
+          ],
+          [],
+        ),
+      );
+      addTearDown(db.close);
+
+      await db.execute(
+          'CREATE TABLE lists (id TEXT NOT NULL PRIMARY KEY, name TEXT)');
+      await db
+          .execute('INSERT INTO lists (id, name) VALUES (uuid(), ?)', ['list']);
+
+      expect(await db.getAll('SELECT * FROM lists'), hasLength(1));
+      await db.disconnectAndClear();
+      expect(await db.getAll('SELECT * FROM lists'), isEmpty);
+    });
   });
 }

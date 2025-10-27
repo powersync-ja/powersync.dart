@@ -245,17 +245,35 @@ mixin PowerSyncDatabaseMixin implements SqliteConnection {
 
   /// Disconnect and clear the database.
   ///
-  /// Use this when logging out.
+  /// Clearing the database is useful when a user logs out, to ensure another
+  /// user logging in later would not see previous data.
   ///
   /// The database can still be queried after this is called, but the tables
   /// would be empty.
   ///
-  /// To preserve data in local-only tables, set [clearLocal] to false.
-  Future<void> disconnectAndClear({bool clearLocal = true}) async {
+  /// To preserve data in local-only tables, set [clearLocal] to `false`.
+  ///
+  /// A [soft] clear deletes publicly visible data, but keeps internal copies of
+  /// data synced in the database. This usually means that if the same user logs
+  /// out and back in again, the first sync is very fast because all internal
+  /// data is still available. WHen a different user logs in, no old data would
+  /// be visible at any point.
+  /// Using soft deletes is recommended where it's not a security issue that old
+  /// data could be reconstructible from the database.
+  Future<void> disconnectAndClear(
+      {bool clearLocal = true, bool soft = false}) async {
     await disconnect();
 
     await writeTransaction((tx) async {
-      await tx.execute('select powersync_clear(?)', [clearLocal ? 1 : 0]);
+      var flags = 0;
+      if (clearLocal) {
+        flags |= 1; // MASK_CLEAR_LOCAL
+      }
+      if (soft) {
+        flags |= 2; // MASK_SOFT_CLEAR
+      }
+
+      await tx.execute('select powersync_clear(?)', [flags]);
     });
     // The data has been deleted - reset these
     setStatus(SyncStatus(lastSyncedAt: null, hasSynced: false));

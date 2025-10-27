@@ -1,3 +1,9 @@
+## 1.7.0-dev
+
+- Update PowerSync core extension to 0.4.8.
+- `disconnectAndClear()`: Add `soft` parameter to only delete public data, allowing it to be reconstructed quickly.
+- Raw tables: Add `clear` parameter to clear raw tables in `disconnectAndClear()`.
+
 ## 1.6.1
 
  - Web: Fix decoding sync streams on status.

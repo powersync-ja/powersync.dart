@@ -3,14 +3,14 @@
 import 'dart:io';
 
 final coreUrl =
-    'https://github.com/powersync-ja/powersync-sqlite-core/releases/download/v0.4.6';
+    'https://github.com/powersync-ja/powersync-sqlite-core/releases/download/v0.4.8';
 
 void main() async {
   final powersyncLibsLinuxPath = "packages/powersync_flutter_libs/linux";
   final powersyncLibsWindowsPath = "packages/powersync_flutter_libs/windows";
 
-  final linuxArm64FileName = "libpowersync_aarch64.so";
-  final linuxX64FileName = "libpowersync_x64.so";
+  final linuxArm64FileName = "libpowersync_aarch64.linux.so";
+  final linuxX64FileName = "libpowersync_x64.linux.so";
   final windowsX64FileName = "powersync_x64.dll";
 
   // Download dynamic library

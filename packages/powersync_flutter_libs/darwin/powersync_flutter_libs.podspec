@@ -25,7 +25,7 @@ A new Flutter FFI plugin project.
   s.osx.deployment_target = '10.15'
 
   # NOTE: Always update Package.swift as well when updating this!
-  s.dependency "powersync-sqlite-core", "~> 0.4.6"
+  s.dependency "powersync-sqlite-core", "~> 0.4.8"
 
   # Flutter.framework does not contain a i386 slice.
   s.pod_target_xcconfig = { 'DEFINES_MODULE' => 'YES', 'EXCLUDED_ARCHS[sdk=iphonesimulator*]' => 'i386' }
