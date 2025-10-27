@@ -57,8 +57,11 @@ final class SyncOptions {
 }
 
 /// The PowerSync SDK offers two different implementations for receiving sync
-/// lines: One handling most logic in Dart, and a newer one offloading that work
-/// to the native PowerSync extension.
+/// lines.
+///
+/// The recommended option is [rust], which can offload most work of the sync
+/// client to the native PowerSync extension. `.dart` is a legacy implementation
+/// that will be removed in a future release of the PowerSync Dart SDK.
 enum SyncClientImplementation {
   /// A sync implementation that decodes and handles sync lines in Dart.
   @Deprecated(
@@ -72,14 +75,10 @@ enum SyncClientImplementation {
   ///
   /// This implementation can be more performant than the Dart implementation,
   /// and supports receiving sync lines in a more efficient format.
-  ///
-  /// Note that this option is currently experimental.
-  @experimental
   rust;
 
   /// The default sync client implementation to use.
-  // ignore: deprecated_member_use_from_same_package
-  static const defaultClient = dart;
+  static const defaultClient = rust;
 }
 
 @internal

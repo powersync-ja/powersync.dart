@@ -30,17 +30,13 @@ void main() {
   group('rust sync client', () {
     _declareTests(
       'json',
-      SyncOptions(
-          syncImplementation: SyncClientImplementation.rust,
-          retryDelay: Duration(milliseconds: 200)),
+      SyncOptions(retryDelay: Duration(milliseconds: 200)),
       false,
     );
 
     _declareTests(
       'bson',
-      SyncOptions(
-          syncImplementation: SyncClientImplementation.rust,
-          retryDelay: Duration(milliseconds: 200)),
+      SyncOptions(retryDelay: Duration(milliseconds: 200)),
       true,
     );
   });
