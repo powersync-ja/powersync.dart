@@ -38,6 +38,7 @@ dev_dependencies:
   bson: ^5.0.7
   test_descriptor: ^2.0.2
   mockito: ^5.5.0
+  sqlite3: ^2.9.4
 
 platforms:
   android:
