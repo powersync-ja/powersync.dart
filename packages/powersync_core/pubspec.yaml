@@ -8,12 +8,9 @@ environment:
   sdk: ^3.4.3
 
 dependencies:
-  sqlite_async: ^0.12.1
-  # We only use sqlite3 as a transitive dependency,
-  # but right now we need a minimum of v2.4.6.
-  sqlite3: ^2.4.6
+  sqlite_async: ^0.13.0
   # We implement a database controller, which is an interface of sqlite3_web.
-  sqlite3_web: ^0.3.2
+  sqlite3_web: ^0.4.0
   meta: ^1.0.0
   http: ^1.5.0
   uuid: ^4.2.0
