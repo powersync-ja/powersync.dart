@@ -115,7 +115,7 @@ Future<void> cancelAll(List<StreamSubscription<void>> subscriptions) async {
 /// await the original future and report errors.
 ///
 /// When using the regular [Stream.fromFuture], cancelling the subscription
-/// before the future completes with an error could cause an handled error to
+/// before the future completes with an error could cause an unhandled error to
 /// be reported.
 /// Further, it could cause concurrency issues in the stream client because it
 /// was possible for us to:
