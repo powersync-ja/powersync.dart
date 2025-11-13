@@ -3,6 +3,42 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 2025-11-12
+
+### Changes
+
+---
+
+Packages with breaking changes:
+
+ - There are no breaking changes in this release.
+
+Packages with other changes:
+
+ - [`powersync_core` - `v1.6.2`](#powersync_core---v162)
+ - [`powersync` - `v1.16.2`](#powersync---v1162)
+ - [`powersync_sqlcipher` - `v0.1.14`](#powersync_sqlcipher---v0114)
+ - [`powersync_flutter_libs` - `v0.4.13`](#powersync_flutter_libs---v0413)
+
+---
+
+#### `powersync_core` - `v1.6.2`
+
+ - Support latest version of sqlite_async.
+
+#### `powersync` - `v1.16.2`
+
+ - Support latest version of sqlite_async.
+
+#### `powersync_sqlcipher` - `v0.1.14`
+
+ - Support latest version of sqlite_async.
+
+#### `powersync_flutter_libs` - `v0.4.13`
+
+ - Android: Raise compileSdk version to 36.
+
+
 ## 2025-10-06
 
 ### Changes

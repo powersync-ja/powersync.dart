@@ -13,7 +13,7 @@ dependencies:
 
   path: ^1.9.1
   path_provider: ^2.1.5
-  powersync_sqlcipher: ^0.1.13
+  powersync_sqlcipher: ^0.1.14
 
 dev_dependencies:
   flutter_test:
