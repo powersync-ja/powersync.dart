@@ -1,3 +1,7 @@
+## 0.4.13
+
+ - Android: Raise compileSdk version to 36.
+
 ## 0.4.12
 
  - Update core extension, add support for SwiftPM.

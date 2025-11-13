@@ -1,3 +1,7 @@
+## 1.6.2
+
+ - Support latest version of sqlite_async.
+
 ## 1.6.1
 
  - Web: Fix decoding sync streams on status.
