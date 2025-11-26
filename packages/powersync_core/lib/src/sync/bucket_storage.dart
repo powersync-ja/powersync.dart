@@ -229,7 +229,7 @@ UPDATE ps_buckets SET count_since_last = 0, count_at_last = ?1->name
       return false;
     }
     final rs = await select(
-        'SELECT seq FROM sqlite_sequence WHERE name = \'ps_crud\'');
+        'SELECT seq FROM main.sqlite_sequence WHERE name = \'ps_crud\'');
     if (rs.isEmpty) {
       // Nothing to update
       return false;
@@ -242,8 +242,8 @@ UPDATE ps_buckets SET count_since_last = 0, count_at_last = ?1->name
       if (anyData.isNotEmpty) {
         return false;
       }
-      final rs = await tx
-          .execute('SELECT seq FROM sqlite_sequence WHERE name = \'ps_crud\'');
+      final rs = await tx.execute(
+          'SELECT seq FROM main.sqlite_sequence WHERE name = \'ps_crud\'');
       assert(rs.isNotEmpty);
 
       int seqAfter = rs.first['seq'] as int;
