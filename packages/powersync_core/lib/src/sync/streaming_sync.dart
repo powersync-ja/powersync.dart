@@ -12,14 +12,14 @@ import 'package:powersync_core/src/sync/options.dart';
 import 'package:powersync_core/src/user_agent/user_agent.dart';
 import 'package:sqlite_async/mutex.dart';
 
-import 'bucket_storage.dart';
 import '../crud.dart';
+import 'bucket_storage.dart';
 import 'instruction.dart';
 import 'internal_connector.dart';
 import 'mutable_sync_status.dart';
+import 'protocol.dart';
 import 'stream_utils.dart';
 import 'sync_status.dart';
-import 'protocol.dart';
 
 typedef SubscribedStream = ({String name, String parameters});
 
@@ -339,8 +339,8 @@ class StreamingSyncImplementation implements StreamingSync {
 
     Checkpoint? targetCheckpoint;
 
-    var requestStream = _streamingSyncRequest(
-            StreamingSyncRequest(bucketRequests, options.params, clientId!))
+    var requestStream = _streamingSyncRequest(StreamingSyncRequest(
+            bucketRequests, options.params, clientId!, options.appMetadata))
         .map(ReceivedLine.new);
 
     var merged = addBroadcast(requestStream, _nonLineSyncEvents.stream);
@@ -632,6 +632,7 @@ final class _ActiveRustStreamingIteration {
       await _control(
         'start',
         convert.json.encode({
+          'app_metadata': sync.options.appMetadata,
           'parameters': sync.options.params,
           'schema': convert.json.decode(sync.schemaJson),
           'include_defaults': sync.options.includeDefaultStreams,
@@ -766,8 +767,28 @@ final class _ActiveRustStreamingIteration {
               _ => Level.WARNING,
             },
             line);
-      case EstablishSyncStream():
-        _completedStream.complete(_handleLines(instruction));
+      case EstablishSyncStream(:final request):
+        // FIXME
+        // Merge app_metadata from options into the instruction request
+        // since the Rust instruction does not yet merge app_metadata from the supplied options.
+        // Rust client values will override options values if present.
+        final mergedRequest = Map<String, Object?>.from(request);
+        final appMetadata = sync.options.appMetadata;
+        if (appMetadata.isNotEmpty) {
+          final existingMetadata = request['app_metadata'];
+          if (existingMetadata is Map) {
+            // Merge: start with options, then let Rust override
+            mergedRequest['app_metadata'] = {
+              ...appMetadata,
+              ...existingMetadata.cast<String, String>(),
+            };
+          } else {
+            // No existing metadata, just use options
+            mergedRequest['app_metadata'] = appMetadata;
+          }
+        }
+        _completedStream
+            .complete(_handleLines(EstablishSyncStream(mergedRequest)));
       case UpdateSyncStatus(:final status):
         sync._state.updateStatus((m) => m.applyFromCore(status));
       case FetchCredentials(:final didExpire):
