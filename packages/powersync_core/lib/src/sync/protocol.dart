@@ -247,15 +247,18 @@ class StreamingSyncRequest {
   bool includeChecksum = true;
   String clientId;
   Map<String, dynamic>? parameters;
+  Map<String, String>? appMetadata;
 
-  StreamingSyncRequest(this.buckets, this.parameters, this.clientId);
+  StreamingSyncRequest(
+      this.buckets, this.parameters, this.clientId, this.appMetadata);
 
   Map<String, dynamic> toJson() {
     final Map<String, dynamic> json = {
       'buckets': buckets,
       'include_checksum': includeChecksum,
       'raw_data': true,
-      'client_id': clientId
+      'client_id': clientId,
+      'app_metadata': appMetadata,
     };
 
     if (parameters != null) {
