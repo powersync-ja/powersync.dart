@@ -7,9 +7,11 @@ import 'package:powersync_core/attachments/attachments.dart';
 import 'package:powersync_flutter_demo/attachments/remote_storage_adapter.dart';
 
 import 'local_storage_unsupported.dart'
+    if (dart.library.js_interop) 'local_storage_web.dart'
     if (dart.library.io) 'local_storage_native.dart';
 
 late AttachmentQueue attachmentQueue;
+late LocalStorage localStorage;
 final remoteStorage = SupabaseStorageAdapter();
 final logger = Logger('AttachmentQueue');
 
@@ -18,7 +20,7 @@ Future<void> initializeAttachmentQueue(PowerSyncDatabase db) async {
     db: db,
     remoteStorage: remoteStorage,
     logger: logger,
-    localStorage: await localAttachmentStorage(),
+    localStorage: localStorage = await localAttachmentStorage(),
     watchAttachments: () => db.watch('''
       SELECT photo_id as id FROM todos WHERE photo_id IS NOT NULL
     ''').map(

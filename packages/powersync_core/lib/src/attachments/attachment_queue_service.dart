@@ -13,7 +13,7 @@ import 'package:sqlite_async/sqlite_async.dart';
 
 import 'attachment.dart';
 import 'implementations/attachment_context.dart';
-import 'local_storage.dart';
+import 'storage/local_storage.dart';
 import 'remote_storage.dart';
 import 'sync_error_handler.dart';
 import 'implementations/attachment_service.dart';
