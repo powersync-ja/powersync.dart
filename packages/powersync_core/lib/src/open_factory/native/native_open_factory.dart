@@ -1,10 +1,10 @@
-import 'dart:io';
-import 'dart:io' as io;
 import 'dart:ffi';
+import 'dart:io' as io;
+import 'dart:io';
+import 'dart:isolate';
 
 import 'package:powersync_core/src/exceptions.dart';
 import 'package:powersync_core/src/log.dart';
-import 'dart:isolate';
 import 'package:powersync_core/src/open_factory/abstract_powersync_open_factory.dart';
 import 'package:sqlite_async/sqlite3.dart' as sqlite;
 import 'package:sqlite_async/sqlite3_common.dart';
@@ -92,9 +92,9 @@ class PowerSyncOpenFactory extends AbstractPowerSyncOpenFactory {
       case Abi.macosX64:
         return 'libpowersync.dylib';
       case Abi.linuxX64:
-        return 'libpowersync_x64.so';
+        return 'libpowersync_x64.linux.so';
       case Abi.linuxArm64:
-        return 'libpowersync_aarch64.so';
+        return 'libpowersync_aarch64.linux.so';
       case Abi.windowsX64:
         return 'powersync_x64.dll';
       case Abi.androidIA32:

@@ -1,12 +1,12 @@
 import 'dart:ffi';
 import 'dart:io';
 
-import 'package:powersync_core/powersync_core.dart';
 import 'package:path/path.dart';
+import 'package:powersync_core/powersync_core.dart';
 import 'package:powersync_core/sqlite3.dart' as sqlite;
 import 'package:powersync_core/sqlite3_common.dart';
-import 'package:powersync_core/sqlite_async.dart';
 import 'package:powersync_core/sqlite3_open.dart' as sqlite_open;
+import 'package:powersync_core/sqlite_async.dart';
 
 const schema = Schema([
   Table('customers', [Column.text('name'), Column.text('email')])
@@ -66,8 +66,9 @@ class PowerSyncDartOpenFactory extends PowerSyncOpenFactory {
       case Abi.macosX64:
         return '$path/libpowersync.dylib';
       case Abi.linuxX64:
+        return 'libpowersync_x64.linux.so';
       case Abi.linuxArm64:
-        return '$path/libpowersync.so';
+        return 'libpowersync_aarch64.linux.so';
       case Abi.windowsX64:
         return '$path/powersync.dll';
       case Abi.androidIA32:
