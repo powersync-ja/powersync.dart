@@ -29,9 +29,9 @@ set(CORE_FILE_NAME "libpowersync.so")
 
 set(POWERSYNC_ARCH ${CMAKE_SYSTEM_PROCESSOR})
 if (${POWERSYNC_ARCH} MATCHES "x86_64" OR ${POWERSYNC_ARCH} MATCHES "AMD64")
-  set(CORE_FILE_NAME "libpowersync_x64.linux.so")
+  set(CORE_FILE_NAME "libpowersync_x64.so")
 elseif (${POWERSYNC_ARCH} MATCHES "^arm64" OR ${POWERSYNC_ARCH} MATCHES "^armv8")
-  set(CORE_FILE_NAME "libpowersync_aarch64.linux.so")
+  set(CORE_FILE_NAME "libpowersync_aarch64.so")
 endif ()
 
 set(POWERSYNC_FILE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/${CORE_FILE_NAME}")

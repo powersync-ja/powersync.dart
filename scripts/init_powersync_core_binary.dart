@@ -43,9 +43,8 @@ String getFileNameForPlatform() {
     case Abi.macosX64:
       return 'libpowersync.dylib';
     case Abi.linuxX64:
-      return 'libpowersync_x64.linux.so';
     case Abi.linuxArm64:
-      return 'libpowersync_aarch64.linux.so';
+      return 'libpowersync.so';
     case Abi.windowsX64:
       return 'powersync.dll';
     default:

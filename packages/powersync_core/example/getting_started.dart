@@ -66,9 +66,8 @@ class PowerSyncDartOpenFactory extends PowerSyncOpenFactory {
       case Abi.macosX64:
         return '$path/libpowersync.dylib';
       case Abi.linuxX64:
-        return '$path/llibpowersync_x64.linux.so';
       case Abi.linuxArm64:
-        return '$path/llibpowersync_aarch64.linux.so';
+        return '$path/libpowersync.so';
       case Abi.windowsX64:
         return '$path/powersync.dll';
       case Abi.androidIA32:

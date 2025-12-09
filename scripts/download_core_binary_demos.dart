@@ -9,15 +9,19 @@ void main() async {
   final powersyncLibsLinuxPath = "packages/powersync_flutter_libs/linux";
   final powersyncLibsWindowsPath = "packages/powersync_flutter_libs/windows";
 
+  // These are the filenames as published to the GitHub release
   final linuxArm64FileName = "libpowersync_aarch64.linux.so";
   final linuxX64FileName = "libpowersync_x64.linux.so";
+  // These are the filenames present in the powersync_flutter_libs/windows directory
   final windowsX64FileName = "powersync_x64.dll";
+  final linuxArm64OutputFileName = "libpowersync_aarch64.so";
+  final linuxX64OutputFileName = "libpowersync_x64.so";
 
   // Download dynamic library
   await downloadFile("$coreUrl/$linuxArm64FileName",
-      "$powersyncLibsLinuxPath/$linuxArm64FileName");
+      "$powersyncLibsLinuxPath/$linuxArm64OutputFileName");
   await downloadFile("$coreUrl/$linuxX64FileName",
-      "$powersyncLibsLinuxPath/$linuxX64FileName");
+      "$powersyncLibsLinuxPath/$linuxX64OutputFileName");
   await downloadFile("$coreUrl/$windowsX64FileName",
       "$powersyncLibsWindowsPath/$windowsX64FileName");
 }
