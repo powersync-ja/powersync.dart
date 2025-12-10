@@ -173,7 +173,7 @@ Future<void> openDatabase() async {
     currentConnector = SupabaseConnector();
     db.connect(
         connector: currentConnector,
-        options: SyncOptions(
+        options: const SyncOptions(
             syncImplementation: SyncClientImplementation.rust,
             appMetadata: {'app_version': '1.0.1'}));
   }

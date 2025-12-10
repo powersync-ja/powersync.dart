@@ -280,6 +280,7 @@ void main() {
 
   test('passes app metadata to the server (legacy sync client)', () async {
     options = SyncOptions(
+      // ignore: deprecated_member_use
       syncImplementation: SyncClientImplementation.dart,
       appMetadata: {'foo': 'bar'},
     );
