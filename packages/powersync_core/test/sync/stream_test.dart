@@ -4,7 +4,6 @@ import 'dart:convert';
 import 'package:async/async.dart';
 import 'package:logging/logging.dart';
 import 'package:powersync_core/powersync_core.dart';
-
 import 'package:test/test.dart';
 
 import '../server/sync_server/in_memory_sync_server.dart';
@@ -259,5 +258,41 @@ void main() {
       ),
     );
     a.unsubscribe();
+  });
+
+  test('passes app metadata to the server (rust)', () async {
+    options = SyncOptions(
+      syncImplementation: SyncClientImplementation.rust,
+      appMetadata: {'foo': 'bar'},
+    );
+
+    await waitForConnection();
+
+    final request = await syncService.waitForListener;
+    expect(
+      json.decode(await request.readAsString()),
+      containsPair(
+        'app_metadata',
+        containsPair('foo', 'bar'),
+      ),
+    );
+  });
+
+  test('passes app metadata to the server (legacy sync client)', () async {
+    options = SyncOptions(
+      syncImplementation: SyncClientImplementation.dart,
+      appMetadata: {'foo': 'bar'},
+    );
+
+    await waitForConnection();
+
+    final request = await syncService.waitForListener;
+    expect(
+      json.decode(await request.readAsString()),
+      containsPair(
+        'app_metadata',
+        containsPair('foo', 'bar'),
+      ),
+    );
   });
 }

@@ -775,27 +775,7 @@ final class _ActiveRustStreamingIteration {
             },
             line);
       case EstablishSyncStream(:final request):
-        // FIXME
-        // Merge app_metadata from options into the instruction request
-        // since the Rust instruction does not yet merge app_metadata from the supplied options.
-        // Rust client values will override options values if present.
-        final mergedRequest = Map<String, Object?>.from(request);
-        final appMetadata = sync.options.appMetadata;
-        if (appMetadata.isNotEmpty) {
-          final existingMetadata = request['app_metadata'];
-          if (existingMetadata is Map) {
-            // Merge: start with options, then let Rust override
-            mergedRequest['app_metadata'] = {
-              ...appMetadata,
-              ...existingMetadata.cast<String, String>(),
-            };
-          } else {
-            // No existing metadata, just use options
-            mergedRequest['app_metadata'] = appMetadata;
-          }
-        }
-        _completedStream
-            .complete(_handleLines(EstablishSyncStream(mergedRequest)));
+        _completedStream.complete(_handleLines(EstablishSyncStream(request)));
       case UpdateSyncStatus(:final status):
         sync._state.updateStatus((m) => m.applyFromCore(status));
       case FetchCredentials(:final didExpire):
