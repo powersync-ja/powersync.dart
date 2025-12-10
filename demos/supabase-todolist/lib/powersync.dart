@@ -171,11 +171,7 @@ Future<void> openDatabase() async {
     // If the user is already logged in, connect immediately.
     // Otherwise, connect once logged in.
     currentConnector = SupabaseConnector();
-    db.connect(
-        connector: currentConnector,
-        options: const SyncOptions(
-            syncImplementation: SyncClientImplementation.rust,
-            appMetadata: {'app_version': '1.0.1'}));
+    db.connect(connector: currentConnector, options: options);
   }
 
   Supabase.instance.client.auth.onAuthStateChange.listen((data) async {
