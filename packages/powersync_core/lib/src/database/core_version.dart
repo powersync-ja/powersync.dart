@@ -63,7 +63,7 @@ extension type const PowerSyncCoreVersion((int, int, int) _tuple) {
   //  - scripts/download_core_binary_demos.dart
   //  - packages/sqlite3_wasm_build/build.sh
   //  - Android and Darwin (CocoaPods and SwiftPM) in powersync_flutter_libs
-  static const minimum = PowerSyncCoreVersion((0, 4, 6));
+  static const minimum = PowerSyncCoreVersion((0, 4, 10));
 
   /// The first version of the core extensions that this version of the Dart
   /// SDK doesn't support.

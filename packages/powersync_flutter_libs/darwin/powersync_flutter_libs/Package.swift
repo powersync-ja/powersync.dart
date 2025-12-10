@@ -13,10 +13,10 @@ let package = Package(
         .library(name: "powersync-flutter-libs", type: .static, targets: ["powersync_flutter_libs"])
     ],
     dependencies: [
-       .package(
+        .package(
             url: "https://github.com/powersync-ja/powersync-sqlite-core-swift.git",
             // Note: Always update podspec as well when updating this.
-            exact: "0.4.6"
+            exact: "0.4.10"
         )
     ],
     targets: [
