@@ -774,8 +774,8 @@ final class _ActiveRustStreamingIteration {
               _ => Level.WARNING,
             },
             line);
-      case EstablishSyncStream(:final request):
-        _completedStream.complete(_handleLines(EstablishSyncStream(request)));
+      case EstablishSyncStream():
+        _completedStream.complete(_handleLines(instruction));
       case UpdateSyncStatus(:final status):
         sync._state.updateStatus((m) => m.applyFromCore(status));
       case FetchCredentials(:final didExpire):
