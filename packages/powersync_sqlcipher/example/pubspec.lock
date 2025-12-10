@@ -320,21 +320,21 @@ packages:
       path: "../../powersync_core"
       relative: true
     source: path
-    version: "1.6.1"
+    version: "1.6.2"
   powersync_flutter_libs:
     dependency: "direct overridden"
     description:
       path: "../../powersync_flutter_libs"
       relative: true
     source: path
-    version: "0.4.12"
+    version: "0.4.13"
   powersync_sqlcipher:
     dependency: "direct main"
     description:
       path: ".."
       relative: true
     source: path
-    version: "0.1.13"
+    version: "0.1.14"
   process:
     dependency: transitive
     description:

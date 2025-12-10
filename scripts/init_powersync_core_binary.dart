@@ -6,7 +6,7 @@ import 'dart:io';
 import 'package:melos/melos.dart';
 
 final sqliteUrl =
-    'https://github.com/powersync-ja/powersync-sqlite-core/releases/download/v0.4.6';
+    'https://github.com/powersync-ja/powersync-sqlite-core/releases/download/v0.4.10';
 
 void main() async {
   final sqliteCoreFilename = getLibraryForPlatform();
@@ -72,13 +72,13 @@ Future<void> downloadFile(String url, String savePath) async {
 String getLibraryForPlatform() {
   switch (Abi.current()) {
     case Abi.macosArm64:
-      return 'libpowersync_aarch64.dylib';
+      return 'libpowersync_aarch64.macos.dylib';
     case Abi.macosX64:
-      return 'libpowersync_x64.dylib';
+      return 'libpowersync_x64.macos.dylib';
     case Abi.linuxX64:
-      return 'libpowersync_x64.so';
+      return 'libpowersync_x64.linux.so';
     case Abi.linuxArm64:
-      return 'libpowersync_aarch64.so';
+      return 'libpowersync_aarch64.linux.so';
     case Abi.windowsX64:
       return 'powersync_x64.dll';
     case Abi.windowsArm64:
