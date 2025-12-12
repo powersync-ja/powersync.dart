@@ -12,14 +12,14 @@ import 'package:powersync_core/src/sync/options.dart';
 import 'package:powersync_core/src/user_agent/user_agent.dart';
 import 'package:sqlite_async/mutex.dart';
 
-import 'bucket_storage.dart';
 import '../crud.dart';
+import 'bucket_storage.dart';
 import 'instruction.dart';
 import 'internal_connector.dart';
 import 'mutable_sync_status.dart';
+import 'protocol.dart';
 import 'stream_utils.dart';
 import 'sync_status.dart';
-import 'protocol.dart';
 
 typedef SubscribedStream = ({String name, String parameters});
 
@@ -339,8 +339,8 @@ class StreamingSyncImplementation implements StreamingSync {
 
     Checkpoint? targetCheckpoint;
 
-    var requestStream = _streamingSyncRequest(
-            StreamingSyncRequest(bucketRequests, options.params, clientId!))
+    var requestStream = _streamingSyncRequest(StreamingSyncRequest(
+            bucketRequests, options.params, clientId!, options.appMetadata))
         .map(ReceivedLine.new);
 
     var merged = addBroadcast(requestStream, _nonLineSyncEvents.stream);
@@ -633,6 +633,7 @@ final class _ActiveRustStreamingIteration {
       await _control(
         'start',
         convert.json.encode({
+          'app_metadata': sync.options.appMetadata,
           'parameters': sync.options.params,
           'schema': convert.json.decode(sync.schemaJson),
           'include_defaults': sync.options.includeDefaultStreams,

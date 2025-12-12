@@ -3,6 +3,11 @@ import 'package:meta/meta.dart';
 
 /// Options that affect how the sync client connects to the sync service.
 final class SyncOptions {
+  /// A map of application metadata that is passed to the PowerSync service.
+  ///
+  /// Application metadata that will be displayed in PowerSync service logs.
+  final Map<String, String>? appMetadata;
+
   /// A JSON object that is passed to the sync service and forwarded to sync
   /// rules.
   ///
@@ -39,12 +44,14 @@ final class SyncOptions {
     this.params,
     this.syncImplementation = SyncClientImplementation.defaultClient,
     this.includeDefaultStreams,
+    this.appMetadata,
   });
 
   SyncOptions _copyWith({
     Duration? crudThrottleTime,
     Duration? retryDelay,
     Map<String, dynamic>? params,
+    Map<String, String>? appMetadata,
   }) {
     return SyncOptions(
       crudThrottleTime: crudThrottleTime ?? this.crudThrottleTime,
@@ -52,6 +59,7 @@ final class SyncOptions {
       params: params ?? this.params,
       syncImplementation: syncImplementation,
       includeDefaultStreams: includeDefaultStreams,
+      appMetadata: appMetadata ?? this.appMetadata,
     );
   }
 }
@@ -88,13 +96,17 @@ extension type ResolvedSyncOptions(SyncOptions source) {
     Duration? crudThrottleTime,
     Duration? retryDelay,
     Map<String, dynamic>? params,
+    Map<String, String>? appMetadata,
   }) {
     return ResolvedSyncOptions((source ?? SyncOptions())._copyWith(
       crudThrottleTime: crudThrottleTime,
       retryDelay: retryDelay,
       params: params,
+      appMetadata: appMetadata,
     ));
   }
+
+  Map<String, String> get appMetadata => source.appMetadata ?? const {};
 
   Duration get crudThrottleTime =>
       source.crudThrottleTime ?? const Duration(milliseconds: 10);
@@ -113,13 +125,15 @@ extension type ResolvedSyncOptions(SyncOptions source) {
       syncImplementation: other.syncImplementation,
       includeDefaultStreams:
           other.includeDefaultStreams ?? includeDefaultStreams,
+      appMetadata: other.appMetadata ?? appMetadata,
     );
 
     final didChange = !_mapEquality.equals(newOptions.params, params) ||
         newOptions.crudThrottleTime != crudThrottleTime ||
         newOptions.retryDelay != retryDelay ||
         newOptions.syncImplementation != source.syncImplementation ||
-        newOptions.includeDefaultStreams != includeDefaultStreams;
+        newOptions.includeDefaultStreams != includeDefaultStreams ||
+        !_mapEquality.equals(newOptions.appMetadata, appMetadata);
     return (ResolvedSyncOptions(newOptions), didChange);
   }
 

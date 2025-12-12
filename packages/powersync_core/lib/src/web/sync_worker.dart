@@ -94,6 +94,11 @@ class _ConnectedClient {
                 null => SyncClientImplementation.defaultClient,
                 final name => SyncClientImplementation.values.byName(name),
               },
+              appMetadata: switch (request.appMetadataEncoded) {
+                null => null,
+                final encodedAppMetadata => Map<String, String>.from(
+                    jsonDecode(encodedAppMetadata) as Map<String, dynamic>),
+              },
             );
 
             _runner = _worker.referenceSyncTask(
