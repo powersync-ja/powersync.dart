@@ -11,7 +11,7 @@ dependencies:
   flutter:
     sdk: flutter
 
-  powersync: ^1.16.2
+  powersync: ^1.17.0
   path_provider: ^2.1.1
   supabase_flutter: ^2.0.2
   path: ^1.8.3

@@ -1,3 +1,8 @@
+## 1.17.0
+
+ - **FEAT**: Custom App Metadata ([#354](https://github.com/powersync-ja/powersync.dart/issues/354)). ([8188bb90](https://github.com/powersync-ja/powersync.dart/commit/8188bb90b50eceb486e33cd5aa4b976c4a133899))
+ - **FEAT**: Update core to 0.4.10 ([#361](https://github.com/powersync-ja/powersync.dart/issues/361)). ([d28dcd9d](https://github.com/powersync-ja/powersync.dart/commit/d28dcd9d8e94d90f57dd3b002717e79af7654eca))
+
 ## 1.16.2
 
  - Support latest version of sqlite_async.
