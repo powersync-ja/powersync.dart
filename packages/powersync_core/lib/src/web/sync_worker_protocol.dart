@@ -80,6 +80,7 @@ extension type StartSynchronization._(JSObject _) implements JSObject {
     required String schemaJson,
     String? syncParamsEncoded,
     UpdateSubscriptions? subscriptions,
+    String? appMetadataEncoded,
   });
 
   external String get databaseName;
@@ -90,6 +91,7 @@ extension type StartSynchronization._(JSObject _) implements JSObject {
   external String get schemaJson;
   external String? get syncParamsEncoded;
   external UpdateSubscriptions? get subscriptions;
+  external String? get appMetadataEncoded;
 }
 
 @anonymous
@@ -483,6 +485,10 @@ final class WorkerCommunicationChannel {
           final params => jsonEncode(params),
         },
         subscriptions: UpdateSubscriptions(-1, streams),
+        appMetadataEncoded: switch (options.source.appMetadata) {
+          null => null,
+          final appMetadata => jsonEncode(appMetadata),
+        },
       ),
     ));
     await completion;

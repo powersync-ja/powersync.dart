@@ -125,13 +125,15 @@ extension type ResolvedSyncOptions(SyncOptions source) {
       syncImplementation: other.syncImplementation,
       includeDefaultStreams:
           other.includeDefaultStreams ?? includeDefaultStreams,
+      appMetadata: other.appMetadata ?? appMetadata,
     );
 
     final didChange = !_mapEquality.equals(newOptions.params, params) ||
         newOptions.crudThrottleTime != crudThrottleTime ||
         newOptions.retryDelay != retryDelay ||
         newOptions.syncImplementation != source.syncImplementation ||
-        newOptions.includeDefaultStreams != includeDefaultStreams;
+        newOptions.includeDefaultStreams != includeDefaultStreams ||
+        !_mapEquality.equals(newOptions.appMetadata, appMetadata);
     return (ResolvedSyncOptions(newOptions), didChange);
   }
 
