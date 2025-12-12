@@ -37,25 +37,3 @@ jobs:
           $changes"
           gh release create "$tag" --title "$tag" --notes "$body"
           gh release upload "${{ github.ref_name }}" packages/powersync/assets/powersync_db.worker.js packages/powersync/assets/powersync_sync.worker.js packages/sqlite3_wasm_build/dist/*.wasm
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: latest
-      - name: Update npm
-        run: |
-          npm install -g npm@latest
-          npm --version
-      - uses: pnpm/action-setup@v2
-        name: Install pnpm
-        with:
-          run_install: false
-          version: 10
-      - name: Publish npm package with WASM files
-        working-directory: packages/sqlite3_wasm_build
-        run: |
-          pnpm i
-          npm version --allow-same-version --no-git-tag-version $(echo $GITHUB_REF_NAME | sed -E 's/powersync-v//')
-          pnpm publish --no-git-checks --access public
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

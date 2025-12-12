@@ -38,16 +38,3 @@ jobs:
           path: packages/sqlite3_wasm_build/dist/
           if-no-files-found: error
           retention-days: 1
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-      - uses: pnpm/action-setup@v2
-        name: Install pnpm
-        with:
-          run_install: false
-          version: 10
-      - name: Dry-run npm publish
-        working-directory: packages/sqlite3_wasm_build
-        run: |
-          pnpm i
-          pnpm publish --no-git-checks --dry-run
