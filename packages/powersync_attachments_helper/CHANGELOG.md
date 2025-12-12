@@ -1,3 +1,7 @@
+## 0.6.20+1
+
+ - Update a dependency to the latest release.
+
 ## 0.6.20
 
  - Add note about new attachment queue system in core package.

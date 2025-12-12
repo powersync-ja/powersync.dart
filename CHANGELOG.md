@@ -3,6 +3,52 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 2025-12-12
+
+### Changes
+
+---
+
+Packages with breaking changes:
+
+ - There are no breaking changes in this release.
+
+Packages with other changes:
+
+ - [`powersync_core` - `v1.7.0`](#powersync_core---v170)
+ - [`powersync` - `v1.17.0`](#powersync---v1170)
+ - [`powersync_flutter_libs` - `v0.4.14`](#powersync_flutter_libs---v0414)
+ - [`powersync_sqlcipher` - `v0.1.15`](#powersync_sqlcipher---v0115)
+ - [`powersync_attachments_helper` - `v0.6.20+1`](#powersync_attachments_helper---v06201)
+
+Packages with dependency updates only:
+
+> Packages listed below depend on other packages in this workspace that have had changes. Their versions have been incremented to bump the minimum dependency versions of the packages they depend upon in this project.
+
+ - `powersync_attachments_helper` - `v0.6.20+1`
+
+---
+
+#### `powersync_core` - `v1.7.0`
+
+ - **FEAT**: Custom App Metadata ([#354](https://github.com/powersync-ja/powersync.dart/issues/354)). ([8188bb90](https://github.com/powersync-ja/powersync.dart/commit/8188bb90b50eceb486e33cd5aa4b976c4a133899))
+ - **FEAT**: Update core to 0.4.10 ([#361](https://github.com/powersync-ja/powersync.dart/issues/361)). ([d28dcd9d](https://github.com/powersync-ja/powersync.dart/commit/d28dcd9d8e94d90f57dd3b002717e79af7654eca))
+
+#### `powersync` - `v1.17.0`
+
+ - **FEAT**: Custom App Metadata ([#354](https://github.com/powersync-ja/powersync.dart/issues/354)). ([8188bb90](https://github.com/powersync-ja/powersync.dart/commit/8188bb90b50eceb486e33cd5aa4b976c4a133899))
+ - **FEAT**: Update core to 0.4.10 ([#361](https://github.com/powersync-ja/powersync.dart/issues/361)). ([d28dcd9d](https://github.com/powersync-ja/powersync.dart/commit/d28dcd9d8e94d90f57dd3b002717e79af7654eca))
+
+#### `powersync_flutter_libs` - `v0.4.14`
+
+ - **FEAT**: Update core to 0.4.10 ([#361](https://github.com/powersync-ja/powersync.dart/issues/361)). ([d28dcd9d](https://github.com/powersync-ja/powersync.dart/commit/d28dcd9d8e94d90f57dd3b002717e79af7654eca))
+
+#### `powersync_sqlcipher` - `v0.1.15`
+
+ - **FEAT**: Custom App Metadata ([#354](https://github.com/powersync-ja/powersync.dart/issues/354)). ([8188bb90](https://github.com/powersync-ja/powersync.dart/commit/8188bb90b50eceb486e33cd5aa4b976c4a133899))
+ - **FEAT**: Update core to 0.4.10 ([#361](https://github.com/powersync-ja/powersync.dart/issues/361)). ([d28dcd9d](https://github.com/powersync-ja/powersync.dart/commit/d28dcd9d8e94d90f57dd3b002717e79af7654eca))
+
+
 ## 2025-11-12
 
 ### Changes
