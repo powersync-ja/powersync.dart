@@ -2,11 +2,11 @@
 
 Demo app demonstrating use of the PowerSync SDK for Flutter together with Supabase.
 
-To run this demo, you need to have properly configured Supabase and PowerSync projects. Follow the instructions below to set these up. A step-by-step guide for the Supabase<>PowerSync integration is also available [here](https://docs.powersync.com/integration-guides/supabase-+-powersync).
+To run this demo, you need to have properly configured Supabase and PowerSync projects. Follow the instructions below to set these up. 
 
 # Set up Supabase Project
 
-Create a new Supabase project, and paste an run the contents of [database.sql](./database.sql) in the Supabase SQL editor.
+Detailed instructions for integrating PowerSync with Supabase can be found in [the integration guide](https://docs.powersync.com/integration-guides/supabase). Below are the main steps required to get this demo running. Create a new Supabase project, and paste an run the contents of [database.sql](./database.sql) in the Supabase SQL editor.
 
 It does the following:
 
