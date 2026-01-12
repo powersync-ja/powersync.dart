@@ -5,15 +5,7 @@ This demo also uses [riverpod](https://riverpod.dev) to highlight best practices
 
 Notes about the Drift usage are [further below](#drift).
 
-# Running the app
-
-Ensure you have [melos](https://melos.invertase.dev/~melos-latest/getting-started) installed.
-
-1. `cd demos/supabase-todolist-drift`
-2. `melos prepare`
-3. `cp lib/app_config_template.dart lib/app_config.dart`
-4. Insert your Supabase and PowerSync project credentials into `lib/app_config.dart` (See instructions below)
-5. `flutter run`
+To run this demo, you need to have properly configured Supabase and PowerSync projects. Follow the instructions below to set these up.
 
 # Set up Supabase Project
 
@@ -47,6 +39,16 @@ bucket_definitions:
 # Configure the app
 
 Insert the credentials of your new Supabase and PowerSync projects into `lib/app_config.dart`
+
+# Run the app
+
+Ensure you have [melos](https://melos.invertase.dev/~melos-latest/getting-started) installed.
+
+1. `cd demos/supabase-todolist-drift`
+2. `melos prepare`
+3. `cp lib/app_config_template.dart lib/app_config.dart`
+4. Insert your Supabase and PowerSync project credentials into `lib/app_config.dart` (See instructions below)
+5. `flutter run`
 
 # Drift
 
