@@ -199,7 +199,42 @@ final class SyncStatus {
 
   @override
   String toString() {
-    return "SyncStatus<connected: $connected connecting: $connecting downloading: $downloading (progress: $downloadProgress) uploading: $uploading lastSyncedAt: $lastSyncedAt, hasSynced: $hasSynced, error: $anyError>";
+    final buffer = StringBuffer('SyncStatus<');
+    var first = true;
+    void addProperty(String name, Object? value) {
+      if (!first) {
+        buffer.write(' ');
+      }
+
+      buffer.write('$name: $value');
+      first = false;
+    }
+
+    if (connected) {
+      addProperty('connected', connected);
+    } else if (connecting) {
+      addProperty('connected', 'connecting');
+    } else {
+      addProperty('connected', 'offline (not connecting)');
+    }
+
+    addProperty('downloading', '$downloading (progress: $downloadProgress)');
+    addProperty('uploading', uploading);
+    addProperty('lastSyncedAt', lastSyncedAt);
+    addProperty('hasSynced', hasSynced);
+
+    if (downloadError case final downloadError?) {
+      addProperty('downloadError', downloadError);
+    }
+    if (uploadError case final uploadError?) {
+      addProperty('uploadError', uploadError);
+    }
+    if (downloadError == null && uploadError == null) {
+      addProperty('error', null);
+    }
+
+    buffer.write('>');
+    return buffer.toString();
   }
 
   static const _listEquality = ListEquality<Object?>();
