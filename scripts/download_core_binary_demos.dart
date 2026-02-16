@@ -3,7 +3,7 @@
 import 'dart:io';
 
 final coreUrl =
-    'https://github.com/powersync-ja/powersync-sqlite-core/releases/download/v0.4.10';
+    'https://github.com/powersync-ja/powersync-sqlite-core/releases/download/v0.4.11';
 
 void main() async {
   final powersyncLibsLinuxPath = "packages/powersync_flutter_libs/linux";
