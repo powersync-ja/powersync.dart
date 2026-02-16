@@ -22,7 +22,11 @@ final class IOLocalStorage implements LocalStorage {
 
   const IOLocalStorage(this._root);
 
-  File _fileFor(String filePath) => File(p.join(_root.path, filePath));
+  /// Returns the path of a relative [filePath] resolved against this local
+  /// storage implementation.
+  String pathFor(String filePath) => p.join(_root.path, filePath);
+
+  File _fileFor(String filePath) => File(pathFor(filePath));
 
   @override
   Future<int> saveFile(String filePath, Stream<List<int>> data) async {
