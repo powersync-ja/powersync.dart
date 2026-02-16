@@ -16,7 +16,7 @@ let package = Package(
         .package(
             url: "https://github.com/powersync-ja/powersync-sqlite-core-swift.git",
             // Note: Always update podspec as well when updating this.
-            exact: "0.4.10"
+            exact: "0.4.11"
         )
     ],
     targets: [
