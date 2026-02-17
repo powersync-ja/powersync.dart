@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:powersync_core/powersync_core.dart';
 import 'package:sqlite_async/sqlite3_common.dart';
 import 'package:test/test.dart';
@@ -18,6 +20,8 @@ void main() {
 
       powersync = await testUtils.setupPowerSync(path: path);
     });
+
+    tearDown(() => powersync.close());
 
     test('INSERT', () async {
       expect(await powersync.getAll('SELECT * FROM ps_crud'), equals([]));
@@ -396,6 +400,68 @@ void main() {
       await powersync.execute('DELETE FROM ps_crud;');
       await powersync.execute('UPDATE lists SET name = ?;', ['name']);
       expect(await powersync.getNextCrudTransaction(), isNull);
+    });
+
+    test('inferred crud trigger for raw tables', () async {
+      const table = RawTable.inferred(
+          name: 'sync_name', schema: RawTableSchema(tableName: 'users'));
+      await powersync.execute('CREATE TABLE users (id TEXT, name TEXT);');
+      await powersync.execute(
+        'SELECT powersync_create_raw_table_crud_trigger(?, ?, ?)',
+        [json.encode(table), 'users_insert', 'INSERT'],
+      );
+      await powersync.execute(
+          'INSERT INTO users (id, name) VALUES (?, ?);', ['id', 'user']);
+
+      final tx = await powersync.getNextCrudTransaction();
+      expect(tx!.crud, [
+        isA<CrudEntry>()
+            .having((e) => e.op, 'op', UpdateType.put)
+            .having((e) => e.table, 'table', 'sync_name')
+            .having((e) => e.id, 'id', 'id')
+            .having((e) => e.opData, 'opData', {'name': 'user'}),
+      ]);
+    });
+
+    test('raw tables with options', () async {
+      const table = RawTable.inferred(
+        name: 'sync_name',
+        schema: RawTableSchema(
+          tableName: 'users',
+          syncedColumns: ['name'],
+          options: TableOptions(
+            ignoreEmptyUpdates: true,
+            trackPreviousValues: TrackPreviousValuesOptions(),
+          ),
+        ),
+      );
+
+      await powersync
+          .execute('CREATE TABLE users (id TEXT, name TEXT, local TEXT);');
+      await powersync.execute(
+          'INSERT INTO users (id, name, local) VALUES (?, ?, ?);',
+          ['id', 'name', 'local']);
+
+      await powersync.execute(
+        'SELECT powersync_create_raw_table_crud_trigger(?, ?, ?)',
+        [json.encode(table), 'users_update', 'UPDATE'],
+      );
+
+      await powersync.execute('UPDATE users SET name = ?, local = ?',
+          ['updated_name', 'updated_local']);
+      // This should not generate a CRUD entry because the only syned column is
+      // not affected.
+      await powersync.execute('UPDATE users SET name = ?, local = ?',
+          ['updated_name', 'updated_local_2']);
+
+      final tx = await powersync.getNextCrudTransaction();
+      expect(tx!.crud, [
+        isA<CrudEntry>()
+            .having((e) => e.op, 'op', UpdateType.patch)
+            .having((e) => e.id, 'id', 'id')
+            .having((e) => e.opData, 'opData', {'name': 'updated_name'}).having(
+                (e) => e.previousValues, 'previousValues', {'name': 'name'}),
+      ]);
     });
   });
 }

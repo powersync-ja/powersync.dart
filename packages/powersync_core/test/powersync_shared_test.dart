@@ -146,5 +146,25 @@ void main() {
 
       await db.close();
     });
+
+    test('can clear raw tables', () async {
+      final db = await testUtils.setupPowerSync(path: path);
+      await db.updateSchema(const Schema([], rawTables: [
+        RawTable(
+          name: 'unused',
+          put: PendingStatement(sql: '', params: []),
+          delete: PendingStatement(sql: '', params: []),
+          clear: 'DELETE FROM lists',
+        )
+      ]));
+      await db.execute(
+          'CREATE TABLE lists (id TEXT NOT NULL PRIMARY KEY, name TEXT)');
+      await db
+          .execute('INSERT INTO lists (id, name) VALUES (uuid(), ?)', ['list']);
+
+      expect(await db.getAll('SELECT * FROM lists'), hasLength(1));
+      await db.disconnectAndClear();
+      expect(await db.getAll('SELECT * FROM lists'), isEmpty);
+    });
   });
 }

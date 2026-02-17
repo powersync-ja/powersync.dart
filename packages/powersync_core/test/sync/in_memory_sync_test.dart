@@ -219,23 +219,11 @@ void _declareTests(String name, SyncOptions options, bool bson) {
       });
     } else {
       // raw tables are only supported by the rust sync client
-      test('raw tables', () async {
-        final schema = Schema(const [], rawTables: [
-          RawTable(
+      test('raw tables with implicit statements', () async {
+        final schema = const Schema([], rawTables: [
+          RawTable.inferred(
             name: 'lists',
-            put: PendingStatement(
-              sql: 'INSERT OR REPLACE INTO lists (id, name) VALUES (?, ?)',
-              params: [
-                PendingStatementValue.id(),
-                PendingStatementValue.column('name'),
-              ],
-            ),
-            delete: PendingStatement(
-              sql: 'DELETE FROM lists WHERE id = ?',
-              params: [
-                PendingStatementValue.id(),
-              ],
-            ),
+            schema: RawTableSchema(tableName: 'lists'),
           ),
         ]);
 
@@ -280,7 +268,113 @@ void _declareTests(String name, SyncOptions options, bool bson) {
         await expectLater(
           query,
           emits([
-            {'id': 'my_list', 'name': 'custom list'}
+            {
+              'id': 'my_list',
+              'name': 'custom list',
+            }
+          ]),
+        );
+
+        syncService
+          ..addLine({
+            'checkpoint': Checkpoint(
+              lastOpId: '2',
+              writeCheckpoint: null,
+              checksums: [
+                BucketChecksum(bucket: 'a', priority: 3, checksum: 0)
+              ],
+            )
+          })
+          ..addLine({
+            'data': {
+              'bucket': 'a',
+              'data': [
+                {
+                  'checksum': 0,
+                  'op': 'REMOVE',
+                  'op_id': '2',
+                  'object_id': 'my_list',
+                  'object_type': 'lists'
+                }
+              ]
+            }
+          })
+          ..addLine({
+            'checkpoint_complete': {'last_op_id': '2'}
+          });
+
+        await expectLater(query, emits(isEmpty));
+      });
+
+      test('raw tables with explicit statements', () async {
+        final schema = Schema(const [], rawTables: [
+          RawTable(
+            name: 'lists',
+            put: PendingStatement(
+              sql:
+                  'INSERT OR REPLACE INTO lists (id, name, _rest) VALUES (?, ?, ?)',
+              params: [
+                PendingStatementValue.id(),
+                PendingStatementValue.column('name'),
+                PendingStatementValue.rest(),
+              ],
+            ),
+            delete: PendingStatement(
+              sql: 'DELETE FROM lists WHERE id = ?',
+              params: [
+                PendingStatementValue.id(),
+              ],
+            ),
+          ),
+        ]);
+
+        await database.execute(
+            'CREATE TABLE lists (id TEXT NOT NULL PRIMARY KEY, name TEXT, _rest TEXT);');
+        final query = StreamQueue(
+            database.watch('SELECT * FROM lists', throttle: Duration.zero));
+        await expectLater(query, emits(isEmpty));
+
+        await database.updateSchema(schema);
+        await waitForConnection();
+
+        syncService
+          ..addLine({
+            'checkpoint': Checkpoint(
+              lastOpId: '1',
+              writeCheckpoint: null,
+              checksums: [
+                BucketChecksum(bucket: 'a', priority: 3, checksum: 0)
+              ],
+            )
+          })
+          ..addLine({
+            'data': {
+              'bucket': 'a',
+              'data': [
+                {
+                  'checksum': 0,
+                  'data': json.encode(
+                      {'name': 'custom list', 'additional_column': 'foo'}),
+                  'op': 'PUT',
+                  'op_id': '1',
+                  'object_id': 'my_list',
+                  'object_type': 'lists'
+                }
+              ]
+            }
+          })
+          ..addLine({
+            'checkpoint_complete': {'last_op_id': '1'}
+          });
+
+        await expectLater(
+          query,
+          emits([
+            {
+              'id': 'my_list',
+              'name': 'custom list',
+              '_rest': json.encode({'additional_column': 'foo'})
+            }
           ]),
         );
 
