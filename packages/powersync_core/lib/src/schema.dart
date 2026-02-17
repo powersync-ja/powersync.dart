@@ -1,3 +1,6 @@
+/// @docImport 'database/powersync_db_mixin.dart';
+library;
+
 import 'crud.dart';
 import 'schema_logic.dart';
 
@@ -59,19 +62,9 @@ final class TrackPreviousValuesOptions {
       {this.columnFilter, this.onlyWhenChanged = false});
 }
 
-/// A single table in the schema.
-class Table {
-  static const _maxNumberOfColumns = 1999;
-
-  /// The synced table name, matching sync rules.
-  final String name;
-
-  /// List of columns.
-  final List<Column> columns;
-
-  /// List of indexes.
-  final List<Index> indexes;
-
+/// Common options that can be applied on [Table] and [RawTable] (through
+/// [RawTableSchema]).
+final class TableOptions {
   /// Whether to add a hidden `_metadata` column that will be enabled for
   /// updates to attach custom information about writes that will be reported
   /// through [CrudEntry.metadata].
@@ -91,6 +84,53 @@ class Table {
   /// Whether an `UPDATE` statement that doesn't change any values should be
   /// ignored when creating CRUD entries.
   final bool ignoreEmptyUpdates;
+
+  const TableOptions({
+    this.trackMetadata = false,
+    this.trackPreviousValues,
+    this.localOnly = false,
+    this.insertOnly = false,
+    this.ignoreEmptyUpdates = false,
+  });
+
+  void _validateOptions() {
+    if (trackMetadata && localOnly) {
+      throw AssertionError("Local-only tables can't track metadata");
+    }
+
+    if (trackPreviousValues != null && localOnly) {
+      throw AssertionError("Local-only tables can't track old values");
+    }
+  }
+
+  Map<String, dynamic> _optionsToJson() {
+    return {
+      'local_only': localOnly,
+      'insert_only': insertOnly,
+      'ignore_empty_update': ignoreEmptyUpdates,
+      'include_metadata': trackMetadata,
+      if (trackPreviousValues case final trackPreviousValues?) ...{
+        'include_old': trackPreviousValues.columnFilter ?? true,
+        'include_old_only_when_changed': trackPreviousValues.onlyWhenChanged,
+      },
+    };
+  }
+}
+
+/// A single table in the schema.
+@Deprecated.subclass(
+    'Avoid extending table, create an instance or extension type around it instead.')
+base class Table extends TableOptions {
+  static const _maxNumberOfColumns = 1999;
+
+  /// The synced table name, matching sync rules.
+  final String name;
+
+  /// List of columns.
+  final List<Column> columns;
+
+  /// List of indexes.
+  final List<Index> indexes;
 
   /// Override the name for the view
   final String? _viewNameOverride;
@@ -120,24 +160,20 @@ class Table {
     this.columns, {
     this.indexes = const [],
     String? viewName,
-    this.localOnly = false,
-    this.ignoreEmptyUpdates = false,
-    this.trackMetadata = false,
-    this.trackPreviousValues,
-  })  : insertOnly = false,
-        _viewNameOverride = viewName;
+    super.localOnly,
+    super.ignoreEmptyUpdates,
+    super.trackMetadata,
+    super.trackPreviousValues,
+  })  : _viewNameOverride = viewName,
+        super(insertOnly: false);
 
   /// Create a table that only exists locally.
   ///
   /// This table does not record changes, and is not synchronized from the service.
   const Table.localOnly(this.name, this.columns,
       {this.indexes = const [], String? viewName})
-      : localOnly = true,
-        insertOnly = false,
-        trackMetadata = false,
-        trackPreviousValues = null,
-        ignoreEmptyUpdates = false,
-        _viewNameOverride = viewName;
+      : _viewNameOverride = viewName,
+        super(localOnly: true);
 
   /// Create a table that only supports inserts.
   ///
@@ -151,13 +187,12 @@ class Table {
     this.name,
     this.columns, {
     String? viewName,
-    this.ignoreEmptyUpdates = false,
-    this.trackMetadata = false,
-    this.trackPreviousValues,
-  })  : localOnly = false,
-        insertOnly = true,
-        indexes = const [],
-        _viewNameOverride = viewName;
+    super.ignoreEmptyUpdates,
+    super.trackMetadata,
+    super.trackPreviousValues,
+  })  : indexes = const [],
+        _viewNameOverride = viewName,
+        super(localOnly: false, insertOnly: true);
 
   Column operator [](String columnName) {
     return columns.firstWhere((element) => element.name == columnName);
@@ -186,13 +221,7 @@ class Table {
           "Invalid characters in view name: $_viewNameOverride");
     }
 
-    if (trackMetadata && localOnly) {
-      throw AssertionError("Local-only tables can't track metadata");
-    }
-
-    if (trackPreviousValues != null && localOnly) {
-      throw AssertionError("Local-only tables can't track old values");
-    }
+    _validateOptions();
 
     Set<String> columnNames = {"id"};
     for (var column in columns) {
@@ -238,16 +267,9 @@ class Table {
   Map<String, dynamic> toJson() => {
         'name': name,
         'view_name': _viewNameOverride,
-        'local_only': localOnly,
-        'insert_only': insertOnly,
         'columns': columns,
         'indexes': indexes.map((e) => e.toJson(this)).toList(growable: false),
-        'ignore_empty_update': ignoreEmptyUpdates,
-        'include_metadata': trackMetadata,
-        if (trackPreviousValues case final trackPreviousValues?) ...{
-          'include_old': trackPreviousValues.columnFilter ?? true,
-          'include_old_only_when_changed': trackPreviousValues.onlyWhenChanged,
-        },
+        ..._optionsToJson(),
       };
 }
 
@@ -360,24 +382,89 @@ final class RawTable {
   /// based on data from the sync service.
   ///
   /// See [PendingStatement] for details.
-  final PendingStatement put;
+  final PendingStatement? put;
 
   /// A statement responsible for deleting a row based on its PowerSync id.
   ///
   /// See [PendingStatement] for details. Note that [PendingStatementValue]s
   /// used here must all be [PendingStatementValue.id].
-  final PendingStatement delete;
+  final PendingStatement? delete;
 
+  /// For [RawTable.inferred] tables, the schema from which [put] and [delete]
+  /// statemenst are inferred.
+  final RawTableSchema? schema;
+
+  /// An optional statement to run when [PowerSyncDatabaseMixin.disconnectAndClear]
+  /// is called.
+  final String? clear;
+
+  /// Creates a raw table with explicit [put] and [delete] statements.
+  ///
+  /// These can also be [RawTable.inferred] when providing a [RawTableSchema].
   const RawTable({
     required this.name,
-    required this.put,
-    required this.delete,
+    required PendingStatement this.put,
+    required PendingStatement this.delete,
+    this.clear,
+  }) : schema = null;
+
+  /// Creates a raw table where [put] and [delete] statements are optional
+  /// because the sync client can infer defaults from the [schema] of the table
+  /// in the local database.
+  const RawTable.inferred({
+    required this.name,
+    required RawTableSchema this.schema,
+    this.put,
+    this.delete,
+    this.clear,
   });
 
   Map<String, dynamic> toJson() => {
         'name': name,
         'put': put,
         'delete': delete,
+        'clear': clear,
+        ...?schema?._toJson(),
+      };
+}
+
+/// The schema of a [RawTable] in the local database.
+///
+/// This information is optional when declaring raw tables with [RawTable.new].
+/// However, providing it allows the sync client to infer [RawTable.put] and
+/// [RawTable.delete] statements automatically.
+final class RawTableSchema {
+  /// The actual name of the raw table in the local schema.
+  ///
+  /// Unlike [RawTable.name], which describes the name of _synced_ tables to
+  /// match, this reflects the local SQLite table name. This is used to infer
+  /// [RawTable.put] and [RawTable.delete] statements for the sync client. It
+  /// can also be used to auto-generate triggers forwarding writes on raw tables
+  /// into the CRUD upload queue (using the `powersync_create_raw_table_crud_trigger`
+  /// SQL function).
+  final String tableName;
+
+  /// An optional filter of columns that should be synced.
+  ///
+  /// By default, all columns in raw tables are considered for sync. If a filter
+  /// is specified, PowerSync treats unmatched columns as local-only and will
+  /// not attempt to sync them.
+  final List<String>? syncedColumns;
+
+  /// Common options affecting how the `powersync_create_raw_table_crud_trigger`
+  /// SQL function generates triggers.
+  final TableOptions options;
+
+  const RawTableSchema({
+    required this.tableName,
+    this.syncedColumns,
+    this.options = const TableOptions(),
+  });
+
+  Map<String, dynamic> _toJson() => {
+        'table_name': tableName,
+        if (syncedColumns != null) 'synced_columns': syncedColumns,
+        ...options._optionsToJson(),
       };
 }
 
@@ -399,7 +486,7 @@ final class PendingStatement {
   /// [PendingStatementValue.id].
   final List<PendingStatementValue> params;
 
-  PendingStatement({required this.sql, required this.params});
+  const PendingStatement({required this.sql, required this.params});
 
   Map<String, dynamic> toJson() => {
         'sql': sql,
@@ -411,7 +498,12 @@ final class PendingStatement {
 /// running a [PendingStatement] for a [RawTable].
 sealed class PendingStatementValue {
   /// A value that is bound to the textual id used in the PowerSync protocol.
-  factory PendingStatementValue.id() = _PendingStmtValueId;
+  const factory PendingStatementValue.id() = _PendingStmtValueId;
+
+  /// A value that is bound to a JSON object containing all columns from the
+  /// synced row that haven't been matched by a [PendingStatementValue.column]
+  /// value in the same statement.
+  const factory PendingStatementValue.rest() = _PendingStmtValueRest;
 
   /// A value that is bound to the value of a column in a replace (`PUT`)
   /// operation of the PowerSync protocol.
@@ -438,6 +530,15 @@ class _PendingStmtValueId implements PendingStatementValue {
   @override
   dynamic toJson() {
     return 'Id';
+  }
+}
+
+class _PendingStmtValueRest implements PendingStatementValue {
+  const _PendingStmtValueRest();
+
+  @override
+  dynamic toJson() {
+    return 'Rest';
   }
 }
 
