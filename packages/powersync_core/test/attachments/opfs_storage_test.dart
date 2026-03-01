@@ -1,26 +1,24 @@
-@TestOn('vm')
+@TestOn('browser')
 library;
 
-import 'dart:async';
-import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:collection/collection.dart';
+import 'package:powersync_core/src/attachments/storage/web_opfs_storage.dart';
 import 'package:test/test.dart';
-import 'package:path/path.dart' as p;
-import 'package:powersync_core/src/attachments/storage/io_local_storage.dart';
-import 'package:test_descriptor/test_descriptor.dart' as d;
 
 void main() {
-  group('IOLocalStorage', () {
-    late IOLocalStorage storage;
+  group('OpfsLocalStorage', () {
+    late OpfsLocalStorage storage;
 
     setUp(() async {
-      storage = IOLocalStorage(Directory(d.sandbox));
+      storage = OpfsLocalStorage(
+          'dart-test-${DateTime.now().millisecondsSinceEpoch}');
+      await storage.initialize();
     });
 
     tearDown(() async {
-      // Clean up is handled automatically by test_descriptor
-      // No manual cleanup needed
+      await storage.clear();
     });
 
     group('saveFile and readFile', () {
@@ -29,67 +27,42 @@ void main() {
         final data = Uint8List.fromList([1, 2, 3, 4, 5]);
         final size = await storage.saveFile(filePath, Stream.value(data));
         expect(size, equals(data.length));
-        expect(storage.pathFor(filePath), d.path('test_file'));
 
         final resultStream = storage.readFile(filePath);
         final result = await resultStream.toList();
         expect(result, equals([data]));
-
-        // Assert filesystem state using test_descriptor
-        await d.file(filePath, data).validate();
       });
 
       test('throws when reading non-existent file', () async {
         const filePath = 'non_existent';
         expect(
           () => storage.readFile(filePath).toList(),
-          throwsA(isA<FileSystemException>()),
+          throwsA(anything),
         );
-
-        // Assert file does not exist using Dart's File API
-        expect(await File(p.join(d.sandbox, filePath)).exists(), isFalse);
       });
 
       test('creates parent directories if they do not exist', () async {
         const filePath = 'subdir/nested/test';
-        final nonExistentDir = Directory(p.join(d.sandbox, 'subdir', 'nested'));
         final data = Uint8List.fromList([1, 2, 3]);
-
-        expect(await nonExistentDir.exists(), isFalse);
 
         final size = await storage.saveFile(filePath, Stream.value(data));
         expect(size, equals(data.length));
-        expect(await nonExistentDir.exists(), isTrue);
 
         final resultStream = storage.readFile(filePath);
         final result = await resultStream.toList();
         expect(result, equals([data]));
-
-        // Assert directory structure
-        await d.dir('subdir/nested', [d.file('test', data)]).validate();
       });
 
       test('creates all parent directories for deeply nested file', () async {
         const filePath = 'a/b/c/d/e/f/g/h/i/j/testfile';
-        final nestedDir = Directory(
-          p.join(d.sandbox, 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j'),
-        );
         final data = Uint8List.fromList([42, 43, 44]);
-
-        expect(await nestedDir.exists(), isFalse);
 
         final size = await storage.saveFile(filePath, Stream.value(data));
         expect(size, equals(data.length));
-        expect(await nestedDir.exists(), isTrue);
 
         final resultStream = storage.readFile(filePath);
         final result = await resultStream.toList();
         expect(result, equals([data]));
-
-        // Assert deep directory structure
-        await d.dir('a/b/c/d/e/f/g/h/i/j', [
-          d.file('testfile', data),
-        ]).validate();
       });
 
       test('overwrites existing file', () async {
@@ -104,9 +77,6 @@ void main() {
         final resultStream = storage.readFile(filePath);
         final result = await resultStream.toList();
         expect(result, equals([newData]));
-
-        // Assert file content
-        await d.file(filePath, newData).validate();
       });
     });
 
@@ -120,11 +90,7 @@ void main() {
 
         final resultStream = storage.readFile(filePath);
         final chunks = await resultStream.toList();
-        expect(chunks, isEmpty);
-
-        final file = File(p.join(d.sandbox, filePath));
-        expect(await file.exists(), isTrue);
-        expect(await file.length(), 0);
+        expect(chunks.flattenedToList, isEmpty);
       });
 
       test('readFile preserves byte order (chunking may differ)', () async {
@@ -166,21 +132,6 @@ void main() {
         expect(await storage.fileExists(filePath), isTrue);
       });
 
-      test('clear works even if base directory was removed externally',
-          () async {
-        await storage.initialize();
-
-        // Remove the base dir manually
-        final baseDir = Directory(d.sandbox);
-        if (await baseDir.exists()) {
-          await baseDir.delete(recursive: true);
-        }
-
-        // Calling clear should recreate base dir
-        await storage.clear();
-        expect(await baseDir.exists(), isTrue);
-      });
-
       test('supports unicode and emoji filenames', () async {
         const filePath = '測試_файл_📷.bin';
         final bytes = Uint8List.fromList([10, 20, 30, 40]);
@@ -188,8 +139,6 @@ void main() {
 
         final out = await storage.readFile(filePath).toList();
         expect(out, equals([bytes]));
-
-        await d.file(filePath, bytes).validate();
       });
 
       test('readFile accepts mediaType parameter (ignored by IO impl)',
@@ -214,43 +163,19 @@ void main() {
 
         await storage.deleteFile(filePath);
         expect(await storage.fileExists(filePath), isFalse);
-
-        // Assert file does not exist
-        expect(await File(p.join(d.sandbox, filePath)).exists(), isFalse);
       });
 
       test('does not throw when deleting non-existent file', () async {
         const filePath = 'non_existent';
         await storage.deleteFile(filePath);
-        expect(await File(p.join(d.sandbox, filePath)).exists(), isFalse);
       });
     });
 
-    group('initialize and clear', () {
-      test('initialize creates the base directory', () async {
-        final newStorage =
-            IOLocalStorage(Directory(p.join(d.sandbox, 'new_dir')));
-        final baseDir = Directory(p.join(d.sandbox, 'new_dir'));
-
-        expect(await baseDir.exists(), isFalse);
-
-        await newStorage.initialize();
-
-        expect(await baseDir.exists(), isTrue);
-      });
-
-      test('clear removes and recreates the base directory', () async {
-        await storage.initialize();
-        final testFile = p.join(d.sandbox, 'test_file');
-        await File(testFile).writeAsString('test');
-
-        expect(await File(testFile).exists(), isTrue);
-
-        await storage.clear();
-
-        expect(await Directory(d.sandbox).exists(), isTrue);
-        expect(await File(testFile).exists(), isFalse);
-      });
+    test('clear', () async {
+      await storage.saveFile('foo', Stream.value([]));
+      expect(await storage.fileExists('foo'), isTrue);
+      await storage.clear();
+      expect(await storage.fileExists('foo'), isFalse);
     });
 
     group('fileExists', () {
@@ -260,14 +185,11 @@ void main() {
 
         await storage.saveFile(filePath, Stream.value(data));
         expect(await storage.fileExists(filePath), isTrue);
-
-        await d.file(filePath, data).validate();
       });
 
       test('returns false for non-existent file', () async {
         const filePath = 'non_existent';
         expect(await storage.fileExists(filePath), isFalse);
-        expect(await File(p.join(d.sandbox, filePath)).exists(), isFalse);
       });
     });
 
@@ -282,8 +204,6 @@ void main() {
         final resultStream = storage.readFile(filePath);
         final result = await resultStream.toList();
         expect(result, equals([data]));
-
-        await d.file(filePath, data).validate();
       });
 
       test('handles large binary data stream', () async {
@@ -309,8 +229,6 @@ void main() {
           (await resultStream.toList()).expand((chunk) => chunk).toList(),
         );
         expect(result, equals(data));
-
-        await d.file(filePath, data).validate();
       });
     });
 
@@ -335,9 +253,6 @@ void main() {
               Uint8List.fromList([i, i + 1, i + 2]),
             ]),
           );
-          await d
-              .file('file_$i', Uint8List.fromList([i, i + 1, i + 2]))
-              .validate();
         }
       });
 
@@ -355,11 +270,6 @@ void main() {
         final resultStream = storage.readFile(filePath);
         final result = await resultStream.toList();
         expect(result, anyOf(equals([data1]), equals([data2])));
-
-        // Assert one of the possible outcomes
-        final file = File(p.join(d.sandbox, filePath));
-        final fileData = await file.readAsBytes();
-        expect(fileData, anyOf(equals(data1), equals(data2)));
       });
     });
   });
