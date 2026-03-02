@@ -35,17 +35,20 @@ For reference, these rows are around 142 bytes each when synced. However, sync p
 
 ## PowerSync Service
 
-Use these sync rules:
+Use the following Sync Streams config. The `benchmark_items` stream syncs globally; the `bulk` stream uses a connection parameter `size_bucket` (e.g. `"10k"`, `"100k"`, `"1m"`, `"10m"`). Both use `auto_subscribe: true`. Pass `size_bucket` in your client's connect options (e.g. `SyncOptions(params: {'size_bucket': '10k'})`).
 
 ```yaml
-bucket_definitions:
-  bucket_items:
-    data:
-      - select * from benchmark_items
+config:
+  edition: 3
+
+streams:
+  benchmark_items:
+    auto_subscribe: true
+    query: SELECT * FROM benchmark_items
+
   bulk:
-    parameters: select request.parameters() ->> 'size_bucket' as size_bucket
-    data:
-      - select * from bulk_data where size_bucket = bucket.size_bucket
+    auto_subscribe: true
+    query: SELECT * FROM bulk_data WHERE size_bucket = connection.parameter('size_bucket')
 ```
 
 ## Demo Backend
