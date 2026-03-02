@@ -403,8 +403,7 @@ void main() {
     });
 
     test('inferred crud trigger for raw tables', () async {
-      const table = RawTable.inferred(
-          name: 'sync_name', schema: RawTableSchema(tableName: 'users'));
+      const table = RawTable.inferred(name: 'users', schema: RawTableSchema());
       await powersync.execute('CREATE TABLE users (id TEXT, name TEXT);');
       await powersync.execute(
         'SELECT powersync_create_raw_table_crud_trigger(?, ?, ?)',
@@ -417,7 +416,7 @@ void main() {
       expect(tx!.crud, [
         isA<CrudEntry>()
             .having((e) => e.op, 'op', UpdateType.put)
-            .having((e) => e.table, 'table', 'sync_name')
+            .having((e) => e.table, 'table', 'users')
             .having((e) => e.id, 'id', 'id')
             .having((e) => e.opData, 'opData', {'name': 'user'}),
       ]);
