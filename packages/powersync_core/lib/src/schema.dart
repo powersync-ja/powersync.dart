@@ -424,7 +424,7 @@ final class RawTable {
         'put': put,
         'delete': delete,
         'clear': clear,
-        ...?schema?._toJson(),
+        ...?schema?._toJson(this),
       };
 }
 
@@ -442,7 +442,9 @@ final class RawTableSchema {
   /// can also be used to auto-generate triggers forwarding writes on raw tables
   /// into the CRUD upload queue (using the `powersync_create_raw_table_crud_trigger`
   /// SQL function).
-  final String tableName;
+  ///
+  /// When set to `null`, defaults to the [RawTable.name].
+  final String? tableName;
 
   /// An optional filter of columns that should be synced.
   ///
@@ -456,13 +458,13 @@ final class RawTableSchema {
   final TableOptions options;
 
   const RawTableSchema({
-    required this.tableName,
+    this.tableName,
     this.syncedColumns,
     this.options = const TableOptions(),
   });
 
-  Map<String, dynamic> _toJson() => {
-        'table_name': tableName,
+  Map<String, dynamic> _toJson(RawTable tbl) => {
+        'table_name': tableName ?? tbl.name,
         if (syncedColumns != null) 'synced_columns': syncedColumns,
         ...options._optionsToJson(),
       };
