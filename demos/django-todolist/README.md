@@ -54,16 +54,18 @@ The instructions guide you through the following:
 
 Create a new PowerSync instance by signing up for PowerSync Cloud at www.powersync.com, then connect to the database of your Django project.
 
-Then deploy the following sync rules:
+Then deploy the following Sync Streams config (with `auto_subscribe: true` so the client syncs the user's data on connect):
 
 ```yaml
-bucket_definitions:
-  user_lists:
-    # Separate bucket per todo list
-    parameters: select id as list_id from lists where owner_id = request.user_id()
-    data:
-      - select * from lists where id = bucket.list_id
-      - select * from todos where list_id = bucket.list_id
+config:
+  edition: 3
+
+streams:
+  user_data:
+    auto_subscribe: true
+    queries:
+      - SELECT * FROM lists WHERE owner_id = auth.user_id()
+      - SELECT todos.* FROM todos INNER JOIN lists ON todos.list_id = lists.id WHERE lists.owner_id = auth.user_id()
 ```
 
 ### Configure the app

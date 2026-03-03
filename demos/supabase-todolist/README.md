@@ -19,36 +19,37 @@ It does the following:
 
 Create a new PowerSync instance, connecting to the database of the Supabase project.
 
-Then deploy the following sync rules:
+Then deploy the following Sync Streams. These streams use `auto_subscribe: true` so the client syncs the user's lists and todos automatically on connect:
 
 ```yaml
-bucket_definitions:
+config:
+  edition: 3
+
+streams:
   user_lists:
     priority: 1
-    parameters: select id as list_id from lists where owner_id = request.user_id()
-    data:
-      - select * from lists where id = bucket.list_id
+    auto_subscribe: true
+    query: SELECT * FROM lists WHERE owner_id = auth.user_id()
 
   user_todos:
-    parameters: select id as list_id from lists where owner_id = request.user_id()
-    data:
-      - select * from todos where list_id = bucket.list_id
+    auto_subscribe: true
+    query: SELECT todos.* FROM todos INNER JOIN lists ON todos.list_id = lists.id WHERE lists.owner_id = auth.user_id()
 ```
 
-**Note**: These rules showcase [prioritized sync](https://docs.powersync.com/usage/use-case-examples/prioritized-sync),
-by syncing a user's lists with a higher priority than the items within a list (todos). This can be
-useful to keep the list overview page reactive during a large sync cycle affecting many
-rows in the `user_todos` bucket. The two buckets can also be unified into a single one if
-priorities are not important (the app will work without changes):
+**Note**: This config showcases [prioritized sync](https://docs.powersync.com/sync/advanced/prioritized-sync),
+by syncing a user's lists with a higher priority than the items within a list (todos). If
+priorities are not important, you can use a single stream instead (the app will work without changes):
 
 ```yaml
-bucket_definitions:
-  user_lists:
-    # Separate bucket per todo list
-    parameters: select id as list_id from lists where owner_id = request.user_id()
-    data:
-      - select * from lists where id = bucket.list_id
-      - select * from todos where list_id = bucket.list_id
+config:
+  edition: 3
+
+streams:
+  user_data:
+    auto_subscribe: true
+    queries:
+      - SELECT * FROM lists WHERE owner_id = auth.user_id()
+      - SELECT todos.* FROM todos INNER JOIN lists ON todos.list_id = lists.id WHERE lists.owner_id = auth.user_id()
 ```
 
 # Configure the app
