@@ -3,6 +3,43 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 2026-03-05
+
+### Changes
+
+---
+
+Packages with breaking changes:
+
+ - There are no breaking changes in this release.
+
+Packages with other changes:
+
+ - [`powersync_core` - `v1.8.0`](#powersync_core---v180)
+ - [`powersync` - `v1.18.0`](#powersync---v1180)
+ - [`powersync_sqlcipher` - `v0.1.16`](#powersync_sqlcipher---v0116)
+ - [`powersync_flutter_libs` - `v0.4.15`](#powersync_flutter_libs---v0415)
+
+---
+
+#### `powersync_core` - `v1.8.0`
+
+- Add `RawTable.inferred` constructor, which can be used to specify raw tables without manual `put` and `delete` statements.
+
+#### `powersync` - `v1.18.0`
+
+- Add `RawTable.inferred` constructor, which can be used to specify raw tables without manual `put` and `delete` statements.
+- Update PowerSync SQLite core extension to version `0.4.11`.
+
+#### `powersync_sqlcipher` - `v0.1.16`
+
+- Add `RawTable.inferred` constructor, which can be used to specify raw tables without manual `put` and `delete` statements.
+- Update PowerSync SQLite core extension to version `0.4.11`.
+
+#### `powersync_flutter_libs` - `v0.4.15`
+
+- Update PowerSync SQLite core extension to version `0.4.11`.
+
 ## 2025-12-12
 
 ### Changes

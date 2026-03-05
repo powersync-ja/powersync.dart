@@ -1,3 +1,7 @@
+## 1.8.0
+
+- Add `RawTable.inferred` constructor, which can be used to specify raw tables without manual `put` and `delete` statements.
+
 ## 1.7.0
 
  - **FEAT**: Custom App Metadata ([#354](https://github.com/powersync-ja/powersync.dart/issues/354)). ([8188bb90](https://github.com/powersync-ja/powersync.dart/commit/8188bb90b50eceb486e33cd5aa4b976c4a133899))
