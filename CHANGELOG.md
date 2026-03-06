@@ -3,6 +3,29 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 2026-03-06
+
+### Changes
+
+---
+
+Packages with breaking changes:
+
+ - There are no breaking changes in this release.
+
+Packages with other changes:
+
+ - [`powersync_flutter_libs` - `v0.4.15+1`](#powersync_flutter_libs---v04151)
+
+---
+
+#### `powersync_flutter_libs` - `v0.4.15+1`
+
+ - Fix outdated core extension version on Android.
+
+ - **FIX**: bump Android powersync-sqlite-core to 0.4.11. ([aa14097c](https://github.com/powersync-ja/powersync.dart/commit/aa14097c247c28042bec6f2aabb825a895953500))
+
+
 ## 2026-03-05
 
 ### Changes

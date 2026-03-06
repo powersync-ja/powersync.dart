@@ -1,3 +1,9 @@
+## 0.4.15+1
+
+ - Fix outdated core extension version on Android.
+
+ - **FIX**: bump Android powersync-sqlite-core to 0.4.11. ([aa14097c](https://github.com/powersync-ja/powersync.dart/commit/aa14097c247c28042bec6f2aabb825a895953500))
+
 ## 0.4.15
 
 ## 0.4.14
