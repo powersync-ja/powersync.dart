@@ -1,3 +1,6 @@
+import 'dart:ffi';
+import 'dart:io';
+
 import 'package:powersync_core/powersync_core.dart';
 import 'package:powersync_core/sqlite3_common.dart';
 import 'package:powersync_core/sqlite3_open.dart' as sqlite3_open;
@@ -22,6 +25,22 @@ class _NativeCipherOpenFactory extends PowerSyncOpenFactory
   CommonDatabase open(SqliteOpenOptions options) {
     sqlite3_open.open
         .overrideFor(sqlite3_open.OperatingSystem.android, openCipherOnAndroid);
+
+    // iOS/macOS: explicitly load SQLCipher.framework by path instead of
+    // relying on DynamicLibrary.process() (RTLD_DEFAULT), which resolves to
+    // Apple's system sqlite3 first. Apple's sqlite3 has extension loading
+    // disabled and returns SQLITE_MISUSE from sqlite3_auto_extension, causing
+    // PowerSync's extension registration to fail.
+    if (Platform.isIOS || Platform.isMacOS) {
+      sqlite3_open.open.overrideFor(
+        sqlite3_open.OperatingSystem.iOS,
+        () => DynamicLibrary.open('SQLCipher.framework/SQLCipher'),
+      );
+      sqlite3_open.open.overrideFor(
+        sqlite3_open.OperatingSystem.macOS,
+        () => DynamicLibrary.open('SQLCipher.framework/SQLCipher'),
+      );
+    }
 
     var db = super.open(options);
     final versionRows = db.select('PRAGMA cipher_version');
