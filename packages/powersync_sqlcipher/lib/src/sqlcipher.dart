@@ -32,14 +32,8 @@ class _NativeCipherOpenFactory extends PowerSyncOpenFactory
     // disabled and returns SQLITE_MISUSE from sqlite3_auto_extension, causing
     // PowerSync's extension registration to fail.
     if (Platform.isIOS || Platform.isMacOS) {
-      sqlite3_open.open.overrideFor(
-        sqlite3_open.OperatingSystem.iOS,
-        () => DynamicLibrary.open('SQLCipher.framework/SQLCipher'),
-      );
-      sqlite3_open.open.overrideFor(
-        sqlite3_open.OperatingSystem.macOS,
-        () => DynamicLibrary.open('SQLCipher.framework/SQLCipher'),
-      );
+      sqlite3_open.open.overrideForAll(
+          () => DynamicLibrary.open('SQLCipher.framework/SQLCipher'));
     }
 
     var db = super.open(options);
