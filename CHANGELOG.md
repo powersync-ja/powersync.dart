@@ -3,6 +3,29 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 2026-03-19
+
+### Changes
+
+---
+
+Packages with breaking changes:
+
+ - There are no breaking changes in this release.
+
+Packages with other changes:
+
+ - [`powersync_sqlcipher` - `v0.1.17`](#powersync_sqlcipher---v0117)
+
+---
+
+#### `powersync_sqlcipher` - `v0.1.17`
+
+ - Improve reliability of loading the SQLCipher framework on Apple platforms.
+
+ - **FIX**: load SQLCipher.framework explicitly on iOS/macOS. ([a2fdf39e](https://github.com/powersync-ja/powersync.dart/commit/a2fdf39ec86fb2a6e9a14bd946845473e6d94662))
+
+
 ## 2026-03-06
 
 ### Changes
