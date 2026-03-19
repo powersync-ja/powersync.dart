@@ -1,3 +1,9 @@
+## 0.1.17
+
+ - Improve reliability of loading the SQLCipher framework on Apple platforms.
+
+ - **FIX**: load SQLCipher.framework explicitly on iOS/macOS. ([a2fdf39e](https://github.com/powersync-ja/powersync.dart/commit/a2fdf39ec86fb2a6e9a14bd946845473e6d94662))
+
 ## 0.1.16
 
 - Add `RawTable.inferred` constructor, which can be used to specify raw tables without manual `put` and `delete` statements.
