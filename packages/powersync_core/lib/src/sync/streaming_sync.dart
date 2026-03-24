@@ -159,16 +159,16 @@ class StreamingSyncImplementation implements StreamingSync {
             invalidCredentials = false;
           }
           // Protect sync iterations with exclusivity (if a valid Mutex is provided)
-          await syncMutex.lock(() async {
+          final (:immediateRestart) = await syncMutex.lock(() {
             switch (options.source.syncImplementation) {
               // ignore: deprecated_member_use_from_same_package
               case SyncClientImplementation.dart:
-                await _dartStreamingSyncIteration();
+                return _dartStreamingSyncIteration();
               case SyncClientImplementation.rust:
-                final (:immediateRestart) = await _rustStreamingSyncIteration();
-                delayNextIteration = !immediateRestart;
+                return _rustStreamingSyncIteration();
             }
           }, timeout: _retryDelay);
+          delayNextIteration = !immediateRestart;
         } catch (e, stacktrace) {
           if (aborted && e is http.ClientException) {
             // Explicit abort requested - ignore. Example error:
@@ -314,7 +314,7 @@ class StreamingSyncImplementation implements StreamingSync {
     });
   }
 
-  Future<({bool immediateRestart})> _rustStreamingSyncIteration() async {
+  Future<RustSyncIterationResult> _rustStreamingSyncIteration() async {
     logger.info('Starting Rust sync iteration');
     final response = await _ActiveRustStreamingIteration(this).syncIteration();
     logger.info(
@@ -336,10 +336,10 @@ class StreamingSyncImplementation implements StreamingSync {
     return (initialRequests, localDescriptions);
   }
 
-  Future<void> _dartStreamingSyncIteration() async {
+  Future<RustSyncIterationResult> _dartStreamingSyncIteration() async {
     var (bucketRequests, bucketMap) = await _collectLocalBucketState();
     if (aborted) {
-      return;
+      return (immediateRestart: false);
     }
 
     Checkpoint? targetCheckpoint;
@@ -352,6 +352,7 @@ class StreamingSyncImplementation implements StreamingSync {
 
     Future<void>? credentialsInvalidation;
     bool shouldStopIteration = false;
+    bool immediateRestart = false;
 
     // Trigger a CRUD upload on reconnect
     _internalCrudTriggerController.add(null);
@@ -452,6 +453,7 @@ class StreamingSyncImplementation implements StreamingSync {
               // trigger next loop iteration ASAP, don't wait for another
               // message from the server.
               if (!aborted) {
+                immediateRestart = true;
                 _nonLineSyncEvents.add(TokenRefreshComplete());
               }
             }, onError: (_) {
@@ -489,6 +491,8 @@ class StreamingSyncImplementation implements StreamingSync {
         break;
       }
     }
+
+    return (immediateRestart: immediateRestart);
   }
 
   Future<({bool abort, bool didApply})> _applyCheckpoint(
