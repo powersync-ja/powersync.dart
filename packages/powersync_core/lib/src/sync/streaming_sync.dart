@@ -149,6 +149,8 @@ class StreamingSyncImplementation implements StreamingSync {
       var invalidCredentials = false;
       while (!aborted) {
         _state.updateStatus((s) => s.setConnectingIfNotConnected());
+        var delayNextIteration = false;
+
         try {
           if (invalidCredentials) {
             // This may error. In that case it will be retried again on the next
@@ -157,13 +159,14 @@ class StreamingSyncImplementation implements StreamingSync {
             invalidCredentials = false;
           }
           // Protect sync iterations with exclusivity (if a valid Mutex is provided)
-          await syncMutex.lock(() {
+          await syncMutex.lock(() async {
             switch (options.source.syncImplementation) {
               // ignore: deprecated_member_use_from_same_package
               case SyncClientImplementation.dart:
-                return _dartStreamingSyncIteration();
+                await _dartStreamingSyncIteration();
               case SyncClientImplementation.rust:
-                return _rustStreamingSyncIteration();
+                final (:immediateRestart) = await _rustStreamingSyncIteration();
+                delayNextIteration = !immediateRestart;
             }
           }, timeout: _retryDelay);
         } catch (e, stacktrace) {
@@ -172,14 +175,17 @@ class StreamingSyncImplementation implements StreamingSync {
             // ClientException: Connection closed while receiving data, uri=http://localhost:8080/sync/stream
             return;
           }
+          delayNextIteration = true;
           final message = _syncErrorMessage(e);
           logger.warning('Sync error: $message', e, stacktrace);
           invalidCredentials = true;
 
           _state.updateStatus((s) => s.applyDownloadError(e));
+        }
 
-          // On error, wait a little before retrying
-          // When aborting, don't wait
+        // On error, wait a little before retrying
+        // When aborting, don't wait
+        if (!aborted && delayNextIteration) {
           await _delayRetry();
         }
       }
@@ -308,13 +314,12 @@ class StreamingSyncImplementation implements StreamingSync {
     });
   }
 
-  Future<void> _rustStreamingSyncIteration() async {
+  Future<({bool immediateRestart})> _rustStreamingSyncIteration() async {
     logger.info('Starting Rust sync iteration');
     final response = await _ActiveRustStreamingIteration(this).syncIteration();
     logger.info(
         'Ending Rust sync iteration. Immediate restart: ${response.immediateRestart}');
-    // Note: With the current loop in streamingSync(), any return value that
-    // isn't an exception triggers an immediate restart.
+    return response;
   }
 
   Future<(List<BucketRequest>, Map<String, BucketDescription?>)>
