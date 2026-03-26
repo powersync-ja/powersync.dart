@@ -17,7 +17,12 @@ Future<void> main() async {
   for (final asset in assets) {
     final name = asset['name'] as String;
     if (p.url.extension(name) case '.dll' || '.dylib' || '.so') {
-      final [_, hash] = (asset['digest'] as String).split(':');
+      // Format: sha256:<hash>
+      final [alg, hash] = (asset['digest'] as String).split(':');
+      if (alg != 'sha256') {
+        // GitHub seems to use sha256 exclusively.
+        throw UnsupportedError('Unsupported hash function on asset: $alg');
+      }
 
       entries.add((name, hash));
     }

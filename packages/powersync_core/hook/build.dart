@@ -11,6 +11,15 @@ import 'package:powersync_core/src/setup/native.dart';
 // this to the absolute path of your core extension directory.
 const String? _localCoreExtensionCheckout = null;
 
+/// This program is invoked for each target operating system and architecture
+/// when compiling a Dart or Flutter app.
+///
+/// By adding a [CodeAsset] with [DynamicLoadingBundled], we instruct the Dart
+/// embedder to include a dynamic library and to use it for looking up symbols
+/// in `sqlite3_powersync_init.dart`, which contains a `@Native` method loading
+/// the core extension.
+///
+/// For more information, see [hooks](https://dart.dev/tools/hooks).
 void main(List<String> args) async {
   await build(args, (input, output) async {
     if (!input.config.buildCodeAssets) {
@@ -51,7 +60,7 @@ Future<File> _resuseOrDownloadCoreExtension(BuildInput input) async {
       .toFilePath());
 
   if (file.existsSync()) {
-    // Hook is re-run with an existing cache. Does the file match what we
+    // Hook is re-run with an existing cache. Does the file match the digest we
     // expect?
     final actualHash = await file.openRead().transform(sha256).first;
 
@@ -71,7 +80,7 @@ Future<Uint8List> _fetchCoreExtension(String fileName, String hash) async {
   final client = HttpClient()
     // From Dart 3.11, proxy-related environment variables are passed to
     // hooks. We respect them to ensure we can download these binaries in
-    // environments where that's required
+    // environments where that's required.
     ..findProxy = HttpClient.findProxyFromEnvironment;
   final uri = Uri.https(
     'github.com',
@@ -118,9 +127,11 @@ String _fileNameForBuild(CodeConfig config) {
     bool supportRiscv = false,
   }) {
     return switch (config.targetArchitecture) {
-      Architecture.arm when supportArmv7 => 'armv7',
       Architecture.arm64 => 'aarch64',
       Architecture.x64 => 'x64',
+      // These architectures are only supported on some operating systems, so
+      // they're guarded by parameters.
+      Architecture.arm when supportArmv7 => 'armv7',
       Architecture.ia32 when supportX86 => 'x86',
       Architecture.riscv64 when supportRiscv => 'riscv64gc',
       _ => unsupportedArchitecture(),
@@ -190,8 +201,9 @@ Future<File> _useLocalCoreExtension(
     ),
   );
 
+  // Parse generated depfile to re-run this hook when a Rust source has changed.
+  // The format is "target: dep1 dep2 ...".
   final depsContent = depsFile.readAsStringSync();
-  // Format: "target: dep1 dep2 ..."
   final [_, depsList] = depsContent.split(': ');
   // Paths with spaces are escaped as "\ " in the Makefile format.
   final deps = depsList.split(RegExp(r'(?<!\\) '));
