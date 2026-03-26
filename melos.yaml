@@ -20,17 +20,12 @@ command:
       preCommit: |
         dart run tool/update_version.dart
         git add packages/powersync_core/lib/src/version.dart
-  publish:
-    hooks:
-      pre: dart ./scripts/download_core_binary_demos.dart # Download latest core binaries when publishing
-    packageFilters:
-      noPrivate: true
 
 scripts:
   prepare:
     description: Download and prepare assets for demos
     run: |
-      melos bootstrap && melos prepare:assets && dart ./scripts/compile_webworker.dart && dart ./scripts/init_powersync_core_binary.dart && dart ./scripts/download_core_binary_demos.dart && melos prepare:demos
+      melos bootstrap && melos prepare:assets && dart ./scripts/compile_webworker.dart && melos prepare:demos
 
   prepare:demos:
     description: Download SQLite3 wasm for demos

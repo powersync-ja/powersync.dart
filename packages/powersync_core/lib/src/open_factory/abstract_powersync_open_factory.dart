@@ -67,10 +67,6 @@ abstract class AbstractPowerSyncOpenFactory extends DefaultSqliteOpenFactory {
     throw AssertionError('Cannot reach this point');
   }
 
-  /// Returns the library name for the current platform.
-  /// [path] is optional and is used when the library is not in the default location.
-  String getLibraryForPlatform({String? path});
-
   /// On native platforms, synchronously pauses the current isolate for the
   /// given [Duration].
   @visibleForOverriding

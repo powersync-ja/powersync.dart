@@ -59,10 +59,8 @@ extension type const PowerSyncCoreVersion((int, int, int) _tuple) {
   /// error message.
   // Note: When updating this, also update:
   //
-  //  - scripts/init_powersync_core_binary.dart
-  //  - scripts/download_core_binary_demos.dart
+  //  - ../setup/native.dart
   //  - packages/sqlite3_wasm_build/build.sh
-  //  - Android and Darwin (CocoaPods and SwiftPM) in powersync_flutter_libs
   static const minimum = PowerSyncCoreVersion((0, 4, 11));
 
   /// The first version of the core extensions that this version of the Dart

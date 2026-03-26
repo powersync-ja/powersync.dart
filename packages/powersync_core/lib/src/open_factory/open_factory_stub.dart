@@ -18,9 +18,4 @@ class PowerSyncOpenFactory extends open_factory.AbstractPowerSyncOpenFactory {
   void setupFunctions(CommonDatabase db) {
     throw UnimplementedError();
   }
-
-  @override
-  String getLibraryForPlatform({String? path}) {
-    throw UnimplementedError();
-  }
 }
