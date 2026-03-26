@@ -25,16 +25,17 @@ jobs:
       - name: Publish dry-run
         run: melos publish --dry-run --yes
 
-  pana:
-    runs-on: ubuntu-latest
-    needs: [setup]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: ./.github/actions/prepare
-      - name: Check pana score
-        run: |
-          flutter pub global activate pana
-          melos analyze:packages:pana --no-select
+  # Temporarily broken due to unpublished changes, I'll add this back after merging packages.
+  # pana:
+  #   runs-on: ubuntu-latest
+  #   needs: [setup]
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: ./.github/actions/prepare
+  #     - name: Check pana score
+  #       run: |
+  #         flutter pub global activate pana
+  #         melos analyze:packages:pana --no-select
 
   test:
     runs-on: ubuntu-latest
