@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'package:code_assets/code_assets.dart';
 import 'package:crypto/crypto.dart';
 import 'package:hooks/hooks.dart';
+import 'package:http/io_client.dart';
 import 'package:powersync_core/src/setup/native.dart';
 
 // If you want to use a local build of the PowerSync SQLite core extension, set
@@ -30,7 +31,7 @@ void main(List<String> args) async {
     if (_localCoreExtensionCheckout case final checkout?) {
       coreExtension = await _useLocalCoreExtension(checkout, input, output);
     } else {
-      coreExtension = await _resuseOrDownloadCoreExtension(input);
+      coreExtension = await _reuseOrDownloadCoreExtension(input);
     }
 
     output.assets.code.add(CodeAsset(
@@ -42,7 +43,7 @@ void main(List<String> args) async {
   });
 }
 
-Future<File> _resuseOrDownloadCoreExtension(BuildInput input) async {
+Future<File> _reuseOrDownloadCoreExtension(BuildInput input) async {
   final sourceFileName = _fileNameForBuild(input.config.code);
   final digest = assetNameToSha256Hash[sourceFileName]!;
 
@@ -77,34 +78,30 @@ Future<File> _resuseOrDownloadCoreExtension(BuildInput input) async {
 }
 
 Future<Uint8List> _fetchCoreExtension(String fileName, String hash) async {
-  final client = HttpClient()
+  final client = IOClient(HttpClient()
     // From Dart 3.11, proxy-related environment variables are passed to
     // hooks. We respect them to ensure we can download these binaries in
     // environments where that's required.
-    ..findProxy = HttpClient.findProxyFromEnvironment;
+    ..findProxy = HttpClient.findProxyFromEnvironment);
   final uri = Uri.https(
     'github.com',
     'powersync-ja/powersync-sqlite-core/releases/download/$releaseVersion/$fileName',
   );
 
   try {
-    final request = await client.getUrl(uri);
-    request.followRedirects = true;
-    final response = await request.close();
-
-    final builder = BytesBuilder(copy: false);
-    await for (final chunk in response) {
-      builder.add(chunk);
+    final response = await client.get(uri);
+    if (response.statusCode != 200) {
+      throw Exception(
+          'Could not download $uri, got ${response.statusCode}: ${response.body}');
     }
 
-    final bytes = builder.takeBytes();
-    final digest = sha256.convert(bytes);
+    final digest = sha256.convert(response.bodyBytes);
     if (digest.toString() != hash) {
       throw Exception(
           'Unexpected digest for $uri, expected $hash got $digest.');
     }
 
-    return bytes;
+    return response.bodyBytes;
   } finally {
     client.close();
   }
