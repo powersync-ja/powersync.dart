@@ -6,6 +6,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../navigation.dart';
 import '../powersync/database.dart';
+import '../powersync/database.drift.dart';
 import '../powersync/fts_helpers.dart' as fts_helpers;
 
 part 'search.g.dart';

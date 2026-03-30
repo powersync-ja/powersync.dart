@@ -1,7 +1,5 @@
 // ignore_for_file: library_private_types_in_public_api
 
-library powersync_client;
-
 import 'package:powersync/powersync.dart';
 
 import "../models/models.dart";

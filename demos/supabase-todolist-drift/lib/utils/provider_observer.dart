@@ -7,16 +7,23 @@ final class LoggingProviderObserver extends ProviderObserver {
   const LoggingProviderObserver();
 
   @override
-  void didUpdateProvider(ProviderBase<Object?> provider, Object? previousValue,
-      Object? newValue, ProviderContainer container) {
+  void didUpdateProvider(
+    ProviderObserverContext context,
+    Object? previousValue,
+    Object? newValue,
+  ) {
     if (newValue case AsyncError(:final error, :final stackTrace)) {
-      _log.warning('$provider emitted async error', error, stackTrace);
+      _log.warning(
+          '${context.provider} emitted async error', error, stackTrace);
     }
   }
 
   @override
-  void providerDidFail(ProviderBase<Object?> provider, Object error,
-      StackTrace stackTrace, ProviderContainer container) {
-    _log.warning('$provider threw exception', error, stackTrace);
+  void providerDidFail(
+    ProviderObserverContext context,
+    Object error,
+    StackTrace stackTrace,
+  ) {
+    _log.warning('${context.provider} threw exception', error, stackTrace);
   }
 }

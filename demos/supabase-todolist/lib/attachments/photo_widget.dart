@@ -35,7 +35,7 @@ class _ResolvedPhotoState {
 class _PhotoWidgetState extends State<PhotoWidget> {
   late String photoPath;
 
-  Future<_ResolvedPhotoState> _getPhotoState(photoId) async {
+  Future<_ResolvedPhotoState> _getPhotoState(String? photoId) async {
     if (photoId == null) {
       return _ResolvedPhotoState(photoPath: null, fileExists: false);
     }

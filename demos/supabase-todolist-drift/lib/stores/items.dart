@@ -3,6 +3,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../powersync/attachments/queue.dart';
 import '../powersync/database.dart';
+import '../powersync/database.drift.dart';
 import '../supabase.dart';
 
 part 'items.g.dart';

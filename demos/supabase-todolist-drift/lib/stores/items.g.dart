@@ -6,171 +6,93 @@ part of 'items.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$itemsNotifierHash() => r'0cda92119ac0ce0a22bdaf05d74d17e6b1dc0f4f';
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// ignore_for_file: type=lint, type=warning
 
-/// Copied from Dart SDK
-class _SystemHash {
-  _SystemHash._();
-
-  static int combine(int hash, int value) {
-    // ignore: parameter_assignments
-    hash = 0x1fffffff & (hash + value);
-    // ignore: parameter_assignments
-    hash = 0x1fffffff & (hash + ((0x0007ffff & hash) << 10));
-    return hash ^ (hash >> 6);
-  }
-
-  static int finish(int hash) {
-    // ignore: parameter_assignments
-    hash = 0x1fffffff & (hash + ((0x03ffffff & hash) << 3));
-    // ignore: parameter_assignments
-    hash = hash ^ (hash >> 11);
-    return 0x1fffffff & (hash + ((0x00003fff & hash) << 15));
-  }
-}
-
-abstract class _$ItemsNotifier
-    extends BuildlessAutoDisposeStreamNotifier<List<TodoItem>> {
-  late final String list;
-
-  Stream<List<TodoItem>> build(
-    String list,
-  );
-}
-
-/// See also [ItemsNotifier].
 @ProviderFor(ItemsNotifier)
-const itemsNotifierProvider = ItemsNotifierFamily();
+final itemsProvider = ItemsNotifierFamily._();
 
-/// See also [ItemsNotifier].
-class ItemsNotifierFamily extends Family<AsyncValue<List<TodoItem>>> {
-  /// See also [ItemsNotifier].
-  const ItemsNotifierFamily();
-
-  /// See also [ItemsNotifier].
-  ItemsNotifierProvider call(
-    String list,
-  ) {
-    return ItemsNotifierProvider(
-      list,
-    );
-  }
-
-  @override
-  ItemsNotifierProvider getProviderOverride(
-    covariant ItemsNotifierProvider provider,
-  ) {
-    return call(
-      provider.list,
-    );
-  }
-
-  static const Iterable<ProviderOrFamily>? _dependencies = null;
-
-  @override
-  Iterable<ProviderOrFamily>? get dependencies => _dependencies;
-
-  static const Iterable<ProviderOrFamily>? _allTransitiveDependencies = null;
-
-  @override
-  Iterable<ProviderOrFamily>? get allTransitiveDependencies =>
-      _allTransitiveDependencies;
-
-  @override
-  String? get name => r'itemsNotifierProvider';
-}
-
-/// See also [ItemsNotifier].
-class ItemsNotifierProvider extends AutoDisposeStreamNotifierProviderImpl<
-    ItemsNotifier, List<TodoItem>> {
-  /// See also [ItemsNotifier].
-  ItemsNotifierProvider(
-    String list,
-  ) : this._internal(
-          () => ItemsNotifier()..list = list,
-          from: itemsNotifierProvider,
-          name: r'itemsNotifierProvider',
-          debugGetCreateSourceHash:
-              const bool.fromEnvironment('dart.vm.product')
-                  ? null
-                  : _$itemsNotifierHash,
-          dependencies: ItemsNotifierFamily._dependencies,
-          allTransitiveDependencies:
-              ItemsNotifierFamily._allTransitiveDependencies,
-          list: list,
+final class ItemsNotifierProvider
+    extends $StreamNotifierProvider<ItemsNotifier, List<TodoItem>> {
+  ItemsNotifierProvider._(
+      {required ItemsNotifierFamily super.from, required String super.argument})
+      : super(
+          retry: null,
+          name: r'itemsProvider',
+          isAutoDispose: true,
+          dependencies: null,
+          $allTransitiveDependencies: null,
         );
 
-  ItemsNotifierProvider._internal(
-    super._createNotifier, {
-    required super.name,
-    required super.dependencies,
-    required super.allTransitiveDependencies,
-    required super.debugGetCreateSourceHash,
-    required super.from,
-    required this.list,
-  }) : super.internal();
-
-  final String list;
+  @override
+  String debugGetCreateSourceHash() => _$itemsNotifierHash();
 
   @override
-  Stream<List<TodoItem>> runNotifierBuild(
-    covariant ItemsNotifier notifier,
-  ) {
-    return notifier.build(
-      list,
-    );
+  String toString() {
+    return r'itemsProvider'
+        ''
+        '($argument)';
   }
 
+  @$internal
   @override
-  Override overrideWith(ItemsNotifier Function() create) {
-    return ProviderOverride(
-      origin: this,
-      override: ItemsNotifierProvider._internal(
-        () => create()..list = list,
-        from: from,
-        name: null,
-        dependencies: null,
-        allTransitiveDependencies: null,
-        debugGetCreateSourceHash: null,
-        list: list,
-      ),
-    );
-  }
-
-  @override
-  AutoDisposeStreamNotifierProviderElement<ItemsNotifier, List<TodoItem>>
-      createElement() {
-    return _ItemsNotifierProviderElement(this);
-  }
+  ItemsNotifier create() => ItemsNotifier();
 
   @override
   bool operator ==(Object other) {
-    return other is ItemsNotifierProvider && other.list == list;
+    return other is ItemsNotifierProvider && other.argument == argument;
   }
 
   @override
   int get hashCode {
-    var hash = _SystemHash.combine(0, runtimeType.hashCode);
-    hash = _SystemHash.combine(hash, list.hashCode);
-
-    return _SystemHash.finish(hash);
+    return argument.hashCode;
   }
 }
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-mixin ItemsNotifierRef on AutoDisposeStreamNotifierProviderRef<List<TodoItem>> {
-  /// The parameter `list` of this provider.
-  String get list;
-}
+String _$itemsNotifierHash() => r'23fa85ab084d323c3ad8d5ff3efcd900b73ce90a';
 
-class _ItemsNotifierProviderElement
-    extends AutoDisposeStreamNotifierProviderElement<ItemsNotifier,
-        List<TodoItem>> with ItemsNotifierRef {
-  _ItemsNotifierProviderElement(super.provider);
+final class ItemsNotifierFamily extends $Family
+    with
+        $ClassFamilyOverride<ItemsNotifier, AsyncValue<List<TodoItem>>,
+            List<TodoItem>, Stream<List<TodoItem>>, String> {
+  ItemsNotifierFamily._()
+      : super(
+          retry: null,
+          name: r'itemsProvider',
+          dependencies: null,
+          $allTransitiveDependencies: null,
+          isAutoDispose: true,
+        );
+
+  ItemsNotifierProvider call(
+    String list,
+  ) =>
+      ItemsNotifierProvider._(argument: list, from: this);
 
   @override
-  String get list => (origin as ItemsNotifierProvider).list;
+  String toString() => r'itemsProvider';
 }
-// ignore_for_file: type=lint
-// ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package
+
+abstract class _$ItemsNotifier extends $StreamNotifier<List<TodoItem>> {
+  late final _$args = ref.$arg as String;
+  String get list => _$args;
+
+  Stream<List<TodoItem>> build(
+    String list,
+  );
+  @$mustCallSuper
+  @override
+  void runBuild() {
+    final ref = this.ref as $Ref<AsyncValue<List<TodoItem>>, List<TodoItem>>;
+    final element = ref.element as $ClassProviderElement<
+        AnyNotifier<AsyncValue<List<TodoItem>>, List<TodoItem>>,
+        AsyncValue<List<TodoItem>>,
+        Object?,
+        Object?>;
+    element.handleCreate(
+        ref,
+        () => build(
+              _$args,
+            ));
+  }
+}

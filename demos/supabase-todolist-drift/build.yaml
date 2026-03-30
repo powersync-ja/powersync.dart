@@ -1,6 +1,19 @@
 targets:
+  drift:
+    auto_apply_builders: false
+    builders:
+      drift_dev:analyzer:
+        enabled: true
+        options: &options
+          store_date_time_values_as_text: true
+      drift_dev:modular:
+        enabled: true
+        # We use yaml anchors to give the two builders the same options
+        options: *options
+
   $default:
+    # Run drift target first to ensure code has been generated at this point.
+    dependencies: [':drift']
     builders:
       drift_dev:
-        options:
-          store_date_time_values_as_text: true
+        enabled: false

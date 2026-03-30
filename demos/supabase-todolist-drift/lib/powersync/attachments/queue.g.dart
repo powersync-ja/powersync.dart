@@ -6,22 +6,43 @@ part of 'queue.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$attachmentQueueHash() => r'353be28d71ad41994abf783776a99881e0b51383';
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// ignore_for_file: type=lint, type=warning
 
-/// See also [attachmentQueue].
 @ProviderFor(attachmentQueue)
-final attachmentQueueProvider = FutureProvider<PhotoAttachmentQueue>.internal(
-  attachmentQueue,
-  name: r'attachmentQueueProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$attachmentQueueHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+final attachmentQueueProvider = AttachmentQueueProvider._();
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef AttachmentQueueRef = FutureProviderRef<PhotoAttachmentQueue>;
-// ignore_for_file: type=lint
-// ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package
+final class AttachmentQueueProvider extends $FunctionalProvider<
+        AsyncValue<PhotoAttachmentQueue>,
+        PhotoAttachmentQueue,
+        FutureOr<PhotoAttachmentQueue>>
+    with
+        $FutureModifier<PhotoAttachmentQueue>,
+        $FutureProvider<PhotoAttachmentQueue> {
+  AttachmentQueueProvider._()
+      : super(
+          from: null,
+          argument: null,
+          retry: null,
+          name: r'attachmentQueueProvider',
+          isAutoDispose: false,
+          dependencies: null,
+          $allTransitiveDependencies: null,
+        );
+
+  @override
+  String debugGetCreateSourceHash() => _$attachmentQueueHash();
+
+  @$internal
+  @override
+  $FutureProviderElement<PhotoAttachmentQueue> $createElement(
+          $ProviderPointer pointer) =>
+      $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<PhotoAttachmentQueue> create(Ref ref) {
+    return attachmentQueue(ref);
+  }
+}
+
+String _$attachmentQueueHash() => r'353be28d71ad41994abf783776a99881e0b51383';

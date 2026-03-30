@@ -3,10 +3,9 @@ import 'package:drift_sqlite_async/drift_sqlite_async.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:powersync/powersync.dart' show uuid;
 
+import 'database.drift.dart';
 import 'fts5.dart';
 import 'powersync.dart';
-
-part 'database.g.dart';
 
 class TodoItems extends Table {
   @override
@@ -51,7 +50,7 @@ final class ListItemWithStats {
   tables: [TodoItems, ListItems],
   include: {'queries.drift'},
 )
-class AppDatabase extends _$AppDatabase {
+class AppDatabase extends $AppDatabase {
   AppDatabase(super.e);
 
   @override

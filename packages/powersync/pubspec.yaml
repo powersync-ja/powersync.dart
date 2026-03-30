@@ -3,8 +3,9 @@ version: 1.18.0
 homepage: https://powersync.com
 repository: https://github.com/powersync-ja/powersync.dart
 description: PowerSync Flutter SDK. Sync Postgres, MongoDB or MySQL with SQLite in your Flutter app
+resolution: workspace
 environment:
-  sdk: ^3.4.0
+  sdk: ^3.6.0
 
 dependencies:
   # Needed because of sqlite3_flutter_libs
@@ -17,7 +18,7 @@ dependencies:
   collection: ^1.17.0
 
 dev_dependencies:
-  lints: ^5.1.0
+  lints: ^6.1.0
   path: ^1.8.3
   path_provider: ^2.0.13
 

@@ -1,5 +1,7 @@
 /// Downloads the powersync-core dynamic library to run the demos using melos
 /// This is only necessary in the monorepo setup
+library;
+
 import 'dart:io';
 
 final coreUrl =

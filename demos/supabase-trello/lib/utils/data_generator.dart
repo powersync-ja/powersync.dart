@@ -41,7 +41,7 @@ class DataGenerator with Service {
     return List.generate(nrOfCards, (index) => '$prepend Card $index');
   }
 
-  createSampleWorkspace(
+  Future<void> createSampleWorkspace(
       String workspaceName, TrelloProvider trello, BuildContext context) async {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -62,10 +62,11 @@ class DataGenerator with Service {
       ),
     );
 
-    Workspace workspace = await createWorkspace(context,
+    Workspace? workspace = await createWorkspace(context,
         name: workspaceName,
         description: 'Example workspace',
         visibility: 'Public');
+    if (workspace == null) return;
     for (String boardName in _generateBoardNames(workspaceName)) {
       //create board
       Board newBoard = Board(

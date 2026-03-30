@@ -6,7 +6,7 @@ import '../app_config.dart';
 import '../components/page_layout.dart';
 import '../components/photo_widget.dart';
 import '../navigation.dart';
-import '../powersync/database.dart';
+import '../powersync/database.drift.dart';
 import '../stores/items.dart';
 
 @RoutePage()
@@ -39,7 +39,7 @@ final class _ItemsInListWidget extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final items = ref.watch(itemsNotifierProvider(list));
+    final items = ref.watch(itemsProvider(list));
 
     return items.maybeWhen(
       data: (items) => ListView(
@@ -72,15 +72,11 @@ final class _TodoItemWidget extends ConsumerWidget {
   }
 
   Future<void> deleteTodo(WidgetRef ref) async {
-    await ref
-        .read(itemsNotifierProvider(todo.listId).notifier)
-        .deleteItem(todo);
+    await ref.read(itemsProvider(todo.listId).notifier).deleteItem(todo);
   }
 
   Future<void> toggleTodo(WidgetRef ref) async {
-    await ref
-        .read(itemsNotifierProvider(todo.listId).notifier)
-        .toggleTodo(todo);
+    await ref.read(itemsProvider(todo.listId).notifier).toggleTodo(todo);
   }
 
   @override

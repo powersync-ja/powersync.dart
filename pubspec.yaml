@@ -1,15 +1,100 @@
 name: powersync_dart
-description: A sample command-line application.
-version: 1.0.0
+description: Workspace root for the PowerSync Dart SDK.
+publish_to: none
 
 environment:
-  sdk: ">=3.3.0 <4.0.0"
+  sdk: ">=3.6.0 <4.0.0"
 
-# Add regular dependencies here.
+workspace:
+  - packages/powersync
+  - packages/powersync_attachments_helper
+  - packages/powersync_core
+  - packages/powersync_flutter_libs
+  - packages/powersync_sqlcipher
+  - packages/powersync_sqlcipher/example
 
-dev_dependencies:
-  lints: ^2.1.1
-  melos: ^6.1.0
+  - demos/benchmarks
+  - demos/django-todolist
+  - demos/firebase-nodejs-todolist
+  - demos/supabase-anonymous-auth
+  - demos/supabase-edge-function-auth
+  - demos/supabase-simple-chat
+  - demos/supabase-todolist
+  - demos/supabase-todolist-drift
+  - demos/supabase-todolist-optional-sync
+  - demos/supabase-trello
+
+dependencies:
+  lints: ^6.1.0
+  melos: ^7.5.0
   test: ^1.25.0
   path: ^1.0.0
   yaml: ^3.1.2
+
+melos:
+  repository: https://github.com/powersync-ja/powersync.dart
+  command:
+    version:
+      changelog: false
+      packageFilters:
+        noPrivate: true
+      hooks:
+        # Automatically update libraryVersion:
+        preCommit: |
+          dart run tool/update_version.dart
+          git add packages/powersync_core/lib/src/version.dart
+    publish:
+      hooks:
+        pre: dart ./scripts/download_core_binary_demos.dart # Download latest core binaries when publishing
+      packageFilters:
+        noPrivate: true
+
+  scripts:
+    prepare:
+      description: Download and prepare assets for demos
+      run: |
+        melos bootstrap && melos run prepare:assets && dart ./tool/compile_webworker.dart && dart ./scripts/init_powersync_core_binary.dart && dart ./scripts/download_core_binary_demos.dart && melos run prepare:demos
+
+    prepare:demos:
+      description: Download SQLite3 wasm for demos
+      run: dart run powersync:setup_web --no-worker
+      exec:
+        concurrency: 1
+      packageFilters:
+        private: true
+        dirExists: web
+        dependsOn: powersync
+
+    prepare:assets:
+      description: Download Sqlite3 WASM for tests
+      run: dart ./bin/setup_web.dart --no-worker --output-dir ../powersync_core/assets
+      exec:
+        concurrency: 1
+      packageFilters:
+        scope: powersync
+
+    test:
+      description: Run tests in a specific package.
+      run: flutter test
+      exec:
+        concurrency: 1
+      packageFilters:
+        dirExists:
+          - test
+        dependsOn: test
+      # This tells Melos tests to ignore env variables passed to tests from `melos run test`
+      # as they could change the behaviour of how tests filter packages.
+      env:
+        MELOS_TEST: true
+
+    test:web:
+      description: Run web tests in a specific package.
+      run: dart test -p chrome --concurrency=1
+      exec:
+        concurrency: 1
+      packageFilters:
+        dependsOn: test
+        dirExists:
+          - test
+      env:
+        MELOS_TEST: true

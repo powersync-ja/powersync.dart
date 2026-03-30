@@ -19,22 +19,16 @@ jobs:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/prepare
       - name: Check formatting
-        run: melos format:check:packages
+        run:  dart format --set-exit-if-changed -o none .
+      - name: Prepare templates for analysis
+        # Copy templates to make dart analyze work in demos
+        run: |
+          find . -name "app_config_template.dart" -exec sh -c 'cp "$1" "$(dirname "$1")/app_config.dart"' _ {} \;
+          touch demos/supabase-trello/.env
       - name: Lint
-        run: melos analyze:packages
+        run: dart analyze --fatal-infos --fatal-warnings
       - name: Publish dry-run
         run: melos publish --dry-run --yes
-
-  pana:
-    runs-on: ubuntu-latest
-    needs: [setup]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: ./.github/actions/prepare
-      - name: Check pana score
-        run: |
-          flutter pub global activate pana
-          melos analyze:packages:pana --no-select
 
   test:
     runs-on: ubuntu-latest
@@ -43,19 +37,6 @@ jobs:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/prepare
       - name: Run flutter tests
-        run: melos test
+        run: melos run test
       - name: Run dart tests
-        run: melos test:web
-
-  check_demos:
-    runs-on: ubuntu-latest
-    needs: [setup]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: ./.github/actions/prepare
-      - name: Check formatting
-        run: melos format:check:demos
-      - name: Lint
-        run: |
-          ./.github/workflows/scripts/copy-config.sh
-          melos analyze:demos
+        run: melos run test:web

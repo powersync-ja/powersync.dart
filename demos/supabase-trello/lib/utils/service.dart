@@ -27,12 +27,12 @@ import '../main.dart';
 var uuid = const Uuid();
 
 mixin Service {
-  randomUuid() {
+  String randomUuid() {
     return uuid.v4();
   }
 
   //sign up new user
-  signUp(
+  Future<void> signUp(
       {required String name,
       required String email,
       required String password,
@@ -112,7 +112,8 @@ mixin Service {
   }
 
   //log in existing user
-  logIn(String email, String password, BuildContext context) async {
+  Future<void> logIn(
+      String email, String password, BuildContext context) async {
     try {
       TrelloUser user = await dataClient.loginWithEmail(email, password);
       trello.setUser(user);
@@ -170,7 +171,7 @@ mixin Service {
   }
 
   //log out user
-  logOut(BuildContext context) async {
+  Future<void> logOut(BuildContext context) async {
     try {
       await dataClient.logOut();
     } on Exception catch (e) {
@@ -208,16 +209,16 @@ mixin Service {
     }
   }
 
-  switchToOfflineMode() async {
-    dataClient.switchToOfflineMode();
+  Future<void> switchToOfflineMode() async {
+    await dataClient.switchToOfflineMode();
   }
 
-  switchToOnlineMode() async {
-    dataClient.switchToOnlineMode();
+  Future<void> switchToOnlineMode() async {
+    await dataClient.switchToOnlineMode();
   }
 
   //search for a board
-  search(BuildContext context) async {
+  Future<void> search(BuildContext context) async {
     List<Board> allboards = await dataClient.board.getAllBoards();
 
     if (context.mounted) {
@@ -226,7 +227,7 @@ mixin Service {
   }
 
   //create workspace
-  createWorkspace(BuildContext context,
+  Future<Workspace?> createWorkspace(BuildContext context,
       {required String name,
       required String description,
       required String visibility}) async {
@@ -281,6 +282,7 @@ mixin Service {
           behavior: SnackBarBehavior.floating,
         ),
       );
+      return null;
     }
   }
 
@@ -303,7 +305,7 @@ mixin Service {
   }
 
   //create board
-  createBoard(BuildContext context, Board brd) async {
+  Future<void> createBoard(BuildContext context, Board brd) async {
     try {
       var labelColors = [<String, String>{}];
       labelColors = [
@@ -497,7 +499,7 @@ mixin Service {
   }
 
   //add card
-  Future<void> deleteCardLabel(cardId, BoardLabel brdlbl) async {
+  Future<void> deleteCardLabel(String cardId, BoardLabel brdlbl) async {
     await dataClient.cardLabel.deleteCardLabel(brdlbl);
     createActivity(
         card: cardId,

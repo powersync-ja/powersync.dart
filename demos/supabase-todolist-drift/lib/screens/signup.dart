@@ -15,13 +15,13 @@ final class SignupPage extends HookConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final usernameController = useTextEditingController();
     final passwordController = useTextEditingController();
-    final (:error, :isBusy) = ref.watch(authNotifierProvider);
+    final (:error, :isBusy) = ref.watch(authProvider);
 
     final signupAction = isBusy
         ? null
         : () {
             ref
-                .read(authNotifierProvider.notifier)
+                .read(authProvider.notifier)
                 .signup(usernameController.text, passwordController.text);
           };
 

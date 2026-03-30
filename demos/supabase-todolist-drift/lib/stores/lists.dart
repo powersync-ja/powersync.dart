@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../powersync/database.dart';
+import '../powersync/database.drift.dart';
 import '../supabase.dart';
 
 part 'lists.g.dart';
@@ -11,7 +12,7 @@ final class ListsNotifier extends _$ListsNotifier {
   @override
   Stream<List<ListItemWithStats>> build() {
     final database = ref.watch(driftDatabase);
-    return database.listsWithStats().watch();
+    return database.queriesDrift.listsWithStats().watch();
   }
 
   Future<void> createNewList(String name) async {

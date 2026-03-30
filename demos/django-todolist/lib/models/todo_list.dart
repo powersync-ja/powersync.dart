@@ -85,7 +85,7 @@ class TodoList {
   }
 
   /// Find list item.
-  static Future<TodoList> find(id) async {
+  static Future<TodoList> find(String id) async {
     final results = await db.get('SELECT * FROM lists WHERE id = ?', [id]);
     return TodoList.fromRow(results);
   }
