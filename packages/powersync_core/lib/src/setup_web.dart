@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:isolate';
 import 'package:collection/collection.dart';
 import 'package:pub_semver/pub_semver.dart';
 import 'package:pubspec_parse/pubspec_parse.dart';
@@ -31,9 +32,7 @@ Future<void> downloadWebAssets(List<String> arguments,
   final syncWorkerPath =
       '${root.toFilePath()}$outputDir/powersync_sync.worker.js';
 
-  final packageConfigFile = File.fromUri(
-    root.resolve('.dart_tool/package_config.json'),
-  );
+  final packageConfigFile = File.fromUri((await Isolate.packageConfig)!);
   dynamic packageConfig;
   try {
     packageConfig = json.decode(await packageConfigFile.readAsString());
