@@ -21,7 +21,7 @@ scripts:
   prepare:
     description: Download and prepare assets for demos
     run: |
-      melos bootstrap && melos prepare:assets && dart ./tool/compile_webworker.dart && dart ./scripts/init_powersync_core_binary.dart && dart ./scripts/download_core_binary_demos.dart && melos prepare:demos
+      melos bootstrap && melos run prepare:assets && dart ./tool/compile_webworker.dart && dart ./scripts/init_powersync_core_binary.dart && dart ./scripts/download_core_binary_demos.dart && melos run prepare:demos
 
   prepare:demos:
     description: Download SQLite3 wasm for demos

@@ -23,4 +23,4 @@ runs:
       shell: sh
       env:
         IS_IN_POWERSYNC_CI: 1
-      run: melos prepare
+      run: melos run prepare
