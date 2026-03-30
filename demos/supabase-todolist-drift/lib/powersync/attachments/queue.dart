@@ -1,7 +1,7 @@
 import 'dart:async';
 
+import 'package:powersync/powersync.dart';
 import 'package:powersync_attachments_helper/powersync_attachments_helper.dart';
-import 'package:riverpod/riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../app_config.dart';
@@ -31,7 +31,8 @@ Future<bool> onDownloadError(Attachment attachment, Object exception) async {
 }
 
 class PhotoAttachmentQueue extends AbstractAttachmentQueue {
-  PhotoAttachmentQueue(db, remoteStorage)
+  PhotoAttachmentQueue(
+      PowerSyncDatabase db, AbstractRemoteStorageAdapter remoteStorage)
       : super(
             db: db,
             remoteStorage: remoteStorage,

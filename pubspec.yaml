@@ -20,6 +20,7 @@ workspace:
   - demos/supabase-edge-function-auth
   - demos/supabase-simple-chat
   - demos/supabase-todolist
+  - demos/supabase-todolist-drift
   - demos/supabase-todolist-optional-sync
   - demos/supabase-trello
 

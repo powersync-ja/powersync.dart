@@ -55,7 +55,7 @@ final class PageLayout extends ConsumerWidget {
                   ListTile(
                     title: const Text('Sign Out'),
                     onTap: () async {
-                      ref.read(authNotifierProvider.notifier).signOut();
+                      ref.read(authProvider.notifier).signOut();
                     },
                   ),
                 ],

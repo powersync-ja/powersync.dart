@@ -14,9 +14,7 @@ final class AddListDialog extends HookConsumerWidget {
     final textController = useTextEditingController();
 
     Future<void> add() async {
-      await ref
-          .read(listsNotifierProvider.notifier)
-          .createNewList(textController.text);
+      await ref.read(listsProvider.notifier).createNewList(textController.text);
       if (context.mounted) {
         context.pop();
       }

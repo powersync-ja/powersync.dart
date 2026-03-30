@@ -57,6 +57,16 @@ class AddItemRouteArgs {
   String toString() {
     return 'AddItemRouteArgs{key: $key, list: $list}';
   }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    if (other is! AddItemRouteArgs) return false;
+    return key == other.key && list == other.list;
+  }
+
+  @override
+  int get hashCode => key.hashCode ^ list.hashCode;
 }
 
 /// generated route for
@@ -110,6 +120,16 @@ class ListsDetailsRouteArgs {
   String toString() {
     return 'ListsDetailsRouteArgs{key: $key, list: $list}';
   }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    if (other is! ListsDetailsRouteArgs) return false;
+    return key == other.key && list == other.list;
+  }
+
+  @override
+  int get hashCode => key.hashCode ^ list.hashCode;
 }
 
 /// generated route for
@@ -238,4 +258,14 @@ class TakePhotoRouteArgs {
   String toString() {
     return 'TakePhotoRouteArgs{key: $key, todoId: $todoId, camera: $camera}';
   }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    if (other is! TakePhotoRouteArgs) return false;
+    return key == other.key && todoId == other.todoId && camera == other.camera;
+  }
+
+  @override
+  int get hashCode => key.hashCode ^ todoId.hashCode ^ camera.hashCode;
 }

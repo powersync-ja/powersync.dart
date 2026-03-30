@@ -10,7 +10,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../navigation.dart';
 import '../powersync/attachments/queue.dart';
-import '../powersync/database.dart';
+import '../powersync/database.drift.dart';
 
 part 'photo_widget.g.dart';
 
