@@ -222,23 +222,14 @@ Future<void> downloadFile(
 /// build and avoids downloading from GitHub releases for every package we test.
 Future<void> _copyPrecompiled(
     Directory project, String wasmFile, String outputDir) async {
-  // Keep going up until we see the melos.yaml file indicating the workspace
-  // root.
-  var dir = project;
-  while (!await File(p.join(dir.path, 'melos.yaml')).exists()) {
-    print('Looking for melos workspace in $dir');
-    final parent = dir.parent;
-    if (p.equals(parent.path, dir.path)) {
-      throw 'Melos workspace not found';
-    }
-
-    dir = parent;
-  }
+  // The package config will always be $root/.dart_tool/package_config.json
+  final packageConfig = (await Isolate.packageConfig)!;
 
   // In the CI, an earlier step will have put these files into the prepared
   // sqlite3_wasm_build package.
   final destination = p.join(project.path, outputDir);
-  final wasmSource = p.join(dir.path, 'packages', 'sqlite3_wasm_build', 'dist');
-  print('Copying $wasmFile from $wasmSource to $destination');
-  await File(p.join(wasmSource, wasmFile)).copy(p.join(destination, wasmFile));
+  final wasmSource = File.fromUri(
+      packageConfig.resolve('../packages/sqlite3_wasm_build/dist/$wasmFile'));
+  print('Copying $wasmSource to $destination');
+  await wasmSource.copy(p.join(destination, wasmFile));
 }
