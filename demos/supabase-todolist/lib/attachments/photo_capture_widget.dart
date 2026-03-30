@@ -41,7 +41,7 @@ class _TakePhotoWidgetState extends State<TakePhotoWidget> {
     super.dispose();
   }
 
-  Future<void> _takePhoto(context) async {
+  Future<void> _takePhoto(BuildContext context) async {
     try {
       log.info('Taking photo for todo: ${widget.todoId}');
       await _initializeControllerFuture;
@@ -63,7 +63,7 @@ class _TakePhotoWidgetState extends State<TakePhotoWidget> {
     } catch (e) {
       log.severe('Error taking photo: $e');
     }
-    Navigator.pop(context);
+    if (context.mounted) Navigator.pop(context);
   }
 
   @override

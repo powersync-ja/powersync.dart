@@ -1,15 +1,6 @@
 name: powersync_dart
 repository: https://github.com/powersync-ja/powersync.dart
 
-packages:
-  - packages/*
-  - packages/powersync_sqlcipher/example
-  - demos/*
-  - demos/*/*
-
-ide:
-  intellij: false
-
 command:
   version:
     changelog: false
@@ -30,7 +21,7 @@ scripts:
   prepare:
     description: Download and prepare assets for demos
     run: |
-      melos bootstrap && melos prepare:assets && dart ./scripts/compile_webworker.dart && dart ./scripts/init_powersync_core_binary.dart && dart ./scripts/download_core_binary_demos.dart && melos prepare:demos
+      melos bootstrap && melos prepare:assets && dart ./tool/compile_webworker.dart && dart ./scripts/init_powersync_core_binary.dart && dart ./scripts/download_core_binary_demos.dart && melos prepare:demos
 
   prepare:demos:
     description: Download SQLite3 wasm for demos
@@ -49,42 +40,6 @@ scripts:
       concurrency: 1
     packageFilters:
       scope: powersync
-
-  analyze:demos:
-    description: Analyze Dart code in demos.
-    run: dart analyze demos --fatal-infos
-
-  analyze:packages:
-    description: Analyze Dart code in packages.
-    run: dart analyze packages --fatal-infos
-
-  analyze:packages:pana:
-    description: Analyze Dart packages with Pana
-    exec: flutter pub global run pana --no-warning --exit-code-threshold 10
-    packageFilters:
-      noPrivate: true
-
-  format:
-    description: Format Dart code.
-    run: dart format .
-
-  format:check:demos:
-    description: Check formatting of Dart code in demos.
-    run: dart format --output none --set-exit-if-changed demos
-
-  format:check:packages:
-    description: Check formatting of Dart code in packages.
-    run: dart format --output none --set-exit-if-changed packages
-
-  podfile:update:
-    description: Update Podfile.lock in demos.
-    run: cd ios && pod update && cd ../macos && pod update
-    exec:
-      concurrency: 1
-    packageFilters:
-      dirExists:
-        - ios
-        - macos
 
   test:
     description: Run tests in a specific package.

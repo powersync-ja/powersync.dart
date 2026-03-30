@@ -110,7 +110,7 @@ class _EmptyListWidgetState extends State<EmptyWidget>
     super.initState();
   }
 
-  animationListner() {
+  void animationListner() {
     if (_imageController == null) {
       return;
     }
@@ -317,7 +317,7 @@ class EmptyWidgetUtility {
     return MediaQuery.of(context).size.height;
   }
 
-  static double getDimention(context, double unit) {
+  static double getDimention(BuildContext context, double unit) {
     if (fullWidth(context) <= 360.0) {
       return unit / 1.3;
     } else {

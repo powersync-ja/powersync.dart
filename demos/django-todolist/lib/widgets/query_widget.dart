@@ -42,7 +42,7 @@ class QueryWidgetState extends State<QueryWidget> {
     _subscription?.cancel();
   }
 
-  _refresh() async {
+  Future<void> _refresh() async {
     _subscription?.cancel();
     final stream = db.watch(_query);
     _subscription = stream.listen((data) {

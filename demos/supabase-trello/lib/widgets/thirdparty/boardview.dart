@@ -1,26 +1,24 @@
-library boardview;
-
 import 'boardview_controller.dart';
 import 'vs_scrollbar.dart';
 import 'package:flutter/material.dart';
 import 'dart:core';
 import 'board_list.dart';
 
-// ignore: must_be_immutable
 class BoardView extends StatefulWidget {
   final List<BoardList>? lists;
   final double width;
-  Widget? middleWidget;
-  double? bottomPadding;
-  bool isSelecting;
-  bool? scrollbar;
-  ScrollbarStyle? scrollbarStyle;
-  BoardViewController? boardViewController;
-  int dragDelay;
+  final Widget? middleWidget;
+  final double? bottomPadding;
+  final bool isSelecting;
+  final bool? scrollbar;
+  final ScrollbarStyle? scrollbarStyle;
+  final BoardViewController? boardViewController;
+  final int dragDelay;
 
-  Function(bool)? itemInMiddleWidget;
-  OnDropBottomWidget? onDropItemInMiddleWidget;
-  BoardView(
+  final Function(bool)? itemInMiddleWidget;
+  final OnDropBottomWidget? onDropItemInMiddleWidget;
+
+  const BoardView(
       {super.key,
       this.itemInMiddleWidget,
       this.scrollbar,
@@ -83,8 +81,7 @@ class BoardViewState extends State<BoardView>
 
   final GlobalKey _middleWidgetKey = GlobalKey();
 
-  // ignore: prefer_typing_uninitialized_variables
-  var pointer;
+  PointerDownEvent? pointer;
 
   @override
   bool get wantKeepAlive => true;
@@ -771,7 +768,7 @@ class BoardViewState extends State<BoardView>
   }
 
   void run() {
-    if (pointer != null) {
+    if (pointer case final pointer?) {
       dx = pointer.position.dx;
       dy = pointer.position.dy;
       if (mounted) {

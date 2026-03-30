@@ -69,7 +69,7 @@ Schema makeSchema({required bool synced}) {
   ]);
 }
 
-switchToSyncedSchema(PowerSyncDatabase db, String userId) async {
+Future<void> switchToSyncedSchema(PowerSyncDatabase db, String userId) async {
   await db.updateSchema(makeSchema(synced: true));
 
   // needed to ensure that watches/queries are aware of the updated schema

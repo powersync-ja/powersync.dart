@@ -1,15 +1,31 @@
 name: powersync_dart
-description: A sample command-line application.
-version: 1.0.0
+description: Workspace root for the PowerSync Dart SDK.
+publish_to: none
 
 environment:
-  sdk: ">=3.3.0 <4.0.0"
+  sdk: ">=3.6.0 <4.0.0"
 
-# Add regular dependencies here.
+workspace:
+  - packages/powersync
+  - packages/powersync_attachments_helper
+  - packages/powersync_core
+  - packages/powersync_flutter_libs
+  - packages/powersync_sqlcipher
+  - packages/powersync_sqlcipher/example
 
-dev_dependencies:
-  lints: ^2.1.1
-  melos: ^6.1.0
+  - demos/benchmarks
+  - demos/django-todolist
+  - demos/firebase-nodejs-todolist
+  - demos/supabase-anonymous-auth
+  - demos/supabase-edge-function-auth
+  - demos/supabase-simple-chat
+  - demos/supabase-todolist
+  - demos/supabase-todolist-optional-sync
+  - demos/supabase-trello
+
+dependencies:
+  lints: ^6.1.0
+  melos: ^7.5.0
   test: ^1.25.0
   path: ^1.0.0
   yaml: ^3.1.2

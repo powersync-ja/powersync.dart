@@ -147,7 +147,7 @@ class BackendConnector extends PowerSyncBackendConnector {
 /// Global reference to the database
 late final PowerSyncDatabase db;
 
-upsert(data) async {
+Future<void> upsert(Map<String, dynamic> data) async {
   var url = Uri.parse("${AppConfig.backendUrl}/api/data");
 
   try {
@@ -170,7 +170,7 @@ upsert(data) async {
   }
 }
 
-update(data) async {
+Future<void> update(Map<String, dynamic> data) async {
   var url = Uri.parse("${AppConfig.backendUrl}/api/data");
 
   try {
@@ -193,7 +193,7 @@ update(data) async {
   }
 }
 
-delete(data) async {
+Future<void> delete(Map<String, dynamic> data) async {
   var url = Uri.parse("${AppConfig.backendUrl}/api/data");
 
   try {
@@ -216,7 +216,7 @@ delete(data) async {
   }
 }
 
-isLoggedIn() {
+bool isLoggedIn() {
   final user = FirebaseAuth.instance.currentUser;
   return user != null;
 }

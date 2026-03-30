@@ -1,9 +1,11 @@
-/// Downloads the powersync dynamic library and copies it to the powersync_core package directory
+/// Downloads the powersync dynamic library and copies it to the powersync_core
+/// package directory.
+///
 /// This is only necessary for running unit tests in the powersync_core package
+library;
+
 import 'dart:ffi';
 import 'dart:io';
-
-import 'package:melos/melos.dart';
 
 final sqliteUrl =
     'https://github.com/powersync-ja/powersync-sqlite-core/releases/download/v0.4.11';
@@ -27,13 +29,13 @@ void main() async {
         print(
             'File renamed successfully from $sqliteCoreFilename to $newFileName');
       } catch (e) {
-        throw IOException('Error renaming file: $e');
+        throw Exception('Error renaming file: $e');
       }
     } else {
-      throw IOException('File $sqliteCoreFilename does not exist.');
+      throw Exception('File $sqliteCoreFilename does not exist.');
     }
-  } on IOException catch (e) {
-    print(e.message);
+  } on Exception catch (e) {
+    print(e.toString());
   }
 }
 
@@ -48,7 +50,7 @@ String getFileNameForPlatform() {
     case Abi.windowsX64:
       return 'powersync.dll';
     default:
-      throw IOException(
+      throw Exception(
         'Unsupported processor architecture "${Abi.current()}". '
         'Please open an issue on GitHub to request it.',
       );
@@ -82,10 +84,9 @@ String getLibraryForPlatform() {
     case Abi.windowsX64:
       return 'powersync_x64.dll';
     case Abi.windowsArm64:
-      throw IOException('ARM64 Windows is not supported. '
-          'Please use an x86_64 Windows machine or open a GitHub issue to request it');
+      return 'powersync_aarch64.dll ';
     default:
-      throw IOException(
+      throw Exception(
         'Unsupported processor architecture "${Abi.current()}". '
         'Please open an issue on GitHub to request it.',
       );
