@@ -20,9 +20,11 @@ jobs:
       - uses: ./.github/actions/prepare
       - name: Check formatting
         run:  dart format --set-exit-if-changed -o none .
-      - name: Copy app config templates
+      - name: Prepare templates for analysis
         # Copy templates to make dart analyze work in demos
-        run: find . -name "app_config_template.dart" -exec sh -c 'cp "$1" "$(dirname "$1")/app_config.dart"' _ {} \;
+        run: |
+          find . -name "app_config_template.dart" -exec sh -c 'cp "$1" "$(dirname "$1")/app_config.dart"' _ {} \;
+          touch demos/supabase-trello/.env
       - name: Lint
         run: dart analyze --fatal-infos --fatal-warnings
       - name: Publish dry-run
