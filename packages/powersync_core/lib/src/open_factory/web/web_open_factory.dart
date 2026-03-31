@@ -69,10 +69,4 @@ class PowerSyncOpenFactory extends AbstractPowerSyncOpenFactory
       function: (args) => uuid.v4(),
     );
   }
-
-  @override
-  String getLibraryForPlatform({String? path}) {
-    // no op for web
-    return "";
-  }
 }
