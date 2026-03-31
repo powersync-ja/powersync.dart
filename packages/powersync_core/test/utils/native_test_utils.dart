@@ -36,42 +36,6 @@ class TestOpenFactory extends PowerSyncOpenFactory with TestPowerSyncFactory {
   }
 
   @override
-  void enableExtension() {
-    var powersyncLib = getLibraryForPlatform();
-    sqlite3.ensureExtensionLoaded(SqliteExtension.inLibrary(
-        DynamicLibrary.open(powersyncLib), 'sqlite3_powersync_init'));
-  }
-
-  @override
-  String getLibraryForPlatform({String? path = "."}) {
-    switch (Abi.current()) {
-      case Abi.androidArm:
-      case Abi.androidArm64:
-      case Abi.androidX64:
-        return '$path/libpowersync.so';
-      case Abi.macosArm64:
-      case Abi.macosX64:
-        return '$path/libpowersync.dylib';
-      case Abi.linuxX64:
-      case Abi.linuxArm64:
-        return '$path/libpowersync.so';
-      case Abi.windowsX64:
-        return '$path/powersync.dll';
-      case Abi.androidIA32:
-        throw PowersyncNotReadyException(
-          'Unsupported processor architecture. X86 Android emulators are not '
-          'supported. Please use an x86_64 emulator instead. All physical '
-          'Android devices are supported including 32bit ARM.',
-        );
-      default:
-        throw PowersyncNotReadyException(
-          'Unsupported processor architecture "${Abi.current()}". '
-          'Please open an issue on GitHub to request it.',
-        );
-    }
-  }
-
-  @override
   Future<CommonDatabase> openRawInMemoryDatabase() async {
     applyOpenOverride();
 

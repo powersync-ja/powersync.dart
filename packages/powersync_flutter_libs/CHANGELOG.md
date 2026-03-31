@@ -1,3 +1,7 @@
+## 0.5.0+eol
+
+- This package no longer does anything. Loading the core extension now happens through build hooks.
+
 ## 0.4.15+1
 
  - Fix outdated core extension version on Android.

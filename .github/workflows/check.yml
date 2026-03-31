@@ -30,6 +30,18 @@ jobs:
       - name: Publish dry-run
         run: melos publish --dry-run --yes
 
+  # Temporarily broken due to unpublished changes. TODO: Re-enable after merging SDK packages into one.
+  # pana:
+  #   runs-on: ubuntu-latest
+  #   needs: [setup]
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: ./.github/actions/prepare
+  #     - name: Check pana score
+  #       run: |
+  #         flutter pub global activate pana
+  #         melos analyze:packages:pana --no-select
+
   test:
     runs-on: ubuntu-latest
     needs: [setup]
