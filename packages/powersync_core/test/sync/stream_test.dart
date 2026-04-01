@@ -15,8 +15,6 @@ import 'utils.dart';
 void main() {
   late final testUtils = TestUtils();
 
-  late TestPowerSyncFactory factory;
-
   late TestDatabase database;
   late MockSyncService syncService;
   late Logger logger;
@@ -51,8 +49,7 @@ void main() {
     credentialsCallbackCount = 0;
     syncService = MockSyncService();
 
-    factory = await testUtils.testFactory();
-    (_, database) = await factory.openInMemoryDatabase();
+    (_, database) = await testUtils.openInMemoryDatabase();
     await database.initialize();
   });
 

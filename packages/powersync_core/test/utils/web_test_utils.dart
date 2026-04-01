@@ -1,9 +1,8 @@
 import 'dart:async';
 import 'dart:js_interop';
 
-import 'package:logging/logging.dart';
-import 'package:powersync_core/powersync_core.dart';
-import 'package:sqlite_async/sqlite3_wasm.dart';
+import 'package:powersync_core/web.dart';
+import 'package:sqlite3/wasm.dart';
 import 'package:sqlite_async/sqlite_async.dart';
 import 'package:test/test.dart';
 import 'package:web/web.dart' show Blob, BlobPropertyBag;
@@ -11,29 +10,6 @@ import 'abstract_test_utils.dart';
 
 @JS('URL.createObjectURL')
 external String _createObjectURL(Blob blob);
-
-class TestOpenFactory extends PowerSyncOpenFactory with TestPowerSyncFactory {
-  TestOpenFactory({required super.path, super.sqliteOptions});
-
-  @override
-  Future<CommonDatabase> openRawInMemoryDatabase() async {
-    final sqlite = await WasmSqlite3.loadFromUrl(
-        Uri.parse(sqliteOptions.webSqliteOptions.wasmUri));
-    sqlite.registerVirtualFileSystem(InMemoryFileSystem(), makeDefault: true);
-
-    final db = sqlite.openInMemory();
-
-    try {
-      enableExtension();
-    } on PowersyncNotReadyException catch (e) {
-      autoLogger.severe(e.message);
-      rethrow;
-    }
-
-    setupFunctions(db);
-    return db;
-  }
-}
 
 class TestUtils extends AbstractTestUtils {
   late Future<void> _isInitialized;
@@ -62,33 +38,26 @@ class TestUtils extends AbstractTestUtils {
   Future<void> cleanDb({required String path}) async {}
 
   @override
-  Future<TestPowerSyncFactory> testFactory(
+  Future<SqliteOpenFactory> testFactory(
       {String? path,
       String sqlitePath = '',
-      SqliteOptions options = const SqliteOptions.defaults()}) async {
+      SqliteOptions options = const SqliteOptions()}) async {
     await _isInitialized;
 
-    final webOptions = SqliteOptions(
+    return WebPowerSyncOpenFactory(
+      path: path ?? '',
+      sqliteOptions: options.copyWith(
         webSqliteOptions:
-            WebSqliteOptions(wasmUri: sqlite3WASMUri, workerUri: workerUri));
-    return TestOpenFactory(path: path ?? '', sqliteOptions: webOptions);
+            WebSqliteOptions(wasmUri: sqlite3WASMUri, workerUri: workerUri),
+      ),
+    );
   }
 
   @override
-  Future<PowerSyncDatabase> setupPowerSync(
-      {String? path,
-      Schema? schema,
-      Logger? logger,
-      bool initialize = true}) async {
-    await _isInitialized;
-    return super.setupPowerSync(
-        path: path, schema: schema, logger: logger, initialize: initialize);
-  }
+  Future<CommonDatabase> openRawInMemoryDatabase() async {
+    final sqlite = await WasmSqlite3.loadFromUrl(Uri.parse(sqlite3WASMUri));
+    sqlite.registerVirtualFileSystem(InMemoryFileSystem(), makeDefault: true);
 
-  @override
-  Future<CommonDatabase> setupSqlite(
-      {required PowerSyncDatabase powersync}) async {
-    await _isInitialized;
-    return super.setupSqlite(powersync: powersync);
+    return sqlite.openInMemory();
   }
 }

@@ -1,11 +1,7 @@
-import 'dart:ffi';
 import 'dart:io';
 
 import 'package:path/path.dart';
 import 'package:powersync_core/powersync_core.dart';
-import 'package:powersync_core/sqlite3_common.dart';
-import 'package:powersync_core/sqlite3_open.dart' as sqlite_open;
-import 'package:powersync_core/sqlite_async.dart';
 
 const schema = Schema([
   Table('customers', [Column.text('name'), Column.text('email')])
@@ -29,25 +25,6 @@ class BackendConnector extends PowerSyncBackendConnector {
   }
 }
 
-/// Custom factory to load the PowerSync extension.
-/// This is required to load the extension from a custom location.
-/// The extension is required to sync data with the backend.
-/// On macOS and Linux, the default sqlite3 library is overridden to load the extension.
-class PowerSyncDartOpenFactory extends PowerSyncOpenFactory {
-  PowerSyncDartOpenFactory({required super.path, super.sqliteOptions});
-
-  @override
-  CommonDatabase open(SqliteOpenOptions options) {
-    sqlite_open.open.overrideFor(sqlite_open.OperatingSystem.linux, () {
-      return DynamicLibrary.open('libsqlite3.so.0');
-    });
-    sqlite_open.open.overrideFor(sqlite_open.OperatingSystem.macOS, () {
-      return DynamicLibrary.open('libsqlite3.dylib');
-    });
-    return super.open(options);
-  }
-}
-
 Future<String> getDatabasePath() async {
   const dbFilename = 'powersync-demo.db';
   final dir = (Directory.current.uri).toFilePath();
@@ -56,8 +33,7 @@ Future<String> getDatabasePath() async {
 
 Future<void> openDatabase() async {
   // Setup the database.
-  final psFactory = PowerSyncDartOpenFactory(path: await getDatabasePath());
-  db = PowerSyncDatabase.withFactory(psFactory, schema: schema);
+  db = PowerSyncDatabase(path: await getDatabasePath(), schema: schema);
 
   // Initialise the database.
   await db.initialize();

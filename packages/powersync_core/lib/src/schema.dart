@@ -1,4 +1,4 @@
-/// @docImport 'database/powersync_db_mixin.dart';
+/// @docImport 'database/powersync_database.dart';
 library;
 
 import 'crud.dart';
@@ -394,7 +394,7 @@ final class RawTable {
   /// statemenst are inferred.
   final RawTableSchema? schema;
 
-  /// An optional statement to run when [PowerSyncDatabaseMixin.disconnectAndClear]
+  /// An optional statement to run when [PowerSyncDatabase.disconnectAndClear]
   /// is called.
   final String? clear;
 

@@ -71,7 +71,7 @@ base class AttachmentQueue {
   final bool _downloadAttachments;
   final Logger _logger;
 
-  final Mutex _mutex = Mutex();
+  final Mutex _mutex = Mutex.simple();
   bool _closed = false;
   StreamSubscription<void>? _syncStatusSubscription;
   StreamSubscription<void>? _watchedAttachmentsSubscription;

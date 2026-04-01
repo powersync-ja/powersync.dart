@@ -4,7 +4,7 @@
 
 library;
 
-import 'package:sqlite_async/sqlite3_web.dart';
+import 'package:sqlite3_web/sqlite3_web.dart';
 
 import 'worker_utils.dart';
 

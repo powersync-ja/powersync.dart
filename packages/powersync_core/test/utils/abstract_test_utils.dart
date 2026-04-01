@@ -5,12 +5,12 @@ import 'package:http/http.dart';
 import 'package:logging/logging.dart';
 import 'package:powersync_core/powersync_core.dart';
 import 'package:powersync_core/src/abort_controller.dart';
-import 'package:powersync_core/src/database/powersync_db_mixin.dart';
+import 'package:powersync_core/src/database/powersync_database.dart';
 import 'package:powersync_core/src/sync/bucket_storage.dart';
 import 'package:powersync_core/src/sync/internal_connector.dart';
 import 'package:powersync_core/src/sync/options.dart';
 import 'package:powersync_core/src/sync/streaming_sync.dart';
-import 'package:sqlite_async/sqlite3_common.dart';
+import 'package:sqlite3/common.dart';
 import 'package:sqlite_async/sqlite_async.dart';
 import 'package:test/test.dart';
 import 'package:test_api/src/backend/invoker.dart';
@@ -63,7 +63,40 @@ Logger _makeTestLogger({Level level = Level.ALL, String? name}) {
   return logger;
 }
 
-abstract mixin class TestPowerSyncFactory implements PowerSyncOpenFactory {
+abstract class AbstractTestUtils {
+  String get _testName => Invoker.current!.liveTest.test.name;
+
+  String dbPath() {
+    var testShortName =
+        _testName.replaceAll(RegExp(r'[\s\./]'), '_').toLowerCase();
+    var dbName = "test-db/$testShortName.db";
+    return dbName;
+  }
+
+  /// Generates a test open factory
+  Future<SqliteOpenFactory> testFactory(
+      {String? path, SqliteOptions options = const SqliteOptions()});
+
+  /// Creates a SqliteDatabaseConnection
+  Future<PowerSyncDatabase> setupPowerSync({
+    String? path,
+    Schema? schema,
+    Logger? logger,
+    bool initialize = true,
+  }) async {
+    final db = PowerSyncDatabase.withFactory(await testFactory(path: path),
+        schema: schema ?? defaultSchema,
+        logger: logger ?? _makeTestLogger(name: _testName));
+    if (initialize) {
+      await db.initialize();
+    }
+    addTearDown(db.close);
+    return db;
+  }
+
+  /// Deletes any DB data
+  Future<void> cleanDb({required String path});
+
   Future<CommonDatabase> openRawInMemoryDatabase();
 
   Future<(CommonDatabase, TestDatabase)> openInMemoryDatabase({
@@ -86,53 +119,6 @@ abstract mixin class TestPowerSyncFactory implements PowerSyncOpenFactory {
       schema: customSchema ?? schema,
     );
   }
-}
-
-abstract class AbstractTestUtils {
-  String get _testName => Invoker.current!.liveTest.test.name;
-
-  String dbPath() {
-    var testShortName =
-        _testName.replaceAll(RegExp(r'[\s\./]'), '_').toLowerCase();
-    var dbName = "test-db/$testShortName.db";
-    return dbName;
-  }
-
-  /// Generates a test open factory
-  Future<TestPowerSyncFactory> testFactory(
-      {String? path,
-      String sqlitePath = '',
-      SqliteOptions options = const SqliteOptions.defaults()});
-
-  /// Creates a SqliteDatabaseConnection
-  Future<PowerSyncDatabase> setupPowerSync({
-    String? path,
-    Schema? schema,
-    Logger? logger,
-    bool initialize = true,
-  }) async {
-    final db = PowerSyncDatabase.withFactory(await testFactory(path: path),
-        schema: schema ?? defaultSchema,
-        logger: logger ?? _makeTestLogger(name: _testName));
-    if (initialize) {
-      await db.initialize();
-    }
-    addTearDown(db.close);
-    return db;
-  }
-
-  Future<CommonDatabase> setupSqlite(
-      {required PowerSyncDatabase powersync}) async {
-    await powersync.initialize();
-
-    final sqliteDb =
-        await powersync.isolateConnectionFactory().openRawDatabase();
-
-    return sqliteDb;
-  }
-
-  /// Deletes any DB data
-  Future<void> cleanDb({required String path});
 }
 
 class TestConnector extends PowerSyncBackendConnector {
@@ -159,28 +145,14 @@ class TestConnector extends PowerSyncBackendConnector {
 ///
 /// This ensures tests for sync cover the `ConnectionManager` and other methods
 /// exposed by the mixin.
-final class TestDatabase
-    with SqliteQueries, PowerSyncDatabaseMixin
-    implements PowerSyncDatabase {
-  @override
-  final SqliteDatabase database;
-  @override
-  final Logger logger;
-  @override
-  Schema schema;
-
-  @override
-  late final Future<void> isInitialized;
-
+final class TestDatabase extends BasePowerSyncDatabase {
   Client? httpClient;
 
   TestDatabase({
-    required this.database,
-    required this.logger,
-    required this.schema,
-  }) {
-    isInitialized = baseInit();
-  }
+    required super.database,
+    required super.logger,
+    required super.schema,
+  });
 
   @override
   Future<void> connectInternal({
