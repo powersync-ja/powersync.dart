@@ -58,7 +58,7 @@ void main() {
             stmt.execute(['Test User', 'user@example.org']);
           }
         } finally {
-          stmt.dispose();
+          stmt.close();
         }
       });
 
@@ -85,7 +85,7 @@ void main() {
             stmt.execute([id, 'Test User', 'user@example.org']);
           }
         } finally {
-          stmt.dispose();
+          stmt.close();
         }
       });
 
@@ -110,7 +110,7 @@ void main() {
         for (var id in ids) {
           stmt.execute([id, 'Test User', 'user@example.org']);
         }
-        stmt.dispose();
+        stmt.close();
       });
 
       print("Completed synchronous inserts prepared in ${timer.elapsed}");
