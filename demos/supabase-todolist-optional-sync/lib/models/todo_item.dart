@@ -1,7 +1,7 @@
 import 'package:powersync_flutter_supabase_todolist_optional_sync_demo/models/schema.dart';
 
 import '../powersync.dart';
-import 'package:powersync/sqlite3_common.dart' as sqlite;
+import 'package:sqlite3/common.dart' as sqlite;
 
 /// TodoItem represents a result row of a query on "todos".
 ///

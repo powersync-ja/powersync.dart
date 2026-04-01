@@ -15,7 +15,8 @@ dependencies:
   path: ^1.8.3
   logging: ^1.2.0
   universal_io: ^2.2.2
-  sqlite_async: ^0.13.0
+  sqlite_async: ^0.14.0
+  sqlite3: ^3.2.0
   http: ^1.2.2
 
 dev_dependencies:

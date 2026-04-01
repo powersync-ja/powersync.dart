@@ -1,5 +1,5 @@
 import '../powersync.dart';
-import 'package:powersync/sqlite3.dart' as sqlite;
+import 'package:sqlite3/common.dart' as sqlite;
 
 /// TodoList represents a result row of a query on "todos".
 ///

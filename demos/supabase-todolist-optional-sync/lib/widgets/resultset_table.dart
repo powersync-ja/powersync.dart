@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:powersync/sqlite3_common.dart' as sqlite;
+import 'package:sqlite3/common.dart' as sqlite;
 
 /// Stateless DataTable rendering results from a SQLite query
 class ResultSetTable extends StatelessWidget {
