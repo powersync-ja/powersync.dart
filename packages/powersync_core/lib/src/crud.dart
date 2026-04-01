@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import 'package:collection/collection.dart';
-import 'package:powersync_core/sqlite3_common.dart' as sqlite;
+import 'package:sqlite3/common.dart' as sqlite;
 
 import 'schema.dart';
 

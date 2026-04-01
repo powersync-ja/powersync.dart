@@ -6,8 +6,8 @@ import 'dart:convert';
 
 import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
-import 'package:powersync_core/sqlite_async.dart';
-import 'package:powersync_core/sqlite3_common.dart';
+import 'package:sqlite_async/sqlite_async.dart';
+import 'package:sqlite3/common.dart';
 
 import '../crud.dart';
 import '../schema_logic.dart';

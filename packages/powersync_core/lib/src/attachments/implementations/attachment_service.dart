@@ -14,7 +14,7 @@ final class AttachmentService {
   final Logger logger;
   final int maxArchivedCount;
   final String attachmentsQueueTableName;
-  final Mutex _mutex = Mutex();
+  final Mutex _mutex = Mutex.simple();
 
   late final AttachmentContext _context;
 

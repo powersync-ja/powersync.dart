@@ -1,4 +1,4 @@
-import 'package:powersync_core/sqlite_async.dart';
+import 'package:sqlite_async/sqlite_async.dart';
 import 'package:powersync_core/src/sync/bucket_storage.dart';
 import 'package:sqlite_async/web.dart';
 

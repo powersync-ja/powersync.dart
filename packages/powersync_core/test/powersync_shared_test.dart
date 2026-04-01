@@ -1,6 +1,6 @@
 import 'package:logging/logging.dart';
 import 'package:powersync_core/powersync_core.dart';
-import 'package:sqlite_async/mutex.dart';
+import 'package:sqlite_async/sqlite_async.dart';
 import 'package:test/test.dart';
 import 'package:uuid/parsing.dart';
 

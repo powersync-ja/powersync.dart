@@ -5,11 +5,11 @@ import 'package:meta/meta.dart';
 import 'package:powersync_core/src/abort_controller.dart';
 import 'package:powersync_core/src/connector.dart';
 import 'package:powersync_core/src/database/active_instances.dart';
-import 'package:powersync_core/src/database/powersync_db_mixin.dart';
 import 'package:powersync_core/src/sync/options.dart';
 import 'package:powersync_core/src/sync/stream.dart';
 import 'package:powersync_core/src/sync/sync_status.dart';
 
+import '../database/powersync_database.dart';
 import 'instruction.dart';
 import 'mutable_sync_status.dart';
 import 'streaming_sync.dart';
@@ -20,7 +20,7 @@ typedef _RawStreamKey = (String, String);
 
 @internal
 final class ConnectionManager {
-  final PowerSyncDatabaseMixin db;
+  final PowerSyncDatabase db;
   final ActiveDatabaseGroup _activeGroup;
 
   /// All streams (with parameters) for which a subscription has been requested

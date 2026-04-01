@@ -5,7 +5,7 @@
 library;
 
 import 'package:meta/meta.dart';
-import 'package:powersync_core/sqlite3_common.dart' show Row;
+import 'package:sqlite3/common.dart' show Row;
 import 'package:powersync_core/powersync_core.dart';
 
 /// Represents the state of an attachment.

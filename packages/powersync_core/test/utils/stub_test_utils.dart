@@ -1,18 +1,24 @@
-import 'package:sqlite_async/src/sqlite_options.dart';
+import 'package:sqlite3/src/database.dart';
+import 'package:sqlite_async/sqlite_async.dart';
 
 import 'abstract_test_utils.dart';
 
 class TestUtils extends AbstractTestUtils {
   @override
-  Future<TestPowerSyncFactory> testFactory(
+  Future<SqliteOpenFactory> testFactory(
       {String? path,
       String sqlitePath = '',
-      SqliteOptions options = const SqliteOptions.defaults()}) {
+      SqliteOptions options = const SqliteOptions()}) {
     throw UnimplementedError();
   }
 
   @override
   Future<void> cleanDb({required String path}) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<CommonDatabase> openRawInMemoryDatabase() {
     throw UnimplementedError();
   }
 }

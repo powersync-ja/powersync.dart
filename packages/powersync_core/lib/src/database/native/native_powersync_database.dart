@@ -9,21 +9,13 @@ import 'package:powersync_core/src/abort_controller.dart';
 import 'package:powersync_core/src/sync/bucket_storage.dart';
 import 'package:powersync_core/src/connector.dart';
 import 'package:powersync_core/src/database/powersync_database.dart';
-import 'package:powersync_core/src/database/powersync_db_mixin.dart';
 import 'package:powersync_core/src/isolate_completer.dart';
-import 'package:powersync_core/src/log.dart';
 import 'package:powersync_core/src/log_internal.dart';
-import 'package:powersync_core/src/open_factory/abstract_powersync_open_factory.dart';
-import 'package:powersync_core/src/open_factory/native/native_open_factory.dart';
-import 'package:powersync_core/src/schema.dart';
 import 'package:powersync_core/src/sync/internal_connector.dart';
 import 'package:powersync_core/src/sync/options.dart';
 import 'package:powersync_core/src/sync/streaming_sync.dart';
 import 'package:powersync_core/src/sync/sync_status.dart';
-import 'package:sqlite_async/sqlite3_common.dart';
 import 'package:sqlite_async/sqlite_async.dart';
-// ignore: implementation_imports
-import 'package:sqlite_async/src/native/native_isolate_mutex.dart';
 
 /// A PowerSync managed database.
 ///
@@ -36,97 +28,12 @@ import 'package:sqlite_async/src/native/native_isolate_mutex.dart';
 ///
 /// All changes to local tables are automatically recorded, whether connected
 /// or not. Once connected, the changes are uploaded.
-class PowerSyncDatabaseImpl
-    with SqliteQueries, PowerSyncDatabaseMixin
-    implements PowerSyncDatabase {
-  @override
-  Schema schema;
-
-  @override
-  SqliteDatabase database;
-
-  @override
-  @protected
-  late Future<void> isInitialized;
-
-  @override
-
-  /// The Logger used by this [PowerSyncDatabase].
-  ///
-  /// The default is [autoLogger], which logs to the console in debug builds.
-  /// Use [debugLogger] to always log to the console.
-  /// Use [attachedLogger] to propagate logs to [Logger.root] for custom logging.
-  late final Logger logger;
-
-  /// Open a [PowerSyncDatabase].
-  ///
-  /// Only a single [PowerSyncDatabase] per [path] should be opened at a time.
-  ///
-  /// The specified [schema] is used for the database.
-  ///
-  /// A connection pool is used by default, allowing multiple concurrent read
-  /// transactions, and a single concurrent write transaction. Write transactions
-  /// do not block read transactions, and read transactions will see the state
-  /// from the last committed write transaction.
-  ///
-  /// A maximum of [maxReaders] concurrent read transactions are allowed.
-  ///
-  /// [logger] defaults to [autoLogger], which logs to the console in debug builds.
-  factory PowerSyncDatabaseImpl(
-      {required Schema schema,
-      required String path,
-      int maxReaders = SqliteDatabase.defaultMaxReaders,
-      Logger? logger,
-      @Deprecated("Use [PowerSyncDatabase.withFactory] instead.")
-      // ignore: deprecated_member_use_from_same_package
-      SqliteConnectionSetup? sqliteSetup}) {
-    // ignore: deprecated_member_use_from_same_package
-    DefaultSqliteOpenFactory factory =
-        // ignore: deprecated_member_use_from_same_package
-        PowerSyncOpenFactory(path: path, sqliteSetup: sqliteSetup);
-    return PowerSyncDatabaseImpl.withFactory(
-      factory,
-      schema: schema,
-      maxReaders: maxReaders,
-      logger: logger,
-    );
-  }
-
-  /// Open a [PowerSyncDatabase] with a [PowerSyncOpenFactory].
-  ///
-  /// The factory determines which database file is opened, as well as any
-  /// additional logic to run inside the database isolate before or after opening.
-  ///
-  /// Subclass [PowerSyncOpenFactory] to add custom logic to this process.
-  ///
-  /// [logger] defaults to [autoLogger], which logs to the console in debug builds.
-  factory PowerSyncDatabaseImpl.withFactory(
-    DefaultSqliteOpenFactory openFactory, {
-    required Schema schema,
-    int maxReaders = SqliteDatabase.defaultMaxReaders,
-    Logger? logger,
-  }) {
-    final db = SqliteDatabase.withFactory(openFactory, maxReaders: maxReaders);
-    return PowerSyncDatabaseImpl.withDatabase(
-      schema: schema,
-      database: db,
-      logger: logger,
-    );
-  }
-
-  /// Open a PowerSyncDatabase on an existing [SqliteDatabase].
-  ///
-  /// Migrations are run on the database when this constructor is called.
-  ///
-  /// [logger] defaults to [autoLogger], which logs to the console in debug builds.s
-  PowerSyncDatabaseImpl.withDatabase({
-    required this.schema,
-    required this.database,
-    Logger? logger,
-  }) {
-    this.logger = logger ?? autoLogger;
-    isInitialized = baseInit();
-  }
+final class NativePowerSyncDatabase extends BasePowerSyncDatabase {
+  NativePowerSyncDatabase({
+    required super.schema,
+    required super.database,
+    required super.logger,
+  });
 
   @override
   @internal
@@ -138,8 +45,6 @@ class PowerSyncDatabaseImpl
     required AbortController abort,
     required Zone asyncWorkZone,
   }) async {
-    final dbRef = database.isolateConnectionFactory();
-
     bool triedSpawningIsolate = false;
     StreamSubscription<UpdateNotification>? crudUpdateSubscription;
     StreamSubscription<void>? activeStreamsSubscription;
@@ -254,19 +159,14 @@ class PowerSyncDatabaseImpl
       receivedIsolateExit.complete();
     });
 
-    final crudMutex = group.crudMutex as SimpleMutex;
-    final syncMutex = group.syncMutex as SimpleMutex;
-
     // Spawning the isolate can't be interrupted
     triedSpawningIsolate = true;
     await Isolate.spawn(
       _syncIsolate,
       _PowerSyncDatabaseIsolateArgs(
         receiveMessages.sendPort,
-        dbRef,
+        database.openFactory.path,
         options,
-        crudMutex.shared,
-        syncMutex.shared,
         jsonEncode(schema),
       ),
       debugName: 'Sync ${database.openFactory.path}',
@@ -281,44 +181,22 @@ class PowerSyncDatabaseImpl
     // Automatically complete the abort controller once the isolate exits.
     unawaited(waitForShutdown());
   }
-
-  /// Takes a read lock, without starting a transaction.
-  ///
-  /// In most cases, [readTransaction] should be used instead.
-  @override
-  Future<T> readLock<T>(Future<T> Function(SqliteReadContext tx) callback,
-      {String? debugContext, Duration? lockTimeout}) async {
-    await isInitialized;
-    return database.readLock(callback,
-        debugContext: debugContext, lockTimeout: lockTimeout);
-  }
-
-  /// Takes a global lock, without starting a transaction.
-  ///
-  /// In most cases, [writeTransaction] should be used instead.
-  @override
-  Future<T> writeLock<T>(Future<T> Function(SqliteWriteContext tx) callback,
-      {String? debugContext, Duration? lockTimeout}) async {
-    await isInitialized;
-    return database.writeLock(callback,
-        debugContext: debugContext, lockTimeout: lockTimeout);
-  }
 }
 
 class _PowerSyncDatabaseIsolateArgs {
   final SendPort sPort;
-  final IsolateConnectionFactory dbRef;
+  final String databaseName;
   final ResolvedSyncOptions options;
-  final SerializedMutex crudMutex;
-  final SerializedMutex syncMutex;
+//  final SerializedMutex crudMutex;
+//  final SerializedMutex syncMutex;
   final String schemaJson;
 
   _PowerSyncDatabaseIsolateArgs(
     this.sPort,
-    this.dbRef,
+    this.databaseName,
     this.options,
-    this.crudMutex,
-    this.syncMutex,
+//    this.crudMutex,
+//    this.syncMutex,
     this.schemaJson,
   );
 }
@@ -327,15 +205,9 @@ Future<void> _syncIsolate(_PowerSyncDatabaseIsolateArgs args) async {
   final sPort = args.sPort;
   final rPort = ReceivePort();
   StreamController<String> crudUpdateController = StreamController.broadcast();
-  final upstreamDbClient = args.dbRef.upstreamPort.open();
+  final upstreamDbClient = SqliteDatabase(path: args.databaseName);
 
-  final crudMutex = args.crudMutex.open();
-  final syncMutex = args.syncMutex.open();
-
-  CommonDatabase? db;
-  final Mutex mutex = args.dbRef.mutex.open();
   StreamingSyncImplementation? openedStreamingSync;
-  StreamSubscription<void>? localUpdatesSubscription;
 
   Completer<void> shutdownCompleter = Completer();
 
@@ -344,17 +216,9 @@ Future<void> _syncIsolate(_PowerSyncDatabaseIsolateArgs args) async {
       shutdownCompleter.complete(Future(() async {
         await openedStreamingSync?.abort();
 
-        localUpdatesSubscription?.cancel();
-        db?.dispose();
         crudUpdateController.close();
         upstreamDbClient.close();
 
-        // The SyncSqliteConnection uses this mutex
-        // It needs to be closed before killing the isolate
-        // in order to free the mutex for other operations.
-        await mutex.close();
-        await crudMutex.close();
-        await syncMutex.close();
         rPort.close();
 
         // TODO: If we closed our resources properly, this wouldn't be necessary...
@@ -411,11 +275,7 @@ Future<void> _syncIsolate(_PowerSyncDatabaseIsolateArgs args) async {
   }
 
   runZonedGuarded(() async {
-    db = args.dbRef.openFactory
-        .open(SqliteOpenOptions(primaryConnection: false, readOnly: false));
-    final connection = SyncSqliteConnection(db!, mutex);
-
-    final storage = BucketStorage(connection);
+    final storage = BucketStorage(upstreamDbClient);
     final sync = StreamingSyncImplementation(
       adapter: storage,
       schemaJson: args.schemaJson,
@@ -427,33 +287,11 @@ Future<void> _syncIsolate(_PowerSyncDatabaseIsolateArgs args) async {
       crudUpdateTriggerStream: crudUpdateController.stream,
       options: args.options,
       client: http.Client(),
-      crudMutex: crudMutex,
-      syncMutex: syncMutex,
     );
     openedStreamingSync = sync;
     sync.streamingSync();
     sync.statusStream.listen((event) {
       sPort.send(['status', event]);
-    });
-
-    Timer? updateDebouncer;
-    Set<String> updatedTables = {};
-
-    void maybeFireUpdates() {
-      // Only fire updates when we're not in a transaction
-      if (updatedTables.isNotEmpty && db?.autocommit == true) {
-        upstreamDbClient.fire(UpdateNotification(updatedTables));
-        updatedTables.clear();
-        updateDebouncer?.cancel();
-        updateDebouncer = null;
-      }
-    }
-
-    localUpdatesSubscription = db!.updatesSync.listen((event) {
-      updatedTables.add(event.tableName);
-
-      updateDebouncer ??=
-          Timer(const Duration(milliseconds: 1), maybeFireUpdates);
     });
   }, (error, stack) async {
     // Properly dispose the database if an uncaught error occurs.

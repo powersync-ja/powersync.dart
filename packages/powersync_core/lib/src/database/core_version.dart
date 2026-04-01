@@ -1,4 +1,4 @@
-import 'package:sqlite_async/sqlite3_common.dart';
+import 'package:sqlite3/common.dart';
 
 /// A parsed (major, minor, patch) version triple representing a version of the
 /// loaded core extension.
@@ -36,7 +36,7 @@ extension type const PowerSyncCoreVersion((int, int, int) _tuple) {
             '\nTry downloading the updated assets: https://docs.powersync.com/client-sdk-references/flutter/flutter-web-support#assets';
       }
 
-      throw SqliteException(1, message);
+      throw SqliteException(extendedResultCode: 1, message: message);
     }
   }
 
@@ -49,8 +49,10 @@ extension type const PowerSyncCoreVersion((int, int, int) _tuple) {
 
       return PowerSyncCoreVersion((major, minor, patch));
     } catch (e) {
-      throw SqliteException(1,
-          'Unsupported powersync extension version. Need >=0.2.0 <1.0.0, got: $version. Details: $e');
+      throw SqliteException(
+          extendedResultCode: 1,
+          message:
+              'Unsupported powersync extension version. Need >=0.2.0 <1.0.0, got: $version. Details: $e');
     }
   }
 

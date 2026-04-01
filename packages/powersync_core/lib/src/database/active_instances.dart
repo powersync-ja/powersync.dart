@@ -1,6 +1,8 @@
 import 'package:meta/meta.dart';
 import 'package:sqlite_async/sqlite_async.dart';
 
+import '../platform_specific/platform_specific.dart';
+
 /// A collection of PowerSync database instances that are using the same
 /// underlying SQLite database.
 ///
@@ -17,24 +19,20 @@ final class ActiveDatabaseGroup {
   int refCount = 0;
 
   /// Use to prevent multiple connections from being opened concurrently
-  final Mutex syncConnectMutex = Mutex();
+  final Mutex syncConnectMutex = Mutex.simple();
   final Mutex syncMutex;
   final Mutex crudMutex;
 
   final String identifier;
 
   ActiveDatabaseGroup._(this.identifier)
-      : syncMutex = Mutex(identifier: '$identifier-sync'),
-        crudMutex = Mutex(identifier: '$identifier-crud');
+      : syncMutex = potentiallySharedMutex('$identifier-sync'),
+        crudMutex = potentiallySharedMutex('$identifier-crud');
 
   Future<void> close() async {
     if (--refCount == 0) {
       final removedGroup = _activeGroups.remove(identifier);
       assert(removedGroup == this);
-
-      await syncConnectMutex.close();
-      await syncMutex.close();
-      await crudMutex.close();
     }
   }
 
