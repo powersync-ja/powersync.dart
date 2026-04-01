@@ -502,6 +502,14 @@ SELECT * FROM crud_entries;
   }
 
   @override
+  Future<T> readTransaction<T>(
+      Future<T> Function(SqliteReadContext tx) callback,
+      {Duration? lockTimeout}) async {
+    await isInitialized;
+    return database.readTransaction(callback, lockTimeout: lockTimeout);
+  }
+
+  @override
   Future<T> abortableReadLock<T>(
       Future<T> Function(SqliteReadContext tx) callback,
       {Future<void>? abortTrigger,

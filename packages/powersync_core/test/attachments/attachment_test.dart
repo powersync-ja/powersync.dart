@@ -10,7 +10,7 @@ import 'package:test/test.dart';
 import '../utils/test_utils_impl.dart';
 
 void main() {
-  final testUtils = TestUtils();
+  late TestUtils testUtils;
   late PowerSyncDatabase db;
   late MockRemoteStorage remoteStorage;
   late LocalStorage localStorage;
@@ -28,6 +28,8 @@ void main() {
           ],
         );
   }
+
+  setUpAll(() => testUtils = TestUtils());
 
   setUp(() async {
     remoteStorage = MockRemoteStorage();
@@ -295,7 +297,11 @@ void main() {
       localStorage: localStorage,
       errorHandler: AttachmentErrorHandler(
         onDeleteError: expectAsync3(errorHandler, count: 0),
-        onDownloadError: expectAsync3(errorHandler, count: 1),
+        // Depending on the exact order of events, it's possible for us to "re-
+        // discover" the attachment in a second iteration after archiving it
+        // before. In that case, we'd attempt to download it again. So this
+        // might be called twice, but i's still fine.
+        onDownloadError: expectAsync3(errorHandler, count: 1, max: 2),
         onUploadError: expectAsync3(errorHandler, count: 0),
       ),
     );
