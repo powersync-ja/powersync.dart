@@ -46,6 +46,8 @@ class TestUtils extends AbstractTestUtils {
 
   @override
   Future<CommonDatabase> openRawInMemoryDatabase() async {
+    NativePowerSyncOpenFactory(path: 'ignored').enableExtension();
+
     return sqlite3.openInMemory();
   }
 }

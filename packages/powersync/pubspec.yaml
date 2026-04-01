@@ -12,12 +12,16 @@ dependencies:
   flutter:
     sdk: flutter
 
-  sqlite3_flutter_libs: ^0.5.39
   powersync_core: ^1.8.0
   sqlite_async: ^0.14.0-wip
   sqlite3: ^3.2.0
-  powersync_flutter_libs: ^0.5.0+eol
   collection: ^1.17.0
+  
+  # These packages don't do anything, but we specifically don't want users
+  # on older versions since we use build hooks to bundle native code now.
+  powersync_flutter_libs: ^0.5.0+eol
+  sqlite3_flutter_libs: ^0.6.0+eol
+  sqlcipher_flutter_libs: ^0.7.0+eol
 
 dev_dependencies:
   lints: ^6.1.0

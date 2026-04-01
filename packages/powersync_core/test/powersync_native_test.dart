@@ -2,10 +2,10 @@
 library;
 
 import 'dart:async';
-import 'dart:math';
 
 import 'package:powersync_core/powersync_core.dart';
 import 'package:sqlite3/sqlite3.dart';
+import 'package:sqlite_async/sqlite_async.dart';
 import 'package:test/test.dart';
 import 'utils/abstract_test_utils.dart';
 import 'utils/test_utils_impl.dart';
@@ -43,21 +43,38 @@ void main() {
           ]));
     });
 
-    // Manual test
     test('Concurrency', () async {
       final db = PowerSyncDatabase.withFactory(
-          await testUtils.testFactory(path: path),
-          schema: defaultSchema,
-          maxReaders: 3);
-      await db.initialize();
+        await testUtils.testFactory(
+            path: path, options: SqliteOptions(maxReaders: 3)),
+        schema: defaultSchema,
+      );
+      addTearDown(db.close);
 
-      print("${DateTime.now()} start");
-      var futures = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map((i) => db.get(
-          'SELECT ? as i, powersync_sleep(?) as sleep, powersync_connection_name() as connection',
-          [i, 5 + Random().nextInt(10)]));
-      await for (var result in Stream.fromFutures(futures)) {
-        print("${DateTime.now()} $result");
+      final hasConcurrentTransactions = Completer<void>();
+      final releaseConnections = Completer<void>();
+      var startedTransactions = 0;
+      for (var i = 0; i < 3; i++) {
+        final tx = db.readTransaction((tx) async {
+          startedTransactions++;
+          if (startedTransactions == 3) {
+            hasConcurrentTransactions.complete();
+          }
+
+          await releaseConnections.future;
+          expect(await tx.getAll('SELECT * FROM customers'), hasLength(0));
+        });
+        expectLater(tx, completes);
       }
+
+      await hasConcurrentTransactions.future;
+
+      // Ensure we can write while read transactions are active.
+      await db.execute(
+        'INSERT INTO customers (id, name, email) VALUES (uuid(), ?, ?)',
+        ['name', 'email'],
+      );
+      releaseConnections.complete();
     });
 
     test('read-only transactions', () async {
@@ -72,8 +89,7 @@ void main() {
       },
           throwsA((dynamic e) =>
               e is SqliteException &&
-              e.message
-                  .contains('attempt to write in a read-only transaction')));
+              e.message.contains('attempt to write a readonly database')));
 
       // Can use WITH ... SELECT
       await db.getAll("WITH test AS (SELECT 1 AS one) SELECT * FROM test");
@@ -85,8 +101,7 @@ void main() {
       },
           throwsA((dynamic e) =>
               e is SqliteException &&
-              e.message
-                  .contains('attempt to write in a read-only transaction')));
+              e.message.contains('attempt to write a readonly database')));
 
       await db.writeTransaction((tx) async {
         // Within a write transaction, this is fine

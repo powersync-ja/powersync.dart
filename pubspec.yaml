@@ -10,8 +10,6 @@ workspace:
   - packages/powersync_attachments_helper
   - packages/powersync_core
   - packages/powersync_flutter_libs
-  - packages/powersync_sqlcipher
-  - packages/powersync_sqlcipher/example
 
   - demos/benchmarks
   - demos/django-todolist
@@ -30,6 +28,12 @@ dependencies:
   test: ^1.25.0
   path: ^1.0.0
   yaml: ^3.1.2
+
+dependency_overrides:
+  # The only drift version with support for version 3.x of the sqlite3 package
+  # needs this analyzer, but riverpod doesn't support it yet:
+  # https://github.com/rrousselGit/riverpod/pull/4680
+  analyzer: ^10.0.0
 
 melos:
   repository: https://github.com/powersync-ja/powersync.dart
