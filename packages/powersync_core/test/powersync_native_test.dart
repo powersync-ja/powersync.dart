@@ -5,7 +5,7 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:powersync_core/powersync_core.dart';
-import 'package:sqlite_async/sqlite3_common.dart';
+import 'package:sqlite3/sqlite3.dart';
 import 'package:test/test.dart';
 import 'utils/abstract_test_utils.dart';
 import 'utils/test_utils_impl.dart';

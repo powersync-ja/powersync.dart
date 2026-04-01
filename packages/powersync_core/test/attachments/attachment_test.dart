@@ -7,11 +7,10 @@ import 'package:powersync_core/attachments/attachments.dart';
 import 'package:powersync_core/powersync_core.dart';
 import 'package:test/test.dart';
 
-import '../utils/abstract_test_utils.dart';
 import '../utils/test_utils_impl.dart';
 
 void main() {
-  late TestPowerSyncFactory factory;
+  final testUtils = TestUtils();
   late PowerSyncDatabase db;
   late MockRemoteStorage remoteStorage;
   late LocalStorage localStorage;
@@ -30,15 +29,11 @@ void main() {
         );
   }
 
-  setUpAll(() async {
-    factory = await TestUtils().testFactory();
-  });
-
   setUp(() async {
     remoteStorage = MockRemoteStorage();
     localStorage = LocalStorage.inMemory();
 
-    final (raw, database) = await factory.openInMemoryDatabase(
+    final (raw, database) = await testUtils.openInMemoryDatabase(
       schema: _schema,
       // Uncomment to see test logs
       logger: Logger.detached('PowerSyncTest'),

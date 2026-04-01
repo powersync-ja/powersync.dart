@@ -1,17 +1,18 @@
 import 'dart:async';
 import 'dart:js_interop';
 
-import 'package:powersync_core/powersync_core.dart';
-import 'package:powersync_core/src/sync/options.dart';
 import 'package:sqlite_async/web.dart';
 import 'package:web/web.dart';
 
-import '../database/web/web_powersync_database.dart';
+import '../connector.dart';
+import '../database/powersync_database.dart';
+import '../sync/options.dart';
 import '../sync/streaming_sync.dart';
+import '../sync/sync_status.dart';
 import 'sync_worker_protocol.dart';
 
 class SyncWorkerHandle implements StreamingSync {
-  final PowerSyncDatabaseImpl database;
+  final PowerSyncDatabase database;
   final PowerSyncBackendConnector connector;
   final SyncOptions options;
   late final WorkerCommunicationChannel _channel;
@@ -79,7 +80,7 @@ class SyncWorkerHandle implements StreamingSync {
   }
 
   static Future<SyncWorkerHandle> start({
-    required PowerSyncDatabaseImpl database,
+    required PowerSyncDatabase database,
     required PowerSyncBackendConnector connector,
     required Uri workerUri,
     required SyncOptions options,

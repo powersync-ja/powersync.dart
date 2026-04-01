@@ -1,7 +1,7 @@
 import 'package:powersync_core/powersync_core.dart';
 import 'package:powersync_core/src/sync/bucket_storage.dart';
 import 'package:powersync_core/src/sync/protocol.dart';
-import 'package:sqlite_async/sqlite3_common.dart';
+import 'package:sqlite3/common.dart';
 import 'package:test/test.dart';
 
 import '../utils/abstract_test_utils.dart';

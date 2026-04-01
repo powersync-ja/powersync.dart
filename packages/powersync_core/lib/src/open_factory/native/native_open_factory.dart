@@ -1,80 +1,70 @@
 import 'dart:ffi';
-import 'dart:io' as io;
-import 'dart:isolate';
+import 'dart:io';
+import 'dart:math';
 
-import 'package:powersync_core/src/exceptions.dart';
-import 'package:powersync_core/src/log.dart';
-import 'package:powersync_core/src/open_factory/abstract_powersync_open_factory.dart';
-import 'package:sqlite_async/sqlite3.dart' as sqlite;
-import 'package:sqlite_async/sqlite3_common.dart';
+import 'package:sqlite3/sqlite3.dart';
 import 'package:sqlite_async/sqlite_async.dart';
+import 'package:sqlite_async/native.dart';
 
 import 'sqlite3_powersync_init.dart';
 
-/// Native implementation for [AbstractPowerSyncOpenFactory]
-class PowerSyncOpenFactory extends AbstractPowerSyncOpenFactory {
-  @Deprecated('Override PowerSyncOpenFactory instead.')
-  final SqliteConnectionSetup? _sqliteSetup;
+var _didInstallExtension = false;
 
-  PowerSyncOpenFactory({
-    required super.path,
-    super.sqliteOptions,
-    @Deprecated('Override PowerSyncOpenFactory instead.')
-    SqliteConnectionSetup? sqliteSetup,
-  })
-  // ignore: deprecated_member_use_from_same_package
-  : _sqliteSetup = sqliteSetup;
+base class NativePowerSyncOpenFactory extends NativeSqliteOpenFactory {
+  NativePowerSyncOpenFactory({required super.path, super.sqliteOptions});
 
   @override
+  List<String> pragmaStatements(SqliteOpenOptions options) {
+    return [
+      ...super.pragmaStatements(options),
+      'PRAGMA recursive_triggers = TRUE',
+    ];
+  }
+
   void enableExtension() {
-    final entrypoint = Native.addressOf<NativeFunction<ExtensionEntrypoint>>(
-        sqlite3_powersync_init);
+    if (!_didInstallExtension) {
+      final entrypoint = Native.addressOf<NativeFunction<ExtensionEntrypoint>>(
+          sqlite3_powersync_init);
 
-    sqlite.sqlite3
-        .ensureExtensionLoaded(sqlite.SqliteExtension(entrypoint.cast()));
-  }
+      sqlite3.ensureExtensionLoaded(SqliteExtension(entrypoint.cast()));
 
-  @override
-  setupFunctions(CommonDatabase db) {
-    super.setupFunctions(db);
-    db.createFunction(
-      functionName: 'powersync_sleep',
-      argumentCount: const sqlite.AllowedArgumentCount(1),
-      function: (args) {
-        final millis = args[0] as int;
-        sleep(Duration(milliseconds: millis));
-        return millis;
-      },
-    );
-
-    db.createFunction(
-      functionName: 'powersync_connection_name',
-      argumentCount: const sqlite.AllowedArgumentCount(0),
-      function: (args) {
-        return Isolate.current.debugName;
-      },
-    );
-  }
-
-  @override
-  CommonDatabase open(SqliteOpenOptions options) {
-    // ignore: deprecated_member_use_from_same_package
-    _sqliteSetup?.setup();
-
-    try {
-      enableExtension();
-    } on PowersyncNotReadyException catch (e) {
-      autoLogger.severe(e.message);
-      rethrow;
+      _didInstallExtension = true;
     }
-
-    var db = super.open(options);
-    db.execute('PRAGMA recursive_triggers = TRUE');
-    return db;
   }
 
+  /// When opening the powersync connection and the standard write connection
+  /// at the same time, one could fail with this error:
+  ///
+  ///     SqliteException(5): while opening the database, automatic extension loading failed: , database is locked (code 5)
+  ///
+  /// It happens before we have a chance to set the busy timeout, so we just
+  /// retry opening the database.
+  ///
+  /// Usually a delay of 1-2ms is sufficient for the next try to succeed, but
+  /// we increase the retry delay up to 16ms per retry, and a maximum of 500ms
+  /// in total.
   @override
-  void sleep(Duration duration) {
-    io.sleep(duration);
+  Database openNativeConnection(SqliteOpenOptions options) {
+    enableExtension();
+
+    final stopwatch = Stopwatch()..start();
+    var retryDelay = 2;
+    while (stopwatch.elapsedMilliseconds < 500) {
+      try {
+        return super.openNativeConnection(options);
+      } catch (e) {
+        if (e is SqliteException && e.resultCode == 5) {
+          sleep(Duration(milliseconds: retryDelay));
+          retryDelay = min(retryDelay * 2, 16);
+          continue;
+        }
+        rethrow;
+      }
+    }
+    throw AssertionError('Cannot reach this point');
+  }
+
+  Database openConnectionAttempt(SqliteOpenOptions options) {
+    return super.openNativeConnection(options);
   }
 }

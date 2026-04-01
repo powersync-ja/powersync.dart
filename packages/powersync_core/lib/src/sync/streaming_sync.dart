@@ -10,9 +10,10 @@ import 'package:powersync_core/src/exceptions.dart';
 import 'package:powersync_core/src/log_internal.dart';
 import 'package:powersync_core/src/sync/options.dart';
 import 'package:powersync_core/src/user_agent/user_agent.dart';
-import 'package:sqlite_async/mutex.dart';
+import 'package:sqlite_async/sqlite_async.dart';
 
 import '../crud.dart';
+import '../platform_specific/platform_specific.dart';
 import 'bucket_storage.dart';
 import 'instruction.dart';
 import 'internal_connector.dart';
@@ -83,8 +84,8 @@ class StreamingSyncImplementation implements StreamingSync {
     /// A good value is typically the DB file path which it will mutate when syncing.
     String? identifier = "unknown",
   })  : _client = client,
-        syncMutex = syncMutex ?? Mutex(identifier: "sync-$identifier"),
-        crudMutex = crudMutex ?? Mutex(identifier: "crud-$identifier"),
+        syncMutex = syncMutex ?? potentiallySharedMutex("sync-$identifier"),
+        crudMutex = crudMutex ?? potentiallySharedMutex("crud-$identifier"),
         _userAgentHeaders = userAgentHeaders(),
         logger = logger ?? isolateLogger,
         _activeSubscriptions = activeSubscriptions;
@@ -167,7 +168,7 @@ class StreamingSyncImplementation implements StreamingSync {
               case SyncClientImplementation.rust:
                 return _rustStreamingSyncIteration();
             }
-          }, timeout: _retryDelay);
+          }, abortTrigger: Future.delayed(_retryDelay));
           delayNextIteration = !immediateRestart;
         } catch (e, stacktrace) {
           if (aborted && e is http.ClientException) {
@@ -265,7 +266,7 @@ class StreamingSyncImplementation implements StreamingSync {
           _state.updateStatus((s) => s.uploading = false);
         }
       }
-    }, timeout: _retryDelay).whenComplete(() {
+    }, abortTrigger: Future.delayed(_retryDelay)).whenComplete(() {
       if (!aborted) {
         _nonLineSyncEvents.add(const UploadCompleted());
       }

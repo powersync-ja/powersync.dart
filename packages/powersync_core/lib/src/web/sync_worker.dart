@@ -12,14 +12,14 @@ import 'package:collection/collection.dart';
 import 'package:http/browser_client.dart';
 import 'package:logging/logging.dart';
 import 'package:powersync_core/powersync_core.dart';
-import 'package:powersync_core/sqlite_async.dart';
-import 'package:powersync_core/src/database/powersync_db_mixin.dart';
+import 'package:sqlite_async/sqlite_async.dart';
 import 'package:powersync_core/src/sync/internal_connector.dart';
 import 'package:powersync_core/src/sync/options.dart';
 import 'package:powersync_core/src/sync/streaming_sync.dart';
 import 'package:sqlite_async/web.dart';
 import 'package:web/web.dart' hide RequestMode;
 
+import '../database/powersync_database.dart';
 import 'sync_worker_protocol.dart';
 import 'web_bucket_storage.dart';
 
@@ -301,15 +301,13 @@ class _SyncRunner {
     final tables = ['ps_crud'];
     Stream<UpdateNotification> crudStream =
         powerSyncUpdateNotifications(Stream.empty());
-    if (database.updates != null) {
-      final filteredStream = database.updates!
-          .transform(UpdateNotification.filterTablesTransformer(tables));
-      crudStream = UpdateNotification.throttleStream(
-        filteredStream,
-        options.crudThrottleTime,
-        addOne: UpdateNotification.empty(),
-      );
-    }
+    final filteredStream = database.updates
+        .transform(UpdateNotification.filterTablesTransformer(tables));
+    crudStream = UpdateNotification.throttleStream(
+      filteredStream,
+      options.crudThrottleTime,
+      addOne: UpdateNotification.empty(),
+    );
 
     currentStreams = connections.values.flattenedToSet.toList();
     sync = StreamingSyncImplementation(
