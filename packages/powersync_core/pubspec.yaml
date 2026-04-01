@@ -9,7 +9,7 @@ environment:
   sdk: ^3.6.0
 
 dependencies:
-  sqlite_async: ^0.13.0
+  sqlite_async: ^0.14.0-wip
   sqlite3_web: ^0.6.0
   sqlite3: ^3.2.0
   meta: ^1.0.0

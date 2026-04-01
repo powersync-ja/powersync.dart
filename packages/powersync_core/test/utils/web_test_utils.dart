@@ -55,6 +55,7 @@ class TestUtils extends AbstractTestUtils {
 
   @override
   Future<CommonDatabase> openRawInMemoryDatabase() async {
+    await _isInitialized;
     final sqlite = await WasmSqlite3.loadFromUrl(Uri.parse(sqlite3WASMUri));
     sqlite.registerVirtualFileSystem(InMemoryFileSystem(), makeDefault: true);
 

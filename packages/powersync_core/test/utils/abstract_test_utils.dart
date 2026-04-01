@@ -165,7 +165,7 @@ final class TestDatabase extends BasePowerSyncDatabase {
   }) async {
     final impl = StreamingSyncImplementation(
       adapter: BucketStorage(this),
-      schemaJson: jsonEncode(schema),
+      schemaJson: jsonEncode(this.schema),
       client: httpClient!,
       options: options,
       connector: InternalConnector.wrap(connector, this),

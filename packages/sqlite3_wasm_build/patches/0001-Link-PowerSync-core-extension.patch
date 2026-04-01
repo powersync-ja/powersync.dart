@@ -1,29 +1,28 @@
-From 80ec8f3a54d938c6bf39b471aa26c4c77f9984a2 Mon Sep 17 00:00:00 2001
-From: Simon Binder <simon@journeyapps.com>
-Date: Mon, 27 Jan 2025 15:12:53 +0100
+From 4104d3cac5592cc19f5b37e63d8bb79a5cddcea1 Mon Sep 17 00:00:00 2001
+From: Simon Binder <oss@simonbinder.eu>
+Date: Wed, 1 Apr 2026 15:50:52 +0200
 Subject: [PATCH] Link PowerSync core extension
 
 ---
- sqlite3/assets/wasm/CMakeLists.txt |  7 ++++++-
- sqlite3/assets/wasm/os_web.c       | 11 ++++++++++-
- sqlite3/assets/wasm/sqlite_cfg.h   |  2 +-
- 3 files changed, 17 insertions(+), 3 deletions(-)
+ sqlite3_wasm_build/src/CMakeLists.txt |  6 ++++++
+ sqlite3_wasm_build/src/os_web.c       | 12 +++++++++++-
+ 2 files changed, 17 insertions(+), 1 deletion(-)
 
-diff --git a/sqlite3/assets/wasm/CMakeLists.txt b/sqlite3/assets/wasm/CMakeLists.txt
-index 6597d86..81a5a41 100644
---- a/sqlite3/assets/wasm/CMakeLists.txt
-+++ b/sqlite3/assets/wasm/CMakeLists.txt
+diff --git a/sqlite3_wasm_build/src/CMakeLists.txt b/sqlite3_wasm_build/src/CMakeLists.txt
+index 52c3df1..bcaeae5 100644
+--- a/sqlite3_wasm_build/src/CMakeLists.txt
++++ b/sqlite3_wasm_build/src/CMakeLists.txt
 @@ -6,6 +6,7 @@ project(${PROJECT_NAME} LANGUAGES C)
  set(triple wasm32-unknown-wasi)
  set(wasi_sysroot "/usr/share/wasi-sysroot" CACHE PATH "Path to wasi sysroot")
  set(clang "clang" CACHE FILEPATH "Path to wasm-capable clang executable")
-+set(POWERSYNC_VERSION "0.3.9" CACHE STRING "PowerSync core version to use")
++set(POWERSYNC_VERSION "0.4.12" CACHE STRING "PowerSync core version to use")
  
  include(FetchContent)
  
-@@ -27,6 +28,9 @@ FetchContent_MakeAvailable(sqlite3mc)
- 
- file(DOWNLOAD https://raw.githubusercontent.com/sqlite/sqlite/master/src/test_vfstrace.c "${CMAKE_BINARY_DIR}/vfstrace.c")
+@@ -25,6 +26,9 @@ FetchContent_Declare(
+ FetchContent_MakeAvailable(sqlite3)
+ FetchContent_MakeAvailable(sqlite3mc)
  
 +set(POWERSYNC_A "${CMAKE_BINARY_DIR}/libpowersync-wasm.a")
 +file(DOWNLOAD "https://github.com/powersync-ja/powersync-sqlite-core/releases/download/v${POWERSYNC_VERSION}/libpowersync-wasm.a" "${POWERSYNC_A}")
@@ -31,22 +30,20 @@ index 6597d86..81a5a41 100644
  # Generate symbols we need to export from the sqlite3.wasm build
  add_custom_command(
      OUTPUT required_symbols.txt
-@@ -88,8 +92,9 @@ macro(base_sqlite3_target name debug crypto)
-       -Wl,--import-memory
-       --sysroot ${wasi_sysroot}
-       ${sources}
-+      ${POWERSYNC_A}
-       @${CMAKE_CURRENT_BINARY_DIR}/required_symbols.txt
--    DEPENDS ${sources} required_symbols
-+    DEPENDS ${sources} ${POWERSYNC_A} required_symbols
-     VERBATIM
-   )
+@@ -64,6 +68,8 @@ macro(base_sqlite3_target name debug crypto)
+     list(APPEND sources "${sqlite3_SOURCE_DIR}/sqlite3.c")
+   endif()
  
-diff --git a/sqlite3/assets/wasm/os_web.c b/sqlite3/assets/wasm/os_web.c
-index 4a1df1d..be9c3c9 100644
---- a/sqlite3/assets/wasm/os_web.c
-+++ b/sqlite3/assets/wasm/os_web.c
-@@ -6,7 +6,16 @@
++  list(APPEND sources ${POWERSYNC_A})
++
+   if(${debug})
+     list(APPEND flags "-g" "-DDEBUG")
+   else()
+diff --git a/sqlite3_wasm_build/src/os_web.c b/sqlite3_wasm_build/src/os_web.c
+index 7a11859..b48960a 100644
+--- a/sqlite3_wasm_build/src/os_web.c
++++ b/sqlite3_wasm_build/src/os_web.c
+@@ -6,7 +6,17 @@
  #include "bridge.h"
  #include "sqlite3.h"
  
@@ -55,28 +52,16 @@ index 4a1df1d..be9c3c9 100644
 +                                  const sqlite3_api_routines *pApi);
 +
 +int sqlite3_os_init(void) {
-+  int rc = sqlite3_auto_extension((void (*)(void)) & sqlite3_powersync_init);
++  int rc = sqlite3_auto_extension((void (*)(void)) &sqlite3_powersync_init);
 +  if (rc != SQLITE_OK) {
 +    return rc;
 +  }
++
 +  return SQLITE_OK;
 +}
  
  int sqlite3_os_end(void) { return SQLITE_OK; }
  
-diff --git a/sqlite3/assets/wasm/sqlite_cfg.h b/sqlite3/assets/wasm/sqlite_cfg.h
-index 74e8dd7..682acbf 100644
---- a/sqlite3/assets/wasm/sqlite_cfg.h
-+++ b/sqlite3/assets/wasm/sqlite_cfg.h
-@@ -42,7 +42,7 @@
- // Disable things we don't need
- #define SQLITE_OMIT_DEPRECATED
- #define SQLITE_OMIT_PROGRESS_CALLBACK
--#define SQLITE_OMIT_AUTHORIZATION
-+// #define SQLITE_OMIT_AUTHORIZATION // This breaks the powersync-core build
- #define SQLITE_UNTESTABLE
- #define SQLITE_OMIT_COMPILEOPTION_DIAGS
- #define SQLITE_OMIT_LOAD_EXTENSION
 -- 
-2.39.5 (Apple Git-154)
+2.50.1 (Apple Git-155)
 
