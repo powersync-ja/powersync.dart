@@ -1,4 +1,4 @@
-import 'package:powersync/sqlite3.dart' as sqlite;
+import 'package:sqlite3/common.dart' as sqlite;
 import 'package:trelloappclone_flutter/models/board_label.dart';
 
 class Board {

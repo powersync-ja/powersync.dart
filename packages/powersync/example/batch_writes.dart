@@ -55,7 +55,7 @@ Future<void> inIsolateWrites() async {
         statement.execute(params);
       }
     } finally {
-      statement.dispose();
+      statement.close();
     }
   });
 }

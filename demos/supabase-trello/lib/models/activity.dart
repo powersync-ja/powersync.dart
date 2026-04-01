@@ -1,4 +1,4 @@
-import 'package:powersync/sqlite3.dart' as sqlite;
+import 'package:sqlite3/common.dart' as sqlite;
 
 class Activity {
   final String id;
