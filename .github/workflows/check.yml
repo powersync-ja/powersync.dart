@@ -51,7 +51,5 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/prepare
-      - name: Run flutter tests
-        run: melos run test
-      - name: Run dart tests
-        run: melos run test:web
+      - name: Test powersync package
+        run: dart test -p chrome,vm
