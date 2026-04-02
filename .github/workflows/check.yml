@@ -38,7 +38,7 @@ jobs:
       - uses: ./.github/actions/prepare
 
       - name: Install pana
-        run: dart pub global pana
+        run: dart pub global activate pana
       
       - name: Check powersync package
         run: dart pub global run pana --no-warning --exit-code-threshold 10
