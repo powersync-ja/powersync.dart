@@ -1,3 +1,4 @@
+import 'package:powersync/powersync.dart';
 import 'package:sqlite3/src/database.dart';
 import 'package:sqlite_async/sqlite_async.dart';
 
@@ -8,7 +9,8 @@ class TestUtils extends AbstractTestUtils {
   Future<SqliteOpenFactory> testFactory(
       {String? path,
       String sqlitePath = '',
-      SqliteOptions options = const SqliteOptions()}) {
+      SqliteOptions options = const SqliteOptions(),
+      EncryptionOptions? encryption}) {
     throw UnimplementedError();
   }
 

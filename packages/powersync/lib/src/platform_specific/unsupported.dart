@@ -1,6 +1,7 @@
 import 'package:logging/logging.dart';
 import 'package:sqlite_async/sqlite_async.dart';
 
+import '../database/encryption_options.dart';
 import '../database/powersync_database.dart';
 import '../schema.dart';
 
@@ -16,7 +17,8 @@ Mutex potentiallySharedMutex(String identifier) {
   _unsupportedPlatform();
 }
 
-SqliteOpenFactory powerSyncOpenFactory(String path, SqliteOptions options) {
+SqliteOpenFactory powerSyncOpenFactory(
+    String path, SqliteOptions options, EncryptionOptions? encryption) {
   _unsupportedPlatform();
 }
 

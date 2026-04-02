@@ -1,0 +1,21 @@
+tags:
+  require_encryption:
+    skip: Requires encryption
+  require_no_encryption:
+    skip: false
+
+on_platform:
+  browser:
+    tags:
+      require_encryption:
+        skip: false
+      require_no_encryption:
+        skip: "Encryption is always available on web platform"
+
+presets:
+  # We enable this preset in CI after configuring encryption support.
+  encryption:
+    include_tags: require_encryption
+    tags:
+      require_encryption:
+        skip: false

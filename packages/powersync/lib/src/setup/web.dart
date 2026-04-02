@@ -7,19 +7,24 @@ import 'package:pubspec_parse/pubspec_parse.dart';
 import 'package:args/args.dart';
 import 'package:path/path.dart' as p;
 
-Future<void> downloadWebAssets(List<String> arguments,
-    {bool encryption = false}) async {
+Future<void> downloadWebAssets(List<String> arguments) async {
   var parser = ArgParser();
   // Add a flag to enable/disable the download of worker (defaults to true)
   // Pass the --no-worker argument to disable the download of the worker
   // dart run powersync:setup_web --no-worker
   parser.addFlag('worker', defaultsTo: true);
+  parser.addFlag(
+    'encryption',
+    defaultsTo: false,
+    help: 'Download a sqlite3.wasm with encryption support.',
+  );
   // Add a option to specify the output directory (defaults to web)
   // Pass the --output-dir argument to specify the output directory
   // dart run powersync:setup_web --output-dir assets
   parser.addOption('output-dir', abbr: 'o', defaultsTo: 'web');
   var results = parser.parse(arguments);
   bool downloadWorker = results.flag('worker');
+  bool encryption = results.flag('encryption');
   String outputDir = results.option('output-dir')!;
 
   final root = Directory.current.uri;
