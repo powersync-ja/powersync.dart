@@ -6,7 +6,10 @@ import 'package:sqlite_async/web.dart';
 
 import '../../web/worker_utils.dart';
 
-/// PowerSync-specific [WebSqliteOpenFactory]
+/// PowerSync-specific [WebSqliteOpenFactory].
+///
+/// This mostly installs a [PowerSyncAsyncSqliteController] to ensure we use
+/// an encrypted VFS where necessary.
 base class WebPowerSyncOpenFactory extends WebSqliteOpenFactory {
   WebPowerSyncOpenFactory({required super.path, super.sqliteOptions});
 

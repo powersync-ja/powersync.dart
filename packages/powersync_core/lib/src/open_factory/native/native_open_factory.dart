@@ -10,6 +10,8 @@ import 'sqlite3_powersync_init.dart';
 
 var _didInstallExtension = false;
 
+/// A [NativeSqliteOpenFactory] that also loads the PowerSync SQLite core
+/// extension on opened databases.
 base class NativePowerSyncOpenFactory extends NativeSqliteOpenFactory {
   NativePowerSyncOpenFactory({required super.path, super.sqliteOptions});
 

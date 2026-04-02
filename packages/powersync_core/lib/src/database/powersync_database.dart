@@ -1,3 +1,7 @@
+/// @docImport '../open_factory/native/native_open_factory.dart';
+/// @docImport '../open_factory/web/web_open_factory.dart';
+library;
+
 import 'dart:async';
 
 import 'package:async/async.dart';
@@ -105,17 +109,17 @@ abstract base class PowerSyncDatabase extends SqliteConnection {
   /// do not block read transactions, and read transactions will see the state
   /// from the last committed write transaction.
   ///
-  /// A maximum of [maxReaders] concurrent read transactions are allowed.
-  ///
   /// [logger] defaults to [autoLogger], which logs to the console in debug builds.
   factory PowerSyncDatabase({
     required Schema schema,
     required String path,
+    @Deprecated('This argument is not used, set it on the factory instead')
+    int maxReaders = SqliteOptions.defaultMaxReaders,
     Logger? logger,
-    SqliteOptions? sqliteOptions,
+    SqliteOptions sqliteOptions = const SqliteOptions(),
   }) {
     return PowerSyncDatabase.withFactory(
-      powerSyncOpenFactory(path, sqliteOptions ?? const SqliteOptions()),
+      openFactory(path: path, options: sqliteOptions),
       schema: schema,
       logger: logger,
     );
@@ -159,6 +163,18 @@ abstract base class PowerSyncDatabase extends SqliteConnection {
       database,
       loggers ?? logger ?? autoLogger,
     );
+  }
+
+  /// The default [SqliteOpenFactory] for PowerSync databases on the current
+  /// platform.
+  ///
+  /// On native platforms, this returns a [NativePowerSyncOpenFactory]. On the
+  /// web, this returns a [WebPowerSyncOpenFactory]. Both of these classes can
+  /// be extended if additional customization is necessary, and these instances
+  /// can be passed to the [PowerSyncDatabase.withFactory] constructor.
+  static SqliteOpenFactory openFactory(
+      {required String path, SqliteOptions options = const SqliteOptions()}) {
+    return powerSyncOpenFactory(path, options);
   }
 
   /// Check that a supported version of the powersync extension is loaded.
