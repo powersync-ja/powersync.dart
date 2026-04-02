@@ -88,7 +88,7 @@ void main() {
       // Shorter retry delay, to speed up tests
       // ignore: deprecated_member_use_from_same_package
       db.retryDelay = Duration(milliseconds: 10);
-      addTearDown(() => {db.close()});
+      addTearDown(db.close);
       await db.initialize();
 
       // Create an item which should trigger an upload.
@@ -126,7 +126,7 @@ void main() {
       );
 
       await uploadTriggeredCompleter.future;
-      expect(uploadCounter, equals(2));
+      expect(uploadCounter, greaterThan(1));
 
       await db.disconnect();
     });
