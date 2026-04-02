@@ -6,6 +6,7 @@ import 'package:meta/meta.dart';
 import 'package:http/http.dart' as http;
 import 'package:logging/logging.dart';
 import 'package:powersync_core/src/abort_controller.dart';
+import 'package:powersync_core/src/database/native/remote_mutex.dart';
 import 'package:powersync_core/src/sync/bucket_storage.dart';
 import 'package:powersync_core/src/connector.dart';
 import 'package:powersync_core/src/database/powersync_database.dart';
@@ -51,6 +52,10 @@ final class NativePowerSyncDatabase extends BasePowerSyncDatabase {
     final receiveMessages = ReceivePort();
     final receiveUnhandledErrors = ReceivePort();
     final receiveExit = ReceivePort();
+    final mutexServer = MutexServer({
+      'sync': group.syncMutex,
+      'crud': group.crudMutex,
+    });
 
     SendPort? initPort;
     final hasInitPort = Completer<void>();
@@ -69,6 +74,7 @@ final class NativePowerSyncDatabase extends BasePowerSyncDatabase {
       receiveMessages.close();
       receiveUnhandledErrors.close();
       receiveExit.close();
+      mutexServer.handleChildIsolateExit();
 
       // Clear status apart from lastSyncedAt
       setStatus(SyncStatus(lastSyncedAt: currentStatus.lastSyncedAt));
@@ -122,6 +128,11 @@ final class NativePowerSyncDatabase extends BasePowerSyncDatabase {
           LogRecord record = data[1] as LogRecord;
           logger.log(
               record.level, record.message, record.error, record.stackTrace);
+        } else if (action == 'mutex:acquire') {
+          mutexServer.acquireRequest(
+              initPort!, data[1] as String, data[2] as int);
+        } else if (action == 'mutex:release') {
+          mutexServer.releaseRequest(data[1] as int);
         }
       }
     }
@@ -187,16 +198,12 @@ class _PowerSyncDatabaseIsolateArgs {
   final SendPort sPort;
   final String databaseName;
   final ResolvedSyncOptions options;
-//  final SerializedMutex crudMutex;
-//  final SerializedMutex syncMutex;
   final String schemaJson;
 
   _PowerSyncDatabaseIsolateArgs(
     this.sPort,
     this.databaseName,
     this.options,
-//    this.crudMutex,
-//    this.syncMutex,
     this.schemaJson,
   );
 }
@@ -205,7 +212,12 @@ Future<void> _syncIsolate(_PowerSyncDatabaseIsolateArgs args) async {
   final sPort = args.sPort;
   final rPort = ReceivePort();
   StreamController<String> crudUpdateController = StreamController.broadcast();
-  final upstreamDbClient = SqliteDatabase(path: args.databaseName);
+
+  // Because the original database is still active at the time this is called,
+  // creating another database at the same path will use the same underlying
+  // connection pool.
+  final database = SqliteDatabase(path: args.databaseName);
+  final mutexes = RemoteMutexes(sPort);
 
   StreamingSyncImplementation? openedStreamingSync;
 
@@ -217,7 +229,7 @@ Future<void> _syncIsolate(_PowerSyncDatabaseIsolateArgs args) async {
         await openedStreamingSync?.abort();
 
         crudUpdateController.close();
-        upstreamDbClient.close();
+        database.close();
 
         rPort.close();
 
@@ -241,6 +253,8 @@ Future<void> _syncIsolate(_PowerSyncDatabaseIsolateArgs args) async {
       } else if (action == 'changed_subscriptions') {
         openedStreamingSync
             ?.updateSubscriptions(message[1] as List<SubscribedStream>);
+      } else if (action == 'mutex:granted') {
+        mutexes.markGranted(message[1] as int);
       }
     }
   });
@@ -275,7 +289,7 @@ Future<void> _syncIsolate(_PowerSyncDatabaseIsolateArgs args) async {
   }
 
   runZonedGuarded(() async {
-    final storage = BucketStorage(upstreamDbClient);
+    final storage = BucketStorage(database);
     final sync = StreamingSyncImplementation(
       adapter: storage,
       schemaJson: args.schemaJson,
@@ -287,6 +301,8 @@ Future<void> _syncIsolate(_PowerSyncDatabaseIsolateArgs args) async {
       crudUpdateTriggerStream: crudUpdateController.stream,
       options: args.options,
       client: http.Client(),
+      syncMutex: mutexes.mutex('sync'),
+      crudMutex: mutexes.mutex('crud'),
     );
     openedStreamingSync = sync;
     sync.streamingSync();
