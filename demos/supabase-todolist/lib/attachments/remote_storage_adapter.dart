@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:powersync_core/attachments/attachments.dart';
+import 'package:powersync/attachments/attachments.dart';
 import 'package:powersync_flutter_demo/app_config.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:logging/logging.dart';
