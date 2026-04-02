@@ -52,4 +52,5 @@ jobs:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/prepare
       - name: Test powersync package
+        working-directory: packages/powersync
         run: dart test -p chrome,vm
