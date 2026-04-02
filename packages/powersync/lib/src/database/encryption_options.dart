@@ -40,6 +40,10 @@ const _isWeb = _isCompilingToJavaScript || _isDart2Wasm;
 /// `--encryption` option.
 final class EncryptionOptions {
   /// The key used to encrypt the database file.
+  ///
+  /// To change the key of an existing encrypted database, first open it with
+  /// the old key, then run a [`PRAGMA rekey`](https://utelle.github.io/SQLite3MultipleCiphers/docs/configuration/config_sql_pragmas/#pragma-rekey--hexrekey)
+  /// statement and finally re-open the database with the new key.
   final String key;
 
   /// Whether to use an encryption scheme that is compatible with SQLCipher-
