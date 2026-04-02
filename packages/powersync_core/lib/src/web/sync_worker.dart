@@ -147,6 +147,10 @@ class _ConnectedClient {
     _runner?.unregisterClient(this);
     _runner = null;
   }
+
+  void sendSyncStatus(SerializedSyncStatus status) {
+    channel.notify(SyncWorkerMessageType.notifySyncStatus, status);
+  }
 }
 
 class _SyncRunner {
@@ -158,6 +162,7 @@ class _SyncRunner {
   final StreamController<_RunnerEvent> _mainEvents = StreamController();
 
   StreamingSyncImplementation? sync;
+  SyncStatus? _lastSyncStatus;
   _ConnectedClient? databaseHost;
   final connections = <_ConnectedClient, List<SubscribedStream>>{};
   List<SubscribedStream> currentStreams = [];
@@ -190,6 +195,12 @@ class _SyncRunner {
               } else {
                 reindexSubscriptions();
               }
+
+              // Inform the client about the current sync status.
+              if (_lastSyncStatus case final status?) {
+                client.sendSyncStatus(SerializedSyncStatus.from(status));
+              }
+
             case _RemoveConnection(:final client):
               connections.remove(client);
               if (connections.isEmpty) {
@@ -312,7 +323,7 @@ class _SyncRunner {
     currentStreams = connections.values.flattenedToSet.toList();
     sync = StreamingSyncImplementation(
       adapter: WebBucketStorage(database),
-      schemaJson: client._runner!.schemaJson,
+      schemaJson: schemaJson,
       connector: InternalConnector(
         getCredentialsCached: client.channel.credentialsCallback,
         prefetchCredentials: ({required bool invalidate}) async {
@@ -329,9 +340,11 @@ class _SyncRunner {
     );
     sync!.statusStream.listen((event) {
       _logger.fine('Broadcasting sync event: $event');
+      _lastSyncStatus = event;
+      final status = SerializedSyncStatus.from(event);
+
       for (final client in connections.keys) {
-        client.channel.notify(SyncWorkerMessageType.notifySyncStatus,
-            SerializedSyncStatus.from(event));
+        client.sendSyncStatus(status);
       }
     });
     sync!.streamingSync();
