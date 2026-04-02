@@ -54,3 +54,10 @@ jobs:
       - name: Test powersync package
         working-directory: packages/powersync
         run: dart test -p chrome,vm
+
+      - name: Enable encryption
+        run: dart tool/enable_encryption.dart
+
+      - name: Encryption tests
+        working-directory: packages/powersync
+        run: dart test -p vm -P encryption
