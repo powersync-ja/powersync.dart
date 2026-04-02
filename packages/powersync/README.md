@@ -2,9 +2,9 @@
   <a href="https://www.powersync.com" target="_blank"><img src="https://github.com/powersync-ja/.github/assets/7372448/d2538c43-c1a0-4c47-9a76-41462dba484f"/></a>
 </p>
 
-# PowerSync SDK for Flutter
+# PowerSync SDK for Dart and Flutter
 
-_[PowerSync](https://www.powersync.com) is a sync engine for building local-first apps with instantly-responsive UI/UX and simplified state transfer. Syncs between SQLite on the client-side and Postgres, MongoDB or MySQL on the server-side._
+_[PowerSync](https://www.powersync.com) is a sync engine for building local-first apps with instantly-responsive UI/UX and simplified state transfer. Syncs between SQLite on the client-side and Postgres, MongoDB, MySQL or SQL Server on the server-side._
 
 This package (`powersync`) is the PowerSync client SDK for Flutter.
 
@@ -18,8 +18,10 @@ See a summary of features [here](https://docs.powersync.com/client-sdk-reference
 
 # Installation
 
+Install the [latest version](https://pub.dev/packages/powersync/versions) of the package, for example:
+
 ```bash
-flutter pub add powersync
+dart pub add powersync
 ```
 
 # Getting Started
@@ -44,14 +46,6 @@ The easiest way to test Flutter Web support is to run the [Supabase Todo-List](h
 3. cd into the `demos/supabase-todolist` folder
 4. If you haven’t yet: `cp lib/app_config_template.dart lib/app_config.dart` (optionally update this config with your own Supabase and PowerSync project details).
 5. Run `flutter run -d chrome`
-
-### Installing PowerSync in your own project
-
-Install the [latest version](https://pub.dev/packages/powersync/versions) of the package, for example:
-
-```
-flutter pub add powersync:'^1.9.0'
-```
 
 #### Additional config
 

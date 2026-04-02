@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:logging/logging.dart';
 import 'package:powersync/powersync.dart';
-import 'package:powersync_core/attachments/attachments.dart';
+import 'package:powersync/attachments/attachments.dart';
 
 import 'package:powersync_flutter_demo/attachments/remote_storage_adapter.dart';
 

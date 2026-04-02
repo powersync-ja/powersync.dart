@@ -1,7 +1,4 @@
-import 'package:flutter/foundation.dart';
 import 'package:powersync/powersync.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:path/path.dart';
 
 const schema = Schema([
   Table('customers', [Column.text('name'), Column.text('email')])
@@ -27,11 +24,13 @@ class BackendConnector extends PowerSyncBackendConnector {
 
 Future<void> openDatabase() async {
   var path = 'powersync-demo.db';
-  // getApplicationSupportDirectory is not supported on Web
-  if (!kIsWeb) {
-    final dir = await getApplicationSupportDirectory();
-    path = join(dir.path, 'powersync-dart.db');
-  }
+
+  // On native Flutter apps, use something like this to store databases in an
+  // appropriate directory:
+  // if (!kIsWeb) {
+  //   final dir = await getApplicationSupportDirectory();
+  //   path = join(dir.path, 'powersync-dart.db');
+  // }
 
   // Setup the database.
   db = PowerSyncDatabase(schema: schema, path: path);

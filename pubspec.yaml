@@ -8,7 +8,6 @@ environment:
 workspace:
   - packages/powersync
   - packages/powersync_attachments_helper
-  - packages/powersync_core
   - packages/powersync_flutter_libs
 
   - demos/benchmarks
@@ -46,7 +45,7 @@ melos:
         # Automatically update libraryVersion:
         preCommit: |
           dart run tool/update_version.dart
-          git add packages/powersync_core/lib/src/version.dart
+          git add packages/powersync/lib/src/version.dart
 
   scripts:
     prepare:
@@ -66,7 +65,7 @@ melos:
 
     prepare:assets:
       description: Download Sqlite3 WASM for tests
-      run: dart ./bin/setup_web.dart --no-worker --output-dir ../powersync_core/assets
+      run: dart ./bin/setup_web.dart --no-worker --output-dir ../powersync/assets
       exec:
         concurrency: 1
       packageFilters:

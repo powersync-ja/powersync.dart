@@ -5,7 +5,7 @@ import 'package:supabase_todolist_drift/powersync/database.drift.dart' as i1;
 import 'package:supabase_todolist_drift/powersync/queries.drift.dart' as i2;
 import 'package:drift/internal/modular.dart' as i3;
 import 'package:supabase_todolist_drift/powersync/database.dart' as i4;
-import 'package:powersync_core/src/uuid.dart' as i5;
+import 'package:powersync/src/uuid.dart' as i5;
 
 typedef $$TodoItemsTableCreateCompanionBuilder = i1.TodoItemsCompanion
     Function({

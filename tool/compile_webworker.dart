@@ -12,8 +12,8 @@ Future<void> main() async {
   final dbWorkerOutputPath =
       path.join(repoRoot, 'packages/powersync/assets/$workerFilename');
 
-  final workerSourcePath = path.join(repoRoot,
-      './packages/powersync_core/lib/src/web/powersync_db.worker.dart');
+  final workerSourcePath = path.join(
+      repoRoot, './packages/powersync/lib/src/web/powersync_db.worker.dart');
 
   // And compile worker code
   final dbWorkerProcess = await Process.run(
@@ -37,8 +37,8 @@ Future<void> main() async {
   final syncWorkerOutputPath =
       path.join(repoRoot, 'packages/powersync/assets/$syncWorkerFilename');
 
-  final syncWorkerSourcePath = path.join(
-      repoRoot, './packages/powersync_core/lib/src/web/sync_worker.dart');
+  final syncWorkerSourcePath =
+      path.join(repoRoot, './packages/powersync/lib/src/web/sync_worker.dart');
 
   final syncWorkerProcess = await Process.run(
       Platform.executable,
@@ -60,9 +60,9 @@ Future<void> main() async {
   final workerFile = File(dbWorkerOutputPath);
   final syncWorkerFile = File(syncWorkerOutputPath);
 
-  //Copy workers to powersync_core
+  // Copy workers to powersync
   final powersyncCoreAssetsPath =
-      path.join(repoRoot, 'packages/powersync_core/assets');
+      path.join(repoRoot, 'packages/powersync/assets');
   workerFile.copySync('$powersyncCoreAssetsPath/$workerFilename');
   syncWorkerFile.copySync('$powersyncCoreAssetsPath/$syncWorkerFilename');
 

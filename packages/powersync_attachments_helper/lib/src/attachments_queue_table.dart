@@ -1,4 +1,4 @@
-import 'package:powersync_core/powersync_core.dart';
+import 'package:powersync/powersync.dart';
 import 'package:sqlite3/common.dart' as sqlite;
 
 const defaultAttachmentsQueueTableName = 'attachments_queue';
