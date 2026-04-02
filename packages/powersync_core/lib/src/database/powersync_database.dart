@@ -26,6 +26,11 @@ import '../sync/sync_status.dart';
 import 'active_instances.dart';
 import 'core_version.dart';
 
+const powerSyncDefaultSqliteOptions = SqliteOptions(
+  webSqliteOptions: WebSqliteOptions(
+      wasmUri: 'sqlite3.wasm', workerUri: 'powersync_db.worker.js'),
+);
+
 /// A PowerSync managed database.
 ///
 /// Use one instance per database file.
@@ -116,7 +121,7 @@ abstract base class PowerSyncDatabase extends SqliteConnection {
     @Deprecated('This argument is not used, set it on the factory instead')
     int maxReaders = SqliteOptions.defaultMaxReaders,
     Logger? logger,
-    SqliteOptions sqliteOptions = const SqliteOptions(),
+    SqliteOptions sqliteOptions = powerSyncDefaultSqliteOptions,
   }) {
     return PowerSyncDatabase.withFactory(
       openFactory(path: path, options: sqliteOptions),
