@@ -28,11 +28,12 @@ dependencies:
   path: ^1.0.0
   yaml: ^3.1.2
 
-# Uncomment this to run PowerSync encryption tests.
-#hooks:
-#  user_defines:
-#    sqlite3:
-#      source: sqlite3mc
+hooks:
+  user_defines:
+    sqlite3:
+      # To run PowerSync encryption tests, replace this with sqlite3mc and run
+      # dart test -P encryption
+      source: sqlite3
 
 dependency_overrides:
   # The only drift version with support for version 3.x of the sqlite3 package
