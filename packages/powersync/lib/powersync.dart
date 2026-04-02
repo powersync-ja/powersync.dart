@@ -7,6 +7,7 @@ export 'src/connector.dart';
 export 'src/crud.dart';
 export 'src/database/powersync_database.dart'
     hide BasePowerSyncDatabase, powerSyncUpdateNotifications;
+export 'src/database/encryption_options.dart';
 export 'src/exceptions.dart';
 export 'src/log.dart';
 export 'src/schema.dart';

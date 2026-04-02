@@ -3,6 +3,7 @@ import 'package:sqlite_async/sqlite_async.dart';
 // ignore: implementation_imports
 import 'package:sqlite_async/src/web/web_mutex.dart';
 
+import '../database/encryption_options.dart';
 import '../database/powersync_database.dart';
 import '../database/web/web_powersync_database.dart';
 import '../open_factory/web/web_open_factory.dart';
@@ -16,8 +17,10 @@ Mutex potentiallySharedMutex(String identifier) {
   return WebMutexImpl(identifier: identifier);
 }
 
-SqliteOpenFactory powerSyncOpenFactory(String path, SqliteOptions options) {
-  return WebPowerSyncOpenFactory(path: path, sqliteOptions: options);
+SqliteOpenFactory powerSyncOpenFactory(
+    String path, SqliteOptions options, EncryptionOptions? encryption) {
+  return WebPowerSyncOpenFactory(
+      path: path, sqliteOptions: options, encryptionOptions: encryption);
 }
 
 BasePowerSyncDatabase openPowerSyncDatabase(
