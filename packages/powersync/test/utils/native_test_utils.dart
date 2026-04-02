@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:powersync/native.dart';
+import 'package:powersync/powersync.dart';
 import 'package:sqlite3/sqlite3.dart';
 import 'package:sqlite3/src/database.dart';
 import 'package:sqlite_async/sqlite_async.dart';
@@ -36,11 +37,15 @@ class TestUtils extends AbstractTestUtils {
   }
 
   @override
-  Future<SqliteOpenFactory> testFactory(
-      {String? path, SqliteOptions options = const SqliteOptions()}) async {
+  Future<SqliteOpenFactory> testFactory({
+    String? path,
+    SqliteOptions options = const SqliteOptions(),
+    EncryptionOptions? encryption,
+  }) async {
     return NativePowerSyncOpenFactory(
       path: path ?? dbPath(),
       sqliteOptions: options,
+      encryptionOptions: encryption,
     );
   }
 

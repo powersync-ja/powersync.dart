@@ -25,6 +25,7 @@ import '../sync/streaming_sync.dart';
 import '../sync/sync_status.dart';
 import 'active_instances.dart';
 import 'core_version.dart';
+import 'encryption_options.dart';
 
 const powerSyncDefaultSqliteOptions = SqliteOptions(
   webSqliteOptions: WebSqliteOptions(
@@ -115,6 +116,9 @@ abstract base class PowerSyncDatabase extends SqliteConnection {
   /// from the last committed write transaction.
   ///
   /// [logger] defaults to [autoLogger], which logs to the console in debug builds.
+  ///
+  /// If [encryption] is passed, PowerSync will use an encrypted database. This
+  /// requires additional setup, see the [EncryptionOptions] class for details.
   factory PowerSyncDatabase({
     required Schema schema,
     required String path,
@@ -122,9 +126,10 @@ abstract base class PowerSyncDatabase extends SqliteConnection {
     int maxReaders = SqliteOptions.defaultMaxReaders,
     Logger? logger,
     SqliteOptions sqliteOptions = powerSyncDefaultSqliteOptions,
+    EncryptionOptions? encryption,
   }) {
     return PowerSyncDatabase.withFactory(
-      openFactory(path: path, options: sqliteOptions),
+      openFactory(path: path, options: sqliteOptions, encryption: encryption),
       schema: schema,
       logger: logger,
     );
@@ -177,9 +182,15 @@ abstract base class PowerSyncDatabase extends SqliteConnection {
   /// web, this returns a [WebPowerSyncOpenFactory]. Both of these classes can
   /// be extended if additional customization is necessary, and these instances
   /// can be passed to the [PowerSyncDatabase.withFactory] constructor.
-  static SqliteOpenFactory openFactory(
-      {required String path, SqliteOptions options = const SqliteOptions()}) {
-    return powerSyncOpenFactory(path, options);
+  ///
+  /// If [encryption] is passed, PowerSync will use an encrypted database. This
+  /// requires additional setup, see the [EncryptionOptions] class for details.
+  static SqliteOpenFactory openFactory({
+    required String path,
+    SqliteOptions options = const SqliteOptions(),
+    EncryptionOptions? encryption,
+  }) {
+    return powerSyncOpenFactory(path, options, encryption);
   }
 
   /// Check that a supported version of the powersync extension is loaded.

@@ -74,17 +74,22 @@ abstract class AbstractTestUtils {
   }
 
   /// Generates a test open factory
-  Future<SqliteOpenFactory> testFactory(
-      {String? path, SqliteOptions options = const SqliteOptions()});
+  Future<SqliteOpenFactory> testFactory({
+    String? path,
+    SqliteOptions options = const SqliteOptions(),
+    EncryptionOptions? encryption,
+  });
 
   /// Creates a SqliteDatabaseConnection
   Future<PowerSyncDatabase> setupPowerSync({
     String? path,
     Schema? schema,
     Logger? logger,
+    EncryptionOptions? encryption,
     bool initialize = true,
   }) async {
-    final db = PowerSyncDatabase.withFactory(await testFactory(path: path),
+    final db = PowerSyncDatabase.withFactory(
+        await testFactory(path: path, encryption: encryption),
         schema: schema ?? defaultSchema,
         logger: logger ?? _makeTestLogger(name: _testName));
     if (initialize) {

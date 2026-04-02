@@ -6,6 +6,7 @@ import 'package:sqlite3/sqlite3.dart';
 import 'package:sqlite_async/sqlite_async.dart';
 import 'package:sqlite_async/native.dart';
 
+import '../../database/encryption_options.dart';
 import 'sqlite3_powersync_init.dart';
 
 var _didInstallExtension = false;
@@ -13,11 +14,15 @@ var _didInstallExtension = false;
 /// A [NativeSqliteOpenFactory] that also loads the PowerSync SQLite core
 /// extension on opened databases.
 base class NativePowerSyncOpenFactory extends NativeSqliteOpenFactory {
-  NativePowerSyncOpenFactory({required super.path, super.sqliteOptions});
+  final EncryptionOptions? encryptionOptions;
+
+  NativePowerSyncOpenFactory(
+      {required super.path, super.sqliteOptions, this.encryptionOptions});
 
   @override
   List<String> pragmaStatements(SqliteOpenOptions options) {
     return [
+      ...?encryptionOptions?.pragmaStatements(),
       ...super.pragmaStatements(options),
       'PRAGMA recursive_triggers = TRUE',
     ];
@@ -68,5 +73,14 @@ base class NativePowerSyncOpenFactory extends NativeSqliteOpenFactory {
 
   Database openConnectionAttempt(SqliteOpenOptions options) {
     return super.openNativeConnection(options);
+  }
+
+  @override
+  void configureConnection(Database database, SqliteOpenOptions options) {
+    if (encryptionOptions != null) {
+      EncryptionOptions.checkHasCipherPragma(database);
+    }
+
+    super.configureConnection(database, options);
   }
 }
