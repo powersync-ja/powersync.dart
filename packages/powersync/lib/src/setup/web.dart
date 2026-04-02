@@ -53,7 +53,9 @@ Future<void> downloadWebAssets(List<String> arguments) async {
 
   if (Platform.environment.containsKey('IS_IN_POWERSYNC_CI')) {
     print('IS_IN_POWERSYNC_CI env variable is set, copying from local build');
-    return _copyPrecompiled(Directory.current, wasmFileName, outputDir);
+    await _copyPrecompiled(Directory.current, 'sqlite3.wasm', outputDir);
+    await _copyPrecompiled(Directory.current, 'sqlite3mc.wasm', outputDir);
+    return;
   }
 
   try {
