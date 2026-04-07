@@ -37,6 +37,15 @@ extension type PowerSyncAdditionalOpenOptions._(JSObject _)
   external bool get useMultipleCiphersVfs;
 }
 
+/// A message sent to a PowerSync worker.
+///
+/// We use a single worker for multiple purposes (hosting databases and
+/// coordinating sync across tabs). The database worker protocol is managed by
+/// the `sqlite3_web` package, we have `sync_worker_protocol.dart` for the sync
+/// worker.
+///
+/// When we send messages to workers, we wrap them in this structure so that
+/// workers know which protocol is used.
 @JS()
 @anonymous
 extension type PowerSyncWorkerMessage._(JSObject _) implements JSObject {
@@ -65,6 +74,8 @@ final class PowerSyncWorkerConnector implements WorkerConnector {
     return _encapsulateWorker(_inner.spawnSharedWorker());
   }
 
+  /// Wraps an inner [WorkerHandle] to send messages in a
+  /// [PowerSyncWorkerMessage] wrapper.
   WorkerHandle? _encapsulateWorker(WorkerHandle? inner) {
     if (inner == null) return null;
 
