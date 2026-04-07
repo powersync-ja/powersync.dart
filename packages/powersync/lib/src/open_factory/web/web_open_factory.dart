@@ -21,7 +21,7 @@ base class WebPowerSyncOpenFactory extends WebSqliteOpenFactory {
   Future<WebSqlite> openWebSqlite(WebSqliteOptions options) async {
     return WebSqlite.open(
       wasmModule: Uri.parse(sqliteOptions.webSqliteOptions.wasmUri),
-      workers: WorkerConnector.defaultWorkers(
+      workers: PowerSyncWorkerConnector(
           Uri.parse(sqliteOptions.webSqliteOptions.workerUri)),
       controller: PowerSyncAsyncSqliteController(),
       handleCustomRequest: handleCustomRequest,
