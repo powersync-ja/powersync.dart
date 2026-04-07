@@ -3,6 +3,7 @@ import 'dart:js_interop';
 import 'package:sqlite3/wasm.dart';
 import 'package:sqlite3_web/sqlite3_web.dart';
 import 'package:sqlite_async/sqlite3_web_worker.dart';
+import 'package:web/web.dart';
 
 final class PowerSyncAsyncSqliteController extends AsyncSqliteController {
   @override
@@ -34,4 +35,54 @@ extension type PowerSyncAdditionalOpenOptions._(JSObject _)
   });
 
   external bool get useMultipleCiphersVfs;
+}
+
+@JS()
+@anonymous
+extension type PowerSyncWorkerMessage._(JSObject _) implements JSObject {
+  external bool isForSyncWorker;
+  external JSAny? message;
+
+  external factory PowerSyncWorkerMessage({
+    required bool isForSyncWorker,
+    required JSAny? message,
+  });
+}
+
+final class PowerSyncWorkerConnector implements WorkerConnector {
+  final WorkerConnector _inner;
+
+  PowerSyncWorkerConnector(Uri uri)
+      : _inner = WorkerConnector.defaultWorkers(uri);
+
+  @override
+  WorkerHandle? spawnDedicatedWorker() {
+    return _encapsulateWorker(_inner.spawnDedicatedWorker());
+  }
+
+  @override
+  WorkerHandle? spawnSharedWorker() {
+    return _encapsulateWorker(_inner.spawnSharedWorker());
+  }
+
+  WorkerHandle? _encapsulateWorker(WorkerHandle? inner) {
+    if (inner == null) return null;
+
+    return _PowerSyncWorkerHandle(inner);
+  }
+}
+
+final class _PowerSyncWorkerHandle implements WorkerHandle {
+  final WorkerHandle _inner;
+
+  _PowerSyncWorkerHandle(this._inner);
+
+  @override
+  void postMessage(JSAny? msg, JSObject transfer) {
+    _inner.postMessage(
+        PowerSyncWorkerMessage(isForSyncWorker: false, message: msg), transfer);
+  }
+
+  @override
+  EventTarget get targetForErrorEvents => _inner.targetForErrorEvents;
 }
