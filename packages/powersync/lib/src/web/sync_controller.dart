@@ -95,7 +95,7 @@ class SyncWorkerHandle implements StreamingSync {
     // the shared worker.
     worker.port.start();
     worker.port.postMessage(
-      PowerSyncWorkerMessage(
+      SharedWorkerMessage(
         isForSyncWorker: true,
         message: port2,
       ),
