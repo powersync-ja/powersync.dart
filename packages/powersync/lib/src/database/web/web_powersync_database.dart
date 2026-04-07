@@ -51,7 +51,7 @@ final class WebPowerSyncDatabase extends BasePowerSyncDatabase {
       // with the non-worker path.
       assert(
         workerUri.scheme != 'blob',
-        'Falling-back to local sync client instead of using blob worker.',
+        'Falling back to local sync client instead of using blob worker.',
       );
 
       sync = await SyncWorkerHandle.start(

@@ -26,21 +26,7 @@ import 'web_bucket_storage.dart';
 final _logger = autoLogger;
 
 class SyncWorker {
-  final SharedWorkerGlobalScope _self;
   final Map<String, _SyncRunner> _requestedSyncTasks = {};
-
-  SyncWorker() : _self = globalContext as SharedWorkerGlobalScope;
-
-  void start() async {
-    // Start listening for connect events, each signifies a client connecting
-    // to this worker.
-    EventStreamProviders.connectEvent.forTarget(_self).listen((e) {
-      final ports = (e as MessageEvent).ports.toDart;
-      for (final port in ports) {
-        trackPort(port);
-      }
-    });
-  }
 
   void trackPort(MessagePort port) {
     _ConnectedClient(port, this);
