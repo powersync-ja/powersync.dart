@@ -19,35 +19,36 @@ void main() {
   final controller = PowerSyncAsyncSqliteController();
   final connector = PowerSyncWorkerConnector(Uri.base);
   final messagesForDatabaseWorker = StreamController<MessageEvent>(sync: true);
-  final syncWorker = SyncWorker();
 
   WebSqlite.workerEntrypoint(
     controller: controller,
     environment: _Environment(connector, messagesForDatabaseWorker.stream),
   );
 
-  void handleMessage(MessageEvent event) {
-    final message = event.data as PowerSyncWorkerMessage;
-
-    if (message.isForSyncWorker) {
-      final data = message.message;
-      if (!_isSharedWorker) {
-        print('Ignoring sync worker message to dedicated worker.');
-        return;
-      }
-
-      syncWorker.trackPort(data as MessagePort);
-    } else {
-      messagesForDatabaseWorker.add(
-        MessageEvent(
-          'message',
-          MessageEventInit(data: message.message),
-        ),
-      );
-    }
-  }
-
   if (_isSharedWorker) {
+    final syncWorker = SyncWorker();
+
+    void handleMessage(MessageEvent event) {
+      final message = event.data as SharedWorkerMessage;
+
+      if (message.isForSyncWorker) {
+        final data = message.message;
+        if (!_isSharedWorker) {
+          print('Ignoring sync worker message to dedicated worker.');
+          return;
+        }
+
+        syncWorker.trackPort(data as MessagePort);
+      } else {
+        messagesForDatabaseWorker.add(
+          MessageEvent(
+            'message',
+            MessageEventInit(data: message.message),
+          ),
+        );
+      }
+    }
+
     void handlePort(MessagePort port) {
       port.start();
       EventStreamProviders.messageEvent.forTarget(port).listen(handleMessage);
@@ -63,7 +64,7 @@ void main() {
   } else {
     EventStreamProviders.messageEvent
         .forTarget(globalContext as DedicatedWorkerGlobalScope)
-        .listen(handleMessage);
+        .listen(messagesForDatabaseWorker.add);
   }
 }
 

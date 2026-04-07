@@ -37,7 +37,7 @@ extension type PowerSyncAdditionalOpenOptions._(JSObject _)
   external bool get useMultipleCiphersVfs;
 }
 
-/// A message sent to a PowerSync worker.
+/// A message sent to a shared PowerSync worker.
 ///
 /// We use a single worker for multiple purposes (hosting databases and
 /// coordinating sync across tabs). The database worker protocol is managed by
@@ -48,11 +48,11 @@ extension type PowerSyncAdditionalOpenOptions._(JSObject _)
 /// workers know which protocol is used.
 @JS()
 @anonymous
-extension type PowerSyncWorkerMessage._(JSObject _) implements JSObject {
+extension type SharedWorkerMessage._(JSObject _) implements JSObject {
   external bool isForSyncWorker;
   external JSAny? message;
 
-  external factory PowerSyncWorkerMessage({
+  external factory SharedWorkerMessage({
     required bool isForSyncWorker,
     required JSAny? message,
   });
@@ -66,32 +66,29 @@ final class PowerSyncWorkerConnector implements WorkerConnector {
 
   @override
   WorkerHandle? spawnDedicatedWorker() {
-    return _encapsulateWorker(_inner.spawnDedicatedWorker());
+    // We don't need to wrap this, dedicated workers are only used for databases
+    // and we don't send SharedWorkerMessages to those.
+    return _inner.spawnDedicatedWorker();
   }
 
   @override
   WorkerHandle? spawnSharedWorker() {
-    return _encapsulateWorker(_inner.spawnSharedWorker());
-  }
-
-  /// Wraps an inner [WorkerHandle] to send messages in a
-  /// [PowerSyncWorkerMessage] wrapper.
-  WorkerHandle? _encapsulateWorker(WorkerHandle? inner) {
-    if (inner == null) return null;
-
-    return _PowerSyncWorkerHandle(inner);
+    return switch (_inner.spawnSharedWorker()) {
+      null => null,
+      final worker => _SharedWorkerHandle(worker),
+    };
   }
 }
 
-final class _PowerSyncWorkerHandle implements WorkerHandle {
+final class _SharedWorkerHandle implements WorkerHandle {
   final WorkerHandle _inner;
 
-  _PowerSyncWorkerHandle(this._inner);
+  _SharedWorkerHandle(this._inner);
 
   @override
   void postMessage(JSAny? msg, JSObject transfer) {
     _inner.postMessage(
-        PowerSyncWorkerMessage(isForSyncWorker: false, message: msg), transfer);
+        SharedWorkerMessage(isForSyncWorker: false, message: msg), transfer);
   }
 
   @override
