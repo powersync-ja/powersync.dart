@@ -1,3 +1,8 @@
+/// This file needs to be compiled to JavaScript with the command
+/// dart compile js -O4 packages/powersync/lib/src/web/worker.dart -o assets/ps_worker.js
+/// The output should then be included in each project's `web` directory
+library;
+
 import 'dart:async';
 import 'dart:js_interop';
 import 'dart:js_interop_unsafe';

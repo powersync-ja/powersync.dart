@@ -25,10 +25,6 @@ import 'web_bucket_storage.dart';
 
 final _logger = autoLogger;
 
-void main() {
-  SyncWorker().start();
-}
-
 class SyncWorker {
   final SharedWorkerGlobalScope _self;
   final Map<String, _SyncRunner> _requestedSyncTasks = {};
