@@ -47,7 +47,8 @@ final class WebPowerSyncDatabase extends BasePowerSyncDatabase {
         database: this,
         connector: connector,
         options: options.source,
-        workerUri: Uri.base.resolve('/powersync_sync.worker.js'),
+        workerUri: Uri.parse(
+            database.openFactory.sqliteOptions.webSqliteOptions.workerUri),
         subscriptions: initiallyActiveStreams,
       );
     } catch (e) {
