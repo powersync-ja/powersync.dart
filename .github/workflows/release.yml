@@ -36,4 +36,4 @@ jobs:
           body="Release $tag
           $changes"
           gh release create "$tag" --title "$tag" --notes "$body"
-          gh release upload "${{ github.ref_name }}" packages/powersync/assets/powersync_db.worker.js packages/powersync/assets/powersync_sync.worker.js packages/sqlite3_wasm_build/dist/*.wasm
+          gh release upload "${{ github.ref_name }}" packages/powersync/assets/powersync_db.worker.js packages/sqlite3_wasm_build/dist/*.wasm

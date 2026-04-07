@@ -1,1 +1,1 @@
-export 'src/web/powersync_db.worker.dart';
+export 'src/web/worker.dart';

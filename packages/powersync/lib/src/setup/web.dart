@@ -70,11 +70,15 @@ Future<void> downloadWebAssets(List<String> arguments) async {
     if (downloadWorker) {
       final workerUrl =
           'https://github.com/powersync-ja/powersync.dart/releases/download/$powersyncTag/powersync_db.worker.js';
-      final syncWorkerUrl =
-          'https://github.com/powersync-ja/powersync.dart/releases/download/$powersyncTag/powersync_sync.worker.js';
 
       await downloadFile(httpClient, workerUrl, workerPath);
-      await downloadFile(httpClient, syncWorkerUrl, syncWorkerPath);
+
+      final oldSyncWorker = File(syncWorkerPath);
+      if (await oldSyncWorker.exists()) {
+        await oldSyncWorker.delete();
+        print('Deleted powersync_sync.worker.js. Going forward, '
+            'powersync_db.worker.js is the only worker required.');
+      }
     }
 
     if (powerSyncVersion >= firstPowerSyncVersionWithOwnWasm) {

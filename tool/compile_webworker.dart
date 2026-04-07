@@ -11,9 +11,8 @@ Future<void> main() async {
   final workerFilename = 'powersync_db.worker.js';
   final dbWorkerOutputPath =
       path.join(repoRoot, 'packages/powersync/assets/$workerFilename');
-
-  final workerSourcePath = path.join(
-      repoRoot, './packages/powersync/lib/src/web/powersync_db.worker.dart');
+  final workerSourcePath =
+      path.join(repoRoot, './packages/powersync/lib/src/web/worker.dart');
 
   // And compile worker code
   final dbWorkerProcess = await Process.run(
@@ -33,38 +32,12 @@ Future<void> main() async {
         'Could not compile db worker.\nstdout: ${dbWorkerProcess.stdout.toString()}\nstderr: ${dbWorkerProcess.stderr.toString()}');
   }
 
-  final syncWorkerFilename = 'powersync_sync.worker.js';
-  final syncWorkerOutputPath =
-      path.join(repoRoot, 'packages/powersync/assets/$syncWorkerFilename');
-
-  final syncWorkerSourcePath =
-      path.join(repoRoot, './packages/powersync/lib/src/web/sync_worker.dart');
-
-  final syncWorkerProcess = await Process.run(
-      Platform.executable,
-      [
-        'compile',
-        'js',
-        '-o',
-        syncWorkerOutputPath,
-        '-O4',
-        syncWorkerSourcePath,
-      ],
-      workingDirectory: cwd);
-
-  if (syncWorkerProcess.exitCode != 0) {
-    throw Exception(
-        'Could not compile sync worker:\nstdout: ${syncWorkerProcess.stdout.toString()}\nstderr: ${syncWorkerProcess.stderr.toString()}');
-  }
-
   final workerFile = File(dbWorkerOutputPath);
-  final syncWorkerFile = File(syncWorkerOutputPath);
 
   // Copy workers to powersync
   final powersyncCoreAssetsPath =
       path.join(repoRoot, 'packages/powersync/assets');
   workerFile.copySync('$powersyncCoreAssetsPath/$workerFilename');
-  syncWorkerFile.copySync('$powersyncCoreAssetsPath/$syncWorkerFilename');
 
   // Copy this to all demo apps web folders
   final demosRoot = path.join(repoRoot, 'demos');
@@ -79,7 +52,12 @@ Future<void> main() async {
     }
     final demoOutputPath = path.join(demoWebDir, workerFilename);
     File(dbWorkerOutputPath).copySync(demoOutputPath);
-    File(syncWorkerOutputPath)
-        .copySync(path.join(demoWebDir, syncWorkerFilename));
+
+    final oldSyncWorker =
+        File(path.join(demoWebDir, 'powersync_sync.worker.js'));
+    if (await oldSyncWorker.exists()) {
+      await oldSyncWorker.delete();
+      print('Deleted ${oldSyncWorker.path}, the db worker covers that now.');
+    }
   }
 }
