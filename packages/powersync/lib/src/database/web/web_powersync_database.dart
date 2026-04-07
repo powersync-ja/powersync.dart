@@ -45,9 +45,14 @@ final class WebPowerSyncDatabase extends BasePowerSyncDatabase {
     try {
       final workerUri = Uri.parse(
           database.openFactory.sqliteOptions.webSqliteOptions.workerUri);
-      if (workerUri.scheme == 'blob') {
-        throw 'Not using sync worker with blob URI';
-      }
+      // This only affects our tests, where webSqliteOptions.workerUri is a blob
+      // loading the worker. Using this as a sync worker seems to cause the test
+      // runner to hang, so we want to throw an assertion error and continue
+      // with the non-worker path.
+      assert(
+        workerUri.scheme != 'blob',
+        'Falling-back to local sync client instead of using blob worker.',
+      );
 
       sync = await SyncWorkerHandle.start(
         database: this,

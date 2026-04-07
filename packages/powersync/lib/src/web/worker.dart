@@ -1,5 +1,5 @@
 /// This file needs to be compiled to JavaScript with the command
-/// dart compile js -O4 packages/powersync/lib/src/web/worker.dart -o assets/ps_worker.js
+/// dart compile js -O4 packages/powersync/lib/src/web/worker.dart -o assets/powersync_db.worker.js
 /// The output should then be included in each project's `web` directory
 library;
 
@@ -32,13 +32,7 @@ void main() {
       final message = event.data as SharedWorkerMessage;
 
       if (message.isForSyncWorker) {
-        final data = message.message;
-        if (!_isSharedWorker) {
-          print('Ignoring sync worker message to dedicated worker.');
-          return;
-        }
-
-        syncWorker.trackPort(data as MessagePort);
+        syncWorker.trackPort(message.message as MessagePort);
       } else {
         messagesForDatabaseWorker.add(
           MessageEvent(
