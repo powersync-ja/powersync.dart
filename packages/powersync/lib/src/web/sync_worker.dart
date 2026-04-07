@@ -26,14 +26,14 @@ import 'web_bucket_storage.dart';
 final _logger = autoLogger;
 
 void main() {
-  _SyncWorker().start();
+  SyncWorker().start();
 }
 
-class _SyncWorker {
+class SyncWorker {
   final SharedWorkerGlobalScope _self;
   final Map<String, _SyncRunner> _requestedSyncTasks = {};
 
-  _SyncWorker() : _self = globalContext as SharedWorkerGlobalScope;
+  SyncWorker() : _self = globalContext as SharedWorkerGlobalScope;
 
   void start() async {
     // Start listening for connect events, each signifies a client connecting
@@ -41,12 +41,16 @@ class _SyncWorker {
     EventStreamProviders.connectEvent.forTarget(_self).listen((e) {
       final ports = (e as MessageEvent).ports.toDart;
       for (final port in ports) {
-        _ConnectedClient(port, this);
+        trackPort(port);
       }
     });
   }
 
-  _SyncRunner referenceSyncTask(
+  void trackPort(MessagePort port) {
+    _ConnectedClient(port, this);
+  }
+
+  _SyncRunner _referenceSyncTask(
       String databaseIdentifier,
       SyncOptions options,
       String schemaJson,
@@ -66,7 +70,7 @@ class _SyncWorker {
 
 class _ConnectedClient {
   late WorkerCommunicationChannel channel;
-  final _SyncWorker _worker;
+  final SyncWorker _worker;
 
   _SyncRunner? _runner;
   StreamSubscription<LogRecord>? _logSubscription;
@@ -101,7 +105,7 @@ class _ConnectedClient {
               },
             );
 
-            _runner = _worker.referenceSyncTask(
+            _runner = _worker._referenceSyncTask(
               request.databaseName,
               recoveredOptions,
               request.schemaJson,

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:js_interop';
 
+import 'package:powersync/src/web/worker_utils.dart';
 import 'package:sqlite_async/web.dart';
 import 'package:web/web.dart';
 
@@ -87,11 +88,25 @@ class SyncWorkerHandle implements StreamingSync {
     required List<SubscribedStream> subscriptions,
   }) async {
     final worker = SharedWorker(workerUri.toString().toJS);
+    final MessageChannel(:port1, :port2) = MessageChannel();
+
+    // We can't use this port directly because the worker is also used to host
+    // databases. So the first step is to establish a sync protocol channel on
+    // the shared worker.
+    worker.port.start();
+    worker.port.postMessage(
+      PowerSyncWorkerMessage(
+        isForSyncWorker: true,
+        message: port2,
+      ),
+      [port2].toJS,
+    );
+
     final handle = SyncWorkerHandle._(
       options: options,
       database: database,
       connector: connector,
-      sendToWorker: worker.port,
+      sendToWorker: port1,
       worker: worker,
       subscriptions: subscriptions,
     );
