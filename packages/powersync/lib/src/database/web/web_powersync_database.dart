@@ -43,12 +43,17 @@ final class WebPowerSyncDatabase extends BasePowerSyncDatabase {
     // Try using a shared worker for the synchronization implementation to avoid
     // duplicating work across tabs.
     try {
+      final workerUri = Uri.parse(
+          database.openFactory.sqliteOptions.webSqliteOptions.workerUri);
+      if (workerUri.scheme == 'blob') {
+        throw 'Not using sync worker with blob URI';
+      }
+
       sync = await SyncWorkerHandle.start(
         database: this,
         connector: connector,
         options: options.source,
-        workerUri: Uri.parse(
-            database.openFactory.sqliteOptions.webSqliteOptions.workerUri),
+        workerUri: workerUri,
         subscriptions: initiallyActiveStreams,
       );
     } catch (e) {
