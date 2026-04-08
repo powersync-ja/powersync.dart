@@ -18,7 +18,6 @@ import 'bucket_storage.dart';
 import 'instruction.dart';
 import 'internal_connector.dart';
 import 'mutable_sync_status.dart';
-import 'protocol.dart';
 import 'stream_utils.dart';
 import 'sync_status.dart';
 
@@ -160,15 +159,9 @@ class StreamingSyncImplementation implements StreamingSync {
             invalidCredentials = false;
           }
           // Protect sync iterations with exclusivity (if a valid Mutex is provided)
-          final (:immediateRestart) = await syncMutex.lock(() {
-            switch (options.source.syncImplementation) {
-              // ignore: deprecated_member_use_from_same_package
-              case SyncClientImplementation.dart:
-                return _dartStreamingSyncIteration();
-              case SyncClientImplementation.rust:
-                return _rustStreamingSyncIteration();
-            }
-          }, abortTrigger: Future.delayed(_retryDelay));
+          final (:immediateRestart) = await syncMutex.lock(
+              () => _rustStreamingSyncIteration(),
+              abortTrigger: Future.delayed(_retryDelay));
           delayNextIteration = !immediateRestart;
         } catch (e, stacktrace) {
           if (aborted && e is http.ClientException) {
@@ -303,239 +296,12 @@ class StreamingSyncImplementation implements StreamingSync {
     return body['data']['write_checkpoint'] as String;
   }
 
-  void _updateStatusForPriority(SyncPriorityStatus completed) {
-    _state.updateStatus((s) {
-      // All status entries with a higher priority can be deleted since this
-      // partial sync includes them.
-      s.priorityStatusEntries = [
-        for (final entry in s.priorityStatusEntries)
-          if (entry.priority < completed.priority) entry,
-        completed
-      ];
-    });
-  }
-
   Future<RustSyncIterationResult> _rustStreamingSyncIteration() async {
     logger.info('Starting Rust sync iteration');
     final response = await _ActiveRustStreamingIteration(this).syncIteration();
     logger.info(
         'Ending Rust sync iteration. Immediate restart: ${response.immediateRestart}');
     return response;
-  }
-
-  Future<(List<BucketRequest>, Map<String, BucketDescription?>)>
-      _collectLocalBucketState() async {
-    final bucketEntries = await adapter.getBucketStates();
-
-    final initialRequests = [
-      for (final entry in bucketEntries) BucketRequest(entry.bucket, entry.opId)
-    ];
-    final localDescriptions = {
-      for (final entry in bucketEntries) entry.bucket: null
-    };
-
-    return (initialRequests, localDescriptions);
-  }
-
-  Future<RustSyncIterationResult> _dartStreamingSyncIteration() async {
-    var (bucketRequests, bucketMap) = await _collectLocalBucketState();
-    if (aborted) {
-      return (immediateRestart: false);
-    }
-
-    Checkpoint? targetCheckpoint;
-
-    var requestStream = _streamingSyncRequest(StreamingSyncRequest(
-            bucketRequests, options.params, clientId!, options.appMetadata))
-        .map(ReceivedLine.new);
-
-    var merged = addBroadcast(requestStream, _nonLineSyncEvents.stream);
-
-    Future<void>? credentialsInvalidation;
-    bool shouldStopIteration = false;
-    bool immediateRestart = false;
-
-    // Trigger a CRUD upload on reconnect
-    _internalCrudTriggerController.add(null);
-
-    Future<void> handleLine(StreamingSyncLine line) async {
-      switch (line) {
-        case Checkpoint():
-          targetCheckpoint = line;
-          final Set<String> bucketsToDelete = {...bucketMap.keys};
-          final Map<String, BucketDescription> newBuckets = {};
-          for (final checksum in line.checksums) {
-            newBuckets[checksum.bucket] = (
-              name: checksum.bucket,
-              priority: checksum.priority,
-            );
-            bucketsToDelete.remove(checksum.bucket);
-          }
-          bucketMap = newBuckets;
-          await adapter.removeBuckets([...bucketsToDelete]);
-          final initialProgress = await adapter.getBucketOperationProgress();
-          _state.updateStatus(
-              (s) => s.applyCheckpointStarted(initialProgress, line));
-        case StreamingSyncCheckpointComplete():
-          final result = await _applyCheckpoint(targetCheckpoint!, _abort);
-          if (result.abort) {
-            shouldStopIteration = true;
-            return;
-          }
-        case StreamingSyncCheckpointPartiallyComplete(:final bucketPriority):
-          final result = await adapter.syncLocalDatabase(targetCheckpoint!,
-              forPriority: bucketPriority);
-          if (!result.checkpointValid) {
-            // This means checksums failed. Start again with a new checkpoint.
-            // TODO: better back-off
-            // await new Promise((resolve) => setTimeout(resolve, 50));
-            shouldStopIteration = true;
-            return;
-          } else if (!result.ready) {
-            // If we have pending uploads, we can't complete new checkpoints
-            // outside of priority 0. We'll resolve this for a complete
-            // checkpoint later.
-          } else {
-            _updateStatusForPriority((
-              priority: StreamPriority(bucketPriority),
-              lastSyncedAt: DateTime.now(),
-              hasSynced: true,
-            ));
-          }
-        case StreamingSyncCheckpointDiff():
-          // TODO: It may be faster to just keep track of the diff, instead of
-          // the entire checkpoint
-          if (targetCheckpoint == null) {
-            throw PowerSyncProtocolException(
-                'Checkpoint diff without previous checkpoint');
-          }
-          final diff = line;
-          final Map<String, BucketChecksum> newBuckets = {};
-          for (var checksum in targetCheckpoint!.checksums) {
-            newBuckets[checksum.bucket] = checksum;
-          }
-          for (var checksum in diff.updatedBuckets) {
-            newBuckets[checksum.bucket] = checksum;
-          }
-          for (var bucket in diff.removedBuckets) {
-            newBuckets.remove(bucket);
-          }
-
-          final newCheckpoint = Checkpoint(
-              lastOpId: diff.lastOpId,
-              checksums: [...newBuckets.values],
-              writeCheckpoint: diff.writeCheckpoint);
-          targetCheckpoint = newCheckpoint;
-          final initialProgress = await adapter.getBucketOperationProgress();
-          _state.updateStatus(
-              (s) => s.applyCheckpointStarted(initialProgress, newCheckpoint));
-
-          bucketMap = newBuckets.map((name, checksum) =>
-              MapEntry(name, (name: name, priority: checksum.priority)));
-          await adapter.removeBuckets(diff.removedBuckets);
-          adapter.setTargetCheckpoint(targetCheckpoint!);
-        case SyncDataBatch():
-          // TODO: This increments the counters before actually saving sync
-          // data. Might be fine though?
-          _state.updateStatus((s) => s.applyBatchReceived(line));
-          await adapter.saveSyncData(line);
-        case StreamingSyncKeepalive(:final tokenExpiresIn):
-          if (tokenExpiresIn == 0) {
-            // Token expired already - stop the connection immediately
-            connector.prefetchCredentials(invalidate: true).ignore();
-            shouldStopIteration = true;
-            break;
-          } else if (tokenExpiresIn <= 30) {
-            // Token expires soon - refresh it in the background
-            credentialsInvalidation ??=
-                connector.prefetchCredentials().then((_) {
-              // Token has been refreshed - we should restart the connection.
-              shouldStopIteration = true;
-              // trigger next loop iteration ASAP, don't wait for another
-              // message from the server.
-              if (!aborted) {
-                immediateRestart = true;
-                _nonLineSyncEvents.add(TokenRefreshComplete());
-              }
-            }, onError: (_) {
-              // Token refresh failed - retry on next keepalive.
-              credentialsInvalidation = null;
-            });
-          }
-        case UnknownSyncLine(:final rawData):
-          logger.fine('Unknown sync line: $rawData');
-      }
-    }
-
-    await for (var line in merged) {
-      if (aborted || shouldStopIteration) {
-        break;
-      }
-
-      switch (line) {
-        case ReceivedLine(:final line):
-          _state.updateStatus((s) => s.setConnected());
-          await handleLine(line as StreamingSyncLine);
-        case UploadCompleted():
-        case HandleChangedSubscriptions():
-        case ConnectionEvent():
-          // Only relevant for the Rust sync implementation.
-          break;
-        case AbortCurrentIteration():
-        case TokenRefreshComplete():
-          // We have a new token, so stop the iteration.
-          shouldStopIteration = true;
-      }
-
-      if (shouldStopIteration) {
-        // Stop this connection, so that a new one will be started
-        break;
-      }
-    }
-
-    return (immediateRestart: immediateRestart);
-  }
-
-  Future<({bool abort, bool didApply})> _applyCheckpoint(
-      Checkpoint targetCheckpoint, AbortController? abortController) async {
-    var result = await adapter.syncLocalDatabase(targetCheckpoint);
-    final pendingUpload = _activeCrudUpload;
-
-    if (!result.checkpointValid) {
-      // This means checksums failed. Start again with a new checkpoint.
-      // TODO: better back-off
-      // await new Promise((resolve) => setTimeout(resolve, 50));
-      return const (abort: true, didApply: false);
-    } else if (!result.ready && pendingUpload != null) {
-      // We have pending entries in the local upload queue or are waiting to
-      // confirm a write checkpoint, which prevented this checkpoint from
-      // applying. Wait for that to complete and try again.
-      logger.fine('Could not apply checkpoint due to local data. '
-          'Waiting for in-progress upload before retrying...');
-      await Future.any([
-        pendingUpload.future,
-        if (abortController case final controller?) controller.onAbort,
-      ]);
-
-      if (abortController?.aborted == true) {
-        return const (abort: true, didApply: false);
-      }
-
-      // Try again now that uploads have completed.
-      result = await adapter.syncLocalDatabase(targetCheckpoint);
-    }
-
-    if (result.checkpointValid && result.ready) {
-      logger.fine('validated checkpoint: $targetCheckpoint');
-
-      _state.updateStatus((s) => s.applyCheckpointReached(targetCheckpoint));
-
-      return const (abort: false, didApply: true);
-    } else {
-      logger.fine(
-          'Could not apply checkpoint. Waiting for next sync complete line');
-      return const (abort: false, didApply: false);
-    }
   }
 
   Future<http.StreamedResponse?> _postStreamRequest(
@@ -573,15 +339,6 @@ class StreamingSyncImplementation implements StreamingSync {
     }
 
     return res;
-  }
-
-  Stream<StreamingSyncLine> _streamingSyncRequest(StreamingSyncRequest data) {
-    return streamFromFutureAwaitInCancellation(_postStreamRequest(data, false))
-        .asyncExpand((response) {
-      return response?.stream.lines.parseJson
-          .cast<Map<String, dynamic>>()
-          .transform(StreamingSyncLine.reader);
-    });
   }
 
   /// Delays the standard `retryDelay` Duration, but exits early if

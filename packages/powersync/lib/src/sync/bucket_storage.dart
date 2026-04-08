@@ -2,30 +2,18 @@
 library;
 
 import 'dart:async';
-import 'dart:convert';
 
-import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
 import 'package:sqlite_async/sqlite_async.dart';
 import 'package:sqlite3/common.dart';
 
 import '../crud.dart';
 import '../schema_logic.dart';
-import 'protocol.dart';
-
-const compactOperationInterval = 1000;
-
-typedef LocalOperationCounters = ({int atLast, int sinceLast});
 
 class BucketStorage {
   final SqliteConnection _internalDb;
-  bool _hasCompletedSync = false;
 
-  BucketStorage(SqliteConnection db) : _internalDb = db {
-    _init();
-  }
-
-  void _init() {}
+  BucketStorage(this._internalDb);
 
   // Use only for read statements
   Future<ResultSet> select(String query,
@@ -33,191 +21,9 @@ class BucketStorage {
     return await _internalDb.execute(query, parameters);
   }
 
-  Future<List<BucketState>> getBucketStates() async {
-    final rows = await select(
-        "SELECT name, cast(last_op as TEXT) FROM ps_buckets WHERE pending_delete = 0 AND name != '\$local'");
-    return [
-      for (var row in rows)
-        BucketState(
-          bucket: row.columnAt(0) as String,
-          opId: row.columnAt(1) as String,
-        )
-    ];
-  }
-
-  Future<Map<String, LocalOperationCounters>>
-      getBucketOperationProgress() async {
-    final rows = await select(
-        "SELECT name, count_at_last, count_since_last FROM ps_buckets");
-
-    return {
-      for (final row in rows)
-        (row.columnAt(0) as String): (
-          atLast: row.columnAt(1) as int,
-          sinceLast: row.columnAt(2) as int,
-        )
-    };
-  }
-
   Future<String> getClientId() async {
     final rows = await select('SELECT powersync_client_id() as client_id');
     return rows.first['client_id'] as String;
-  }
-
-  Future<void> saveSyncData(SyncDataBatch batch) async {
-    await writeTransaction((tx) async {
-      for (var b in batch.buckets) {
-        await _updateBucket2(
-            tx,
-            jsonEncode({
-              'buckets': [b],
-            }));
-      }
-      // No need to flush - the data is not directly visible to the user either way.
-      // We get major initial sync performance improvements with IndexedDB by
-      // not flushing here.
-    }, flush: false);
-  }
-
-  Future<void> _updateBucket2(SqliteWriteContext tx, String json) async {
-    await tx.execute('INSERT INTO powersync_operations(op, data) VALUES(?, ?)',
-        ['save', json]);
-  }
-
-  Future<void> removeBuckets(List<String> buckets) async {
-    for (final bucket in buckets) {
-      await deleteBucket(bucket);
-    }
-  }
-
-  Future<void> deleteBucket(String bucket) async {
-    await writeTransaction((tx) async {
-      await tx.execute(
-          'INSERT INTO powersync_operations(op, data) VALUES(?, ?)',
-          ['delete_bucket', bucket]);
-      // No need to flush - not directly visible to the user
-    }, flush: false);
-  }
-
-  Future<bool> hasCompletedSync() async {
-    if (_hasCompletedSync) {
-      return true;
-    }
-    final rs = await select("SELECT powersync_last_synced_at() as synced_at");
-    final value = rs.first['synced_at'] as String?;
-
-    if (value != null) {
-      _hasCompletedSync = true;
-      return true;
-    }
-    return false;
-  }
-
-  Future<SyncLocalDatabaseResult> syncLocalDatabase(Checkpoint checkpoint,
-      {int? forPriority}) async {
-    final r = await validateChecksums(checkpoint, priority: forPriority);
-
-    if (!r.checkpointValid) {
-      for (String b in r.checkpointFailures ?? []) {
-        await deleteBucket(b);
-      }
-      return r;
-    }
-    final bucketNames = [
-      for (final c in checkpoint.checksums)
-        if (forPriority == null || c.priority <= forPriority) c.bucket
-    ];
-
-    await writeTransaction((tx) async {
-      await tx.execute(
-          "UPDATE ps_buckets SET last_op = ? WHERE name IN (SELECT json_each.value FROM json_each(?))",
-          [checkpoint.lastOpId, jsonEncode(bucketNames)]);
-      if (forPriority == null && checkpoint.writeCheckpoint != null) {
-        await tx.execute(
-            "UPDATE ps_buckets SET last_op = ? WHERE name = '\$local'",
-            [checkpoint.writeCheckpoint]);
-      }
-      // Not flushing here - the flush will happen in the next step
-    }, flush: false);
-
-    final valid = await updateObjectsFromBuckets(checkpoint,
-        forPartialPriority: forPriority);
-    if (!valid) {
-      return SyncLocalDatabaseResult(ready: false);
-    }
-
-    return SyncLocalDatabaseResult(ready: true);
-  }
-
-  Future<bool> updateObjectsFromBuckets(Checkpoint checkpoint,
-      {int? forPartialPriority}) async {
-    return writeTransaction((tx) async {
-      await tx
-          .execute("INSERT INTO powersync_operations(op, data) VALUES(?, ?)", [
-        'sync_local',
-        forPartialPriority != null
-            ? jsonEncode({
-                'priority': forPartialPriority,
-                // If we're at a partial checkpoint, we should only publish the
-                // buckets at the completed priority levels.
-                'buckets': [
-                  for (final desc in checkpoint.checksums)
-                    // Note that higher priorities are encoded as smaller values
-                    if (desc.priority <= forPartialPriority) desc.bucket,
-                ],
-              })
-            : null,
-      ]);
-      final rs = await tx.execute('SELECT last_insert_rowid() as result');
-      final result = rs[0]['result'];
-      if (result == 1) {
-        if (forPartialPriority == null) {
-          // Reset progress counters. We only do this for a complete sync, as we
-          // want a download progress to always cover a complete checkpoint
-          // instead of resetting for partial completions.
-          await tx.execute(r'''
-UPDATE ps_buckets SET count_since_last = 0, count_at_last = ?1->name
-  WHERE name != '$local' AND ?1->name IS NOT NULL
-''', [
-            json.encode({
-              for (final bucket in checkpoint.checksums)
-                if (bucket.count case final count?) bucket.bucket: count,
-            }),
-          ]);
-        }
-
-        return true;
-      } else {
-        // can_update_local(db) == false
-        return false;
-      }
-      // Important to flush here.
-      // After this step, the synced data will be visible to the user,
-      // and we don't want that to be reverted.
-    }, flush: true);
-  }
-
-  Future<SyncLocalDatabaseResult> validateChecksums(Checkpoint checkpoint,
-      {int? priority}) async {
-    final rs =
-        await select("SELECT powersync_validate_checkpoint(?) as result", [
-      jsonEncode({...checkpoint.toJson(priority: priority)})
-    ]);
-    final result =
-        jsonDecode(rs[0]['result'] as String) as Map<String, dynamic>;
-    if (result['valid'] as bool) {
-      return SyncLocalDatabaseResult(ready: true);
-    } else {
-      return SyncLocalDatabaseResult(
-          checkpointValid: false,
-          ready: false,
-          checkpointFailures:
-              (result['failed_buckets'] as List).cast<String>());
-    }
-  }
-
-  void setTargetCheckpoint(Checkpoint checkpoint) {
-    // No-op for now
   }
 
   Future<bool> updateLocalTarget(
@@ -334,104 +140,5 @@ UPDATE ps_buckets SET count_since_last = 0, count_at_last = ?1->name
       {Duration? lockTimeout,
       required bool flush}) async {
     return _internalDb.writeTransaction(callback, lockTimeout: lockTimeout);
-  }
-}
-
-class BucketState {
-  final String bucket;
-  final String opId;
-
-  const BucketState({required this.bucket, required this.opId});
-
-  @override
-  String toString() {
-    return "BucketState<$bucket:$opId>";
-  }
-
-  @override
-  int get hashCode {
-    return Object.hash(bucket, opId);
-  }
-
-  @override
-  bool operator ==(Object other) {
-    return other is BucketState && other.bucket == bucket && other.opId == opId;
-  }
-}
-
-class SyncLocalDatabaseResult {
-  final bool ready;
-  final bool checkpointValid;
-  final List<String>? checkpointFailures;
-
-  const SyncLocalDatabaseResult(
-      {this.ready = true,
-      this.checkpointValid = true,
-      this.checkpointFailures});
-
-  @override
-  String toString() {
-    return "SyncLocalDatabaseResult<ready=$ready, checkpointValid=$checkpointValid, failures=$checkpointFailures>";
-  }
-
-  @override
-  int get hashCode {
-    return Object.hash(ready, checkpointValid,
-        const ListEquality<String?>().hash(checkpointFailures));
-  }
-
-  @override
-  bool operator ==(Object other) {
-    return other is SyncLocalDatabaseResult &&
-        other.ready == ready &&
-        other.checkpointValid == checkpointValid &&
-        const ListEquality<String?>()
-            .equals(other.checkpointFailures, checkpointFailures);
-  }
-}
-
-class ChecksumCache {
-  String lastOpId;
-  Map<String, BucketChecksum> checksums;
-
-  ChecksumCache(this.lastOpId, this.checksums);
-}
-
-enum OpType {
-  clear(1),
-  move(2),
-  put(3),
-  remove(4);
-
-  final int value;
-
-  const OpType(this.value);
-
-  static OpType? fromJson(String json) {
-    switch (json) {
-      case 'CLEAR':
-        return clear;
-      case 'MOVE':
-        return move;
-      case 'PUT':
-        return put;
-      case 'REMOVE':
-        return remove;
-      default:
-        return null;
-    }
-  }
-
-  String toJson() {
-    switch (this) {
-      case clear:
-        return 'CLEAR';
-      case move:
-        return 'MOVE';
-      case put:
-        return 'PUT';
-      case remove:
-        return 'REMOVE';
-    }
   }
 }

@@ -1,7 +1,4 @@
-import 'dart:async';
 import 'dart:convert';
-
-import 'bucket_storage.dart';
 
 /// Messages sent from the sync service.
 sealed class StreamingSyncLine {
@@ -29,78 +26,6 @@ sealed class StreamingSyncLine {
     } else {
       return UnknownSyncLine(line);
     }
-  }
-
-  /// A [StreamTransformer] that returns a stream emitting raw JSON objects into
-  /// a stream emitting [StreamingSyncLine].
-  static StreamTransformer<Map<String, dynamic>, StreamingSyncLine> reader =
-      StreamTransformer.fromBind((source) {
-    return Stream.eventTransformed(source, _StreamingSyncLineParser.new);
-  });
-}
-
-final class _StreamingSyncLineParser
-    implements EventSink<Map<String, dynamic>> {
-  final EventSink<StreamingSyncLine> _out;
-
-  /// When we receive multiple `data` lines in quick succession, group them into
-  /// a single batch. This will make the streaming sync service insert them with
-  /// a single transaction, which is more efficient than inserting them
-  /// individually.
-  (SyncDataBatch, Timer)? _pendingBatch;
-
-  _StreamingSyncLineParser(this._out);
-
-  void _flushBatch() {
-    if (_pendingBatch case (final pending, final timer)?) {
-      timer.cancel();
-      _pendingBatch = null;
-      _out.add(pending);
-    }
-  }
-
-  @override
-  void add(Map<String, dynamic> event) {
-    final parsed = StreamingSyncLine.fromJson(event);
-
-    // Buffer small batches and group them to reduce amounts of transactions
-    // used to store them.
-    if (parsed is SyncDataBatch && parsed.totalOperations <= 100) {
-      if (_pendingBatch case (final batch, _)?) {
-        // Add this line to the pending batch of data items
-        batch.buckets.addAll(parsed.buckets);
-
-        if (batch.totalOperations >= 1000) {
-          // This is unlikely to happen since we're only buffering for a single
-          // event loop iteration, but make sure we're not keeping huge amonts
-          // of data in memory.
-          _flushBatch();
-        }
-      } else {
-        // Insert of adding this batch directly, keep it buffered here for a
-        // while so that we can add new entries to it.
-        final timer = Timer(Duration.zero, () {
-          _out.add(_pendingBatch!.$1);
-          _pendingBatch = null;
-        });
-        _pendingBatch = (parsed, timer);
-      }
-    } else {
-      _flushBatch();
-      _out.add(parsed);
-    }
-  }
-
-  @override
-  void addError(Object error, [StackTrace? stackTrace]) {
-    _flushBatch();
-    _out.addError(error, stackTrace);
-  }
-
-  @override
-  void close() {
-    _flushBatch();
-    _out.close();
   }
 }
 
@@ -394,5 +319,44 @@ class OplogEntry {
       'subkey': subkey,
       'data': data
     };
+  }
+}
+
+enum OpType {
+  clear(1),
+  move(2),
+  put(3),
+  remove(4);
+
+  final int value;
+
+  const OpType(this.value);
+
+  static OpType? fromJson(String json) {
+    switch (json) {
+      case 'CLEAR':
+        return clear;
+      case 'MOVE':
+        return move;
+      case 'PUT':
+        return put;
+      case 'REMOVE':
+        return remove;
+      default:
+        return null;
+    }
+  }
+
+  String toJson() {
+    switch (this) {
+      case clear:
+        return 'CLEAR';
+      case move:
+        return 'MOVE';
+      case put:
+        return 'PUT';
+      case remove:
+        return 'REMOVE';
+    }
   }
 }
