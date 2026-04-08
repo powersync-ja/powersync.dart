@@ -1,10 +1,6 @@
-import 'dart:math';
-
 import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
 
-import 'bucket_storage.dart';
-import 'protocol.dart';
 import 'stream.dart';
 
 final class SyncStatus {
@@ -340,44 +336,6 @@ final class InternalSyncDownloadProgress extends ProgressWithOperations {
           buckets.values.map((e) => e.sinceLast).sum,
         );
 
-  factory InternalSyncDownloadProgress.forNewCheckpoint(
-      Map<String, LocalOperationCounters> localProgress, Checkpoint target) {
-    final buckets = <String, BucketProgress>{};
-
-    for (final bucket in target.checksums) {
-      final savedProgress = localProgress[bucket.bucket];
-      final atLast = savedProgress?.atLast ?? 0;
-      final sinceLast = savedProgress?.sinceLast ?? 0;
-
-      buckets[bucket.bucket] = (
-        priority: StreamPriority._(bucket.priority),
-        atLast: atLast,
-        sinceLast: sinceLast,
-        targetCount: bucket.count ?? 0,
-      );
-
-      if (bucket.count case final knownCount?) {
-        if (knownCount < atLast + sinceLast) {
-          // Either due to a defrag / sync rule deploy or a compaction
-          // operation, the size of the bucket shrank so much that the local ops
-          // exceed the ops in the updated bucket. We can't possibly report
-          // progress in this case (it would overshoot 100%).
-          return InternalSyncDownloadProgress({
-            for (final bucket in target.checksums)
-              bucket.bucket: (
-                priority: StreamPriority(bucket.priority),
-                atLast: 0,
-                sinceLast: 0,
-                targetCount: knownCount,
-              )
-          });
-        }
-      }
-    }
-
-    return InternalSyncDownloadProgress(buckets);
-  }
-
   static InternalSyncDownloadProgress ofPublic(SyncDownloadProgress public) {
     return public._internal;
   }
@@ -395,22 +353,6 @@ final class InternalSyncDownloadProgress extends ProgressWithOperations {
   ProgressWithOperations _forStream(CoreActiveStreamSubscription subscription) {
     final (:total, :downloaded) = subscription.progress;
     return ProgressWithOperations._(total, downloaded);
-  }
-
-  InternalSyncDownloadProgress incrementDownloaded(SyncDataBatch batch) {
-    final newBucketStates = Map.of(buckets);
-    for (final dataForBucket in batch.buckets) {
-      final previous = newBucketStates[dataForBucket.bucket]!;
-      newBucketStates[dataForBucket.bucket] = (
-        priority: previous.priority,
-        atLast: previous.atLast,
-        sinceLast: min(previous.sinceLast + dataForBucket.data.length,
-            previous.targetCount - previous.atLast),
-        targetCount: previous.targetCount,
-      );
-    }
-
-    return InternalSyncDownloadProgress(newBucketStates);
   }
 
   SyncDownloadProgress get asSyncDownloadProgress =>

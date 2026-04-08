@@ -4,7 +4,6 @@ import 'dart:convert';
 import 'package:async/async.dart';
 import 'package:logging/logging.dart';
 import 'package:powersync/powersync.dart';
-import 'package:powersync/src/sync/protocol.dart';
 import 'package:shelf/shelf.dart';
 import 'package:shelf_router/shelf_router.dart';
 import 'package:sqlite3/common.dart';
@@ -14,20 +13,11 @@ import '../server/sync_server/in_memory_sync_server.dart';
 import '../utils/abstract_test_utils.dart';
 import '../utils/in_memory_http.dart';
 import '../utils/test_utils_impl.dart';
+import 'protocol.dart';
 import 'utils.dart';
 
 void main() {
-  _declareTests(
-    'dart sync client',
-    SyncOptions(
-      // ignore: deprecated_member_use_from_same_package
-      syncImplementation: SyncClientImplementation.dart,
-      retryDelay: Duration(milliseconds: 200),
-    ),
-    false,
-  );
-
-  group('rust sync client', () {
+  group('sync client', () {
     _declareTests(
       'json',
       SyncOptions(retryDelay: Duration(milliseconds: 200)),
@@ -154,264 +144,193 @@ void _declareTests(String name, SyncOptions options, bool bson) {
           isTrue);
     });
 
-    // ignore: deprecated_member_use_from_same_package
-    if (options.syncImplementation == SyncClientImplementation.dart) {
-      test('can save independent buckets in same transaction', () async {
-        final status = await waitForConnection();
+    // raw tables are only supported by the rust sync client
+    test('raw tables with implicit statements', () async {
+      final schema = const Schema([], rawTables: [
+        RawTable.inferred(
+          name: 'lists',
+          schema: RawTableSchema(tableName: 'lists'),
+        ),
+      ]);
 
-        syncService.addLine({
+      await database.execute(
+          'CREATE TABLE lists (id TEXT NOT NULL PRIMARY KEY, name TEXT);');
+      final query = StreamQueue(
+          database.watch('SELECT * FROM lists', throttle: Duration.zero));
+      await expectLater(query, emits(isEmpty));
+
+      await database.updateSchema(schema);
+      await waitForConnection();
+
+      syncService
+        ..addLine({
           'checkpoint': Checkpoint(
-            lastOpId: '0',
+            lastOpId: '1',
             writeCheckpoint: null,
-            checksums: [
-              BucketChecksum(bucket: 'a', checksum: 0, priority: 3),
-              BucketChecksum(bucket: 'b', checksum: 0, priority: 3),
-            ],
+            checksums: [BucketChecksum(bucket: 'a', priority: 3, checksum: 0)],
           )
+        })
+        ..addLine({
+          'data': {
+            'bucket': 'a',
+            'data': [
+              {
+                'checksum': 0,
+                'data': json.encode({'name': 'custom list'}),
+                'op': 'PUT',
+                'op_id': '1',
+                'object_id': 'my_list',
+                'object_type': 'lists'
+              }
+            ]
+          }
+        })
+        ..addLine({
+          'checkpoint_complete': {'last_op_id': '1'}
         });
-        await expectLater(status, emits(isSyncStatus(downloading: true)));
 
-        var commits = 0;
-        raw.commits.listen((_) => commits++);
+      await expectLater(
+        query,
+        emits([
+          {
+            'id': 'my_list',
+            'name': 'custom list',
+          }
+        ]),
+      );
 
-        syncService
-          ..addLine({
-            'data': {
-              'bucket': 'a',
-              'data': <Map<String, Object?>>[
-                {
-                  'op_id': '1',
-                  'op': 'PUT',
-                  'object_type': 'a',
-                  'object_id': '1',
-                  'checksum': 0,
-                  'data': '{}',
-                }
-              ],
-            }
-          })
-          ..addLine({
-            'data': {
-              'bucket': 'b',
-              'data': <Map<String, Object?>>[
-                {
-                  'op_id': '2',
-                  'op': 'PUT',
-                  'object_type': 'b',
-                  'object_id': '1',
-                  'checksum': 0,
-                  'data': '{}',
-                }
-              ],
-            }
-          });
+      syncService
+        ..addLine({
+          'checkpoint': Checkpoint(
+            lastOpId: '2',
+            writeCheckpoint: null,
+            checksums: [BucketChecksum(bucket: 'a', priority: 3, checksum: 0)],
+          )
+        })
+        ..addLine({
+          'data': {
+            'bucket': 'a',
+            'data': [
+              {
+                'checksum': 0,
+                'op': 'REMOVE',
+                'op_id': '2',
+                'object_id': 'my_list',
+                'object_type': 'lists'
+              }
+            ]
+          }
+        })
+        ..addLine({
+          'checkpoint_complete': {'last_op_id': '2'}
+        });
 
-        // Wait for the operations to be inserted.
-        while (raw.select('SELECT * FROM ps_oplog;').length < 2) {
-          await pumpEventQueue();
-        }
+      await expectLater(query, emits(isEmpty));
+    });
 
-        // The two buckets should have been inserted in a single transaction
-        // because the messages were received in quick succession.
-        expect(commits, 1);
-      });
-    } else {
-      // raw tables are only supported by the rust sync client
-      test('raw tables with implicit statements', () async {
-        final schema = const Schema([], rawTables: [
-          RawTable.inferred(
-            name: 'lists',
-            schema: RawTableSchema(tableName: 'lists'),
+    test('raw tables with explicit statements', () async {
+      final schema = Schema(const [], rawTables: [
+        RawTable(
+          name: 'lists',
+          put: PendingStatement(
+            sql:
+                'INSERT OR REPLACE INTO lists (id, name, _rest) VALUES (?, ?, ?)',
+            params: [
+              PendingStatementValue.id(),
+              PendingStatementValue.column('name'),
+              PendingStatementValue.rest(),
+            ],
           ),
-        ]);
-
-        await database.execute(
-            'CREATE TABLE lists (id TEXT NOT NULL PRIMARY KEY, name TEXT);');
-        final query = StreamQueue(
-            database.watch('SELECT * FROM lists', throttle: Duration.zero));
-        await expectLater(query, emits(isEmpty));
-
-        await database.updateSchema(schema);
-        await waitForConnection();
-
-        syncService
-          ..addLine({
-            'checkpoint': Checkpoint(
-              lastOpId: '1',
-              writeCheckpoint: null,
-              checksums: [
-                BucketChecksum(bucket: 'a', priority: 3, checksum: 0)
-              ],
-            )
-          })
-          ..addLine({
-            'data': {
-              'bucket': 'a',
-              'data': [
-                {
-                  'checksum': 0,
-                  'data': json.encode({'name': 'custom list'}),
-                  'op': 'PUT',
-                  'op_id': '1',
-                  'object_id': 'my_list',
-                  'object_type': 'lists'
-                }
-              ]
-            }
-          })
-          ..addLine({
-            'checkpoint_complete': {'last_op_id': '1'}
-          });
-
-        await expectLater(
-          query,
-          emits([
-            {
-              'id': 'my_list',
-              'name': 'custom list',
-            }
-          ]),
-        );
-
-        syncService
-          ..addLine({
-            'checkpoint': Checkpoint(
-              lastOpId: '2',
-              writeCheckpoint: null,
-              checksums: [
-                BucketChecksum(bucket: 'a', priority: 3, checksum: 0)
-              ],
-            )
-          })
-          ..addLine({
-            'data': {
-              'bucket': 'a',
-              'data': [
-                {
-                  'checksum': 0,
-                  'op': 'REMOVE',
-                  'op_id': '2',
-                  'object_id': 'my_list',
-                  'object_type': 'lists'
-                }
-              ]
-            }
-          })
-          ..addLine({
-            'checkpoint_complete': {'last_op_id': '2'}
-          });
-
-        await expectLater(query, emits(isEmpty));
-      });
-
-      test('raw tables with explicit statements', () async {
-        final schema = Schema(const [], rawTables: [
-          RawTable(
-            name: 'lists',
-            put: PendingStatement(
-              sql:
-                  'INSERT OR REPLACE INTO lists (id, name, _rest) VALUES (?, ?, ?)',
-              params: [
-                PendingStatementValue.id(),
-                PendingStatementValue.column('name'),
-                PendingStatementValue.rest(),
-              ],
-            ),
-            delete: PendingStatement(
-              sql: 'DELETE FROM lists WHERE id = ?',
-              params: [
-                PendingStatementValue.id(),
-              ],
-            ),
+          delete: PendingStatement(
+            sql: 'DELETE FROM lists WHERE id = ?',
+            params: [
+              PendingStatementValue.id(),
+            ],
           ),
-        ]);
+        ),
+      ]);
 
-        await database.execute(
-            'CREATE TABLE lists (id TEXT NOT NULL PRIMARY KEY, name TEXT, _rest TEXT);');
-        final query = StreamQueue(
-            database.watch('SELECT * FROM lists', throttle: Duration.zero));
-        await expectLater(query, emits(isEmpty));
+      await database.execute(
+          'CREATE TABLE lists (id TEXT NOT NULL PRIMARY KEY, name TEXT, _rest TEXT);');
+      final query = StreamQueue(
+          database.watch('SELECT * FROM lists', throttle: Duration.zero));
+      await expectLater(query, emits(isEmpty));
 
-        await database.updateSchema(schema);
-        await waitForConnection();
+      await database.updateSchema(schema);
+      await waitForConnection();
 
-        syncService
-          ..addLine({
-            'checkpoint': Checkpoint(
-              lastOpId: '1',
-              writeCheckpoint: null,
-              checksums: [
-                BucketChecksum(bucket: 'a', priority: 3, checksum: 0)
-              ],
-            )
-          })
-          ..addLine({
-            'data': {
-              'bucket': 'a',
-              'data': [
-                {
-                  'checksum': 0,
-                  'data': json.encode(
-                      {'name': 'custom list', 'additional_column': 'foo'}),
-                  'op': 'PUT',
-                  'op_id': '1',
-                  'object_id': 'my_list',
-                  'object_type': 'lists'
-                }
-              ]
-            }
-          })
-          ..addLine({
-            'checkpoint_complete': {'last_op_id': '1'}
-          });
+      syncService
+        ..addLine({
+          'checkpoint': Checkpoint(
+            lastOpId: '1',
+            writeCheckpoint: null,
+            checksums: [BucketChecksum(bucket: 'a', priority: 3, checksum: 0)],
+          )
+        })
+        ..addLine({
+          'data': {
+            'bucket': 'a',
+            'data': [
+              {
+                'checksum': 0,
+                'data': json.encode(
+                    {'name': 'custom list', 'additional_column': 'foo'}),
+                'op': 'PUT',
+                'op_id': '1',
+                'object_id': 'my_list',
+                'object_type': 'lists'
+              }
+            ]
+          }
+        })
+        ..addLine({
+          'checkpoint_complete': {'last_op_id': '1'}
+        });
 
-        await expectLater(
-          query,
-          emits([
-            {
-              'id': 'my_list',
-              'name': 'custom list',
-              '_rest': json.encode({'additional_column': 'foo'})
-            }
-          ]),
-        );
+      await expectLater(
+        query,
+        emits([
+          {
+            'id': 'my_list',
+            'name': 'custom list',
+            '_rest': json.encode({'additional_column': 'foo'})
+          }
+        ]),
+      );
 
-        syncService
-          ..addLine({
-            'checkpoint': Checkpoint(
-              lastOpId: '2',
-              writeCheckpoint: null,
-              checksums: [
-                BucketChecksum(bucket: 'a', priority: 3, checksum: 0)
-              ],
-            )
-          })
-          ..addLine({
-            'data': {
-              'bucket': 'a',
-              'data': [
-                {
-                  'checksum': 0,
-                  'op': 'REMOVE',
-                  'op_id': '2',
-                  'object_id': 'my_list',
-                  'object_type': 'lists'
-                }
-              ]
-            }
-          })
-          ..addLine({
-            'checkpoint_complete': {'last_op_id': '2'}
-          });
+      syncService
+        ..addLine({
+          'checkpoint': Checkpoint(
+            lastOpId: '2',
+            writeCheckpoint: null,
+            checksums: [BucketChecksum(bucket: 'a', priority: 3, checksum: 0)],
+          )
+        })
+        ..addLine({
+          'data': {
+            'bucket': 'a',
+            'data': [
+              {
+                'checksum': 0,
+                'op': 'REMOVE',
+                'op_id': '2',
+                'object_id': 'my_list',
+                'object_type': 'lists'
+              }
+            ]
+          }
+        })
+        ..addLine({
+          'checkpoint_complete': {'last_op_id': '2'}
+        });
 
-        await expectLater(query, emits(isEmpty));
-      });
+      await expectLater(query, emits(isEmpty));
+    });
 
-      test('marks as connected even without sync line', () async {
-        await waitForConnection(addKeepLive: false);
-        expect(database.currentStatus.connected, isTrue);
-      });
-    }
+    test('marks as connected even without sync line', () async {
+      await waitForConnection(addKeepLive: false);
+      expect(database.currentStatus.connected, isTrue);
+    });
 
     group('partial sync', () {
       test('updates sync state incrementally', () async {
