@@ -1,6 +1,7 @@
 import 'package:powersync/powersync.dart';
-import 'package:powersync/src/sync/protocol.dart';
 import 'package:test/test.dart';
+
+import 'protocol.dart';
 
 TypeMatcher<SyncStatus> isSyncStatus({
   Object? downloading,

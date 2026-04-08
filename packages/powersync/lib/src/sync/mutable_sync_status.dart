@@ -5,8 +5,6 @@ import 'package:collection/collection.dart';
 import 'instruction.dart';
 import 'stream.dart';
 import 'sync_status.dart';
-import 'bucket_storage.dart';
-import 'protocol.dart';
 
 final class MutableSyncStatus {
   bool connected = false;
@@ -42,44 +40,9 @@ final class MutableSyncStatus {
     downloadError = error;
   }
 
-  void applyCheckpointReached(Checkpoint applied) {
-    downloading = false;
-    downloadProgress = null;
-    downloadError = null;
-    final now = lastSyncedAt = DateTime.now();
-    priorityStatusEntries = [
-      if (applied.checksums.isNotEmpty)
-        (
-          hasSynced: true,
-          lastSyncedAt: now,
-          priority: maxBy(
-            applied.checksums.map((cs) => StreamPriority(cs.priority)),
-            (priority) => priority,
-            compare: StreamPriority.comparator,
-          )!,
-        )
-    ];
-  }
-
-  void applyCheckpointStarted(
-    Map<String, LocalOperationCounters> localProgress,
-    Checkpoint target,
-  ) {
-    downloading = true;
-    downloadProgress =
-        InternalSyncDownloadProgress.forNewCheckpoint(localProgress, target);
-  }
-
   void applyUploadError(Object error) {
     uploading = false;
     uploadError = error;
-  }
-
-  void applyBatchReceived(SyncDataBatch batch) {
-    downloading = true;
-    if (downloadProgress case final previousProgress?) {
-      downloadProgress = previousProgress.incrementDownloaded(batch);
-    }
   }
 
   void applyFromCore(CoreSyncStatus status) {
