@@ -1,3 +1,29 @@
+## 2.0.0-beta.0
+
+- Upgrade sqlite packages: Version 3.x of `sqlite3`, 0.6.x of `sqlite3_web`, 0.14.0 of `sqlite_async`.
+  - __Breaking__: Remove `package:powersync/sqlite3_open.dart`, since SQLite is now loaded through [build hooks](https://pub.dev/documentation/sqlite3/latest/topics/hook-topic.html) exclusively.
+  - __Breaking__: Remove `AbstractPowerSyncOpenFactory` and `PowerSyncOpenFactory`. If you want to customize how databases
+    are opened, use conditional imports for `package:powersync/native.dart` and `package:powersync/web.dart` to extend
+    `NativePowerSyncOpenFactory` or `WebPowerSyncOpenFactory`, respectively.
+  - Improve performance of native databases.
+  - Native databases can now be opened on multiple isolates or Flutter engines (e.g. for background tasks).
+    They will automatically share write locks and table updates. Note that only one instance may connect to the PowerSync service though.
+  - On the web, Chrome browsers now use an OPFS-based database instead of IndexedDB. This improves performance. Existing databases are still loaded from IndexedDB.
+  - The `maxReaders` parameter on `PowerSyncDatabase` constructors is no longer functional, set that parameter on
+  `SqliteOptions` instead.
+  - Add `watchUnthrottled` and `onChangeUnthrottled` as variants of `watch` and `onChange` that only take backpressure
+    from paused subscriptions into account withut using a fixed delay.
+  - Add `abortableReadLock` and `abortableWriteLock`, which can be used to acquire a read/write context with a flexible
+    abort signal instead of a fixed timeout.
+- __Breaking__: The `powersync_core`, `powersync_encryption` and `powersync_flutter_libs` packages have been removed.
+  The `powersync` package now provides the entire SDK for all platforms (both for Flutter and standalone Dart apps).
+- __Breaking__: The `powersync_sleep` and `powersync_connection_name` SQL functions have been removed. Also, it is
+  no longer possible to define additional user-defined functions in Dart.
+- Add encryption support to the `powersync` package (see the `EncryptionOptions` class for details).
+- Remove the legacy Dart sync client. The new Rust client has been the default since version 1.17.0.
+- Deprecate re-exports of other packages (`package:powersync/sqlite_async.dart`, `package:powersync/sqlite3_common.dart`,
+  `package:powersync/sqlite3.dart`). Instead, add a dependency on the respective package and import it directly.
+
 ## 1.18.0
 
 - Add `RawTable.inferred` constructor, which can be used to specify raw tables without manual `put` and `delete` statements.

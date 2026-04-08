@@ -1,3 +1,7 @@
+## 0.6.21-beta.0
+
+- Support versions 2.x of the `powersync` package.
+
 ## 0.6.20+1
 
  - Update a dependency to the latest release.
