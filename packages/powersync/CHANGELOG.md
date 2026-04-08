@@ -1,6 +1,7 @@
 ## 2.0.0-beta.0
 
 - Upgrade sqlite packages: Version 3.x of `sqlite3`, 0.6.x of `sqlite3_web`, 0.14.0 of `sqlite_async`.
+  - Remember to download updated db workers and `sqlite3.wasm` files after upgrading!
   - __Breaking__: Remove `package:powersync/sqlite3_open.dart`, since SQLite is now loaded through [build hooks](https://pub.dev/documentation/sqlite3/latest/topics/hook-topic.html) exclusively.
   - __Breaking__: Remove `AbstractPowerSyncOpenFactory` and `PowerSyncOpenFactory`. If you want to customize how databases
     are opened, use conditional imports for `package:powersync/native.dart` and `package:powersync/web.dart` to extend
@@ -23,6 +24,7 @@
 - Remove the legacy Dart sync client. The new Rust client has been the default since version 1.17.0.
 - Deprecate re-exports of other packages (`package:powersync/sqlite_async.dart`, `package:powersync/sqlite3_common.dart`,
   `package:powersync/sqlite3.dart`). Instead, add a dependency on the respective package and import it directly.
+- Remove `powersync_sync.worker.js`. `powersync_db.worker.js` now covers both database access and sync.
 
 ## 1.18.0
 
