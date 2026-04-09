@@ -43,16 +43,6 @@ dependency_overrides:
 
 melos:
   repository: https://github.com/powersync-ja/powersync.dart
-  command:
-    version:
-      changelog: false
-      packageFilters:
-        noPrivate: true
-      hooks:
-        # Automatically update libraryVersion:
-        preCommit: |
-          dart run tool/update_version.dart
-          git add packages/powersync/lib/src/version.dart
 
   scripts:
     prepare:

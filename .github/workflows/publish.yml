@@ -8,43 +8,52 @@ on:
   workflow_dispatch:
 
 jobs:
-  publish-packages:
-    name: Publish packages
+  setup:
+    uses: ./.github/workflows/prepare_wasm.yml
+
+  github_release:
+    runs-on: ubuntu-latest
+    if: "${{ startsWith(github.ref_name, 'powersync-') }}"
+    needs: [setup]
     permissions:
       contents: write
-      id-token: write # Required for authentication using OIDC
-    runs-on: [ubuntu-latest]
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: dart-lang/setup-dart@v1 # Creates and configures token for publishing
-
-      - name: Install Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: "3.x"
-          channel: "stable"
-
-      - name: Install melos
-        run: |
-          dart pub get
-          dart pub global activate melos
-
-      - name: Install dependencies
-        run: melos bootstrap
-
-      - name: Get package name from tag
+      - name: Checkout Repository
+        uses: actions/checkout@v6
+      - uses: ./.github/actions/prepare
+      - name: Create Draft Release
         env:
-          GITHUBREF: ${{ github.ref }}
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
         run: |
-          PACKAGE_NAME=$(sed -E 's/refs\/tags\/([a-z0-9_]+)-v([0-9]+\.[0-9]+\.[0-9]+(\+[0-9]+)?)/\1/' <<< $GITHUBREF) && \
-          echo "PACKAGE_NAME=$PACKAGE_NAME" >> $GITHUB_ENV
-          echo "Package name: $PACKAGE_NAME"
+          tag="${{ github.ref_name }}"
+          version="${tag#powersync-v}"
+          changes=$(awk "/## $version/{flag=1;next}/##/{flag=0}flag" packages/powersync/CHANGELOG.md)
+          body="Release $tag
+          $changes"
+          gh release create "$tag" --title "$tag" --notes "$body"
+          gh release upload "${{ github.ref_name }}" packages/powersync/assets/powersync_db.worker.js packages/sqlite3_wasm_build/dist/*.wasm
 
-      - name: Publish packages dry run
-        run: |
-          melos publish --yes --scope=$PACKAGE_NAME
+  publish_powersync:
+    permissions:
+      id-token: write
+    if: "${{ startsWith(github.ref_name, 'powersync-') }}"
+    uses: dart-lang/setup-dart/.github/workflows/publish.yml@v1
+    with:
+      working-directory: packages/powersync
 
-      - name: Publish packages
-        run: |
-          melos publish --no-dry-run --yes --scope=$PACKAGE_NAME
+  publish_powersync_flutter_libs:
+    permissions:
+      id-token: write
+    if: "${{ startsWith(github.ref_name, 'powersync_flutter_libs-') }}"
+    uses: dart-lang/setup-dart/.github/workflows/publish.yml@v1
+    with:
+      working-directory: packages/powersync_flutter_libs
+
+  powersync_attachments_helper:
+    permissions:
+      id-token: write
+    if: "${{ startsWith(github.ref_name, 'powersync_attachments_helper-') }}"
+    uses: dart-lang/setup-dart/.github/workflows/publish.yml@v1
+    with:
+      working-directory: packages/powersync_attachments_helper
