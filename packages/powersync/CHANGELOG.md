@@ -1,4 +1,4 @@
-## 2.0.0-beta.0
+## 2.0.0-wip.0
 
 - Upgrade sqlite packages: Version 3.x of `sqlite3`, 0.6.x of `sqlite3_web`, 0.14.0 of `sqlite_async`.
   - Remember to download updated db workers and `sqlite3.wasm` files after upgrading!
