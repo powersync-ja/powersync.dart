@@ -4,7 +4,7 @@ name: Compile Assets and Create Draft Release
 on:
   push:
     tags:
-      - 'powersync-v[0-9]+.[0-9]+.[0-9]+'
+      - 'powersync-v[0-9]+.[0-9]+.[0-9]+*'
 
 # For trusted npm publishing, see https://docs.npmjs.com/trusted-publishers#github-actions-configuration
 permissions:
