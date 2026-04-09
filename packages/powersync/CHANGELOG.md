@@ -1,6 +1,6 @@
 ## 2.0.0-wip.0
 
-- Upgrade sqlite packages: Version 3.x of `sqlite3`, 0.6.x of `sqlite3_web`, 0.14.0 of `sqlite_async`.
+- Upgrade sqlite packages: Version 3.x of `sqlite3`, 0.6.x of `sqlite3_web`, 0.14.x of `sqlite_async`.
   - Remember to download updated db workers and `sqlite3.wasm` files after upgrading!
   - __Breaking__: Remove `package:powersync/sqlite3_open.dart`, since SQLite is now loaded through [build hooks](https://pub.dev/documentation/sqlite3/latest/topics/hook-topic.html) exclusively.
   - __Breaking__: Remove `AbstractPowerSyncOpenFactory` and `PowerSyncOpenFactory`. If you want to customize how databases
