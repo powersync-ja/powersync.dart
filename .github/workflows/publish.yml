@@ -50,7 +50,7 @@ jobs:
     with:
       working-directory: packages/powersync_flutter_libs
 
-  powersync_attachments_helper:
+  publish_powersync_attachments_helper:
     permissions:
       id-token: write
     if: "${{ startsWith(github.ref_name, 'powersync_attachments_helper-') }}"
