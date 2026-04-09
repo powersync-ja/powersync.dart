@@ -1,4 +1,4 @@
-## 0.6.21-wip.0
+## 0.7.0-wip.0
 
 - Support versions 2.x of the `powersync` package.
 
