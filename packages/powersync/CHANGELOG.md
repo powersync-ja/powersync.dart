@@ -9,14 +9,14 @@
   - Improve performance of native databases.
   - Native databases can now be opened on multiple isolates or Flutter engines (e.g. for background tasks).
     They will automatically share write locks and table updates. Note that only one instance may connect to the PowerSync service though.
-  - On the web, Chrome browsers now use an OPFS-based database instead of IndexedDB. This improves performance. Existing databases are still loaded from IndexedDB.
+  - For Chrome browsers, we now use OPFS by default instead of IndexedDB. This improves performance. Existing databases are still loaded from IndexedDB.
   - The `maxReaders` parameter on `PowerSyncDatabase` constructors is no longer functional, set that parameter on
   `SqliteOptions` instead.
   - Add `watchUnthrottled` and `onChangeUnthrottled` as variants of `watch` and `onChange` that only take backpressure
     from paused subscriptions into account withut using a fixed delay.
   - Add `abortableReadLock` and `abortableWriteLock`, which can be used to acquire a read/write context with a flexible
     abort signal instead of a fixed timeout.
-- __Breaking__: The `powersync_core`, `powersync_encryption` and `powersync_flutter_libs` packages have been removed.
+- __Breaking__: The `powersync_core`, `powersync_sqlcipher` and `powersync_flutter_libs` packages have been removed.
   The `powersync` package now provides the entire SDK for all platforms (both for Flutter and standalone Dart apps).
 - __Breaking__: The `powersync_sleep` and `powersync_connection_name` SQL functions have been removed. Also, it is
   no longer possible to define additional user-defined functions in Dart.
