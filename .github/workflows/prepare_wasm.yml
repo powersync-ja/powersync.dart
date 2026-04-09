@@ -9,8 +9,8 @@ jobs:
     runs-on: macos-latest
 
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/cache@v4
+      - uses: actions/checkout@v6
+      - uses: actions/cache@v5
         id: cache_build
         with:
           path: packages/sqlite3_wasm_build/dist/
@@ -32,7 +32,7 @@ jobs:
         run: ./build.sh
 
       - name: Upload built sqlite3 binaries
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: sqlite3-wasm
           path: packages/sqlite3_wasm_build/dist/

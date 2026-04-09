@@ -7,16 +7,19 @@ on:
   push:
     branches:
       - "**"
+  pull_request:
 
 jobs:
   setup:
+    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository)  
     uses: ./.github/workflows/prepare_wasm.yml
 
   build:
     runs-on: ubuntu-latest
+    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository)  
     needs: [setup]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: ./.github/actions/prepare
       - name: Check formatting
         run:  dart format --set-exit-if-changed -o none .
@@ -33,6 +36,7 @@ jobs:
   # TODO: Uncomment after releasing powersync_flutter_libs version 0.5.0+eol.
   # pana:
   #   runs-on: ubuntu-latest
+  #   if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository)  
   #   needs: [setup]
   #   steps:
   #     - uses: actions/checkout@v4
@@ -47,9 +51,10 @@ jobs:
 
   test:
     runs-on: ubuntu-latest
+    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository)  
     needs: [setup]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: ./.github/actions/prepare
       - name: Test powersync package
         working-directory: packages/powersync
