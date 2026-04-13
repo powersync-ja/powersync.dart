@@ -24,3 +24,6 @@ runs:
       env:
         IS_IN_POWERSYNC_CI: 1
       run: melos run prepare
+    - name: List assets
+      shell: sh
+      run: ls -al packages/powersync/assets/
