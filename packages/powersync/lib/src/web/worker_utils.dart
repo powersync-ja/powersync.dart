@@ -18,12 +18,6 @@ final class PowerSyncAsyncSqliteController extends AsyncSqliteController {
 
     return sqlite3.open(path, vfs: vfs);
   }
-
-  @override
-  Future<JSAny?> handleCustomRequest(
-      ClientConnection connection, JSAny? request) {
-    throw UnimplementedError();
-  }
 }
 
 @JS()
