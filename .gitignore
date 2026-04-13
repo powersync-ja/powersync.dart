@@ -2,7 +2,6 @@
 # Created by `dart pub`
 .dart_tool/
 .DS_Store
-pubspec_overrides.yaml
 .idea
 .vscode
 *.iml
