@@ -14,8 +14,6 @@ class CrudBatch {
   bool haveMore;
 
   /// Call to remove the changes from the local queue, once successfully uploaded.
-  ///
-  /// [writeCheckpoint] is optional.
   Future<void> Function({String? writeCheckpoint}) complete;
 
   CrudBatch(
