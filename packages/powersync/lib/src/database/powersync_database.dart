@@ -135,12 +135,14 @@ abstract base class PowerSyncDatabase extends SqliteConnection {
     );
   }
 
-  /// Open a [PowerSyncDatabase] with a [PowerSyncOpenFactory].
+  /// Open a [PowerSyncDatabase] with a [SqliteOpenFactory].
   ///
   /// The factory determines which database file is opened, as well as any
   /// additional logic to run inside the database isolate before or after opening.
   ///
-  /// Subclass [PowerSyncOpenFactory] to add custom logic to this process.
+  /// Depending on the target platform, subclass [NativePowerSyncOpenFactory] or
+  /// [WebPowerSyncOpenFactory] (with conditional imports, if you need multi-
+  /// platform support) to customize open factories.
   ///
   /// [logger] defaults to [autoLogger], which logs to the console in debug builds.
   factory PowerSyncDatabase.withFactory(

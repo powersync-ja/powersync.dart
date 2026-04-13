@@ -1,3 +1,7 @@
+## 2.0.1
+
+- Fix documentation not generating.
+
 ## 2.0.0
 
 - Upgrade sqlite packages: Version 3.x of `sqlite3`, 0.6.x of `sqlite3_web`, 0.14.x of `sqlite_async`.
