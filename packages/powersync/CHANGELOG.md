@@ -25,6 +25,7 @@
 - Deprecate re-exports of other packages (`package:powersync/sqlite_async.dart`, `package:powersync/sqlite3_common.dart`,
   `package:powersync/sqlite3.dart`). Instead, add a dependency on the respective package and import it directly.
 - Remove `powersync_sync.worker.js`. `powersync_db.worker.js` now covers both database access and sync.
+- Fix sync isolate retry loop ([#397](https://github.com/powersync-ja/powersync.dart/issues/397)).
 
 ## 1.18.0
 
