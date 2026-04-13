@@ -116,13 +116,17 @@ final class ConnectionManager {
 
     late void Function() retryHandler;
 
-    final subscriptionsChanged = StreamController<void>();
-
     Future<void> connectWithSyncLock() async {
       // Ensure there has not been a subsequent connect() call installing a new
       // sync client.
       assert(identical(_abortActiveSync, thisConnectAborter));
       assert(!thisConnectAborter.aborted);
+
+      // This needs to be a single-subscription controller to ensure we won't
+      // miss any events between the current snapshot and when the
+      // implementation actually starts listening. That also means that we'll
+      // need a new controller per internal connect attempt.
+      final subscriptionsChanged = _subscriptionsChanged = StreamController();
 
       // ignore: invalid_use_of_protected_member
       await db.connectInternal(
@@ -144,6 +148,9 @@ final class ConnectionManager {
     // If the sync encounters a failure without being aborted, retry
     retryHandler = Zone.current.bindCallback(() async {
       _activeGroup.syncConnectMutex.lock(() async {
+        _subscriptionsChanged?.close();
+        _subscriptionsChanged = null;
+
         // Is this still supposed to be active? (abort is only called within
         // mutex)
         if (!thisConnectAborter.aborted) {
@@ -164,7 +171,6 @@ final class ConnectionManager {
       // Disconnect a previous sync client, if one is active.
       await _abortCurrentSync();
       assert(_abortActiveSync == null);
-      _subscriptionsChanged = subscriptionsChanged;
 
       // Install the abort controller for this particular connect call, allowing
       // it to be disconnected.
