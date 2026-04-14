@@ -32,13 +32,6 @@ Future<void> main() async {
         'Could not compile db worker.\nstdout: ${dbWorkerProcess.stdout.toString()}\nstderr: ${dbWorkerProcess.stderr.toString()}');
   }
 
-  final workerFile = File(dbWorkerOutputPath);
-
-  // Copy workers to powersync
-  final powersyncCoreAssetsPath =
-      path.join(repoRoot, 'packages/powersync/assets');
-  workerFile.copySync('$powersyncCoreAssetsPath/$workerFilename');
-
   // Copy this to all demo apps web folders
   final demosRoot = path.join(repoRoot, 'demos');
   final demoDirectories =
