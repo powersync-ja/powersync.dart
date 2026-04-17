@@ -9,6 +9,7 @@ workspace:
   - packages/powersync
   - packages/powersync_attachments_helper
   - packages/powersync_flutter_libs
+  - packages/powersync_devtools_extension
 
   - demos/benchmarks
   - demos/django-todolist

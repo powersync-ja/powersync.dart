@@ -125,6 +125,20 @@ final class DownloadProgress {
     }));
   }
 
+  Map<String, Object?> toJson() {
+    return {
+      'buckets': {
+        for (final MapEntry(:key, :value) in buckets.entries)
+          key: {
+            'priority': value.priority.priorityNumber,
+            'at_last': value.atLast,
+            'since_last': value.sinceLast,
+            'target_count': value.targetCount
+          },
+      }
+    };
+  }
+
   static BucketProgress _bucketProgressFromJson(Map<String, Object?> json) {
     return (
       priority: StreamPriority(json['priority'] as int),
