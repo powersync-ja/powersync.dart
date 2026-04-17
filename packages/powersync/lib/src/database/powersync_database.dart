@@ -13,6 +13,8 @@ import 'package:sqlite_async/sqlite_async.dart';
 import '../abort_controller.dart';
 import '../connector.dart';
 import '../crud.dart';
+import '../devtools/devtools.dart' as devtools;
+import '../devtools/expose_credentials_connector.dart';
 import '../log.dart';
 import '../platform_specific/platform_specific.dart';
 import '../powersync_update_notification.dart';
@@ -102,7 +104,9 @@ abstract base class PowerSyncDatabase extends SqliteConnection {
   @protected
   Future<void> get isInitialized;
 
-  PowerSyncDatabase._();
+  PowerSyncDatabase._() {
+    devtools.handleCreated(this);
+  }
 
   /// Open a [PowerSyncDatabase].
   ///
@@ -265,6 +269,8 @@ abstract base class PowerSyncDatabase extends SqliteConnection {
     await disconnect();
 
     if (!database.closed) {
+      devtools.handleClosed(this);
+
       // Now we can close the database
       await database.close();
 
@@ -304,6 +310,9 @@ abstract base class PowerSyncDatabase extends SqliteConnection {
       params: params,
     );
 
+    if (devtools.enable) {
+      connector = ExposeCredentialsConnector(connector, this);
+    }
     await _connections.connect(connector: connector, options: resolvedOptions);
   }
 
