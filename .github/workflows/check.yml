@@ -32,6 +32,9 @@ jobs:
         run: dart analyze --fatal-infos --fatal-warnings
       - name: Publish dry-run
         run: melos publish --dry-run --yes
+      - name: Build DevTools extension
+        run: ./tool/build.sh
+        working-directory: packages/powersync_devtools_extension
 
   # TODO: Uncomment after releasing powersync_flutter_libs version 0.5.0+eol.
   # pana:
