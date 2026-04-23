@@ -408,8 +408,8 @@ final class _ActiveRustStreamingIteration {
     try {
       return await _handleLines(events);
     } finally {
-      await _stop();
       await _completedUploads?.cancel();
+      await _stop();
     }
   }
 
