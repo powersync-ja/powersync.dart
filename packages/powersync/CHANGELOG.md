@@ -1,3 +1,8 @@
+## 2.0.2
+
+- Update PowerSync SQLite core extension to version 0.4.13.
+- Fix changes in active Sync Stream subscriptions causing a reconnect delay.
+
 ## 2.0.1
 
 - Fix documentation not generating.

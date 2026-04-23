@@ -23,7 +23,10 @@ sealed class Instruction {
   }
 }
 
-final class LogLine implements Instruction {
+/// An [Instruction] that doesn't start or stop a sync iteration.
+sealed class NonInterruptingInstruction implements Instruction {}
+
+final class LogLine implements NonInterruptingInstruction {
   final String severity;
   final String line;
 
@@ -47,7 +50,7 @@ final class EstablishSyncStream implements Instruction {
   }
 }
 
-final class UpdateSyncStatus implements Instruction {
+final class UpdateSyncStatus implements NonInterruptingInstruction {
   final CoreSyncStatus status;
 
   UpdateSyncStatus({required this.status});
@@ -132,7 +135,7 @@ final class DownloadProgress {
   }
 }
 
-final class FetchCredentials implements Instruction {
+final class FetchCredentials implements NonInterruptingInstruction {
   final bool didExpire;
 
   FetchCredentials(this.didExpire);
@@ -148,15 +151,15 @@ final class CloseSyncStream implements Instruction {
   const CloseSyncStream(this.hideDisconnect);
 }
 
-final class FlushFileSystem implements Instruction {
+final class FlushFileSystem implements NonInterruptingInstruction {
   const FlushFileSystem();
 }
 
-final class DidCompleteSync implements Instruction {
+final class DidCompleteSync implements NonInterruptingInstruction {
   const DidCompleteSync();
 }
 
-final class UnknownSyncInstruction implements Instruction {
+final class UnknownSyncInstruction implements NonInterruptingInstruction {
   final Map<String, Object?> source;
 
   UnknownSyncInstruction(this.source);
