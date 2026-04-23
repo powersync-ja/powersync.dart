@@ -19,7 +19,7 @@ jobs:
       - name: Setup Homebrew
         if: steps.cache_build.outputs.cache-hit != 'true'
         id: set-up-homebrew
-        uses: Homebrew/actions/setup-homebrew@master
+        uses: Homebrew/actions/setup-homebrew@main
       - name: Install Dart SDK
         if: steps.cache_build.outputs.cache-hit != 'true'
         uses: dart-lang/setup-dart@v1
