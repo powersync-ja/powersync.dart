@@ -21,17 +21,6 @@ final class MutableSyncStatus {
   Object? uploadError;
   Object? downloadError;
 
-  void setConnectingIfNotConnected() {
-    if (!connected) {
-      connecting = true;
-    }
-  }
-
-  void setConnected() {
-    connected = true;
-    connecting = false;
-  }
-
   void applyDownloadError(Object error) {
     connected = false;
     connecting = false;

@@ -44,12 +44,17 @@ void main() {
   }
 
   setUp(() async {
-    options = SyncOptions(syncImplementation: SyncClientImplementation.rust);
+    options = SyncOptions(
+      syncImplementation: SyncClientImplementation.rust,
+      // None of the tests in here should await this, so setting this to a long
+      // delay helps catch issues.
+      retryDelay: const Duration(minutes: 1),
+    );
     logger = Logger.detached('powersync.active')..level = Level.ALL;
     credentialsCallbackCount = 0;
     syncService = MockSyncService();
 
-    (_, database) = await testUtils.openInMemoryDatabase();
+    (_, database) = await testUtils.openInMemoryDatabase(logger: logger);
     await database.initialize();
   });
 
@@ -154,6 +159,10 @@ void main() {
 
     syncService.addLine(checkpointComplete());
     await a.waitForFirstSync();
+
+    await database.disconnect();
+    a.unsubscribe();
+    b.unsubscribe();
   });
 
   test('reports default streams', () async {
@@ -181,12 +190,24 @@ void main() {
   });
 
   test('changes subscriptions dynamically', () async {
+    final logLines = <String>[];
+    logger.onRecord.listen((l) => logLines.add(l.message));
+
     await waitForConnection();
     syncService.addKeepAlive();
 
+    // Adding a subscription should stop the HTTP response.
+    final didStop = Completer<void>();
+    syncService.controller.onCancel = () {
+      didStop.complete();
+    };
     final subscription = await database.syncStream('a').subscribe();
+
+    await didStop.future;
     syncService.endCurrentListener();
     final request = await syncService.waitForListener;
+    expect(logLines,
+        contains('Ending Rust sync iteration. Immediate restart: true'));
     expect(
       json.decode(await request.readAsString()),
       containsPair(
