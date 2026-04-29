@@ -44,7 +44,7 @@ jobs:
 
   #     - name: Install pana
   #       run: dart pub global activate pana
-      
+
   #     - name: Check powersync package
   #       run: dart pub global run pana --no-warning --exit-code-threshold 10
   #       working-directory: packages/powersync
