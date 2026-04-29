@@ -52,7 +52,7 @@ jobs:
           flutter-version: "3.x"
           channel: "stable"
       - run: dart pub get
-      - run: tool/build-sh
+      - run: tool/build.sh
         name: Build and copy devtools extension
         working-directory: packages/powersync_devtools_extension
       

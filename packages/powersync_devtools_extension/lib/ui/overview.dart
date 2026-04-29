@@ -145,10 +145,11 @@ class _SyncStatus extends ConsumerWidget {
                     ButtonGroupItemData(
                       label: 'Open in Diagnostics App',
                       onPressed: () {
-                        final url = Uri.http('localhost:5173', '/', {
-                          'token': credentials.original.token,
-                          'endpoint': credentials.original.endpoint,
-                        });
+                        final url =
+                            Uri.https('diagnostics-app.powersync.com', '/', {
+                              'token': credentials.original.token,
+                              'endpoint': credentials.original.endpoint,
+                            });
                         launchUrl(url.toString());
                       },
                     ),

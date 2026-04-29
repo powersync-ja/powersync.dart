@@ -56,6 +56,7 @@ void handleClosed(PowerSyncDatabase database) {
   if (enable) {
     if (ExposedPowerSyncDatabase.byDatabase[database] case final tracked?) {
       ExposedPowerSyncDatabase.byId.remove(tracked.id);
+      ExposedPowerSyncDatabase.byDatabase[database] = null;
     }
 
     ExposedPowerSyncDatabase.postChangeEvent();
