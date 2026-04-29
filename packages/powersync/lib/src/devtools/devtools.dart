@@ -9,7 +9,8 @@ import '../database/powersync_database.dart';
 import 'extension.dart';
 
 // We want to avoid including this code for release-mode builds, since it's only
-// relevant for development tooling.
+// relevant for development tooling. This matches the definition of Flutter's
+// kReleaseMode: https://api.flutter.dev/flutter/foundation/kReleaseMode-constant.html
 const _releaseMode = bool.fromEnvironment('dart.vm.product');
 const enable = !_releaseMode;
 

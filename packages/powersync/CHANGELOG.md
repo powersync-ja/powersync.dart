@@ -1,8 +1,11 @@
-## 2.1.0
+## 2.1.0 (unreleased)
+
+- Add a DevTools extension to inspect running PowerSync databases in your app.
+
+## 2.0.2
 
 - Update PowerSync SQLite core extension to version 0.4.13.
 - Fix changes in active Sync Stream subscriptions causing a reconnect delay.
-- Add a DevTools extension to inspect running PowerSync databases in your app.
 
 ## 2.0.1
 

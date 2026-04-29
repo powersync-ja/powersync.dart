@@ -221,7 +221,7 @@ final class _SyncIssues extends ConsumerWidget {
     } else if (waitingForCheckpoint.value == true) {
       trackIssue(
         Text(
-          'Waiting for a write checkpoint containing previous uploads. If this status persist, new data would not be synced.',
+          'Waiting for a write checkpoint containing previous uploads. If this status persists, new data would not be synced.',
         ),
       );
     }
@@ -233,7 +233,7 @@ final class _SyncIssues extends ConsumerWidget {
         crossAxisAlignment: .stretch,
         children: [
           Text(
-            'The issues might affect PowerSync in your app',
+            'These issues might affect PowerSync in your app',
             style: TextTheme.of(context).bodyLarge,
           ),
           Padding(
