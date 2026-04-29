@@ -32,3 +32,10 @@ A Dart VM Service on macOS is available at: http://127.0.0.1:64161/nGx5zVEtGlk=/
 ```
 
 Copy that URL and paste it into the extension to inspect databases.
+
+## Building
+
+To make it available for users, the DevTools extension is copied into the `powersync` package.
+The `tool/build.sh` command is responsible for that. After running it, you can open any demo
+using PowerSync, open DevTools and navigate to the PowerSync screen to use the extension.
+In VS Code, the "Dart: Open DevTools in Browser" command is convenient for this.
