@@ -5,6 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:web/web.dart' as web;
 
 import '../state/databases.dart';
+import '../state/remote_database.dart';
+import '../state/service.dart';
 
 final class PowerSyncLogo extends StatefulWidget {
   const PowerSyncLogo({super.key});
@@ -89,7 +91,17 @@ final class SelectPowerSyncDatabase extends ConsumerWidget {
               for (final database in databases)
                 DropdownMenuItem(value: database, child: Text(database.name)),
             ],
-      onChanged: disabled ? null : (value) {},
+      onChanged: disabled
+          ? null
+          : (value) {
+              ref.read(selectedDatabase.notifier).state = switch (value) {
+                null => null,
+                final db => RemoteDatabase(
+                  db,
+                  ref.read(serviceProvider).requireValue,
+                ),
+              };
+            },
     );
   }
 }

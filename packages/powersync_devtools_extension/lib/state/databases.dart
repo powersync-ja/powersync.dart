@@ -97,7 +97,7 @@ final selectedDatabase =
 
           if (databases.isEmpty) {
             controller.state = null;
-          } else if (controller.state == null &&
+          } else if (controller.state == null ||
               databases.every((e) => e.id != controller.state?.ref.id)) {
             // Auto-select the first available database once one becomes
             // available.

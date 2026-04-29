@@ -142,6 +142,7 @@ final class RemoteDatabase extends SqliteConnection {
   @override
   Future<void> close() async {
     _updates.close();
+    _statusController.close();
   }
 
   @override
