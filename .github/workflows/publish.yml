@@ -36,12 +36,29 @@ jobs:
           gh release upload "${{ github.ref_name }}" packages/powersync/assets/powersync_db.worker.js
 
   publish_powersync:
+    needs: [setup]
     permissions:
       id-token: write
     if: "${{ startsWith(github.ref_name, 'powersync-') }}"
-    uses: dart-lang/setup-dart/.github/workflows/publish.yml@v1
-    with:
-      working-directory: packages/powersync
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v6
+      # Install Dart to install an OIDC token for publishing
+      - uses: dart-lang/setup-dart@v1
+      - name: Install Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.x"
+          channel: "stable"
+      - run: dart pub get
+      - run: tool/build.sh
+        name: Build and copy devtools extension
+        working-directory: packages/powersync_devtools_extension
+      
+      - name: Publish to pub.dev
+        run: dart pub lish -f
+        working-directory: packages/powersync
 
   publish_powersync_flutter_libs:
     permissions:

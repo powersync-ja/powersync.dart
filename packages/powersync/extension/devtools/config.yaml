@@ -1,0 +1,6 @@
+name: powersync
+issueTracker: https://github.com/powersync-ja/powersync.dart/issues
+version: 0.0.1
+# We can only use Material Icons here, and they're all mediocre. This is the Material Icon "Sync". 
+materialIconCodePoint: '0xe627'
+requiresConnection: true
