@@ -57,7 +57,7 @@ jobs:
         working-directory: packages/powersync_devtools_extension
       
       - name: Publish to pub.dev
-        run: dart pub lish -f
+        run: dart pub publish -f
         working-directory: packages/powersync
 
   publish_powersync_flutter_libs:
