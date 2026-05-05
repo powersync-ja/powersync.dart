@@ -7,9 +7,10 @@
 *.iml
 .flutter-plugins-dependencies
 .flutter-plugins
-build
+demos/**/build
 **/doc/api
 .build
+packages/*/test-db
 
 # Shared assets
 assets/*
