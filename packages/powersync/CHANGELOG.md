@@ -1,4 +1,4 @@
-## 2.1.0 (unreleased)
+## 2.1.0
 
 - Add a DevTools extension to inspect running PowerSync databases in your app.
 

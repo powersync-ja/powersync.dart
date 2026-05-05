@@ -36,21 +36,20 @@ jobs:
         run: ./tool/build.sh
         working-directory: packages/powersync_devtools_extension
 
-  # TODO: Uncomment after releasing powersync_flutter_libs version 0.5.0+eol.
-  # pana:
-  #   runs-on: ubuntu-latest
-  #   if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository)
-  #   needs: [setup]
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #     - uses: ./.github/actions/prepare
+  pana:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository)
+    needs: [setup]
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/prepare
 
-  #     - name: Install pana
-  #       run: dart pub global activate pana
+      - name: Install pana
+        run: dart pub global activate pana
 
-  #     - name: Check powersync package
-  #       run: dart pub global run pana --no-warning --exit-code-threshold 10
-  #       working-directory: packages/powersync
+      - name: Check powersync package
+        run: dart pub global run pana --no-warning --exit-code-threshold 10
+        working-directory: packages/powersync
 
   test:
     runs-on: ubuntu-latest
