@@ -30,11 +30,11 @@ jobs:
           touch demos/supabase-trello/.env
       - name: Lint
         run: dart analyze --fatal-infos --fatal-warnings
-      - name: Publish dry-run
-        run: melos publish --dry-run --yes
       - name: Build DevTools extension
         run: ./tool/build.sh
         working-directory: packages/powersync_devtools_extension
+      - name: Publish dry-run
+        run: melos publish --dry-run --yes
 
   pana:
     runs-on: ubuntu-latest
