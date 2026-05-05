@@ -1,0 +1,3 @@
+# The .gitignore in this directory ignores the DevTools extension build.
+# We still want to upload that to pub.dev, so this empty .pubignore takes
+# precedence over the .gitignore in this directory.
