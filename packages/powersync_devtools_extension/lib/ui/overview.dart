@@ -143,7 +143,7 @@ class _SyncStatus extends ConsumerWidget {
                       },
                     ),
                     ButtonGroupItemData(
-                      label: 'Open in Diagnostics Client',
+                      label: 'Open in Sync Diagnostics Client',
                       onPressed: () {
                         final url =
                             Uri.https('diagnostics-app.powersync.com', '/', {
