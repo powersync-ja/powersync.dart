@@ -23,7 +23,7 @@ final class DatabaseReference {
   /// The last credentials a connector on this database has returned.
   ///
   /// We use this to show credentials in the DevTools extension and to deeplink
-  /// into the diagnostics app.
+  /// into the diagnostics client.
   final PowerSyncCredentials? lastCredentials;
 
   /// The isolate on which the database object has been opened.
