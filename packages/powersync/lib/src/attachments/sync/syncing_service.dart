@@ -65,12 +65,21 @@ final class SyncingService {
         StreamGroup.merge<void>([attachmentChanges, manualTriggers])
             .takeWhile((_) => sub == _syncSubscription)
             .asyncMap((_) async {
-      await attachmentsService.withContext((context) async {
-        final attachments = await context.getActiveAttachments();
-        logger.info('Found ${attachments.length} active attachments');
-        await handleSync(attachments, context);
-        await deleteArchivedAttachments(context);
-      });
+      // Read the active set inside the mutex; release it before doing any
+      // per-attachment I/O so that concurrent `saveFile`/`deleteFile` and
+      // `_processWatchedAttachments` calls aren't blocked for the duration
+      // of the whole batch.
+      final attachments = await attachmentsService.withContext(
+        (context) => context.getActiveAttachments(),
+      );
+      logger.info('Found ${attachments.length} active attachments');
+
+      await handleSync(
+        attachments,
+        isActive: () => sub == _syncSubscription,
+      );
+
+      await attachmentsService.withContext(deleteArchivedAttachments);
     });
 
     _syncSubscription = sub = syncStream.listen(null);
@@ -110,51 +119,72 @@ final class SyncingService {
     await _syncTriggerController.close();
   }
 
-  /// Handles syncing operations for a list of attachments, including downloading,
-  /// uploading, and deleting files based on their states.
+  /// Handles syncing operations for a list of attachments, including
+  /// downloading, uploading, and deleting files based on their states.
+  ///
+  /// Each attachment's I/O runs outside the attachment-service mutex, and the
+  /// row's state transition is persisted immediately after it completes. This
+  /// keeps the mutex available to concurrent `saveFile` / `deleteFile` /
+  /// watched-attachment processing while a batch is in flight, and means
+  /// consumer queries against the attachments queue see incremental progress
+  /// instead of one atomic commit at the end of the batch.
   ///
   /// [attachments]: The list of attachments to process.
-  /// [context]: The attachment context used for managing attachment states.
+  /// [isActive]: Polled between attachments; when it returns `false` the loop
+  /// exits early. Used by `stopSync` to interrupt a running batch within one
+  /// attachment's processing time.
   Future<void> handleSync(
-    List<Attachment> attachments,
-    AttachmentContext context,
-  ) async {
+    List<Attachment> attachments, {
+    bool Function()? isActive,
+  }) async {
     logger.info('Starting handleSync with ${attachments.length} attachments');
-    final updatedAttachments = <Attachment>[];
 
     for (final attachment in attachments) {
+      if (isActive != null && !isActive()) {
+        logger.info('Sync cancelled; stopping iteration early');
+        return;
+      }
+
       logger.info(
         'Processing attachment ${attachment.id} with state: ${attachment.state}',
       );
+
+      Attachment? updated;
       try {
         switch (attachment.state) {
           case AttachmentState.queuedDownload:
             logger.info('Downloading [${attachment.filename}]');
-            updatedAttachments.add(await downloadAttachment(attachment));
+            updated = await downloadAttachment(attachment);
             break;
           case AttachmentState.queuedUpload:
             logger.info('Uploading [${attachment.filename}]');
-            updatedAttachments.add(await uploadAttachment(attachment));
+            updated = await uploadAttachment(attachment);
             break;
           case AttachmentState.queuedDelete:
             logger.info('Deleting [${attachment.filename}]');
-            updatedAttachments.add(await deleteAttachment(attachment, context));
+            // `deleteAttachment` needs a context (it removes the row in a
+            // transaction); briefly re-acquire the mutex for just this row.
+            updated = await attachmentsService.withContext(
+              (context) => deleteAttachment(attachment, context),
+            );
             break;
           case AttachmentState.synced:
             logger.info('Attachment ${attachment.id} is already synced');
-            break;
+            continue;
           case AttachmentState.archived:
             logger.info('Attachment ${attachment.id} is archived');
-            break;
+            continue;
         }
       } catch (e, st) {
         logger.warning('Error during sync for ${attachment.id}', e, st);
+        continue;
       }
-    }
 
-    if (updatedAttachments.isNotEmpty) {
-      logger.info('Saving ${updatedAttachments.length} updated attachments');
-      await context.saveAttachments(updatedAttachments);
+      if (updated != null) {
+        await attachmentsService.withContext(
+          (context) => context.saveAttachments([updated!]),
+        );
+      }
     }
   }
 

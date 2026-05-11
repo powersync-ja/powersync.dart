@@ -325,6 +325,129 @@ void main() {
           .having((e) => e.state, 'state', AttachmentState.archived)
     ]);
   });
+
+  test('stopSyncing interrupts an in-flight batch', () async {
+    _stubSlowRemoteStorage(remoteStorage, const Duration(milliseconds: 100));
+    queue = AttachmentQueue(
+      db: db,
+      remoteStorage: remoteStorage,
+      watchAttachments: watchAttachments,
+      localStorage: localStorage,
+      archivedCacheLimit: 0,
+      // Short throttle so the watch fires promptly after seeding rows;
+      // default is 1 s which would make the timing thresholds below
+      // unreliable.
+      syncThrottleDuration: const Duration(milliseconds: 10),
+    );
+
+    await queue.startSync();
+
+    await db.writeTransaction((tx) async {
+      for (var i = 0; i < 50; i++) {
+        await tx.execute(
+          'INSERT INTO users (id, name, email, photo_id) VALUES (uuid(), ?, ?, ?)',
+          ['user-$i', 'user$i@example.com', 'photo-$i'],
+        );
+      }
+    });
+
+    // Wait for the batch to be in flight (at least one download started).
+    await Future<void>.delayed(const Duration(milliseconds: 250));
+
+    final sw = Stopwatch()..start();
+    await queue.stopSyncing();
+    sw.stop();
+
+    // Before the fix this awaited the full batch (~5 s). Bound generously
+    // for CI noise; the fix returns within one attachment's processing time.
+    expect(sw.elapsed, lessThan(const Duration(seconds: 1)));
+  });
+
+  test('attachments_queue commits per-attachment, not at end of batch',
+      () async {
+    _stubSlowRemoteStorage(remoteStorage, const Duration(milliseconds: 100));
+    queue = AttachmentQueue(
+      db: db,
+      remoteStorage: remoteStorage,
+      watchAttachments: watchAttachments,
+      localStorage: localStorage,
+      archivedCacheLimit: 0,
+      // Short throttle so the watch fires promptly after seeding rows;
+      // default is 1 s which would make the timing thresholds below
+      // unreliable.
+      syncThrottleDuration: const Duration(milliseconds: 10),
+    );
+
+    await queue.startSync();
+
+    await db.writeTransaction((tx) async {
+      for (var i = 0; i < 20; i++) {
+        await tx.execute(
+          'INSERT INTO users (id, name, email, photo_id) VALUES (uuid(), ?, ?, ?)',
+          ['user-$i', 'user$i@example.com', 'photo-$i'],
+        );
+      }
+    });
+
+    // Sample partway through the batch: expect a partial count, neither 0
+    // (legacy behaviour: atomic end-of-batch commit) nor 20 (batch already
+    // finished, threshold too loose).
+    await Future<void>.delayed(const Duration(milliseconds: 700));
+    final midBatchRow = await db.get(
+      'SELECT COUNT(*) AS c FROM attachments_queue WHERE state = ?',
+      [AttachmentState.synced.index],
+    );
+    final midBatchCount = midBatchRow['c'] as int;
+    expect(midBatchCount, greaterThan(0));
+    expect(midBatchCount, lessThan(20));
+  });
+
+  test('saveFile is not blocked by an in-flight sync batch', () async {
+    _stubSlowRemoteStorage(remoteStorage, const Duration(milliseconds: 100));
+    queue = AttachmentQueue(
+      db: db,
+      remoteStorage: remoteStorage,
+      watchAttachments: watchAttachments,
+      localStorage: localStorage,
+      archivedCacheLimit: 0,
+      // Short throttle so the watch fires promptly after seeding rows;
+      // default is 1 s which would make the timing thresholds below
+      // unreliable.
+      syncThrottleDuration: const Duration(milliseconds: 10),
+    );
+
+    await queue.startSync();
+
+    await db.writeTransaction((tx) async {
+      for (var i = 0; i < 50; i++) {
+        await tx.execute(
+          'INSERT INTO users (id, name, email, photo_id) VALUES (uuid(), ?, ?, ?)',
+          ['user-$i', 'user$i@example.com', 'photo-$i'],
+        );
+      }
+    });
+
+    // Wait for the batch to be in flight.
+    await Future<void>.delayed(const Duration(milliseconds: 250));
+
+    final sw = Stopwatch()..start();
+    await queue.saveFile(
+      data: Stream.value(Uint8List(8)),
+      mediaType: 'image/jpg',
+      fileExtension: 'jpg',
+      updateHook: (tx, attachment) async {
+        await tx.execute(
+          'INSERT INTO users (id, name, email, photo_id) VALUES (uuid(), ?, ?, ?)',
+          ['savefile-user', 'savefile@example.com', attachment.id],
+        );
+      },
+    );
+    sw.stop();
+
+    // Before the fix this awaited the full batch (mutex held across all
+    // downloads). The fix releases the mutex between attachments.
+    expect(sw.elapsed, lessThan(const Duration(seconds: 1)));
+  });
 }
 
 extension on PowerSyncDatabase {
@@ -370,4 +493,20 @@ final _schema = Schema([
 
 TypeMatcher<Attachment> isAttachment(String id) {
   return isA<Attachment>().having((e) => e.id, 'id', id);
+}
+
+/// Configures [remoteStorage] so each download/upload/delete waits [delay]
+/// before completing, making a sync batch observably in-flight while a test
+/// races concurrent operations against it.
+void _stubSlowRemoteStorage(MockRemoteStorage remoteStorage, Duration delay) {
+  when(remoteStorage.downloadFile(any)).thenAnswer((_) async {
+    await Future<void>.delayed(delay);
+    return Stream.value(<int>[0]);
+  });
+  when(remoteStorage.uploadFile(any, any)).thenAnswer((_) async {
+    await Future<void>.delayed(delay);
+  });
+  when(remoteStorage.deleteFile(any)).thenAnswer((_) async {
+    await Future<void>.delayed(delay);
+  });
 }
