@@ -149,17 +149,15 @@ final class SyncingService {
         'Processing attachment ${attachment.id} with state: ${attachment.state}',
       );
 
-      Attachment? updated;
       try {
+        final Attachment updated;
         switch (attachment.state) {
           case AttachmentState.queuedDownload:
             logger.info('Downloading [${attachment.filename}]');
             updated = await downloadAttachment(attachment);
-            break;
           case AttachmentState.queuedUpload:
             logger.info('Uploading [${attachment.filename}]');
             updated = await uploadAttachment(attachment);
-            break;
           case AttachmentState.queuedDelete:
             logger.info('Deleting [${attachment.filename}]');
             // `deleteAttachment` needs a context (it removes the row in a
@@ -167,7 +165,6 @@ final class SyncingService {
             updated = await attachmentsService.withContext(
               (context) => deleteAttachment(attachment, context),
             );
-            break;
           case AttachmentState.synced:
             logger.info('Attachment ${attachment.id} is already synced');
             continue;
@@ -175,15 +172,12 @@ final class SyncingService {
             logger.info('Attachment ${attachment.id} is archived');
             continue;
         }
+
+        await attachmentsService.withContext(
+          (context) => context.saveAttachments([updated]),
+        );
       } catch (e, st) {
         logger.warning('Error during sync for ${attachment.id}', e, st);
-        continue;
-      }
-
-      if (updated != null) {
-        await attachmentsService.withContext(
-          (context) => context.saveAttachments([updated!]),
-        );
       }
     }
   }
