@@ -6,3 +6,10 @@ rules:
         "actions/*": ref-pin
         "dart-lang/*": ref-pin
         "Homebrew/actions/*": ref-pin
+  anonymous-definition:
+    disable: true
+  concurrency-limits:
+    ignore:
+      # We don't need to limit concurrency for publishing, as only maintainers can
+      # push tags.
+      - publish.yml:2:1

@@ -7,9 +7,10 @@ on:
       - "powersync_flutter_libs-v[0-9]+.[0-9]+.[0-9]+*"
   workflow_dispatch:
 
+permissions: {}
+
 jobs:
   setup:
-    permissions: {}
     uses: ./.github/workflows/prepare_wasm.yml
 
   github_release:
@@ -17,7 +18,7 @@ jobs:
     if: "${{ startsWith(github.ref_name, 'powersync-') }}"
     needs: [setup]
     permissions:
-      contents: write
+      contents: write # Needed to create a release
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v6
@@ -41,7 +42,7 @@ jobs:
   publish_powersync:
     needs: [setup]
     permissions:
-      id-token: write
+      id-token: write # Needed to create an OIDC token for pub.dev
     if: "${{ startsWith(github.ref_name, 'powersync-') }}"
     runs-on: ubuntu-latest
     steps:
@@ -67,7 +68,7 @@ jobs:
 
   publish_powersync_flutter_libs:
     permissions:
-      id-token: write
+      id-token: write # Needed to create an OIDC token for pub.dev
     if: "${{ startsWith(github.ref_name, 'powersync_flutter_libs-') }}"
     uses: dart-lang/setup-dart/.github/workflows/publish.yml@v1
     with:
@@ -75,7 +76,7 @@ jobs:
 
   publish_powersync_attachments_helper:
     permissions:
-      id-token: write
+      id-token: write # Needed to create an OIDC token for pub.dev
     if: "${{ startsWith(github.ref_name, 'powersync_attachments_helper-') }}"
     uses: dart-lang/setup-dart/.github/workflows/publish.yml@v1
     with:
