@@ -14,7 +14,7 @@ permissions: {}
 jobs:
   zizmor:
     permissions:
-      security-events: write
+      security-events: write # Needed to upload findings as code scanning results.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -22,6 +22,8 @@ jobs:
           persist-credentials: false
       - name: Run zizmor 🌈
         uses: zizmorcore/zizmor-action@b1d7e1fb5de872772f31590499237e7cce841e8e # v0.5.3
+        with:
+          persona: pedantic
 
   setup:
     if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository)
