@@ -1,0 +1,8 @@
+# Configuration for https://zizmor.sh/, a static analysis tool for GitHub actions.
+rules:
+  unpinned-uses:
+    config:
+      policies:
+        "actions/*": ref-pin
+        "dart-lang/*": ref-pin
+        "Homebrew/actions/*": ref-pin

@@ -9,6 +9,7 @@ on:
 
 jobs:
   setup:
+    permissions: {}
     uses: ./.github/workflows/prepare_wasm.yml
 
   github_release:
@@ -20,20 +21,22 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v6
+        with:
+          persist-credentials: false
       - uses: ./.github/actions/prepare
       - name: Create Draft Release
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
-          tag="${{ github.ref_name }}"
+          tag="${GITHUB_REF_NAME}"
           version="${tag#powersync-v}"
           changes=$(awk "/## $version/{flag=1;next}/##/{flag=0}flag" packages/powersync/CHANGELOG.md)
           body="Release $tag
           $changes"
           gh release create "$tag" --title "$tag" --notes "$body"
-          gh release upload "${{ github.ref_name }}" packages/powersync/assets/*.wasm
-          gh release upload "${{ github.ref_name }}" packages/powersync/assets/powersync_db.worker.js
+          gh release upload "${GITHUB_REF_NAME}" packages/powersync/assets/*.wasm
+          gh release upload "${GITHUB_REF_NAME}" packages/powersync/assets/powersync_db.worker.js
 
   publish_powersync:
     needs: [setup]
@@ -44,10 +47,12 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v6
+        with:
+          persist-credentials: false
       # Install Dart to install an OIDC token for publishing
       - uses: dart-lang/setup-dart@v1
       - name: Install Flutter
-        uses: subosito/flutter-action@v2
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
         with:
           flutter-version: "3.x"
           channel: "stable"

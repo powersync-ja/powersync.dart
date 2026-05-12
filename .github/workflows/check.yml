@@ -9,7 +9,20 @@ on:
       - "**"
   pull_request:
 
+permissions: {}
+
 jobs:
+  zizmor:
+    permissions:
+      security-events: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Run zizmor 🌈
+        uses: zizmorcore/zizmor-action@b1d7e1fb5de872772f31590499237e7cce841e8e # v0.5.3
+
   setup:
     if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository)
     uses: ./.github/workflows/prepare_wasm.yml
@@ -20,6 +33,8 @@ jobs:
     needs: [setup]
     steps:
       - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
       - uses: ./.github/actions/prepare
       - name: Check formatting
         run:  dart format --set-exit-if-changed -o none .
@@ -42,6 +57,8 @@ jobs:
     needs: [setup]
     steps:
       - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
       - uses: ./.github/actions/prepare
 
       - name: Install pana
@@ -57,6 +74,8 @@ jobs:
     needs: [setup]
     steps:
       - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
       - uses: ./.github/actions/prepare
       - name: Test powersync package
         working-directory: packages/powersync
