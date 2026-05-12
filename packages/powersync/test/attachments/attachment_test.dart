@@ -334,10 +334,14 @@ void main() {
       watchAttachments: watchAttachments,
       localStorage: localStorage,
       archivedCacheLimit: 0,
-      // Short throttle so the watch fires promptly after seeding rows;
-      // default is 1 s which would make the timing thresholds below
-      // unreliable.
       syncThrottleDuration: const Duration(milliseconds: 10),
+    );
+
+    final queuedDownloadCounts = StreamQueue(
+      db.watchUnthrottled(
+        'SELECT COUNT(*) AS c FROM attachments_queue WHERE state = ?',
+        parameters: [AttachmentState.queuedDownload.index],
+      ).map((rs) => rs[0]['c'] as int),
     );
 
     await queue.startSync();
@@ -351,16 +355,15 @@ void main() {
       }
     });
 
-    // Wait for the batch to be in flight (at least one download started).
-    await Future<void>.delayed(const Duration(milliseconds: 250));
+    await expectLater(queuedDownloadCounts, emitsThrough(greaterThan(0)));
 
     final sw = Stopwatch()..start();
     await queue.stopSyncing();
     sw.stop();
 
-    // Before the fix this awaited the full batch (~5 s). Bound generously
-    // for CI noise; the fix returns within one attachment's processing time.
     expect(sw.elapsed, lessThan(const Duration(seconds: 1)));
+
+    await queuedDownloadCounts.cancel();
   });
 
   test('attachments_queue commits per-attachment, not at end of batch',
@@ -372,10 +375,14 @@ void main() {
       watchAttachments: watchAttachments,
       localStorage: localStorage,
       archivedCacheLimit: 0,
-      // Short throttle so the watch fires promptly after seeding rows;
-      // default is 1 s which would make the timing thresholds below
-      // unreliable.
       syncThrottleDuration: const Duration(milliseconds: 10),
+    );
+
+    final syncedCounts = StreamQueue(
+      db.watchUnthrottled(
+        'SELECT COUNT(*) AS c FROM attachments_queue WHERE state = ?',
+        parameters: [AttachmentState.synced.index],
+      ).map((rs) => rs[0]['c'] as int),
     );
 
     await queue.startSync();
@@ -389,17 +396,12 @@ void main() {
       }
     });
 
-    // Sample partway through the batch: expect a partial count, neither 0
-    // (legacy behaviour: atomic end-of-batch commit) nor 20 (batch already
-    // finished, threshold too loose).
-    await Future<void>.delayed(const Duration(milliseconds: 700));
-    final midBatchRow = await db.get(
-      'SELECT COUNT(*) AS c FROM attachments_queue WHERE state = ?',
-      [AttachmentState.synced.index],
+    await expectLater(
+      syncedCounts,
+      emitsThrough(allOf(greaterThan(0), lessThan(20))),
     );
-    final midBatchCount = midBatchRow['c'] as int;
-    expect(midBatchCount, greaterThan(0));
-    expect(midBatchCount, lessThan(20));
+
+    await syncedCounts.cancel();
   });
 
   test('saveFile is not blocked by an in-flight sync batch', () async {
@@ -410,10 +412,14 @@ void main() {
       watchAttachments: watchAttachments,
       localStorage: localStorage,
       archivedCacheLimit: 0,
-      // Short throttle so the watch fires promptly after seeding rows;
-      // default is 1 s which would make the timing thresholds below
-      // unreliable.
       syncThrottleDuration: const Duration(milliseconds: 10),
+    );
+
+    final queuedDownloadCounts = StreamQueue(
+      db.watchUnthrottled(
+        'SELECT COUNT(*) AS c FROM attachments_queue WHERE state = ?',
+        parameters: [AttachmentState.queuedDownload.index],
+      ).map((rs) => rs[0]['c'] as int),
     );
 
     await queue.startSync();
@@ -427,8 +433,7 @@ void main() {
       }
     });
 
-    // Wait for the batch to be in flight.
-    await Future<void>.delayed(const Duration(milliseconds: 250));
+    await expectLater(queuedDownloadCounts, emitsThrough(greaterThan(0)));
 
     final sw = Stopwatch()..start();
     await queue.saveFile(
@@ -444,9 +449,9 @@ void main() {
     );
     sw.stop();
 
-    // Before the fix this awaited the full batch (mutex held across all
-    // downloads). The fix releases the mutex between attachments.
     expect(sw.elapsed, lessThan(const Duration(seconds: 1)));
+
+    await queuedDownloadCounts.cancel();
   });
 }
 
