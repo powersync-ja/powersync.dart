@@ -185,9 +185,6 @@ base class AttachmentQueue {
 
         previouslyConnected = status.connected;
       });
-      _watchAttachments().listen((items) async {
-        await _processWatchedAttachments(items);
-      });
 
       _logger.info('AttachmentQueue started syncing.');
     });

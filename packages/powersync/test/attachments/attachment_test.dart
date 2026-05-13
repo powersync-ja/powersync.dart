@@ -325,6 +325,134 @@ void main() {
           .having((e) => e.state, 'state', AttachmentState.archived)
     ]);
   });
+
+  test('stopSyncing interrupts an in-flight batch', () async {
+    _stubSlowRemoteStorage(remoteStorage, const Duration(milliseconds: 100));
+    queue = AttachmentQueue(
+      db: db,
+      remoteStorage: remoteStorage,
+      watchAttachments: watchAttachments,
+      localStorage: localStorage,
+      archivedCacheLimit: 0,
+      syncThrottleDuration: const Duration(milliseconds: 10),
+    );
+
+    final queuedDownloadCounts = StreamQueue(
+      db.watchUnthrottled(
+        'SELECT COUNT(*) AS c FROM attachments_queue WHERE state = ?',
+        parameters: [AttachmentState.queuedDownload.index],
+      ).map((rs) => rs[0]['c'] as int),
+    );
+
+    await queue.startSync();
+
+    await db.writeTransaction((tx) async {
+      for (var i = 0; i < 50; i++) {
+        await tx.execute(
+          'INSERT INTO users (id, name, email, photo_id) VALUES (uuid(), ?, ?, ?)',
+          ['user-$i', 'user$i@example.com', 'photo-$i'],
+        );
+      }
+    });
+
+    await expectLater(queuedDownloadCounts, emitsThrough(greaterThan(0)));
+
+    final sw = Stopwatch()..start();
+    await queue.stopSyncing();
+    sw.stop();
+
+    expect(sw.elapsed, lessThan(const Duration(seconds: 1)));
+
+    await queuedDownloadCounts.cancel();
+  });
+
+  test('attachments_queue commits per-attachment, not at end of batch',
+      () async {
+    _stubSlowRemoteStorage(remoteStorage, const Duration(milliseconds: 100));
+    queue = AttachmentQueue(
+      db: db,
+      remoteStorage: remoteStorage,
+      watchAttachments: watchAttachments,
+      localStorage: localStorage,
+      archivedCacheLimit: 0,
+      syncThrottleDuration: const Duration(milliseconds: 10),
+    );
+
+    final syncedCounts = StreamQueue(
+      db.watchUnthrottled(
+        'SELECT COUNT(*) AS c FROM attachments_queue WHERE state = ?',
+        parameters: [AttachmentState.synced.index],
+      ).map((rs) => rs[0]['c'] as int),
+    );
+
+    await queue.startSync();
+
+    await db.writeTransaction((tx) async {
+      for (var i = 0; i < 20; i++) {
+        await tx.execute(
+          'INSERT INTO users (id, name, email, photo_id) VALUES (uuid(), ?, ?, ?)',
+          ['user-$i', 'user$i@example.com', 'photo-$i'],
+        );
+      }
+    });
+
+    await expectLater(
+      syncedCounts,
+      emitsThrough(allOf(greaterThan(0), lessThan(20))),
+    );
+
+    await syncedCounts.cancel();
+  });
+
+  test('saveFile is not blocked by an in-flight sync batch', () async {
+    _stubSlowRemoteStorage(remoteStorage, const Duration(milliseconds: 100));
+    queue = AttachmentQueue(
+      db: db,
+      remoteStorage: remoteStorage,
+      watchAttachments: watchAttachments,
+      localStorage: localStorage,
+      archivedCacheLimit: 0,
+      syncThrottleDuration: const Duration(milliseconds: 10),
+    );
+
+    final queuedDownloadCounts = StreamQueue(
+      db.watchUnthrottled(
+        'SELECT COUNT(*) AS c FROM attachments_queue WHERE state = ?',
+        parameters: [AttachmentState.queuedDownload.index],
+      ).map((rs) => rs[0]['c'] as int),
+    );
+
+    await queue.startSync();
+
+    await db.writeTransaction((tx) async {
+      for (var i = 0; i < 50; i++) {
+        await tx.execute(
+          'INSERT INTO users (id, name, email, photo_id) VALUES (uuid(), ?, ?, ?)',
+          ['user-$i', 'user$i@example.com', 'photo-$i'],
+        );
+      }
+    });
+
+    await expectLater(queuedDownloadCounts, emitsThrough(greaterThan(0)));
+
+    final sw = Stopwatch()..start();
+    await queue.saveFile(
+      data: Stream.value(Uint8List(8)),
+      mediaType: 'image/jpg',
+      fileExtension: 'jpg',
+      updateHook: (tx, attachment) async {
+        await tx.execute(
+          'INSERT INTO users (id, name, email, photo_id) VALUES (uuid(), ?, ?, ?)',
+          ['savefile-user', 'savefile@example.com', attachment.id],
+        );
+      },
+    );
+    sw.stop();
+
+    expect(sw.elapsed, lessThan(const Duration(seconds: 1)));
+
+    await queuedDownloadCounts.cancel();
+  });
 }
 
 extension on PowerSyncDatabase {
@@ -370,4 +498,20 @@ final _schema = Schema([
 
 TypeMatcher<Attachment> isAttachment(String id) {
   return isA<Attachment>().having((e) => e.id, 'id', id);
+}
+
+/// Configures [remoteStorage] so each download/upload/delete waits [delay]
+/// before completing, making a sync batch observably in-flight while a test
+/// races concurrent operations against it.
+void _stubSlowRemoteStorage(MockRemoteStorage remoteStorage, Duration delay) {
+  when(remoteStorage.downloadFile(any)).thenAnswer((_) async {
+    await Future<void>.delayed(delay);
+    return Stream.value(<int>[0]);
+  });
+  when(remoteStorage.uploadFile(any, any)).thenAnswer((_) async {
+    await Future<void>.delayed(delay);
+  });
+  when(remoteStorage.deleteFile(any)).thenAnswer((_) async {
+    await Future<void>.delayed(delay);
+  });
 }
