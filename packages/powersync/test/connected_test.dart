@@ -66,6 +66,43 @@ void main() {
       await db.disconnect();
     });
 
+    test('should send custom headers on sync stream requests', () async {
+      final testServer = await createTestServer();
+      final connector = TestConnector(() async {
+        return PowerSyncCredentials(
+            endpoint: testServer.uri.toString(),
+            token: 'token not used here',
+            expiresAt: DateTime.now());
+      });
+
+      final db = PowerSyncDatabase.withFactory(
+          await testUtils.testFactory(path: path),
+          schema: defaultSchema,
+          maxReaders: 3);
+      addTearDown(() => {db.close()});
+      await db.initialize();
+
+      testServer.addEvent('{"token_expires_in": 3600}\n');
+
+      await db.connect(
+        connector: connector,
+        options: SyncOptions(headers: {
+          'CF-Access-Client-Id': 'test-client-id',
+          'CF-Access-Client-Secret': 'test-client-secret',
+          // Should be ignored: protocol headers always win.
+          'Authorization': 'Token bogus',
+        }),
+      );
+
+      final request = await testServer.service.waitForListener;
+      expect(request.headers['cf-access-client-id'], 'test-client-id');
+      expect(request.headers['cf-access-client-secret'], 'test-client-secret');
+      // The user's Authorization must not override the credentials.
+      expect(request.headers['authorization'], 'Token token not used here');
+
+      await db.disconnect();
+    });
+
     test('should trigger uploads when connection is re-established', () async {
       int uploadCounter = 0;
       var uploadTriggeredCompleter = Completer<void>();

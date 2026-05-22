@@ -272,6 +272,9 @@ class StreamingSyncImplementation implements StreamingSync {
         credentials.endpointUri('write-checkpoint2.json?client_id=$clientId');
 
     Map<String, String> headers = {
+      // User-supplied headers come first so the protocol-critical headers below
+      // (Content-Type, Authorization, user-agent) always win on conflict.
+      ...options.headers,
       'Content-Type': 'application/json',
       'Authorization': "Token ${credentials.token}",
       ..._userAgentHeaders
@@ -312,6 +315,9 @@ class StreamingSyncImplementation implements StreamingSync {
 
     final request = http.AbortableRequest('POST', uri,
         abortTrigger: onAbort ?? _abort!.onAbort);
+    // User-supplied headers are added first so the protocol-critical headers
+    // assigned below always take precedence on conflict.
+    request.headers.addAll(options.headers);
     request.headers['Content-Type'] = 'application/json';
     request.headers['Authorization'] = "Token ${credentials.token}";
     request.headers['Accept'] = '$bson;q=0.9,$ndJson;q=0.8';
