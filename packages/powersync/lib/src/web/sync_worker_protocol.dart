@@ -81,6 +81,7 @@ extension type StartSynchronization._(JSObject _) implements JSObject {
     String? syncParamsEncoded,
     UpdateSubscriptions? subscriptions,
     String? appMetadataEncoded,
+    String? headersEncoded,
   });
 
   external String get databaseName;
@@ -92,6 +93,7 @@ extension type StartSynchronization._(JSObject _) implements JSObject {
   external String? get syncParamsEncoded;
   external UpdateSubscriptions? get subscriptions;
   external String? get appMetadataEncoded;
+  external String? get headersEncoded;
 }
 
 @anonymous
@@ -488,6 +490,10 @@ final class WorkerCommunicationChannel {
         appMetadataEncoded: switch (options.source.appMetadata) {
           null => null,
           final appMetadata => jsonEncode(appMetadata),
+        },
+        headersEncoded: switch (options.source.headers) {
+          null => null,
+          final headers => jsonEncode(headers),
         },
       ),
     ));

@@ -85,6 +85,11 @@ class _ConnectedClient {
                 final encodedAppMetadata => Map<String, String>.from(
                     jsonDecode(encodedAppMetadata) as Map<String, dynamic>),
               },
+              headers: switch (request.headersEncoded) {
+                null => null,
+                final encodedHeaders => Map<String, String>.from(
+                    jsonDecode(encodedHeaders) as Map<String, dynamic>),
+              },
             );
 
             _runner = _worker._referenceSyncTask(

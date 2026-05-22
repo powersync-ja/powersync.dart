@@ -1,3 +1,10 @@
+## Unreleased
+
+- Add `SyncOptions.headers` to attach custom HTTP headers to every request the
+  sync client makes to the PowerSync service. Useful for traversing corporate
+  proxies or zero-trust gateways (e.g. Cloudflare Access service tokens)
+  without bypassing them for sync traffic.
+
 ## 2.1.0
 
 - Add a DevTools extension to inspect running PowerSync databases in your app.

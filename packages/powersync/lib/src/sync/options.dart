@@ -38,6 +38,21 @@ final class SyncOptions {
   /// This is enabled by default.
   final bool? includeDefaultStreams;
 
+  /// Additional HTTP headers to attach to every request the sync client makes
+  /// to the PowerSync service.
+  ///
+  /// Use this to traverse corporate proxies or zero-trust gateways
+  /// (for example, Cloudflare Access requires `CF-Access-Client-Id` and
+  /// `CF-Access-Client-Secret`), or to attach custom telemetry tags.
+  ///
+  /// Protocol-critical headers (`Authorization`, `Content-Type`, `Accept`,
+  /// and the user-agent header) are always set by the sync client and
+  /// override any matching entries here.
+  ///
+  /// Changing this value while a sync connection is active will trigger a
+  /// reconnect so the new headers take effect.
+  final Map<String, String>? headers;
+
   const SyncOptions({
     this.crudThrottleTime,
     this.retryDelay,
@@ -45,6 +60,7 @@ final class SyncOptions {
     this.syncImplementation = SyncClientImplementation.defaultClient,
     this.includeDefaultStreams,
     this.appMetadata,
+    this.headers,
   });
 
   SyncOptions _copyWith({
@@ -52,6 +68,7 @@ final class SyncOptions {
     Duration? retryDelay,
     Map<String, dynamic>? params,
     Map<String, String>? appMetadata,
+    Map<String, String>? headers,
   }) {
     return SyncOptions(
       crudThrottleTime: crudThrottleTime ?? this.crudThrottleTime,
@@ -60,6 +77,7 @@ final class SyncOptions {
       syncImplementation: syncImplementation,
       includeDefaultStreams: includeDefaultStreams,
       appMetadata: appMetadata ?? this.appMetadata,
+      headers: headers ?? this.headers,
     );
   }
 }
@@ -89,16 +107,20 @@ extension type ResolvedSyncOptions(SyncOptions source) {
     Duration? retryDelay,
     Map<String, dynamic>? params,
     Map<String, String>? appMetadata,
+    Map<String, String>? headers,
   }) {
     return ResolvedSyncOptions((source ?? SyncOptions())._copyWith(
       crudThrottleTime: crudThrottleTime,
       retryDelay: retryDelay,
       params: params,
       appMetadata: appMetadata,
+      headers: headers,
     ));
   }
 
   Map<String, String> get appMetadata => source.appMetadata ?? const {};
+
+  Map<String, String> get headers => source.headers ?? const {};
 
   Duration get crudThrottleTime =>
       source.crudThrottleTime ?? const Duration(milliseconds: 10);
@@ -118,6 +140,7 @@ extension type ResolvedSyncOptions(SyncOptions source) {
       includeDefaultStreams:
           other.includeDefaultStreams ?? includeDefaultStreams,
       appMetadata: other.appMetadata ?? appMetadata,
+      headers: other.headers ?? headers,
     );
 
     final didChange = !_mapEquality.equals(newOptions.params, params) ||
@@ -125,7 +148,8 @@ extension type ResolvedSyncOptions(SyncOptions source) {
         newOptions.retryDelay != retryDelay ||
         newOptions.syncImplementation != source.syncImplementation ||
         newOptions.includeDefaultStreams != includeDefaultStreams ||
-        !_mapEquality.equals(newOptions.appMetadata, appMetadata);
+        !_mapEquality.equals(newOptions.appMetadata, appMetadata) ||
+        !_mapEquality.equals(newOptions.headers, headers);
     return (ResolvedSyncOptions(newOptions), didChange);
   }
 

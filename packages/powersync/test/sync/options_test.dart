@@ -33,5 +33,30 @@ void main() {
 
       expect(didChange, isFalse);
     });
+
+    test('headers default to an empty map', () {
+      final resolved = ResolvedSyncOptions(SyncOptions());
+      expect(resolved.headers, isEmpty);
+    });
+
+    test('headers are preserved through resolve', () {
+      final resolved = ResolvedSyncOptions(SyncOptions(
+        headers: {'CF-Access-Client-Id': 'abc'},
+      ));
+      expect(resolved.headers, {'CF-Access-Client-Id': 'abc'});
+    });
+
+    test('changing headers triggers a reconnect', () {
+      final a = ResolvedSyncOptions(SyncOptions(
+        headers: {'CF-Access-Client-Id': 'abc'},
+      ));
+
+      final (b, didChange) = a.applyFrom(SyncOptions(
+        headers: {'CF-Access-Client-Id': 'xyz'},
+      ));
+
+      expect(b.headers, {'CF-Access-Client-Id': 'xyz'});
+      expect(didChange, isTrue);
+    });
   });
 }
