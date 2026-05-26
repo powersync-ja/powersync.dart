@@ -34,7 +34,7 @@ class IsolateResult<T> {
   Future<T> get future => _completer.future;
 
   IsolateResult._(IsolateResultCollection collection) {
-    receivePort.first.then((response) {
+    receivePort.listen((response) {
       receivePort.close();
       collection._inflight.remove(this);
 
@@ -55,7 +55,7 @@ class IsolateResult<T> {
   void close() {
     receivePort.close();
     if (!_completer.isCompleted) {
-      completer.completeError(StateError('Closed before receiving response'));
+      _completer.completeError(StateError('Closed before receiving response'));
     }
   }
 }
