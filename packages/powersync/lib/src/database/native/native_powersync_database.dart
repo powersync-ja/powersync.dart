@@ -6,7 +6,6 @@ import 'package:meta/meta.dart';
 import 'package:http/http.dart' as http;
 import 'package:logging/logging.dart';
 import 'package:powersync/src/abort_controller.dart';
-import 'package:powersync/src/database/native/remote_mutex.dart';
 import 'package:powersync/src/sync/bucket_storage.dart';
 import 'package:powersync/src/connector.dart';
 import 'package:powersync/src/database/powersync_database.dart';
@@ -17,6 +16,8 @@ import 'package:powersync/src/sync/options.dart';
 import 'package:powersync/src/sync/streaming_sync.dart';
 import 'package:powersync/src/sync/sync_status.dart';
 import 'package:sqlite_async/sqlite_async.dart';
+
+import 'sync_isolate_protocol.dart';
 
 /// A PowerSync managed database.
 ///
@@ -47,7 +48,6 @@ final class NativePowerSyncDatabase extends BasePowerSyncDatabase {
     required Zone asyncWorkZone,
   }) async {
     bool triedSpawningIsolate = false;
-    StreamSubscription<UpdateNotification>? crudUpdateSubscription;
     StreamSubscription<void>? activeStreamsSubscription;
     final receiveMessages = ReceivePort();
     final receiveUnhandledErrors = ReceivePort();
@@ -57,7 +57,7 @@ final class NativePowerSyncDatabase extends BasePowerSyncDatabase {
       'crud': group.crudMutex,
     });
 
-    SendPort? initPort;
+    SyncIsolatePort? initPort;
     final hasInitPort = Completer<void>();
     final receivedIsolateExit = Completer<void>();
 
@@ -69,7 +69,6 @@ final class NativePowerSyncDatabase extends BasePowerSyncDatabase {
       }
 
       // Cleanup
-      crudUpdateSubscription?.cancel();
       activeStreamsSubscription?.cancel();
       receiveMessages.close();
       receiveUnhandledErrors.close();
@@ -82,58 +81,52 @@ final class NativePowerSyncDatabase extends BasePowerSyncDatabase {
     }
 
     Future<void> close() async {
-      initPort?.send(['close']);
+      initPort?.sendClose();
       await waitForShutdown();
     }
 
     Future<void> handleMessage(Object? data) async {
-      if (data is List) {
-        String action = data[0] as String;
-        if (action == "getCredentialsCached") {
-          await (data[1] as PortCompleter).handle(() async {
+      final (type, payload) = data as SyncIsolateToClientMessage;
+      switch (type) {
+        case SyncIsolateToClientMessageType.getCredentialsCached:
+          await (payload as PortCompleter).handle(() async {
             final token = await connector.getCredentialsCached();
             logger.fine('Credentials: $token');
             return token;
           });
-        } else if (action == "prefetchCredentials") {
+        case SyncIsolateToClientMessageType.prefetchCredentials:
           logger.fine('Refreshing credentials');
-          final invalidate = data[2] as bool;
+          final (completer, invalidate) =
+              payload as (PortCompleter<PowerSyncCredentials?>, bool);
 
-          await (data[1] as PortCompleter).handle(() async {
+          await completer.handle(() async {
             if (invalidate) {
               connector.invalidateCredentials();
             }
             return await connector.prefetchCredentials();
           });
-        } else if (action == 'init') {
-          final port = initPort = data[1] as SendPort;
+        case SyncIsolateToClientMessageType.init:
+          final port = initPort = SyncIsolatePort(payload as SendPort);
           hasInitPort.complete();
-          var crudStream = database
-              .onChange(['ps_crud'], throttle: options.crudThrottleTime);
-          crudUpdateSubscription = crudStream.listen((event) {
-            port.send(['update']);
-          });
 
           activeStreamsSubscription = activeStreams.listen((streams) {
-            port.send(['changed_subscriptions', streams]);
+            port.sendChangedSubscriptions(streams);
           });
-        } else if (action == 'uploadCrud') {
-          await (data[1] as PortCompleter).handle(() async {
+        case SyncIsolateToClientMessageType.uploadCrud:
+          await (payload as PortCompleter).handle(() async {
             await connector.uploadData(this);
           });
-        } else if (action == 'status') {
-          final SyncStatus status = data[1] as SyncStatus;
-          setStatus(status);
-        } else if (action == 'log') {
-          LogRecord record = data[1] as LogRecord;
+        case SyncIsolateToClientMessageType.status:
+          setStatus(payload as SyncStatus);
+        case SyncIsolateToClientMessageType.log:
+          LogRecord record = payload as LogRecord;
           logger.log(
               record.level, record.message, record.error, record.stackTrace);
-        } else if (action == 'mutex:acquire') {
-          mutexServer.acquireRequest(
-              initPort!, data[1] as String, data[2] as int);
-        } else if (action == 'mutex:release') {
-          mutexServer.releaseRequest(data[1] as int);
-        }
+        case SyncIsolateToClientMessageType.mutexAcquire:
+          final (name, id) = payload as (String, int);
+          mutexServer.acquireRequest(initPort!, name, id);
+        case SyncIsolateToClientMessageType.mutexRelease:
+          mutexServer.releaseRequest(payload as int);
       }
     }
 
@@ -175,7 +168,7 @@ final class NativePowerSyncDatabase extends BasePowerSyncDatabase {
     await Isolate.spawn(
       _syncIsolate,
       _PowerSyncDatabaseIsolateArgs(
-        receiveMessages.sendPort,
+        SyncClientPort(receiveMessages.sendPort),
         database.openFactory.path,
         options,
         jsonEncode(schema),
@@ -187,15 +180,14 @@ final class NativePowerSyncDatabase extends BasePowerSyncDatabase {
     );
     await hasInitPort.future;
 
-    abort.onAbort.whenComplete(close);
-
     // Automatically complete the abort controller once the isolate exits.
-    unawaited(waitForShutdown());
+    unawaited(Future.any([abort.onAbort, receivedIsolateExit.future])
+        .whenComplete(close));
   }
 }
 
 class _PowerSyncDatabaseIsolateArgs {
-  final SendPort sPort;
+  final SyncClientPort sPort;
   final String databaseName;
   final ResolvedSyncOptions options;
   final String schemaJson;
@@ -211,7 +203,7 @@ class _PowerSyncDatabaseIsolateArgs {
 Future<void> _syncIsolate(_PowerSyncDatabaseIsolateArgs args) async {
   final sPort = args.sPort;
   final rPort = ReceivePort();
-  StreamController<String> crudUpdateController = StreamController.broadcast();
+  final results = IsolateResultCollection();
 
   // Because the original database is still active at the time this is called,
   // creating another database at the same path will use the same underlying
@@ -227,14 +219,10 @@ Future<void> _syncIsolate(_PowerSyncDatabaseIsolateArgs args) async {
     if (!shutdownCompleter.isCompleted) {
       shutdownCompleter.complete(Future(() async {
         await openedStreamingSync?.abort();
-
-        crudUpdateController.close();
-        database.close();
+        await database.close();
 
         rPort.close();
-
-        // TODO: If we closed our resources properly, this wouldn't be necessary...
-        Isolate.current.kill();
+        results.close();
       }));
     }
 
@@ -242,23 +230,18 @@ Future<void> _syncIsolate(_PowerSyncDatabaseIsolateArgs args) async {
   }
 
   rPort.listen((message) async {
-    if (message is List) {
-      String action = message[0] as String;
-      if (action == 'update') {
-        if (!crudUpdateController.isClosed) {
-          crudUpdateController.add('update');
-        }
-      } else if (action == 'close') {
-        await shutdown();
-      } else if (action == 'changed_subscriptions') {
+    final (type, payload) = message as ClientToSyncIsolateMessage;
+    switch (type) {
+      case ClientToSyncIsolateMessageType.close:
+        shutdown();
+      case ClientToSyncIsolateMessageType.changedSubscriptions:
         openedStreamingSync
-            ?.updateSubscriptions(message[1] as List<SubscribedStream>);
-      } else if (action == 'mutex:granted') {
-        mutexes.markGranted(message[1] as int);
-      }
+            ?.updateSubscriptions(payload as List<SubscribedStream>);
+      case ClientToSyncIsolateMessageType.mutexGranted:
+        mutexes.markGranted(payload as int);
     }
   });
-  sPort.send(['init', rPort.sendPort]);
+  sPort.sendInit(rPort.sendPort);
 
   // Is there a way to avoid the overhead if logging is not enabled?
   // This only takes effect in this isolate.
@@ -266,31 +249,31 @@ Future<void> _syncIsolate(_PowerSyncDatabaseIsolateArgs args) async {
   isolateLogger.onRecord.listen((record) {
     var copy = LogRecord(record.level, record.message, record.loggerName,
         record.error, record.stackTrace);
-    sPort.send(['log', copy]);
+    sPort.sendLog(copy);
   });
 
   Future<PowerSyncCredentials?> getCredentialsCached() async {
-    final r = IsolateResult<PowerSyncCredentials?>();
-    sPort.send(['getCredentialsCached', r.completer]);
+    final r = results.createPending<PowerSyncCredentials?>();
+    sPort.sendGetCredentialsCached(r.completer);
     return r.future;
   }
 
   Future<PowerSyncCredentials?> prefetchCredentials(
       {required bool invalidate}) async {
-    final r = IsolateResult<PowerSyncCredentials?>();
-    sPort.send(['prefetchCredentials', r.completer, invalidate]);
+    final r = results.createPending<PowerSyncCredentials?>();
+    sPort.sendPrefetchCredentials(r.completer, invalidate);
     return r.future;
   }
 
   Future<void> uploadCrud() async {
-    final r = IsolateResult<void>();
-    sPort.send(['uploadCrud', r.completer]);
+    final r = results.createPending<void>();
+    sPort.sendUploadCrud(r.completer);
     return r.future;
   }
 
   runZonedGuarded(() async {
     final storage = BucketStorage(database);
-    final sync = StreamingSyncImplementation(
+    final sync = openedStreamingSync = StreamingSyncImplementation(
       adapter: storage,
       schemaJson: args.schemaJson,
       connector: InternalConnector(
@@ -298,16 +281,17 @@ Future<void> _syncIsolate(_PowerSyncDatabaseIsolateArgs args) async {
         prefetchCredentials: prefetchCredentials,
         uploadCrud: uploadCrud,
       ),
-      crudUpdateTriggerStream: crudUpdateController.stream,
+      crudUpdateTriggerStream: database
+          .onChange(['ps_crud'], throttle: args.options.crudThrottleTime),
       options: args.options,
       client: http.Client(),
       syncMutex: mutexes.mutex('sync'),
       crudMutex: mutexes.mutex('crud'),
     );
-    openedStreamingSync = sync;
+
     sync.streamingSync();
     sync.statusStream.listen((event) {
-      sPort.send(['status', event]);
+      sPort.sendStatus(event);
     });
   }, (error, stack) async {
     // Properly dispose the database if an uncaught error occurs.

@@ -121,10 +121,10 @@ class StreamingSyncImplementation implements StreamingSync {
         future,
         if (_activeCrudUpload case final activeUpload?) activeUpload.future,
       ]);
-
-      _client.close();
-      _state.close();
     }
+
+    _client.close();
+    _state.close();
   }
 
   bool get aborted {
@@ -154,7 +154,7 @@ class StreamingSyncImplementation implements StreamingSync {
           // Protect sync iterations with exclusivity (if a valid Mutex is provided)
           final (:immediateRestart) = await syncMutex.lock(
             () => _rustStreamingSyncIteration(abort),
-            abortTrigger: Future.delayed(_retryDelay),
+            abortTrigger: _delayRetry(),
           );
           delayNextIteration = !immediateRestart;
         } catch (e, stacktrace) {
@@ -252,7 +252,7 @@ class StreamingSyncImplementation implements StreamingSync {
           _state.updateStatus((s) => s.uploading = false);
         }
       }
-    }, abortTrigger: Future.delayed(_retryDelay)).whenComplete(() {
+    }, abortTrigger: _delayRetry()).whenComplete(() {
       if (!aborted) {
         _nonLineSyncEvents.add(const UploadCompleted());
       }
@@ -336,8 +336,24 @@ class StreamingSyncImplementation implements StreamingSync {
 
   /// Delays the standard `retryDelay` Duration, but exits early if
   /// an abort has been requested.
-  Future<void> _delayRetry() async {
-    await Future.any([Future<void>.delayed(_retryDelay), _abort!.onAbort]);
+  Future<void> _delayRetry() {
+    // Don't use Future.delayed here! Its timer can't be cancelled, which keeps
+    // sync isolates alive for longer than necessary.
+    final completer = Completer<void>.sync();
+    Timer? timer;
+
+    void complete() {
+      if (!completer.isCompleted) {
+        timer?.cancel();
+        timer = null;
+        completer.complete();
+      }
+    }
+
+    timer = Timer(_retryDelay, complete);
+    _abort?.onAbort.whenComplete(complete);
+
+    return completer.future;
   }
 }
 

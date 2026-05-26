@@ -1,23 +1,49 @@
 import 'dart:async';
 import 'dart:isolate';
 
+/// A collection of [IsolateResult]s that can be closed at once.
+final class IsolateResultCollection {
+  final Set<IsolateResult<void>> _inflight = {};
+  bool _closed = false;
+
+  IsolateResult<T> createPending<T>() {
+    if (_closed) throw StateError('IsolateResultCollection is closed!');
+
+    final result = IsolateResult<T>._(this);
+    _inflight.add(result);
+    return result;
+  }
+
+  void close() {
+    if (!_closed) {
+      _closed = true;
+
+      for (final pending in _inflight) {
+        pending.close();
+      }
+
+      _inflight.clear();
+    }
+  }
+}
+
 class IsolateResult<T> {
-  final ReceivePort receivePort = ReceivePort();
-  late Future<T> future;
+  final ReceivePort receivePort = ReceivePort('pending IsolateResult');
+  final Completer<T> _completer = Completer.sync();
 
-  IsolateResult() {
-    final sendResult = receivePort.first;
-    sendResult.whenComplete(() {
+  Future<T> get future => _completer.future;
+
+  IsolateResult._(IsolateResultCollection collection) {
+    receivePort.first.then((response) {
       receivePort.close();
-    });
+      collection._inflight.remove(this);
 
-    future = sendResult.then((response) {
-      if (response is PortResult) {
-        return response.value as T;
+      if (response case final PortResult<dynamic> result) {
+        result._applyTo(_completer);
       } else if (response == abortedResponse) {
-        throw const IsolateTerminatedError();
+        _completer.completeError(const IsolateTerminatedError());
       } else {
-        throw AssertionError('Invalid response: $response');
+        _completer.completeError(AssertionError('Invalid response: $response'));
       }
     });
   }
@@ -28,6 +54,9 @@ class IsolateResult<T> {
 
   void close() {
     receivePort.close();
+    if (!_completer.isCompleted) {
+      completer.completeError(StateError('Closed before receiving response'));
+    }
   }
 }
 
@@ -81,26 +110,12 @@ class PortResult<T> {
         _result = null,
         _error = error;
 
-  T get value {
+  void _applyTo(Completer<dynamic> completer) {
     if (success) {
-      return _result as T;
+      completer.complete(_result);
     } else {
-      if (_error != null && stackTrace != null) {
-        Error.throwWithStackTrace(_error, stackTrace!);
-      } else {
-        throw _error!;
-      }
+      completer.completeError(_error!, stackTrace);
     }
-  }
-
-  T get result {
-    assert(success);
-    return _result as T;
-  }
-
-  Object get error {
-    assert(!success);
-    return _error!;
   }
 }
 

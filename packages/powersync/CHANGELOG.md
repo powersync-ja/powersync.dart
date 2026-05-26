@@ -1,3 +1,7 @@
+## 2.1.1 (unreleased)
+
+- Fix `disconnect()` call leaving stale database isolates behind.
+
 ## 2.1.0
 
 - Add a DevTools extension to inspect running PowerSync databases in your app.
