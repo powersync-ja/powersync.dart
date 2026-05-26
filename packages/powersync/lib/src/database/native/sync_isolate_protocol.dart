@@ -9,23 +9,51 @@ import '../../isolate_completer.dart';
 import '../../sync/streaming_sync.dart' show SubscribedStream;
 import '../../sync/sync_status.dart';
 
+// A (type, payload) pair sent between main app and sync isolate
 typedef SyncIsolateToClientMessage = (SyncIsolateToClientMessageType, Object?);
 typedef ClientToSyncIsolateMessage = (ClientToSyncIsolateMessageType, Object?);
 
+/// Type of messages sent from the sync isolate to the main app.
 enum SyncIsolateToClientMessageType {
+  /// Invokes [PowerSyncBackendConnector.getCredentialsCached], payload is a
+  /// [PortCompleter] expecting the [PowerSyncCredentials].
   getCredentialsCached,
+
+  /// Prefetch credentials, payload is a ([PortCompleter], `bool invalidate`)
+  /// pair.
   prefetchCredentials,
+
+  /// The sync isolate is ready to take commands, payload is a
+  /// [SyncIsolatePort].
   init,
+
+  /// Upload the CRUD queue, payload is a [PortCompleter].
   uploadCrud,
+
+  /// The sync status has changed, payload is a [SyncStatus].
   status,
+
+  /// Incoming log message, payload is a [LogRecord].
   log,
+
+  /// The sync isolate wants to acquire a mutex, payload is a (`String name`,
+  /// `int requestId`) pair.
   mutexAcquire,
+
+  /// The sync isolate wants to release a mutex, payload is an [int] request id.
   mutexRelease;
 }
 
 enum ClientToSyncIsolateMessageType {
+  /// Active Sync Stream subscriptions referenced in the app have changed,
+  /// payload is a list of [SubscribedStream]s.
   changedSubscriptions,
+
+  /// The sync isolate should start shutting down.
   close,
+
+  /// A completed [SyncIsolateToClientMessageType.mutexAcquire] call, payload is
+  /// the request id being completed.
   mutexGranted,
 }
 

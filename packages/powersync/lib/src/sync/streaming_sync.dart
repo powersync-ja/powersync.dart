@@ -146,7 +146,12 @@ class StreamingSyncImplementation implements StreamingSync {
 
     try {
       clientId = await adapter.getClientId();
-      _crudLoop();
+      _crudLoop().onError((error, stackTrace) {
+        if (aborted && error is AbortException) return;
+
+        logger.warning('Error in crud upload loop', error, stackTrace);
+      });
+
       while (!aborted) {
         var delayNextIteration = false;
 
