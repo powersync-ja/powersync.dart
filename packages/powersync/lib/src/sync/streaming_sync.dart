@@ -143,10 +143,11 @@ class StreamingSyncImplementation implements StreamingSync {
   Future<void> streamingSync() async {
     assert(_abort == null);
     final abort = _abort = AbortController();
+    Future<void> crudLoop;
 
     try {
       clientId = await adapter.getClientId();
-      _crudLoop().onError((error, stackTrace) {
+      crudLoop = _crudLoop().onError((error, stackTrace) {
         if (aborted && error is AbortException) return;
 
         logger.warning('Error in crud upload loop', error, stackTrace);
@@ -181,6 +182,10 @@ class StreamingSyncImplementation implements StreamingSync {
           await _delayRetry();
         }
       }
+
+      // Wait for the crud loop to abort as well, this mainly guarantees that we
+      // don't leave any trailing async tasks behind.
+      await crudLoop;
     } finally {
       abort.completeAbort();
     }
