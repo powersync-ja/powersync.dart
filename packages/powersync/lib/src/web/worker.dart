@@ -17,7 +17,8 @@ final _isSharedWorker = globalContext.has('SharedWorkerGlobalScope');
 
 void main() {
   final controller = PowerSyncAsyncSqliteController();
-  final connector = PowerSyncWorkerConnector(Uri.base);
+  final connector =
+      PowerSyncWorkerConnector((globalContext as Window).location.href);
   final messagesForDatabaseWorker = StreamController<MessageEvent>(sync: true);
 
   WebSqlite.workerEntrypoint(

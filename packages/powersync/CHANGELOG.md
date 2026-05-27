@@ -1,6 +1,9 @@
-## 2.1.1 (unreleased)
+## 2.1.1
 
 - Fix `disconnect()` call leaving stale database isolates behind.
+- Web: Update to SQLite 3.53.1.
+- Web: Support OPFS-based file systems in Safari without additional headers.
+- Support latest versions of `package:hooks` and `package:code_assets`.
 
 ## 2.1.0
 
