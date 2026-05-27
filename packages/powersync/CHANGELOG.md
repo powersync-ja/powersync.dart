@@ -1,4 +1,4 @@
-## 2.1.1
+## 2.2.0
 
 - Fix `disconnect()` call leaving stale database isolates behind.
 - Web: Update to SQLite 3.53.1.
