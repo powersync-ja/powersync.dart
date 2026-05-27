@@ -55,7 +55,7 @@ extension type SharedWorkerMessage._(JSObject _) implements JSObject {
 final class PowerSyncWorkerConnector implements WorkerConnector {
   final WorkerConnector _inner;
 
-  PowerSyncWorkerConnector(Uri uri)
+  PowerSyncWorkerConnector(String uri)
       : _inner = WorkerConnector.defaultWorkers(uri);
 
   @override
