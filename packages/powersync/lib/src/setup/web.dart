@@ -58,8 +58,8 @@ Future<void> downloadWebAssets(List<String> arguments) async {
     return;
   }
 
+  final httpClient = HttpClient();
   try {
-    final httpClient = HttpClient();
     const sqlitePackageName = 'sqlite3';
 
     final (tag: powersyncTag, version: powerSyncVersion) =
@@ -112,6 +112,8 @@ Future<void> downloadWebAssets(List<String> arguments) async {
   } catch (e) {
     print(e);
     exit(1);
+  } finally {
+    httpClient.close();
   }
 }
 
