@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:isolate';
+import 'package:http/http.dart';
 import 'package:meta/meta.dart';
 
 import 'package:logging/logging.dart';
@@ -171,7 +172,7 @@ final class NativePowerSyncDatabase extends BasePowerSyncDatabase {
         database.openFactory.path,
         options,
         jsonEncode(schema),
-        options.source.httpClient,
+        options.source.httpClient ?? Client.new,
       ),
       debugName: 'Sync ${database.openFactory.path}',
       onError: receiveUnhandledErrors.sendPort,

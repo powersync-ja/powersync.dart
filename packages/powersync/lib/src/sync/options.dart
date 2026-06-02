@@ -54,7 +54,7 @@ final class SyncOptions {
   ///
   /// Custom clients can be used to configure TLS options, inject additional
   /// headers, or otherwise customize networking.
-  final HttpClientFactory httpClient;
+  final HttpClientFactory? httpClient;
 
   const SyncOptions({
     this.crudThrottleTime,
@@ -63,7 +63,7 @@ final class SyncOptions {
     this.syncImplementation = SyncClientImplementation.defaultClient,
     this.includeDefaultStreams,
     this.appMetadata,
-    this.httpClient = Client.new,
+    this.httpClient,
   });
 
   SyncOptions _copyWith({
@@ -138,6 +138,7 @@ extension type ResolvedSyncOptions(SyncOptions source) {
       includeDefaultStreams:
           other.includeDefaultStreams ?? includeDefaultStreams,
       appMetadata: other.appMetadata ?? appMetadata,
+      httpClient: other.httpClient ?? source.httpClient,
     );
 
     final didChange = !_mapEquality.equals(newOptions.params, params) ||

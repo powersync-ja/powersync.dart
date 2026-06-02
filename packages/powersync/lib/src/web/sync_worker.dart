@@ -20,6 +20,7 @@ import 'package:sqlite_async/web.dart';
 import 'package:web/web.dart' hide RequestMode;
 
 import '../database/powersync_database.dart';
+import 'http/client.dart';
 import 'sync_worker_protocol.dart';
 import 'web_bucket_storage.dart';
 
@@ -85,6 +86,9 @@ class _ConnectedClient {
                 final encodedAppMetadata => Map<String, String>.from(
                     jsonDecode(encodedAppMetadata) as Map<String, dynamic>),
               },
+              httpClient: request.customHttpClient == true
+                  ? () => RemoteHttpClient(channel)
+                  : null,
             );
 
             _runner = _worker._referenceSyncTask(
