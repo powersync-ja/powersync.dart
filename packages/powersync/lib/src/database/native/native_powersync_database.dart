@@ -1,9 +1,9 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:isolate';
+import 'package:http/http.dart';
 import 'package:meta/meta.dart';
 
-import 'package:http/http.dart' as http;
 import 'package:logging/logging.dart';
 import 'package:powersync/src/abort_controller.dart';
 import 'package:powersync/src/sync/bucket_storage.dart';
@@ -172,6 +172,7 @@ final class NativePowerSyncDatabase extends BasePowerSyncDatabase {
         database.openFactory.path,
         options,
         jsonEncode(schema),
+        options.source.httpClient ?? Client.new,
       ),
       debugName: 'Sync ${database.openFactory.path}',
       onError: receiveUnhandledErrors.sendPort,
@@ -191,12 +192,14 @@ class _PowerSyncDatabaseIsolateArgs {
   final String databaseName;
   final ResolvedSyncOptions options;
   final String schemaJson;
+  final HttpClientFactory httpClient;
 
   _PowerSyncDatabaseIsolateArgs(
     this.sPort,
     this.databaseName,
     this.options,
     this.schemaJson,
+    this.httpClient,
   );
 }
 
@@ -284,7 +287,7 @@ Future<void> _syncIsolate(_PowerSyncDatabaseIsolateArgs args) async {
       crudUpdateTriggerStream: database
           .onChange(['ps_crud'], throttle: args.options.crudThrottleTime),
       options: args.options,
-      client: http.Client(),
+      client: args.httpClient(),
       syncMutex: mutexes.mutex('sync'),
       crudMutex: mutexes.mutex('crud'),
     );

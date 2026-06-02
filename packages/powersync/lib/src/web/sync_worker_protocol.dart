@@ -2,16 +2,19 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:js_interop';
 
+import 'package:http/http.dart';
 import 'package:logging/logging.dart';
 import 'package:powersync/src/schema.dart';
 import 'package:powersync/src/sync/options.dart';
 import 'package:powersync/src/sync/stream.dart';
-import 'package:web/web.dart';
+import 'package:web/web.dart' hide HttpRequest, Client;
 
 import '../connector.dart';
 import '../log.dart';
 import '../sync/streaming_sync.dart';
 import '../sync/sync_status.dart';
+import 'http/protocol.dart';
+import 'http/server.dart';
 
 /// Names used in [SyncWorkerMessage]
 enum SyncWorkerMessageType {
@@ -56,6 +59,24 @@ enum SyncWorkerMessageType {
   /// The payload is a [JSString].
   logEvent,
 
+  /// Send an HTTP request.
+  ///
+  /// The request payload is a [HttpRequest], the response is a [HttpResponse].
+  sendHttpRequest,
+
+  /// Abort an in-flight HTTP request.
+  ///
+  /// The payload is a [AbortHttpResponse] object.
+  ///
+  /// The payload is a [JSNumber] matching the [HttpRequest.transactionId].
+  abortHttpRequest,
+
+  /// Requests a chunk of data from an HTTP response.
+  ///
+  /// The request payload is a [ReadStreamChunk], the response is a
+  /// [JSArrayBuffer] (or `null` if the end of the response was reached).
+  readResponseChunk,
+
   okResponse,
   errorResponse,
 }
@@ -81,6 +102,7 @@ extension type StartSynchronization._(JSObject _) implements JSObject {
     String? syncParamsEncoded,
     UpdateSubscriptions? subscriptions,
     String? appMetadataEncoded,
+    bool? customHttpClient,
   });
 
   external String get databaseName;
@@ -92,6 +114,7 @@ extension type StartSynchronization._(JSObject _) implements JSObject {
   external String? get syncParamsEncoded;
   external UpdateSubscriptions? get subscriptions;
   external String? get appMetadataEncoded;
+  external bool? get customHttpClient;
 }
 
 @anonymous
@@ -151,11 +174,16 @@ extension type OkResponse._(JSObject _) implements JSObject {
 extension type ErrorResponse._(JSObject _) implements JSObject {
   external factory ErrorResponse({
     required int requestId,
+    required int? recognizedType,
     required JSString errorMessage,
   });
 
   external int get requestId;
+  external int? get recognizedType;
   external JSString get errorMessage;
+
+  static const recognizedTypeNone = 0;
+  static const recognizedTypeRequestAbortedException = 1;
 }
 
 @anonymous
@@ -360,6 +388,7 @@ final class WorkerCommunicationChannel {
     required this.requestHandler,
     Stream<Event>? errors,
     Logger? logger,
+    Client? exposedHttpClient,
   }) : _logger = logger ?? autoLogger {
     port.start();
     _incomingErrors = errors?.listen((event) {
@@ -370,6 +399,9 @@ final class WorkerCommunicationChannel {
       });
       _pendingRequests.clear();
     });
+
+    final client =
+        exposedHttpClient == null ? null : RemoteHttpServer(exposedHttpClient);
 
     _incomingMessages =
         EventStreamProviders.messageEvent.forTarget(port).listen((event) async {
@@ -397,15 +429,33 @@ final class WorkerCommunicationChannel {
         case SyncWorkerMessageType.invalidCredentialsCallback:
         case SyncWorkerMessageType.uploadCrud:
           requestId = (message.payload as JSNumber).toDartInt;
+        case SyncWorkerMessageType.sendHttpRequest:
+          final request = message.payload as HttpRequest;
+          _respond(request.requestId, () => client!.handle(request));
+          return;
+        case SyncWorkerMessageType.abortHttpRequest:
+          final payload = message.payload as AbortHttpResponse;
+          client!.abort(payload.transactionId, payload.cancelStream);
+          return;
+        case SyncWorkerMessageType.readResponseChunk:
+          final request = message.payload as ReadStreamChunk;
+          _respond(request.requestId,
+              () => client!.readResponse(request.transactionId));
+          return;
         case SyncWorkerMessageType.okResponse:
           final payload = message.payload as OkResponse;
           _pendingRequests.remove(payload.requestId)!.complete(payload.payload);
           return;
         case SyncWorkerMessageType.errorResponse:
           final payload = message.payload as ErrorResponse;
-          _pendingRequests
-              .remove(payload.requestId)!
-              .completeError(payload.errorMessage.toDart);
+          final error = switch (
+              payload.recognizedType ?? ErrorResponse.recognizedTypeNone) {
+            ErrorResponse.recognizedTypeRequestAbortedException =>
+              RequestAbortedException(),
+            _ => payload.errorMessage.toDart,
+          };
+
+          _pendingRequests.remove(payload.requestId)!.completeError(error);
           return;
         case SyncWorkerMessageType.notifySyncStatus:
           _events.add((type, message.payload));
@@ -416,27 +466,38 @@ final class WorkerCommunicationChannel {
           return;
       }
 
-      try {
-        final (response, transfer) =
-            await requestHandler(type, message.payload);
-        final responseMessage = SyncWorkerMessage(
-          type: SyncWorkerMessageType.okResponse.name,
-          payload: OkResponse(requestId: requestId, payload: response),
-        );
-
-        if (transfer != null) {
-          port.postMessage(responseMessage, transfer);
-        } else {
-          port.postMessage(responseMessage);
-        }
-      } catch (e) {
-        port.postMessage(SyncWorkerMessage(
-          type: SyncWorkerMessageType.errorResponse.name,
-          payload: ErrorResponse(
-              requestId: requestId, errorMessage: e.toString().toJS),
-        ));
-      }
+      await _respond(requestId, () => requestHandler(type, message.payload));
     });
+  }
+
+  Future<void> _respond(int requestId,
+      FutureOr<(JSAny?, JSArray?)> Function() generateResponse) async {
+    try {
+      final (response, transfer) = await generateResponse();
+      final responseMessage = SyncWorkerMessage(
+        type: SyncWorkerMessageType.okResponse.name,
+        payload: OkResponse(requestId: requestId, payload: response),
+      );
+
+      if (transfer != null) {
+        port.postMessage(responseMessage, transfer);
+      } else {
+        port.postMessage(responseMessage);
+      }
+    } catch (e) {
+      port.postMessage(SyncWorkerMessage(
+        type: SyncWorkerMessageType.errorResponse.name,
+        payload: ErrorResponse(
+          requestId: requestId,
+          recognizedType: switch (e) {
+            RequestAbortedException() =>
+              ErrorResponse.recognizedTypeRequestAbortedException,
+            _ => ErrorResponse.recognizedTypeNone,
+          },
+          errorMessage: e.toString().toJS,
+        ),
+      ));
+    }
   }
 
   (int, Future<JSAny?>) _newRequest() {
@@ -469,6 +530,7 @@ final class WorkerCommunicationChannel {
     ResolvedSyncOptions options,
     Schema schema,
     List<SubscribedStream> streams,
+    bool customHttpClient,
   ) async {
     final (id, completion) = _newRequest();
     port.postMessage(SyncWorkerMessage(
@@ -489,6 +551,7 @@ final class WorkerCommunicationChannel {
           null => null,
           final appMetadata => jsonEncode(appMetadata),
         },
+        customHttpClient: customHttpClient,
       ),
     ));
     await completion;
@@ -531,6 +594,31 @@ final class WorkerCommunicationChannel {
 
   Future<void> uploadCrud() async {
     await _numericRequest(SyncWorkerMessageType.uploadCrud);
+  }
+
+  Future<HttpResponse> sendHttpRequest(HttpRequest request) async {
+    final (id, completion) = _newRequest();
+    request.requestId = id;
+    port.postMessage(
+      SyncWorkerMessage(
+        payload: request,
+        type: SyncWorkerMessageType.sendHttpRequest.name,
+      ),
+      <JSAny?>[request.body].toJS,
+    );
+    return (await completion) as HttpResponse;
+  }
+
+  Future<JSArrayBuffer?> readHttpResponseChunk(int transactionId) async {
+    final (id, completion) = _newRequest();
+    port.postMessage(
+      SyncWorkerMessage(
+        type: SyncWorkerMessageType.readResponseChunk.name,
+        payload: ReadStreamChunk(requestId: id, transactionId: transactionId),
+      ),
+    );
+
+    return (await completion) as JSArrayBuffer?;
   }
 
   Future<void> close() async {
