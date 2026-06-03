@@ -55,7 +55,7 @@ void main() {
         db.statusStream,
         emitsThrough(isA<SyncStatus>()
             .having((e) => e.downloadError, 'downloadError', isNotNull)));
-    await handle.streamingSync('test_database');
+    await handle.streamingSync();
     await hasError;
 
     expect(db.currentStatus.downloadError.toString(),
@@ -88,7 +88,7 @@ void main() {
       didRequestCredentials.complete();
     }));
 
-    await handle.streamingSync('test_database');
+    await handle.streamingSync();
     await didRequestCredentials.future;
     await pumpEventQueue();
 

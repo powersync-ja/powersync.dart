@@ -140,9 +140,9 @@ class SyncWorkerHandle implements StreamingSync {
   Stream<SyncStatus> get statusStream => _status.stream;
 
   @override
-  Future<void> streamingSync([String? databaseName]) async {
+  Future<void> streamingSync() async {
     await _channel.startSynchronization(
-      databaseName ?? database.database.openFactory.path,
+      database.database.openFactory.path,
       ResolvedSyncOptions(options),
       database.schema,
       subscriptions,
