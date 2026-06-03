@@ -1,6 +1,8 @@
 @TestOn('browser')
 library;
 
+import 'dart:async';
+
 import 'package:logging/logging.dart';
 import 'package:powersync/powersync.dart';
 import 'package:powersync/src/sync/streaming_sync.dart';
@@ -69,11 +71,41 @@ void main() {
     expect(syncRunner.sync, isNull);
     expect(syncRunner.connections, isEmpty);
   });
+
+  test('handles tabs closing while serving a request', () async {
+    late SyncWorkerHandle handle;
+    final didRequestCredentials = Completer<void>();
+    handle = createWorkerHandle(connector: _ThrowingBackendConnector(() {
+      // When the fetchCredentials request is sent, ther should be a sync
+      // process.
+      final syncRunner = syncWorker.requestedSyncTasks.values.single;
+      expect(syncRunner.sync, isNotNull);
+      expect(syncRunner.connections, hasLength(1));
+
+      // Close the handle while the fetchCredentials request is active, meaning
+      // the sync worker will never receive a response.
+      handle.closeChannel();
+      didRequestCredentials.complete();
+    }));
+
+    await handle.streamingSync('test_database');
+    await didRequestCredentials.future;
+    await pumpEventQueue();
+
+    final syncRunner = syncWorker.requestedSyncTasks.values.single;
+    expect(syncRunner.sync, isNull);
+    expect(syncRunner.connections, isEmpty);
+  });
 }
 
 final class _ThrowingBackendConnector extends PowerSyncBackendConnector {
+  void Function()? onFetchCredentials;
+
+  _ThrowingBackendConnector([this.onFetchCredentials]);
+
   @override
   Future<PowerSyncCredentials?> fetchCredentials() async {
+    onFetchCredentials?.call();
     throw UnsupportedError('Expected error from fetchCredentials');
   }
 
