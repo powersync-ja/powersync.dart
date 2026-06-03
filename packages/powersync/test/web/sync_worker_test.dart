@@ -76,7 +76,7 @@ void main() {
     late SyncWorkerHandle handle;
     final didRequestCredentials = Completer<void>();
     handle = createWorkerHandle(connector: _ThrowingBackendConnector(() {
-      // When the fetchCredentials request is sent, ther should be a sync
+      // When the fetchCredentials request is sent, there should be a sync
       // process.
       final syncRunner = syncWorker.requestedSyncTasks.values.single;
       expect(syncRunner.sync, isNotNull);

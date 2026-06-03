@@ -582,7 +582,7 @@ final class WorkerCommunicationChannel {
 
   static String _generateRandomLockName() {
     final crypto = (globalContext['crypto'] as Crypto);
-    return 'http-remote-${crypto.randomUUID()}';
+    return 'powersync-worker-keepalive-${crypto.randomUUID()}';
   }
 }
 
