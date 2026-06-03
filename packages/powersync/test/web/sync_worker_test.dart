@@ -11,6 +11,10 @@ import 'package:powersync/src/web/sync_worker.dart';
 import 'package:test/test.dart';
 import 'package:web/web.dart' show MessageChannel;
 
+import '../server/sync_server/in_memory_sync_server.dart';
+import '../sync/utils.dart';
+import '../utils/abstract_test_utils.dart';
+import '../utils/in_memory_http.dart';
 import '../utils/web_test_utils.dart';
 
 void main() {
@@ -44,7 +48,6 @@ void main() {
       sendToWorker: rawChannel.port2,
       worker: null,
       subscriptions: subscriptions,
-      client: null,
     );
     handle.statusStream.forEach(db.setStatus);
     return handle;
@@ -96,6 +99,25 @@ void main() {
     final syncRunner = syncWorker.requestedSyncTasks.values.single;
     expect(syncRunner.sync, isNull);
     expect(syncRunner.connections, isEmpty);
+  });
+
+  test('can use custom http client', () async {
+    final (client, server) = inMemoryServer();
+    final service = MockSyncService();
+    server.mount((r) => service.router(r));
+    service
+      ..addLine(checkpoint(lastOpId: 1))
+      ..addLine(checkpointComplete());
+
+    final handle = createWorkerHandle(
+      connector: TestConnector(
+        () async => PowerSyncCredentials(
+            endpoint: 'http://test.powersync.example.org', token: 'token'),
+      ),
+      options: SyncOptions(httpClient: () => client),
+    );
+    await handle.streamingSync();
+    await db.waitForFirstSync();
   });
 }
 

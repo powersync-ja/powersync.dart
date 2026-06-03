@@ -73,7 +73,6 @@ class StreamingSyncImplementation implements StreamingSync {
     required this.connector,
     required this.crudUpdateTriggerStream,
     required this.options,
-    required http.Client client,
     List<SubscribedStream> activeSubscriptions = const [],
     Mutex? syncMutex,
     Mutex? crudMutex,
@@ -82,7 +81,7 @@ class StreamingSyncImplementation implements StreamingSync {
     /// A unique identifier for this streaming sync implementation
     /// A good value is typically the DB file path which it will mutate when syncing.
     String? identifier = "unknown",
-  })  : _client = client,
+  })  : _client = options.createHttpClient(),
         syncMutex = syncMutex ?? potentiallySharedMutex("sync-$identifier"),
         crudMutex = crudMutex ?? potentiallySharedMutex("crud-$identifier"),
         _userAgentHeaders = userAgentHeaders(),

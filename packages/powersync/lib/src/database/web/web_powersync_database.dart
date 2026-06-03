@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'package:http/http.dart';
 import 'package:meta/meta.dart';
 import 'package:powersync/src/abort_controller.dart';
 import 'package:powersync/src/sync/bucket_storage.dart';
@@ -75,7 +74,6 @@ final class WebPowerSyncDatabase extends BasePowerSyncDatabase {
         connector: InternalConnector.wrap(connector, this),
         crudUpdateTriggerStream: crudStream,
         options: options,
-        client: options.source.httpClient?.call() ?? Client(),
         activeSubscriptions: initiallyActiveStreams,
         // Only allows 1 sync implementation to run at a time per database
         // This should be global (across tabs) when using Navigator locks.

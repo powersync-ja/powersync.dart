@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:js_interop';
 
 import 'package:meta/meta.dart';
-import 'package:http/http.dart';
 import 'package:powersync/src/web/worker_utils.dart';
 import 'package:sqlite_async/web.dart';
 import 'package:web/web.dart' hide Client;
@@ -30,7 +29,6 @@ class SyncWorkerHandle implements StreamingSync {
     required this.options,
     required MessagePort sendToWorker,
     required SharedWorker? worker,
-    required Client? client,
     required this.subscriptions,
   }) {
     _channel = WorkerCommunicationChannel(
@@ -39,7 +37,7 @@ class SyncWorkerHandle implements StreamingSync {
           ? EventStreamProviders.errorEvent.forTarget(worker)
           : null,
       logger: database.logger,
-      exposedHttpClient: client,
+      exposedHttpClient: options.httpClient?.call(),
       requestHandler: (type, payload) async {
         switch (type) {
           case SyncWorkerMessageType.requestEndpoint:
@@ -116,7 +114,6 @@ class SyncWorkerHandle implements StreamingSync {
       sendToWorker: port1,
       worker: worker,
       subscriptions: subscriptions,
-      client: options.httpClient?.call(),
     );
 
     // Make sure that the worker is working, or throw immediately.

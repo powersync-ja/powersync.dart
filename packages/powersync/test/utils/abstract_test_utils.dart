@@ -168,10 +168,13 @@ final class TestDatabase extends BasePowerSyncDatabase {
     required AbortController abort,
     required Zone asyncWorkZone,
   }) async {
+    if (httpClient case final client?) {
+      options = options.applyFrom(SyncOptions(httpClient: () => client)).$1;
+    }
+
     final impl = StreamingSyncImplementation(
       adapter: BucketStorage(this),
       schemaJson: jsonEncode(this.schema),
-      client: httpClient!,
       options: options,
       connector: InternalConnector.wrap(connector, this),
       logger: logger,
@@ -205,29 +208,5 @@ final class TestDatabase extends BasePowerSyncDatabase {
     await isInitialized;
     return database.writeLock(callback,
         debugContext: debugContext, lockTimeout: lockTimeout);
-  }
-}
-
-extension MockSync on PowerSyncDatabase {
-  StreamingSyncImplementation connectWithMockService(
-    Client client,
-    PowerSyncBackendConnector connector, {
-    Logger? logger,
-    SyncOptions options = const SyncOptions(retryDelay: Duration(seconds: 5)),
-    Schema? customSchema,
-  }) {
-    final impl = StreamingSyncImplementation(
-      adapter: BucketStorage(this),
-      schemaJson: jsonEncode(customSchema ?? schema),
-      client: client,
-      options: ResolvedSyncOptions(options),
-      connector: InternalConnector.wrap(connector, this),
-      logger: logger,
-      crudUpdateTriggerStream: database
-          .onChange(['ps_crud'], throttle: const Duration(milliseconds: 10)),
-    );
-    impl.statusStream.listen(setStatus);
-
-    return impl;
   }
 }

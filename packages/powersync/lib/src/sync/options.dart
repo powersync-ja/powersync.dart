@@ -129,6 +129,8 @@ extension type ResolvedSyncOptions(SyncOptions source) {
 
   bool get includeDefaultStreams => source.includeDefaultStreams ?? true;
 
+  Client createHttpClient() => source.httpClient?.call() ?? Client();
+
   (ResolvedSyncOptions, bool) applyFrom(SyncOptions other) {
     final newOptions = SyncOptions(
       crudThrottleTime: other.crudThrottleTime ?? crudThrottleTime,

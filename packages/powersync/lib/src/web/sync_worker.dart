@@ -10,7 +10,6 @@ import 'dart:js_interop';
 
 import 'package:async/async.dart';
 import 'package:collection/collection.dart';
-import 'package:http/browser_client.dart';
 import 'package:logging/logging.dart';
 import 'package:meta/meta.dart';
 import 'package:powersync/powersync.dart';
@@ -324,7 +323,6 @@ class SyncRunner {
       ),
       crudUpdateTriggerStream: crudStream,
       options: options,
-      client: BrowserClient(),
       identifier: identifier,
       activeSubscriptions: currentStreams,
       logger: _logger,
