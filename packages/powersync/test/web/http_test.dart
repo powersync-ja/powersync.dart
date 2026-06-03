@@ -16,7 +16,7 @@ void main() {
   final uri = Uri.parse('https://powersync.com/foo/bar');
 
   test('can send http requests', () async {
-    final (client, _) = createRemoteClient(MockClient((request) async {
+    final (client, _) = await createRemoteClient(MockClient((request) async {
       expect(request.url, uri);
       expect(request.method, 'POST');
       expect(request.headers, containsPair('Foo', 'Bar'));
@@ -35,7 +35,7 @@ void main() {
   test('response stream control', () async {
     final responseStream = StreamController<Uint8List>();
     final (client, _) =
-        createRemoteClient(MockClient.streaming((request, stream) async {
+        await createRemoteClient(MockClient.streaming((request, stream) async {
       await stream.drain<void>();
       return StreamedResponse(responseStream.stream, 200);
     }));
@@ -70,7 +70,7 @@ void main() {
   group('can abort', () {
     test('before receiving response', () async {
       final (client, _) =
-          createRemoteClient(MockClient.streaming((request, _) async {
+          await createRemoteClient(MockClient.streaming((request, _) async {
         await (request as Abortable).abortTrigger!;
         throw RequestAbortedException();
       }));
@@ -87,7 +87,7 @@ void main() {
       var aborted = false;
 
       final (client, _) =
-          createRemoteClient(MockClient.streaming((request, _) async {
+          await createRemoteClient(MockClient.streaming((request, _) async {
         (request as Abortable).abortTrigger!.whenComplete(() {
           aborted = true;
           responseStream
@@ -113,7 +113,7 @@ void main() {
       final responseStream = StreamController<Uint8List>();
 
       final (client, _) =
-          createRemoteClient(MockClient.streaming((request, _) async {
+          await createRemoteClient(MockClient.streaming((request, _) async {
         return StreamedResponse(responseStream.stream, 200);
       }));
 
@@ -129,10 +129,24 @@ void main() {
   });
 
   group('reacts to closed channel', () {
+    test('before receiving response', () async {
+      late Client client;
+      late WorkerCommunicationChannel channel;
+
+      (client, channel) =
+          await createRemoteClient(MockClient.streaming((request, _) async {
+        channel.close();
+        return StreamedResponse(Stream.empty(), 200);
+      }));
+
+      await expectLater(client.send(AbortableRequest('GET', uri)),
+          throwsA(isA<ChannelClosedException>()));
+    });
+
     test('in response stream', () async {
       final responseStream = StreamController<Uint8List>();
       final (client, channel) =
-          createRemoteClient(MockClient.streaming((request, _) async {
+          await createRemoteClient(MockClient.streaming((request, _) async {
         return StreamedResponse(responseStream.stream, 200);
       }));
 
@@ -142,7 +156,7 @@ void main() {
       await expectLater(receivedResponseStream, emits(hasLength(42)));
 
       final expectation = expectLater(
-          receivedResponseStream, emitsError(isA<ClientException>()));
+          receivedResponseStream, emitsError(isA<ChannelClosedException>()));
       await pumpEventQueue();
       channel.close();
       await expectation;
@@ -150,7 +164,8 @@ void main() {
   });
 }
 
-(Client, WorkerCommunicationChannel) createRemoteClient(Client original) {
+Future<(Client, WorkerCommunicationChannel)> createRemoteClient(
+    Client original) async {
   final channel = MessageChannel();
 
   final local = WorkerCommunicationChannel(
@@ -166,5 +181,8 @@ void main() {
       throw UnimplementedError();
     },
   );
+  local.observeRemoteLockName(await remote.lockName);
+  remote.observeRemoteLockName(await local.lockName);
+
   return (RemoteHttpClient(remote), local);
 }

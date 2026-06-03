@@ -5,6 +5,7 @@ import 'dart:js_interop_unsafe';
 
 import 'package:http/http.dart';
 import 'package:logging/logging.dart';
+import 'package:meta/meta.dart';
 import 'package:powersync/src/schema.dart';
 import 'package:powersync/src/sync/options.dart';
 import 'package:powersync/src/sync/stream.dart';
@@ -385,7 +386,8 @@ final class WorkerCommunicationChannel {
 
   /// The name of a navigator lock held by this channel, it's sent to the remote
   /// when requested so that it can detect when this channel is closed.
-  late final Future<String> _lockName = _acquireLock();
+  @visibleForTesting
+  late final Future<String> lockName = _acquireLock();
 
   final MessagePort port;
   final FutureOr<(JSAny?, JSArray?)> Function(SyncWorkerMessageType, JSAny)
@@ -579,7 +581,7 @@ final class WorkerCommunicationChannel {
           null => null,
           final appMetadata => jsonEncode(appMetadata),
         },
-        lockName: await _lockName,
+        lockName: await lockName,
         customHttpClient: customHttpClient,
       ),
     ));

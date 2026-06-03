@@ -44,6 +44,7 @@ void main() {
       sendToWorker: rawChannel.port2,
       worker: null,
       subscriptions: subscriptions,
+      client: null,
     );
     handle.statusStream.forEach(db.setStatus);
     return handle;
