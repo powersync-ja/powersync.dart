@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:js_interop';
 
+import 'package:meta/meta.dart';
 import 'package:powersync/src/web/worker_utils.dart';
 import 'package:sqlite_async/web.dart';
 import 'package:web/web.dart';
@@ -21,17 +22,20 @@ class SyncWorkerHandle implements StreamingSync {
 
   final StreamController<SyncStatus> _status = StreamController.broadcast();
 
-  SyncWorkerHandle._({
+  @visibleForTesting
+  SyncWorkerHandle({
     required this.database,
     required this.connector,
     required this.options,
     required MessagePort sendToWorker,
-    required SharedWorker worker,
+    required SharedWorker? worker,
     required this.subscriptions,
   }) {
     _channel = WorkerCommunicationChannel(
       port: sendToWorker,
-      errors: EventStreamProviders.errorEvent.forTarget(worker),
+      errors: worker != null
+          ? EventStreamProviders.errorEvent.forTarget(worker)
+          : null,
       logger: database.logger,
       requestHandler: (type, payload) async {
         switch (type) {
@@ -102,7 +106,7 @@ class SyncWorkerHandle implements StreamingSync {
       [port2].toJS,
     );
 
-    final handle = SyncWorkerHandle._(
+    final handle = SyncWorkerHandle(
       options: options,
       database: database,
       connector: connector,
@@ -119,7 +123,12 @@ class SyncWorkerHandle implements StreamingSync {
 
   Future<void> close() async {
     await abort();
-    await _channel.close();
+    await closeChannel();
+  }
+
+  @visibleForTesting
+  Future<void> closeChannel() {
+    return _channel.close();
   }
 
   @override
@@ -131,9 +140,9 @@ class SyncWorkerHandle implements StreamingSync {
   Stream<SyncStatus> get statusStream => _status.stream;
 
   @override
-  Future<void> streamingSync() async {
+  Future<void> streamingSync([String? databaseName]) async {
     await _channel.startSynchronization(
-      database.database.openFactory.path,
+      databaseName ?? database.database.openFactory.path,
       ResolvedSyncOptions(options),
       database.schema,
       subscriptions,

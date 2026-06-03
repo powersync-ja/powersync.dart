@@ -1,15 +1,17 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:js_interop';
+import 'dart:js_interop_unsafe';
 
 import 'package:logging/logging.dart';
 import 'package:powersync/src/schema.dart';
 import 'package:powersync/src/sync/options.dart';
 import 'package:powersync/src/sync/stream.dart';
-import 'package:web/web.dart';
+import 'package:web/web.dart' hide HttpRequest, Client;
 
 import '../connector.dart';
 import '../log.dart';
+import '../platform_specific/web.dart';
 import '../sync/streaming_sync.dart';
 import '../sync/sync_status.dart';
 
@@ -78,6 +80,7 @@ extension type StartSynchronization._(JSObject _) implements JSObject {
     required int retryDelayMs,
     required String implementationName,
     required String schemaJson,
+    required String lockName,
     String? syncParamsEncoded,
     UpdateSubscriptions? subscriptions,
     String? appMetadataEncoded,
@@ -92,6 +95,7 @@ extension type StartSynchronization._(JSObject _) implements JSObject {
   external String? get syncParamsEncoded;
   external UpdateSubscriptions? get subscriptions;
   external String? get appMetadataEncoded;
+  external String get lockName;
 }
 
 @anonymous
@@ -341,10 +345,16 @@ extension type SerializedSyncStatus._(JSObject _) implements JSObject {
 
 final class WorkerCommunicationChannel {
   final Map<int, Completer<JSAny?>> _pendingRequests = {};
+  final Completer<void> _closed = Completer();
   int _nextRequestId = 0;
   bool _hasError = false;
+  bool _hasReceivedRemoteLockName = false;
   StreamSubscription<MessageEvent>? _incomingMessages;
   StreamSubscription<Event>? _incomingErrors;
+
+  /// The name of a navigator lock held by this channel, it's sent to the remote
+  /// when requested so that it can detect when this channel is closed.
+  late final Future<String> _lockName = _acquireLock();
 
   final MessagePort port;
   final FutureOr<(JSAny?, JSArray?)> Function(SyncWorkerMessageType, JSAny)
@@ -354,6 +364,8 @@ final class WorkerCommunicationChannel {
   final Logger _logger;
 
   Stream<(SyncWorkerMessageType, JSAny)> get events => _events.stream;
+
+  Future<void> get closed => _closed.future;
 
   WorkerCommunicationChannel({
     required this.port,
@@ -382,11 +394,7 @@ final class WorkerCommunicationChannel {
       switch (type) {
         case SyncWorkerMessageType.ping:
           requestId = (message.payload as JSNumber).toDartInt;
-          port.postMessage(SyncWorkerMessage(
-            type: SyncWorkerMessageType.okResponse.name,
-            payload: OkResponse(requestId: requestId, payload: null),
-          ));
-          return;
+          return _respond(requestId, () async => (null, null));
         case SyncWorkerMessageType.startSynchronization:
           requestId = (message.payload as StartSynchronization).requestId;
         case SyncWorkerMessageType.updateSubscriptions:
@@ -416,31 +424,35 @@ final class WorkerCommunicationChannel {
           return;
       }
 
-      try {
-        final (response, transfer) =
-            await requestHandler(type, message.payload);
-        final responseMessage = SyncWorkerMessage(
-          type: SyncWorkerMessageType.okResponse.name,
-          payload: OkResponse(requestId: requestId, payload: response),
-        );
-
-        if (transfer != null) {
-          port.postMessage(responseMessage, transfer);
-        } else {
-          port.postMessage(responseMessage);
-        }
-      } catch (e) {
-        port.postMessage(SyncWorkerMessage(
-          type: SyncWorkerMessageType.errorResponse.name,
-          payload: ErrorResponse(
-              requestId: requestId, errorMessage: e.toString().toJS),
-        ));
-      }
+      await _respond(requestId, () => requestHandler(type, message.payload));
     });
   }
 
+  Future<void> _respond(int requestId,
+      FutureOr<(JSAny?, JSArray?)> Function() generateResponse) async {
+    try {
+      final (response, transfer) = await generateResponse();
+      final responseMessage = SyncWorkerMessage(
+        type: SyncWorkerMessageType.okResponse.name,
+        payload: OkResponse(requestId: requestId, payload: response),
+      );
+
+      if (transfer != null) {
+        port.postMessage(responseMessage, transfer);
+      } else {
+        port.postMessage(responseMessage);
+      }
+    } catch (e) {
+      port.postMessage(SyncWorkerMessage(
+        type: SyncWorkerMessageType.errorResponse.name,
+        payload: ErrorResponse(
+            requestId: requestId, errorMessage: e.toString().toJS),
+      ));
+    }
+  }
+
   (int, Future<JSAny?>) _newRequest() {
-    if (_hasError) {
+    if (_hasError || _closed.isCompleted) {
       throw StateError('Channel has error, cannot send new requests');
     }
 
@@ -462,6 +474,14 @@ final class WorkerCommunicationChannel {
 
   Future<void> ping() async {
     await _numericRequest(SyncWorkerMessageType.ping);
+  }
+
+  void observeRemoteLockName(String name) {
+    if (!_hasReceivedRemoteLockName) {
+      _hasReceivedRemoteLockName = true;
+      // Once we're able to acquire this lock, we know the remote has closed.
+      potentiallySharedMutex(name).lock(close);
+    }
   }
 
   Future<void> startSynchronization(
@@ -489,6 +509,7 @@ final class WorkerCommunicationChannel {
           null => null,
           final appMetadata => jsonEncode(appMetadata),
         },
+        lockName: await _lockName,
       ),
     ));
     await completion;
@@ -534,8 +555,42 @@ final class WorkerCommunicationChannel {
   }
 
   Future<void> close() async {
-    _incomingMessages?.cancel();
-    _incomingErrors?.cancel();
-    port.close();
+    if (!_closed.isCompleted) {
+      _incomingMessages?.cancel();
+      _incomingErrors?.cancel();
+      port.close();
+
+      for (final pending in _pendingRequests.values) {
+        pending.completeError(const ChannelClosedException());
+      }
+
+      _closed.complete();
+    }
+  }
+
+  Future<String> _acquireLock() async {
+    final name = _generateRandomLockName();
+    final hasLock = Completer<void>.sync();
+    potentiallySharedMutex(name).lock(() async {
+      hasLock.complete();
+      return _closed.future;
+    });
+
+    await hasLock.future;
+    return name;
+  }
+
+  static String _generateRandomLockName() {
+    final crypto = (globalContext['crypto'] as Crypto);
+    return 'http-remote-${crypto.randomUUID()}';
+  }
+}
+
+final class ChannelClosedException implements Exception {
+  const ChannelClosedException();
+
+  @override
+  String toString() {
+    return 'Worker communication channel closed';
   }
 }
