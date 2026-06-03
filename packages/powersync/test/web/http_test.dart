@@ -67,63 +67,86 @@ void main() {
     expect(responseStream.hasListener, isFalse);
   });
 
-  test('can abort requests before receiving response', () async {
-    final (client, _) =
-        createRemoteClient(MockClient.streaming((request, _) async {
-      await (request as Abortable).abortTrigger!;
-      throw RequestAbortedException();
-    }));
+  group('can abort', () {
+    test('before receiving response', () async {
+      final (client, _) =
+          createRemoteClient(MockClient.streaming((request, _) async {
+        await (request as Abortable).abortTrigger!;
+        throw RequestAbortedException();
+      }));
 
-    await expectLater(
-      client.send(AbortableRequest('GET', uri, abortTrigger: Future.value())),
-      throwsA(isA<RequestAbortedException>()),
-    );
+      await expectLater(
+        client.send(AbortableRequest('GET', uri, abortTrigger: Future.value())),
+        throwsA(isA<RequestAbortedException>()),
+      );
+    });
+
+    test('in response', () async {
+      final abort = Completer<void>();
+      final responseStream = StreamController<Uint8List>();
+      var aborted = false;
+
+      final (client, _) =
+          createRemoteClient(MockClient.streaming((request, _) async {
+        (request as Abortable).abortTrigger!.whenComplete(() {
+          aborted = true;
+          responseStream
+            ..addError(RequestAbortedException())
+            ..close();
+        });
+        return StreamedResponse(responseStream.stream, 200);
+      }));
+
+      final response = await client
+          .send(AbortableRequest('GET', uri, abortTrigger: abort.future));
+      responseStream.add(Uint8List(42));
+      final receivedResponseStream = StreamQueue(response.stream);
+      await expectLater(receivedResponseStream, emits(hasLength(42)));
+
+      abort.complete();
+      await expectLater(
+          receivedResponseStream, emitsError(isA<RequestAbortedException>()));
+      expect(aborted, isTrue);
+    });
+
+    test('via stream cancel', () async {
+      final responseStream = StreamController<Uint8List>();
+
+      final (client, _) =
+          createRemoteClient(MockClient.streaming((request, _) async {
+        return StreamedResponse(responseStream.stream, 200);
+      }));
+
+      final response = await client.send(AbortableRequest('GET', uri));
+      responseStream.add(Uint8List(42));
+
+      final receivedResponseStream = StreamQueue(response.stream);
+      await expectLater(receivedResponseStream, emits(hasLength(42)));
+      await receivedResponseStream.cancel();
+      await pumpEventQueue();
+      expect(responseStream.hasListener, isFalse);
+    });
   });
 
-  test('can abort requests in response', () async {
-    final abort = Completer<void>();
-    final responseStream = StreamController<Uint8List>();
-    var aborted = false;
+  group('reacts to closed channel', () {
+    test('in response stream', () async {
+      final responseStream = StreamController<Uint8List>();
+      final (client, channel) =
+          createRemoteClient(MockClient.streaming((request, _) async {
+        return StreamedResponse(responseStream.stream, 200);
+      }));
 
-    final (client, _) =
-        createRemoteClient(MockClient.streaming((request, _) async {
-      (request as Abortable).abortTrigger!.whenComplete(() {
-        aborted = true;
-        responseStream
-          ..addError(RequestAbortedException())
-          ..close();
-      });
-      return StreamedResponse(responseStream.stream, 200);
-    }));
+      final response = await client.send(AbortableRequest('GET', uri));
+      responseStream.add(Uint8List(42));
+      final receivedResponseStream = StreamQueue(response.stream);
+      await expectLater(receivedResponseStream, emits(hasLength(42)));
 
-    final response = await client
-        .send(AbortableRequest('GET', uri, abortTrigger: abort.future));
-    responseStream.add(Uint8List(42));
-    final receivedResponseStream = StreamQueue(response.stream);
-    await expectLater(receivedResponseStream, emits(hasLength(42)));
-
-    abort.complete();
-    await expectLater(
-        receivedResponseStream, emitsError(isA<RequestAbortedException>()));
-    expect(aborted, isTrue);
-  });
-
-  test('can abort via stream cancel', () async {
-    final responseStream = StreamController<Uint8List>();
-
-    final (client, _) =
-        createRemoteClient(MockClient.streaming((request, _) async {
-      return StreamedResponse(responseStream.stream, 200);
-    }));
-
-    final response = await client.send(AbortableRequest('GET', uri));
-    responseStream.add(Uint8List(42));
-
-    final receivedResponseStream = StreamQueue(response.stream);
-    await expectLater(receivedResponseStream, emits(hasLength(42)));
-    await receivedResponseStream.cancel();
-    await pumpEventQueue();
-    expect(responseStream.hasListener, isFalse);
+      final expectation = expectLater(
+          receivedResponseStream, emitsError(isA<ClientException>()));
+      await pumpEventQueue();
+      channel.close();
+      await expectation;
+    });
   });
 }
 

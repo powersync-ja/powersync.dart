@@ -49,18 +49,15 @@ extension type HttpRequest._(JSObject _) implements HttpMessage {
 /// A serialized HTTP response
 extension type HttpResponse._(JSObject _) implements HttpMessage {
   external factory HttpResponse({
-    @JS('l') required String lockName,
     @JS('s') required int statusCode,
     @JS('h') required String headers,
   });
-
-  @JS('l')
-  external String lockName;
 
   @JS('s')
   external int statusCode;
 }
 
+/// A message sent to cancel an in-flight HTTP request.
 extension type AbortHttpResponse._(JSObject _) implements JSObject {
   external factory AbortHttpResponse({
     @JS('r') required bool cancelStream,
@@ -77,6 +74,7 @@ extension type AbortHttpResponse._(JSObject _) implements JSObject {
   external int transactionId;
 }
 
+/// A request to read a chunk of HTTP response data.
 extension type ReadStreamChunk._(JSObject _) implements JSObject {
   external factory ReadStreamChunk({
     @JS('r') required int requestId,

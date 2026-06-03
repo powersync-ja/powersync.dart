@@ -8,6 +8,10 @@ import 'package:http/http.dart';
 import '../sync_worker_protocol.dart';
 import 'protocol.dart';
 
+/// An HTTP client implemented through `postMessage` calls on message ports.
+///
+/// The sync worker uses this when a connecting tab indicates that a custom
+/// HTTP client (which we can't send through ports as an object) should be used.
 final class RemoteHttpClient extends BaseClient {
   final WorkerCommunicationChannel _channel;
 
@@ -45,7 +49,7 @@ final class RemoteHttpClient extends BaseClient {
     final rawResponse = await responseFuture;
 
     return StreamedResponse(
-      _ResponseStream(this, txId, rawResponse.lockName).stream,
+      _ResponseStream(this, txId).stream,
       rawResponse.statusCode,
       request: request,
       headers: rawResponse.decodedHeaders,
@@ -74,7 +78,7 @@ final class _ResponseStream {
 
   Stream<Uint8List> get stream => streamController.stream;
 
-  _ResponseStream(this.client, this.txId, String lockName) {
+  _ResponseStream(this.client, this.txId) {
     streamController
       ..onListen = fetchIfHasListener
       ..onResume = fetchIfHasListener

@@ -20,6 +20,11 @@ import 'http/server.dart';
 
 /// Names used in [SyncWorkerMessage]
 enum SyncWorkerMessageType {
+  /// Probes whether the remote is still active.
+  ///
+  /// This makes the remote acquire a randomly-named navigator lock and reply
+  /// with its name. Once the other end can acquire that, it knows the port is
+  /// closed.
   ping,
 
   /// Sent from client to the sync worker to request the synchronization
@@ -68,9 +73,7 @@ enum SyncWorkerMessageType {
 
   /// Abort an in-flight HTTP request.
   ///
-  /// The payload is a [AbortHttpResponse] object.
-  ///
-  /// The payload is a [JSNumber] matching the [HttpRequest.transactionId].
+  /// The payload is an [AbortHttpResponse] object.
   abortHttpRequest,
 
   /// Requests a chunk of data from an HTTP response.
@@ -390,6 +393,7 @@ final class WorkerCommunicationChannel {
   final StreamController<(SyncWorkerMessageType, JSAny)> _events =
       StreamController();
   final Logger _logger;
+  final RemoteHttpServer? _httpServer;
 
   Stream<(SyncWorkerMessageType, JSAny)> get events => _events.stream;
 
@@ -401,7 +405,10 @@ final class WorkerCommunicationChannel {
     Stream<Event>? errors,
     Logger? logger,
     Client? exposedHttpClient,
-  }) : _logger = logger ?? autoLogger {
+  })  : _logger = logger ?? autoLogger,
+        _httpServer = exposedHttpClient == null
+            ? null
+            : RemoteHttpServer(exposedHttpClient) {
     port.start();
     _incomingErrors = errors?.listen((event) {
       _hasError = true;
@@ -411,9 +418,6 @@ final class WorkerCommunicationChannel {
       });
       _pendingRequests.clear();
     });
-
-    final client =
-        exposedHttpClient == null ? null : RemoteHttpServer(exposedHttpClient);
 
     _incomingMessages =
         EventStreamProviders.messageEvent.forTarget(port).listen((event) async {
@@ -439,17 +443,21 @@ final class WorkerCommunicationChannel {
           requestId = (message.payload as JSNumber).toDartInt;
         case SyncWorkerMessageType.sendHttpRequest:
           final request = message.payload as HttpRequest;
-          _respond(request.requestId, () => client!.handle(request));
-          return;
+          return _respond(request.requestId,
+              () async => (await _httpServer!.handle(request), null));
         case SyncWorkerMessageType.abortHttpRequest:
           final payload = message.payload as AbortHttpResponse;
-          client!.abort(payload.transactionId, payload.cancelStream);
+          _httpServer!.abort(payload.transactionId, payload.cancelStream);
           return;
         case SyncWorkerMessageType.readResponseChunk:
           final request = message.payload as ReadStreamChunk;
-          _respond(request.requestId,
-              () => client!.readResponse(request.transactionId));
-          return;
+          return _respond(request.requestId, () async {
+            return switch (
+                await _httpServer!.readResponse(request.transactionId)) {
+              null => (null, null),
+              final buffer => (buffer, <JSAny?>[buffer].toJS),
+            };
+          });
         case SyncWorkerMessageType.okResponse:
           final payload = message.payload as OkResponse;
           _pendingRequests.remove(payload.requestId)!.complete(payload.payload);
@@ -530,7 +538,11 @@ final class WorkerCommunicationChannel {
   }
 
   Future<void> ping() async {
-    await _numericRequest(SyncWorkerMessageType.ping);
+    final response = await _numericRequest(SyncWorkerMessageType.ping);
+    if (response.isA<JSString>()) {
+      // Once we're able to acquire this lock, we know the remote has closed.
+      potentiallySharedMutex((response as JSString).toDart).lock(close);
+    }
   }
 
   void observeRemoteLockName(String name) {
@@ -643,6 +655,7 @@ final class WorkerCommunicationChannel {
       _incomingMessages?.cancel();
       _incomingErrors?.cancel();
       port.close();
+      _httpServer?.forceClose();
 
       for (final pending in _pendingRequests.values) {
         pending.completeError(const ChannelClosedException());

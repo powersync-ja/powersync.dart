@@ -1,15 +1,13 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:js_interop';
-import 'dart:js_interop_unsafe';
 import 'dart:typed_data';
 
 import 'package:http/http.dart';
-import 'package:web/web.dart' show Crypto;
 
-import '../../platform_specific/web.dart';
 import 'protocol.dart';
 
+/// A proxy exposing an HTTP [Client] through a message port protocol.
 final class RemoteHttpServer {
   /// The http client to expose to a worker.
   final Client client;
@@ -18,11 +16,14 @@ final class RemoteHttpServer {
 
   RemoteHttpServer(this.client);
 
-  Future<(HttpResponse, JSArray?)> handle(HttpRequest request) async {
+  /// Handles an http request, returning the serialized response.
+  ///
+  /// The response does not include a body, which must be read in chunks via
+  /// [readResponse].
+  Future<HttpResponse> handle(HttpRequest request) async {
     final state = _HttpRequest();
     _pendingTransactions[request.transactionId] = state;
 
-    final lockName = await state.acquireLock();
     final inner = AbortableRequest(request.method, Uri.parse(request.uri),
         abortTrigger: state._abortController.future);
     inner.bodyBytes = request.body.toDart.asUint8List();
@@ -31,17 +32,17 @@ final class RemoteHttpServer {
     final response = await client.send(inner);
     state.response = StreamIterator(response.stream);
 
-    return (
-      HttpResponse(
-        lockName: lockName,
-        statusCode: response.statusCode,
-        headers: json.encode(response.headers),
-      ),
-      null
+    return HttpResponse(
+      statusCode: response.statusCode,
+      headers: json.encode(response.headers),
     );
   }
 
-  Future<(JSArrayBuffer?, JSArray?)> readResponse(int transactionId) async {
+  /// Reads a chunk of an HTTP response stream.
+  ///
+  /// Returns the chunk as an array buffer, or null if the end of the stream has
+  /// been reached.
+  Future<JSArrayBuffer?> readResponse(int transactionId) async {
     final state = _pendingTransactions[transactionId];
     final response = state?.response;
     if (state == null || response == null) {
@@ -49,8 +50,7 @@ final class RemoteHttpServer {
     }
 
     if (await response.moveNext()) {
-      final asJsBuffer = _byteListToArrayBuffer(response.current);
-      return (asJsBuffer, <JSAny?>[asJsBuffer].toJS);
+      return _byteListToArrayBuffer(response.current);
     } else if (state._abortController.isCompleted) {
       throw RequestAbortedException();
     } else {
@@ -58,12 +58,21 @@ final class RemoteHttpServer {
       _pendingTransactions.remove(transactionId);
       state.close();
 
-      return (null, null);
+      return null;
     }
   }
 
   void abort(int transactionId, bool cancelStream) {
     _pendingTransactions.remove(transactionId)?.abort(cancelStream);
+  }
+
+  void forceClose() {
+    for (final pending in _pendingTransactions.values) {
+      pending.close();
+    }
+    _pendingTransactions.clear();
+
+    client.close();
   }
 
   static JSArrayBuffer _byteListToArrayBuffer(List<int> bytes) {
@@ -102,22 +111,5 @@ final class _HttpRequest {
 
       _abortController.complete();
     }
-  }
-
-  Future<String> acquireLock() async {
-    final name = _generateRandomLockName();
-    final hasLock = Completer<void>.sync();
-    potentiallySharedMutex(name).lock(() async {
-      hasLock.complete();
-      return _abortController.future;
-    });
-
-    await hasLock.future;
-    return name;
-  }
-
-  static String _generateRandomLockName() {
-    final crypto = (globalContext['crypto'] as Crypto);
-    return 'http-remote-${crypto.randomUUID()}';
   }
 }
