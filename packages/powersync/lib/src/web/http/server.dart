@@ -49,16 +49,21 @@ final class RemoteHttpServer {
       throw ArgumentError('Unknown HTTP transaction: $transactionId');
     }
 
-    if (await response.moveNext()) {
-      return _byteListToArrayBuffer(response.current);
-    } else if (state._abortController.isCompleted) {
-      throw RequestAbortedException();
-    } else {
-      // End of stream
-      _pendingTransactions.remove(transactionId);
-      state.close();
+    try {
+      if (await response.moveNext()) {
+        return _byteListToArrayBuffer(response.current);
+      } else if (state._abortController.isCompleted) {
+        throw RequestAbortedException();
+      } else {
+        // End of stream
+        _pendingTransactions.remove(transactionId);
+        state.close();
 
-      return null;
+        return null;
+      }
+    } on Object {
+      state.close();
+      rethrow;
     }
   }
 
