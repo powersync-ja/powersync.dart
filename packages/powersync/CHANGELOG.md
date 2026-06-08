@@ -1,3 +1,7 @@
+## 2.3.0 (unreleased)
+
+- Add `SyncOptions.httpClient` to `SyncOptions`. It can be set to make PowerSync use a custom HTTP client when connecting to the PowerSync Service.
+
 ## 2.2.0
 
 - Fix `disconnect()` call leaving stale database isolates behind.

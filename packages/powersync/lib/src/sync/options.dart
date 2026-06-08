@@ -3,7 +3,7 @@ import 'package:http/http.dart';
 import 'package:meta/meta.dart';
 
 /// The signature of a function creating a http [Client] to use by the PowerSync
-/// client.
+/// SDK.
 ///
 /// PowerSync will use [Client.new] by default, but a custom factory can be used
 /// as [SyncOptions.httpClient]. This allows transforming requests and
@@ -54,6 +54,8 @@ final class SyncOptions {
   ///
   /// Custom clients can be used to configure TLS options, inject additional
   /// headers, or otherwise customize networking.
+  ///
+  /// Note that this function is sent across isolates on native platforms.
   final HttpClientFactory? httpClient;
 
   const SyncOptions({
