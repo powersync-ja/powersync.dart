@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'dart:js_interop';
 
 extension type HttpMessage._(JSObject _) implements JSObject {
-  /// JSON-encoded request or response headers headers.
+  /// JSON-encoded request or response headers.
   @JS('h')
   external String headers;
 

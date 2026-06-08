@@ -24,7 +24,7 @@ final class RemoteHttpClient extends BaseClient {
     final body = await request.finalize().toBytes();
     final bodyBuffer = body.buffer;
     // This will always be the case with the toBytes() implementation. We
-    // couldn't safely transfer the entire buffer without it.
+    // couldn't safely transfer the entire buffer if body was a sublist view.
     assert(body.offsetInBytes == 0 && body.length == bodyBuffer.lengthInBytes);
     final jsBuffer = bodyBuffer.toJS;
 

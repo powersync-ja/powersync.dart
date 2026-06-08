@@ -21,11 +21,6 @@ import 'http/server.dart';
 
 /// Names used in [SyncWorkerMessage]
 enum SyncWorkerMessageType {
-  /// Probes whether the remote is still active.
-  ///
-  /// This makes the remote acquire a randomly-named navigator lock and reply
-  /// with its name. Once the other end can acquire that, it knows the port is
-  /// closed.
   ping,
 
   /// Sent from client to the sync worker to request the synchronization
@@ -540,11 +535,7 @@ final class WorkerCommunicationChannel {
   }
 
   Future<void> ping() async {
-    final response = await _numericRequest(SyncWorkerMessageType.ping);
-    if (response.isA<JSString>()) {
-      // Once we're able to acquire this lock, we know the remote has closed.
-      potentiallySharedMutex((response as JSString).toDart).lock(close);
-    }
+    await _numericRequest(SyncWorkerMessageType.ping);
   }
 
   void observeRemoteLockName(String name) {
