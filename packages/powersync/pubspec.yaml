@@ -9,7 +9,7 @@ environment:
 
 dependencies:
   sqlite_async: ^0.14.2
-  sqlite3_web: ^0.8.0
+  sqlite3_web: ^0.8.1
   sqlite3: ^3.2.0
   meta: ^1.0.0
   http: ^1.6.0

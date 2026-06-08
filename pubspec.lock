@@ -1521,10 +1521,10 @@ packages:
     dependency: transitive
     description:
       name: sqlite3_web
-      sha256: b539a44e227dc8fd617b56923400a1e8b793325293c05393eab5a24b944cf975
+      sha256: fab6f6921f8fc3f703536c018d709ccb4ad5654d92f53e9b206c222f77c50021
       url: "https://pub.dev"
     source: hosted
-    version: "0.8.0"
+    version: "0.8.1"
   sqlite_async:
     dependency: transitive
     description:
