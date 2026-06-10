@@ -14,6 +14,7 @@ import 'sync_worker.dart';
 import 'worker_utils.dart';
 
 final _isSharedWorker = globalContext.has('SharedWorkerGlobalScope');
+final _isDedicatedWorker = globalContext.has('DedicatedWorkerGlobalScope');
 
 void main() {
   final controller = PowerSyncAsyncSqliteController();
@@ -71,4 +72,14 @@ final class _Environment implements WorkerEnvironment {
   final Stream<MessageEvent> incomingMessages;
 
   _Environment(this.connector, this.incomingMessages);
+
+  @override
+  void close() {
+    // Don't close shared workers when sqlite3_web asks us to: The worker is
+    // also used for sync, not just for databases. So we shouldn't close it
+    // just because a database has been closed.
+    if (_isDedicatedWorker) {
+      (globalContext as DedicatedWorkerGlobalScope).close();
+    }
+  }
 }

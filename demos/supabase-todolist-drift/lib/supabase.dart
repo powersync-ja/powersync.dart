@@ -12,7 +12,7 @@ part 'supabase.g.dart';
 Future<void> loadSupabase() async {
   await Supabase.initialize(
     url: AppConfig.supabaseUrl,
-    anonKey: AppConfig.supabaseAnonKey,
+    publishableKey: AppConfig.supabaseAnonKey,
   );
 }
 

@@ -1,6 +1,7 @@
-## 2.3.0 (unreleased)
+## 2.3.0
 
 - Add `SyncOptions.httpClient` to `SyncOptions`. It can be set to make PowerSync use a custom HTTP client when connecting to the PowerSync Service.
+- Support `sqlite3_web` versions 0.9.x.
 
 ## 2.2.0
 
