@@ -5,6 +5,6 @@ import './app_config.dart';
 Future<void> loadSupabase() async {
   await Supabase.initialize(
     url: AppConfig.supabaseUrl,
-    publishableKey: AppConfig.supabaseAnonKey,
+    publishableKey: AppConfig.supabasePublishableKey,
   );
 }
