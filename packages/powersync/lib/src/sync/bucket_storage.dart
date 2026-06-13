@@ -18,7 +18,7 @@ class BucketStorage {
   // Use only for read statements
   Future<ResultSet> select(String query,
       [List<Object?> parameters = const []]) async {
-    return await _internalDb.execute(query, parameters);
+    return await _internalDb.getAll(query, parameters);
   }
 
   Future<String> getClientId() async {

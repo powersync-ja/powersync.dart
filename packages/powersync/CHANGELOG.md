@@ -1,3 +1,7 @@
+## 2.3.1 (unreleased)
+
+- Fix `BucketStorage.select()` acquiring a write lock for read-only queries by using `getAll()` instead of `execute()`.
+
 ## 2.3.0
 
 - Add `SyncOptions.httpClient` to `SyncOptions`. It can be set to make PowerSync use a custom HTTP client when connecting to the PowerSync Service.
