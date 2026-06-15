@@ -5,7 +5,7 @@ import 'dart:io';
 ///
 /// Must be run from the root of the repository.
 void main(List<String> args) {
-  final encryption = args.isEmpty ? 'sqlite3mc' : 'sqlcipher';
+  final encryption = args.isEmpty ? 'sqlite3mc' : args.single;
 
   final file = File('pubspec.yaml');
   final updated = file
