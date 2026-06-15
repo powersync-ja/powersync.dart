@@ -8,8 +8,9 @@ void main(List<String> args) {
   final encryption = args.isEmpty ? 'sqlite3mc' : args.single;
 
   final file = File('pubspec.yaml');
+
   final updated = file
       .readAsStringSync()
-      .replaceFirst('source: sqlite3', 'source: $encryption');
+      .replaceFirst(RegExp(r'source: \w+'), 'source: $encryption');
   file.writeAsStringSync(updated);
 }
