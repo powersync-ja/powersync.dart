@@ -80,8 +80,9 @@ base class NativePowerSyncOpenFactory extends NativeSqliteOpenFactory {
       final resolved = EncryptedSqliteVariant.resolveOnDatabase(database);
       if (resolved == null) {
         throw UnsupportedError(
-          'Tried to use encryption, but SQLite3MultipleCiphers is not available. '
-          'Consult the documentation on EncryptionOptions on how to resolve this.',
+          'Tried to use encryption, but neither SQLCipher or '
+          'SQLite3MultipleCiphers is available. Consult the documentation on '
+          'EncryptionOptions on how to resolve this.',
         );
       }
 

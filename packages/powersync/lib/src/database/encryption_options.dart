@@ -50,11 +50,11 @@ final class EncryptionOptions {
   final String key;
 
   /// Whether to use an encryption scheme that is compatible with SQLCipher-
-  /// based databases.
+  /// based databases when SQLite3MultipleCiphers is enabled.
   ///
-  /// For backwards-compatibility with the `powersync_sqlcipher` package, this
-  /// is enabled by default on native platforms. If you've never used that
-  /// package, this can be disabled.
+  /// For backwards-compatibility with SQLCipher and the `powersync_sqlcipher`
+  /// package, this is enabled by default on native platforms. If you've never
+  /// used that package or SQLCipher, this can be disabled.
   final bool sqlcipherCompatibility;
 
   const EncryptionOptions({
@@ -78,7 +78,8 @@ final class EncryptionOptions {
 
   /// Throws if the `cipher` pragma doesn't exist, as that indicates that
   /// SQLite3MultipleCiphers is not available.
-  @Deprecated('Unused in PowerSync SDK')
+  @Deprecated('Unused in PowerSync SDK, check '
+      'EncryptedSqliteVariant.resolveOnDatabase instead')
   static void checkHasCipherPragma(CommonDatabase database) {
     if (database.select('pragma cipher').isEmpty) {
       throw UnsupportedError(
