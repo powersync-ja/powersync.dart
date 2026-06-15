@@ -1,3 +1,7 @@
+## 2.3.1 (unreleased)
+
+- Restore SQLCipher support on native platforms.
+
 ## 2.3.0
 
 - Add `SyncOptions.httpClient` to `SyncOptions`. It can be set to make PowerSync use a custom HTTP client when connecting to the PowerSync Service.

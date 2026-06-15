@@ -22,7 +22,6 @@ base class NativePowerSyncOpenFactory extends NativeSqliteOpenFactory {
   @override
   List<String> pragmaStatements(SqliteOpenOptions options) {
     return [
-      ...?encryptionOptions?.pragmaStatements(),
       ...super.pragmaStatements(options),
       'PRAGMA recursive_triggers = TRUE',
     ];
@@ -58,7 +57,7 @@ base class NativePowerSyncOpenFactory extends NativeSqliteOpenFactory {
     var retryDelay = 2;
     while (stopwatch.elapsedMilliseconds < 500) {
       try {
-        return super.openNativeConnection(options);
+        return openConnectionAttempt(options);
       } catch (e) {
         if (e is SqliteException && e.resultCode == 5) {
           sleep(Duration(milliseconds: retryDelay));
@@ -77,8 +76,18 @@ base class NativePowerSyncOpenFactory extends NativeSqliteOpenFactory {
 
   @override
   void configureConnection(Database database, SqliteOpenOptions options) {
-    if (encryptionOptions != null) {
-      EncryptionOptions.checkHasCipherPragma(database);
+    if (encryptionOptions case final encryption?) {
+      final resolved = EncryptedSqliteVariant.resolveOnDatabase(database);
+      if (resolved == null) {
+        throw UnsupportedError(
+          'Tried to use encryption, but SQLite3MultipleCiphers is not available. '
+          'Consult the documentation on EncryptionOptions on how to resolve this.',
+        );
+      }
+
+      for (final pragma in encryption.pragmaStatements(variant: resolved)) {
+        database.execute(pragma);
+      }
     }
 
     super.configureConnection(database, options);

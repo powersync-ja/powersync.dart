@@ -16,14 +16,15 @@ const _isWeb = _isCompilingToJavaScript || _isDart2Wasm;
 ///
 /// On native platforms, the `sqlite3` package provides a copy of SQLite with
 /// your app. To use encryption, we need to replace SQLite with
-/// [SQLite3MultipleCiphers](https://utelle.github.io/SQLite3MultipleCiphers/).
+/// [SQLite3MultipleCiphers](https://utelle.github.io/SQLite3MultipleCiphers/)
+/// or [SQLCipher](https://www.zetetic.net/sqlcipher/).
 /// To enable that, add this to your `pubspec.yaml`:
 ///
 /// ```yaml
 /// hooks:
 ///   user_defines:
 ///     sqlite3:
-///       source: sqlite3mc
+///       source: sqlite3mc # or sqlcipher
 /// ```
 ///
 /// If you're using pub workspaces, this needs to be added to the `pubspec.yaml`
@@ -38,6 +39,8 @@ const _isWeb = _isCompilingToJavaScript || _isDart2Wasm;
 /// To use encryption, download `sqlite3mc.wasm` as `web/sqlite3.wasm`. If you
 /// use the `powersync:setup_web` tool to download that file, pass the
 /// `--encryption` option.
+///
+/// Note that SQLCipher is not available on the web.
 final class EncryptionOptions {
   /// The key used to encrypt the database file.
   ///
@@ -59,8 +62,12 @@ final class EncryptionOptions {
     this.sqlcipherCompatibility = !_isWeb,
   });
 
-  Iterable<String>? pragmaStatements() sync* {
-    if (sqlcipherCompatibility) {
+  Iterable<String> pragmaStatements({
+    EncryptedSqliteVariant variant =
+        EncryptedSqliteVariant.sqlite3MultipleCiphers,
+  }) sync* {
+    if (sqlcipherCompatibility &&
+        variant == EncryptedSqliteVariant.sqlite3MultipleCiphers) {
       yield "PRAGMA cipher = 'sqlcipher'";
       yield 'PRAGMA legacy = 4';
     }
@@ -71,12 +78,44 @@ final class EncryptionOptions {
 
   /// Throws if the `cipher` pragma doesn't exist, as that indicates that
   /// SQLite3MultipleCiphers is not available.
+  @Deprecated('Unused in PowerSync SDK')
   static void checkHasCipherPragma(CommonDatabase database) {
     if (database.select('pragma cipher').isEmpty) {
       throw UnsupportedError(
         'Tried to use encryption, but SQLite3MultipleCiphers is not available. '
         'Consult the documentation on EncryptionOptions on how to resolve this.',
       );
+    }
+  }
+}
+
+/// A fork of SQLite with encryption support.
+enum EncryptedSqliteVariant {
+  /// [SQLCipher](https://www.zetetic.net/sqlcipher/) can encrypt databases with
+  /// AES.
+  ///
+  /// Encrypting databases with SQLCipher can be more performant than
+  /// [sqlite3MultipleCiphers] because it uses optimized system encryption
+  /// libraries (on Apple platform) and OpenSSL (on other platforms).
+  ///
+  /// Note that SQLCipher is not available on the web.
+  sqlcipher,
+
+  /// [SQLite3 Multiple Ciphers](https://utelle.github.io/SQLite3MultipleCiphers/)
+  /// provides compatibility with multiple encryption schemes from a single
+  /// build.
+  ///
+  /// On the web, this is the only option available to encrypt databases.
+  sqlite3MultipleCiphers;
+
+  /// The [EncryptedSqliteVariant] enabled on the database, or null.
+  static EncryptedSqliteVariant? resolveOnDatabase(CommonDatabase db) {
+    if (db.select('pragma cipher').isNotEmpty) {
+      return EncryptedSqliteVariant.sqlite3MultipleCiphers;
+    } else if (db.select('pragma cipher_version').isNotEmpty) {
+      return EncryptedSqliteVariant.sqlcipher;
+    } else {
+      return null;
     }
   }
 }
