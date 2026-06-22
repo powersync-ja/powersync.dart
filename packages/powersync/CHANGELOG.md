@@ -1,4 +1,4 @@
-## 2.3.1 (unreleased)
+## 2.3.1
 
 - Restore SQLCipher support on native platforms.
 
