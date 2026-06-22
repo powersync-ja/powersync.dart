@@ -1,6 +1,7 @@
-## 2.3.1 (unreleased)
+## 2.3.1
 
 - Fix `BucketStorage.select()` acquiring a write lock for read-only queries.
+- Restore SQLCipher support on native platforms.
 
 ## 2.3.0
 

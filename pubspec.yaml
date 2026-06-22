@@ -32,7 +32,7 @@ dependencies:
 hooks:
   user_defines:
     sqlite3:
-      # To run PowerSync encryption tests, replace this with sqlite3mc and run
+      # To run PowerSync encryption tests, replace this with sqlite3mc or sqlcipher and run
       # dart test -P encryption
       source: sqlite3
 

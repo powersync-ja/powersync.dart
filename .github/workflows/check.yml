@@ -83,9 +83,14 @@ jobs:
         working-directory: packages/powersync
         run: dart test -p chrome,vm
 
-      - name: Enable encryption
-        run: dart tool/enable_encryption.dart
+      - name: Enable SQLite3 Multiple Ciphers
+        run: dart tool/enable_encryption.dart sqlite3mc
+      - name: Encryption tests with sqlite3mc
+        working-directory: packages/powersync
+        run: dart test -p vm -P encryption
 
-      - name: Encryption tests
+      - name: Enable SQLCipher
+        run: dart tool/enable_encryption.dart sqlcipher
+      - name: Encryption tests with sqlcipher
         working-directory: packages/powersync
         run: dart test -p vm -P encryption
