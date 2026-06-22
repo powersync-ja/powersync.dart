@@ -1,6 +1,6 @@
 ## 2.3.1 (unreleased)
 
-- Fix `BucketStorage.select()` acquiring a write lock for read-only queries by using `getAll()` instead of `execute()`.
+- Fix `BucketStorage.select()` acquiring a write lock for read-only queries.
 
 ## 2.3.0
 
