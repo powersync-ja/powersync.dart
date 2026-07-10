@@ -2,6 +2,12 @@
   "name": "@powersync/dart-sdk-assets",
   "version": "0.0.1",
   "description": "Pre-compiled PowerSync Dart SDK assets.",
+  "type": "module",
+  "exports": {
+    "./worker.js": "./dist/powersync_db.worker.js",
+    "./sqlite3.wasm": "./dist/sqlite3.wasm",
+    "./sqlite3mc.wasm": "./dist/sqlite3mc.wasm"
+  },
   "scripts": {
     "copy:assets": "cp -r ../powersync/assets/ dist",
     "build": "pnpm copy:assets"
