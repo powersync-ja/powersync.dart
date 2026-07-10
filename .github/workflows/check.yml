@@ -53,6 +53,14 @@ jobs:
       - name: Publish dry-run
         run: melos publish --dry-run --yes
 
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 26
+          cache: pnpm
+          cache-dependency-path: packages/js-assets/pnpm-lock.yaml
+      - run: pnpm build
+        working-directory: packages/js-assets
+
   pana:
     runs-on: ubuntu-latest
     if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository)

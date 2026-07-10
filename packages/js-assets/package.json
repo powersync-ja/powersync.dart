@@ -1,0 +1,23 @@
+{
+  "name": "@powersync/dart-sdk-assets",
+  "version": "0.0.1",
+  "description": "Pre-compiled PowerSync Dart SDK assets.",
+  "scripts": {
+    "copy:assets": "cp -r ../powersync/assets/ dist",
+    "build": "pnpm copy:assets"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "package.json"
+  ],
+  "keywords": [],
+  "author": "PowerSync",
+  "license": "Apache-2.0",
+  "repository": "https://github.com/powersync-ja/powersync.dart",
+  "bugs": {
+    "url": "https://github.com/powersync-ja/powersync.dart/issues"
+  },
+  "packageManager": "pnpm@11.11.0+sha512.4463f65fd80ed80d69bc1d4bf163ee94f605c7380fc318bb5b2ebe15f8cd12d49c51a4d59e951b401e764d3b6ca751cbf51bc50ed7001a6bcb4935e684c34882"
+}
