@@ -9,4 +9,15 @@ void main() {
 
   final versionFile = File('packages/powersync/lib/src/version.dart');
   versionFile.writeAsStringSync("const String libraryVersion = '$version';\n");
+
+  final packageJson = File('packages/js-assets/package.json');
+
+  String transformPackageJson(String originalContents) {
+    final versionLine = RegExp('"version": ".*"');
+
+    return originalContents.replaceFirst(versionLine, '"version": "$version"');
+  }
+
+  packageJson
+      .writeAsStringSync(transformPackageJson(packageJson.readAsStringSync()));
 }
