@@ -3,6 +3,10 @@
   "version": "2.3.1",
   "description": "Pre-compiled PowerSync Dart SDK assets.",
   "type": "module",
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/",
+    "access": "public"
+  },
   "exports": {
     "./worker.js": "./dist/powersync_db.worker.js",
     "./sqlite3.wasm": "./dist/sqlite3.wasm",
@@ -22,6 +26,7 @@
   "author": "PowerSync",
   "license": "Apache-2.0",
   "repository": "https://github.com/powersync-ja/powersync.dart",
+  "homepage": "https://docs.powersync.com",
   "bugs": {
     "url": "https://github.com/powersync-ja/powersync.dart/issues"
   },
