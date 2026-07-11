@@ -1,6 +1,6 @@
 {
   "name": "@powersync/dart-sdk-assets",
-  "version": "0.0.1",
+  "version": "2.3.1",
   "description": "Pre-compiled PowerSync Dart SDK assets.",
   "type": "module",
   "exports": {
