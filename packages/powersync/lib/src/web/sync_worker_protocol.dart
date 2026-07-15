@@ -316,6 +316,7 @@ extension type SerializedSyncStatus._(JSObject _) implements JSObject {
   external bool get downloading;
   external bool get uploading;
   external int? lastSyncedAt;
+  @Deprecated('Only included for backwards compatibility')
   external bool? hasSynced;
   external String? uploadError;
   external String? downloadError;
