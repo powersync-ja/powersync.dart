@@ -1,5 +1,6 @@
 import 'package:logging/logging.dart';
 import 'package:powersync/powersync.dart';
+import 'package:powersync/src/sync/mutable_sync_status.dart';
 import 'package:sqlite_async/sqlite_async.dart';
 import 'package:test/test.dart';
 import 'package:uuid/parsing.dart';
@@ -140,7 +141,10 @@ void main() {
         ),
       );
 
-      final status = SyncStatus(connected: true, lastSyncedAt: DateTime.now());
+      final status = (MutableSyncStatus()
+            ..connected = true
+            ..lastSyncedAt = DateTime.now())
+          .immutableSnapshot();
       db.setStatus(status);
       db.setStatus(status); // Should not re-emit!
 

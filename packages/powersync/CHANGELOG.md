@@ -1,3 +1,7 @@
+## 2.3.2 (unreleased)
+
+- Fix state after calling `disconnect()` not consistently representing the correct sync status.
+
 ## 2.3.1
 
 - Fix `BucketStorage.select()` acquiring a write lock for read-only queries.

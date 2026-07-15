@@ -1,3 +1,6 @@
+/// @docImport '../connector.dart';
+library;
+
 import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
 
@@ -55,18 +58,32 @@ final class SyncStatus {
 
   @internal
   const SyncStatus({
-    this.connected = false,
-    this.connecting = false,
-    this.lastSyncedAt,
-    this.hasSynced,
-    this.downloadProgress,
-    this.downloading = false,
-    this.uploading = false,
-    this.downloadError,
-    this.uploadError,
-    this.priorityStatusEntries = const [],
-    List<CoreActiveStreamSubscription>? streamSubscriptions,
-  }) : _internalSubscriptions = streamSubscriptions;
+    required this.connected,
+    required this.connecting,
+    required this.lastSyncedAt,
+    required this.downloadProgress,
+    required this.downloading,
+    required this.uploading,
+    required this.downloadError,
+    required this.uploadError,
+    required this.priorityStatusEntries,
+    required List<CoreActiveStreamSubscription>? streamSubscriptions,
+  })  : hasSynced = lastSyncedAt != null,
+        _internalSubscriptions = streamSubscriptions;
+
+  @internal
+  const SyncStatus.uninitialized()
+      : connected = false,
+        connecting = false,
+        lastSyncedAt = null,
+        downloadProgress = null,
+        downloading = false,
+        uploading = false,
+        uploadError = null,
+        downloadError = null,
+        priorityStatusEntries = const [],
+        _internalSubscriptions = null,
+        hasSynced = null;
 
   @override
   bool operator ==(Object other) {
@@ -96,7 +113,6 @@ final class SyncStatus {
     Object? uploadError,
     Object? downloadError,
     DateTime? lastSyncedAt,
-    bool? hasSynced,
     List<SyncPriorityStatus>? priorityStatusEntries,
   }) {
     return SyncStatus(
@@ -107,9 +123,10 @@ final class SyncStatus {
       uploadError: uploadError ?? this.uploadError,
       downloadError: downloadError ?? this.downloadError,
       lastSyncedAt: lastSyncedAt ?? this.lastSyncedAt,
-      hasSynced: hasSynced ?? this.hasSynced,
       priorityStatusEntries:
           priorityStatusEntries ?? this.priorityStatusEntries,
+      downloadProgress: downloadProgress,
+      streamSubscriptions: _internalSubscriptions,
     );
   }
 

@@ -71,7 +71,6 @@ SyncStatus deserializeSyncStatus(Map<String, Object?> serialized) {
     },
     uploading: serialized['uploading'] as bool,
     lastSyncedAt: readDateTime(serialized['lastSyncedAt'] as int?),
-    hasSynced: serialized['hasSynced'] as bool?,
     uploadError: serialized['uploadError'],
     downloadError: serialized['downloadError'],
     priorityStatusEntries: [

@@ -49,7 +49,7 @@ final class MutableSyncStatus {
     streams = status.streams;
   }
 
-  SyncStatus immutableSnapshot({bool setLastSynced = false}) {
+  SyncStatus immutableSnapshot() {
     return SyncStatus(
       connected: connected,
       connecting: connecting,
@@ -58,7 +58,6 @@ final class MutableSyncStatus {
       downloadProgress: downloadProgress?.asSyncDownloadProgress,
       priorityStatusEntries: UnmodifiableListView(priorityStatusEntries),
       lastSyncedAt: lastSyncedAt,
-      hasSynced: setLastSynced ? lastSyncedAt != null : null,
       uploadError: uploadError,
       downloadError: downloadError,
       streamSubscriptions: streams,
@@ -68,7 +67,7 @@ final class MutableSyncStatus {
 
 final class SyncStatusStateStream {
   final MutableSyncStatus status = MutableSyncStatus();
-  SyncStatus _lastPublishedStatus = const SyncStatus();
+  SyncStatus _lastPublishedStatus = const SyncStatus.uninitialized();
 
   final StreamController<SyncStatus> _statusStreamController =
       StreamController<SyncStatus>.broadcast();

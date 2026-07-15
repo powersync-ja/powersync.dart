@@ -35,8 +35,7 @@ final class ConnectionManager {
   /// while we're connected.
   StreamController<void>? _subscriptionsChanged;
 
-  SyncStatus _currentStatus =
-      const SyncStatus(connected: false, lastSyncedAt: null);
+  SyncStatus _currentStatus = const SyncStatus.uninitialized();
 
   SyncStatus get currentStatus => _currentStatus;
   Stream<SyncStatus> get statusStream => _statusController.stream;
@@ -81,8 +80,7 @@ final class ConnectionManager {
       _subscriptionsChanged = null;
     });
 
-    manuallyChangeSyncStatus(
-        SyncStatus(connected: false, lastSyncedAt: currentStatus.lastSyncedAt));
+    await resolveOfflineSyncStatus();
   }
 
   Future<void> firstStatusMatching(bool Function(SyncStatus) predicate) async {
@@ -181,32 +179,8 @@ final class ConnectionManager {
 
   void manuallyChangeSyncStatus(SyncStatus status) {
     if (status != currentStatus) {
-      final newStatus = SyncStatus(
-        connected: status.connected,
-        downloading: status.downloading,
-        uploading: status.uploading,
-        connecting: status.connecting,
-        uploadError: status.uploadError,
-        downloadError: status.downloadError,
-        priorityStatusEntries: status.priorityStatusEntries,
-        downloadProgress: status.downloadProgress,
-        // Note that currently the streaming sync implementation will never set
-        // hasSynced. lastSyncedAt implies that syncing has completed at some
-        // point (hasSynced = true).
-        // The previous values of hasSynced should be preserved here.
-        lastSyncedAt: status.lastSyncedAt ?? currentStatus.lastSyncedAt,
-        hasSynced: status.lastSyncedAt != null
-            ? true
-            : status.hasSynced ?? currentStatus.hasSynced,
-        streamSubscriptions: status.internalSubscriptions,
-      );
-
-      // If the absence of hasSynced was the only difference, the new states
-      // would be equal and don't require an event. So, check again.
-      if (newStatus != currentStatus) {
-        _currentStatus = newStatus;
-        _statusController.add(_currentStatus);
-      }
+      _currentStatus = status;
+      _statusController.add(_currentStatus);
     }
   }
 
@@ -291,8 +265,8 @@ final class ConnectionManager {
     final status = CoreSyncStatus.fromJson(
         json.decode(row['r'] as String) as Map<String, Object?>);
 
-    manuallyChangeSyncStatus((MutableSyncStatus()..applyFromCore(status))
-        .immutableSnapshot(setLastSynced: true));
+    manuallyChangeSyncStatus(
+        (MutableSyncStatus()..applyFromCore(status)).immutableSnapshot());
   }
 
   SyncStream syncStream(String name, Map<String, Object?>? parameters) {
