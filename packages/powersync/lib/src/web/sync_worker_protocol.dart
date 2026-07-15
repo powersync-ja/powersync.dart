@@ -334,7 +334,6 @@ extension type SerializedSyncStatus._(JSObject _) implements JSObject {
       lastSyncedAt: lastSyncedAt == null
           ? null
           : DateTime.fromMicrosecondsSinceEpoch(lastSyncedAt!),
-      hasSynced: hasSynced,
       uploadError: uploadError,
       downloadError: downloadError,
       priorityStatusEntries: <SyncPriorityStatus>[

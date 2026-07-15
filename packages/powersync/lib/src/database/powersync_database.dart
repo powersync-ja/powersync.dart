@@ -265,10 +265,11 @@ abstract base class PowerSyncDatabase extends SqliteConnection {
   Future<void> close() async {
     // Don't close in the middle of the initialization process.
     await isInitialized;
-    // Disconnect any active sync connection.
-    await disconnect();
 
     if (!database.closed) {
+      // Disconnect any active sync connection.
+      await disconnect();
+
       devtools.handleClosed(this);
 
       // Now we can close the database
@@ -354,8 +355,7 @@ abstract base class PowerSyncDatabase extends SqliteConnection {
     await writeTransaction((tx) async {
       await tx.execute('select powersync_clear(?)', [clearLocal ? 1 : 0]);
     });
-    // The data has been deleted - reset these
-    setStatus(SyncStatus(lastSyncedAt: null, hasSynced: false));
+    await _connections.resolveOfflineSyncStatus();
   }
 
   @Deprecated('Use [disconnectAndClear] instead.')

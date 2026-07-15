@@ -6,7 +6,6 @@ import 'package:logging/logging.dart';
 import 'package:powersync/powersync.dart';
 import 'package:shelf/shelf.dart';
 import 'package:shelf_router/shelf_router.dart';
-import 'package:sqlite3/common.dart';
 import 'package:test/test.dart';
 
 import '../server/sync_server/in_memory_sync_server.dart';
@@ -38,7 +37,6 @@ void _declareTests(String name, SyncOptions options, bool bson) {
   group(name, () {
     late final testUtils = TestUtils();
 
-    late CommonDatabase raw;
     late TestDatabase database;
     late MockSyncService syncService;
     late Logger logger;
@@ -72,7 +70,7 @@ void _declareTests(String name, SyncOptions options, bool bson) {
       credentialsCallbackCount = 0;
       syncService = MockSyncService(useBson: bson);
 
-      (raw, database) = await testUtils.openInMemoryDatabase();
+      (_, database) = await testUtils.openInMemoryDatabase();
       await database.initialize();
     });
 
@@ -130,7 +128,11 @@ void _declareTests(String name, SyncOptions options, bool bson) {
           status, emits(isSyncStatus(downloading: false, hasSynced: true)));
       await database.disconnect();
 
-      final independentDb = testUtils.wrapRaw(raw, logger: ignoredLogger);
+      final independentDb = TestDatabase(
+        database: database.database,
+        logger: ignoredLogger,
+        schema: schema,
+      );
       addTearDown(independentDb.close);
       // Even though this database doesn't have a sync client attached to it,
       // is should reconstruct hasSynced from the database.
@@ -432,8 +434,13 @@ void _declareTests(String name, SyncOptions options, bool bson) {
         await database.waitForFirstSync(priority: StreamPriority(1));
         expect(database.currentStatus.hasSynced, isFalse);
         await database.disconnect();
+        expect(database.currentStatus.connected, isFalse);
 
-        final independentDb = testUtils.wrapRaw(raw, logger: ignoredLogger);
+        final independentDb = TestDatabase(
+          database: database.database,
+          logger: Logger.detached('PowerSync.test'),
+          schema: schema,
+        );
         addTearDown(independentDb.close);
         await independentDb.initialize();
         expect(independentDb.currentStatus.hasSynced, isFalse);

@@ -54,8 +54,9 @@ final _syncStatusInternal = StreamProvider<SyncStatus?>((ref) {
 });
 
 final syncStatus = Provider((ref) {
-  // ignore: invalid_use_of_internal_member
-  return ref.watch(_syncStatusInternal).value ?? const SyncStatus();
+  return ref.watch(_syncStatusInternal).value ??
+      // ignore: invalid_use_of_internal_member
+      const SyncStatus.uninitialized();
 });
 
 @riverpod

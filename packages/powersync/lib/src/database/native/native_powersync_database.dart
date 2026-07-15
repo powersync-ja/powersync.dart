@@ -74,8 +74,6 @@ final class NativePowerSyncDatabase extends BasePowerSyncDatabase {
       receiveExit.close();
       mutexServer.handleChildIsolateExit();
 
-      // Clear status apart from lastSyncedAt
-      setStatus(SyncStatus(lastSyncedAt: currentStatus.lastSyncedAt));
       abort.completeAbort();
     }
 
