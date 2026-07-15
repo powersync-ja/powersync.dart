@@ -34,7 +34,6 @@ Object? serializeSyncStatus(SyncStatus status) {
     },
     'uploading': status.uploading,
     'lastSyncedAt': status.lastSyncedAt?.millisecondsSinceEpoch,
-    'hasSynced': status.hasSynced,
     'uploadError': status.uploadError?.toString(),
     'downloadError': status.downloadError?.toString(),
     'priorityStatusEntries': [

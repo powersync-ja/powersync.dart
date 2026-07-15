@@ -78,9 +78,9 @@ final class ConnectionManager {
       await _abortCurrentSync();
       _subscriptionsChanged?.close();
       _subscriptionsChanged = null;
-    });
 
-    await resolveOfflineSyncStatus();
+      await resolveOfflineSyncStatus();
+    });
   }
 
   Future<void> firstStatusMatching(bool Function(SyncStatus) predicate) async {
