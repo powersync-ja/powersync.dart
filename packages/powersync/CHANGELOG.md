@@ -1,4 +1,4 @@
-## 2.3.2 (unreleased)
+## 2.3.2
 
 - Fix state after calling `disconnect()` not consistently representing the correct sync status.
 
