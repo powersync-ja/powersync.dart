@@ -31,11 +31,10 @@ base class WebPowerSyncOpenFactory extends WebSqliteOpenFactory {
   @override
   Future<ConnectToRecommendedResult> connectToWorker(
       WebSqlite sqlite, String name) {
-    return sqlite.connectToRecommended(
-      name,
-      additionalOptions: PowerSyncAdditionalOpenOptions(
-          useMultipleCiphersVfs: encryptionOptions != null),
-    );
+    return sqlite.connectToRecommended(name,
+        additionalOptions: PowerSyncAdditionalOpenOptions(
+            useMultipleCiphersVfs: encryptionOptions != null),
+        preparedStatementCacheSize: sqliteOptions.preparedStatementCacheSize);
   }
 
   @override
