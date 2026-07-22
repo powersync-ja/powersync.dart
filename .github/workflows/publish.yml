@@ -42,7 +42,7 @@ jobs:
   publish_powersync:
     needs: [setup]
     permissions:
-      id-token: write # Needed to create an OIDC token for pub.dev and npm
+      id-token: write # Needed to create an OIDC token for pub.dev
     if: "${{ startsWith(github.ref_name, 'powersync-') }}"
     runs-on: ubuntu-latest
     steps:
@@ -57,11 +57,6 @@ jobs:
         with:
           flutter-version: "3.x"
           channel: "stable"
-      - run: corepack enable
-      - uses: actions/setup-node@v6
-        with:
-          node-version: 26
-          package-manager-cache: false
       - run: dart pub get
       - run: tool/build.sh
         name: Build and copy devtools extension
@@ -71,6 +66,24 @@ jobs:
         run: dart pub publish -f
         working-directory: packages/powersync
 
+  publish_npm:
+    needs: [setup]
+    permissions:
+      id-token: write # Needed to create an OIDC token for npm
+    if: "${{ startsWith(github.ref_name, 'powersync-') }}"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/prepare
+
+      - run: corepack enable
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 26
+          package-manager-cache: false
       - run: pnpm build
         working-directory: packages/js-assets
       - run: pnpm publish
