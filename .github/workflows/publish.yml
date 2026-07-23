@@ -5,6 +5,8 @@ on:
       - "powersync-v[0-9]+.[0-9]+.[0-9]+*"
       - "powersync_attachments_helper-v[0-9]+.[0-9]+.[0-9]+*"
       - "powersync_flutter_libs-v[0-9]+.[0-9]+.[0-9]+*"
+    branches:
+      - pnpm-publish-no-git-checks
   workflow_dispatch:
 
 permissions: {}
@@ -70,7 +72,7 @@ jobs:
     needs: [setup]
     permissions:
       id-token: write # Needed to create an OIDC token for npm
-    if: "${{ startsWith(github.ref_name, 'powersync-') }}"
+    #if: "${{ startsWith(github.ref_name, 'powersync-') }}"
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
@@ -86,7 +88,7 @@ jobs:
           package-manager-cache: false
       - run: pnpm build
         working-directory: packages/js-assets
-      - run: pnpm publish
+      - run: pnpm publish --no-git-checks
         working-directory: packages/js-assets
 
   publish_powersync_flutter_libs:
