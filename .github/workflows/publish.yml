@@ -88,8 +88,10 @@ jobs:
           package-manager-cache: false
       - run: pnpm build
         working-directory: packages/js-assets
-      - run: pnpm publish --no-git-checks
-        working-directory: packages/js-assets
+      - working-directory: packages/js-assets
+        run: |
+          pnpm pack
+          npm publish powersync-dart-wasm-bundles-*.tgz
 
   publish_powersync_flutter_libs:
     permissions:
