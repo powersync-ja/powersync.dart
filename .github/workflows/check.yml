@@ -59,8 +59,10 @@ jobs:
           node-version: 26
           cache: pnpm
           cache-dependency-path: packages/js-assets/pnpm-lock.yaml
-      - run: pnpm build
-        working-directory: packages/js-assets
+      - working-directory: packages/js-assets
+        run: |
+          pnpm build
+          pnpm pack
 
   pana:
     runs-on: ubuntu-latest
