@@ -136,12 +136,12 @@ final class CoreActiveStreamSubscription
       expiresAt: switch (json['expires_at']) {
         null => null,
         final timestamp as int =>
-          DateTime.fromMillisecondsSinceEpoch(timestamp * 1000),
+          DateTime.fromMicrosecondsSinceEpoch(timestamp),
       },
       lastSyncedAt: switch (json['last_synced_at']) {
         null => null,
         final timestamp as int =>
-          DateTime.fromMillisecondsSinceEpoch(timestamp * 1000),
+          DateTime.fromMicrosecondsSinceEpoch(timestamp),
       },
     );
   }
@@ -160,11 +160,11 @@ final class CoreActiveStreamSubscription
       'has_explicit_subscription': hasExplicitSubscription,
       'expires_at': switch (expiresAt) {
         null => null,
-        final expiresAt => expiresAt.millisecondsSinceEpoch / 1000,
+        final expiresAt => expiresAt.microsecondsSinceEpoch,
       },
       'last_synced_at': switch (lastSyncedAt) {
         null => null,
-        final lastSyncedAt => lastSyncedAt.millisecondsSinceEpoch / 1000,
+        final lastSyncedAt => lastSyncedAt.microsecondsSinceEpoch,
       }
     };
   }

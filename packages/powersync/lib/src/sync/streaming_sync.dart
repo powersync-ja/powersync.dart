@@ -240,7 +240,8 @@ class StreamingSyncImplementation implements StreamingSync {
             _state.updateStatus((s) => s.uploadError = null);
           } else {
             // Uploading is completed
-            await adapter.updateLocalTarget(() => getWriteCheckpoint());
+            await adapter
+                .updateTargetCheckpointRequest(() => getWriteCheckpoint());
             break;
           }
         } catch (e, stacktrace) {
@@ -586,8 +587,6 @@ final class _ActiveRustStreamingIteration {
             sync.logger.warning('Could not prefetch credentials', e, s);
           });
         }
-      case FlushFileSystem():
-        await sync.adapter.flushFileSystem();
       case DidCompleteSync():
         sync._state.updateStatus((m) => m.downloadError = null);
       case UnknownSyncInstruction(:final source):

@@ -16,7 +16,6 @@ sealed class Instruction {
         FetchCredentials.fromJson(creds as Map<String, Object?>),
       {'CloseSyncStream': final closeOptions as Map<String, Object?>} =>
         CloseSyncStream(closeOptions['hide_disconnect'] as bool),
-      {'FlushFileSystem': _} => const FlushFileSystem(),
       {'DidCompleteSync': _} => const DidCompleteSync(),
       _ => UnknownSyncInstruction(json)
     };
@@ -103,7 +102,7 @@ final class CoreSyncStatus {
       lastSyncedAt: switch (json['last_synced_at']) {
         null => null,
         final lastSyncedAt as int =>
-          DateTime.fromMillisecondsSinceEpoch(lastSyncedAt * 1000),
+          DateTime.fromMicrosecondsSinceEpoch(lastSyncedAt),
       },
     );
   }
@@ -163,10 +162,6 @@ final class CloseSyncStream implements Instruction {
   final bool hideDisconnect;
 
   const CloseSyncStream(this.hideDisconnect);
-}
-
-final class FlushFileSystem implements NonInterruptingInstruction {
-  const FlushFileSystem();
 }
 
 final class DidCompleteSync implements NonInterruptingInstruction {

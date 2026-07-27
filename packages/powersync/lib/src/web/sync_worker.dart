@@ -21,9 +21,9 @@ import 'package:sqlite_async/web.dart';
 import 'package:web/web.dart' hide RequestMode;
 
 import '../database/powersync_database.dart';
+import '../sync/bucket_storage.dart';
 import 'http/client.dart';
 import 'sync_worker_protocol.dart';
-import 'web_bucket_storage.dart';
 
 final _logger = autoLogger;
 
@@ -312,7 +312,7 @@ class SyncRunner {
 
     currentStreams = connections.values.flattenedToSet.toList();
     sync = StreamingSyncImplementation(
-      adapter: WebBucketStorage(database),
+      adapter: BucketStorage(database),
       schemaJson: schemaJson,
       connector: InternalConnector(
         getCredentialsCached: client.channel.credentialsCallback,

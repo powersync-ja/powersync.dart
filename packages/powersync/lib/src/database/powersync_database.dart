@@ -20,6 +20,7 @@ import '../platform_specific/platform_specific.dart';
 import '../powersync_update_notification.dart';
 import '../schema.dart';
 import '../schema_logic.dart' as schema_logic;
+import '../sync/bucket_storage.dart';
 import '../sync/connection_manager.dart';
 import '../sync/options.dart';
 import '../sync/stream.dart';
@@ -380,7 +381,8 @@ abstract base class PowerSyncDatabase extends SqliteConnection {
       _connections.checkNotConnected();
 
       this.schema = schema;
-      await database.writeLock((tx) => schema_logic.updateSchema(tx, schema));
+      await database
+          .writeTransaction((tx) => schema_logic.updateSchema(tx, schema));
     });
   }
 
@@ -438,7 +440,7 @@ abstract base class PowerSyncDatabase extends SqliteConnection {
     return CrudBatch(
       crud: all,
       haveMore: haveMore,
-      complete: _crudCompletionCallback(last.clientId),
+      complete: BucketStorage(this).crudCompletionCallback(last.clientId),
     );
   }
 
@@ -519,29 +521,11 @@ SELECT * FROM crud_entries;
 
       yield CrudTransaction(
         crud: items,
-        complete: _crudCompletionCallback(last.clientId),
+        complete: BucketStorage(this).crudCompletionCallback(last.clientId),
         transactionId: txId,
       );
       lastCrudItemId = last.clientId;
     }
-  }
-
-  Future<void> Function({String? writeCheckpoint}) _crudCompletionCallback(
-      int lastClientId) {
-    return ({String? writeCheckpoint}) async {
-      await writeTransaction((db) async {
-        await db.execute('DELETE FROM ps_crud WHERE id <= ?', [lastClientId]);
-        if (writeCheckpoint != null &&
-            await db.getOptional('SELECT 1 FROM ps_crud LIMIT 1') == null) {
-          await db.execute(
-              'UPDATE ps_buckets SET target_op = CAST(? as INTEGER) WHERE name=\'\$local\'',
-              [writeCheckpoint]);
-        } else {
-          await db.execute(
-              'UPDATE ps_buckets SET target_op = ${schema_logic.maxOpId} WHERE name=\'\$local\'');
-        }
-      });
-    };
   }
 
   @override
@@ -658,7 +642,8 @@ abstract base class BasePowerSyncDatabase extends PowerSyncDatabase {
 
     await database.initialize();
     await _checkVersion();
-    await database.execute('SELECT powersync_init()');
+    await database
+        .writeTransaction((tx) => tx.execute('SELECT powersync_init();'));
     await updateSchema(schema);
     await _connections.resolveOfflineSyncStatus();
   }

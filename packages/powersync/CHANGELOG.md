@@ -1,3 +1,7 @@
+## 2.3.3 (unreleased)
+
+- Internal: Update PowerSync SQLite core extension to latest version.
+
 ## 2.3.2
 
 - Fix state after calling `disconnect()` not consistently representing the correct sync status.
