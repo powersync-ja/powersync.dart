@@ -16,7 +16,7 @@ void main() {
   late LocalStorage localStorage;
   late AttachmentQueue queue;
   late StreamQueue<List<Attachment>> attachments;
-  late Logger logger;
+  late List<LogRecord> logRecords;
 
   Stream<List<WatchedAttachmentItem>> watchAttachments() {
     return db
@@ -35,7 +35,10 @@ void main() {
   setUp(() async {
     remoteStorage = MockRemoteStorage();
     localStorage = LocalStorage.inMemory();
-    logger = Logger.detached('PowerSyncTest')..level = Level.ALL;
+    final logger = Logger.detached('PowerSyncTest')..level = Level.ALL;
+    final records = <LogRecord>[];
+    logRecords = records;
+    logger.onRecord.listen(records.add);
 
     final (raw, database) = await testUtils.openInMemoryDatabase(
       schema: _schema,
@@ -66,9 +69,6 @@ void main() {
   });
 
   test('downloads attachments', () async {
-    final records = <(Level, String)>[];
-    logger.onRecord.listen((r) => records.add((r.level, r.message)));
-
     await queue.startSync();
 
     // Create a user with a photo_id specified. Since we didn't save an
@@ -110,7 +110,7 @@ void main() {
     expect(await localStorage.fileExists(localUri), isFalse);
 
     final nonVerboseMessages = [
-      for (final (level, message) in records)
+      for (final LogRecord(:level, :message) in logRecords)
         if (level >= Level.INFO) message
     ];
     expect(nonVerboseMessages, [
@@ -342,6 +342,20 @@ void main() {
       isA<Attachment>()
           .having((e) => e.state, 'state', AttachmentState.archived)
     ]);
+
+    expect(
+      logRecords,
+      contains(
+        isA<LogRecord>()
+            .having((e) => e.level, 'level', Level.WARNING)
+            .having(
+              (e) => e.message,
+              'message',
+              contains('Download error for attachment'),
+            )
+            .having((e) => e.error, 'error', 'test error'),
+      ),
+    );
   });
 
   test('stopSyncing interrupts an in-flight batch', () async {
