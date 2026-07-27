@@ -16,6 +16,7 @@ void main() {
   late LocalStorage localStorage;
   late AttachmentQueue queue;
   late StreamQueue<List<Attachment>> attachments;
+  late Logger logger;
 
   Stream<List<WatchedAttachmentItem>> watchAttachments() {
     return db
@@ -34,11 +35,12 @@ void main() {
   setUp(() async {
     remoteStorage = MockRemoteStorage();
     localStorage = LocalStorage.inMemory();
+    logger = Logger.detached('PowerSyncTest')..level = Level.ALL;
 
     final (raw, database) = await testUtils.openInMemoryDatabase(
       schema: _schema,
       // Uncomment to see test logs
-      logger: Logger.detached('PowerSyncTest'),
+      logger: logger,
     );
     await database.initialize();
     db = database;
@@ -64,6 +66,9 @@ void main() {
   });
 
   test('downloads attachments', () async {
+    final records = <(Level, String)>[];
+    logger.onRecord.listen((r) => records.add((r.level, r.message)));
+
     await queue.startSync();
 
     // Create a user with a photo_id specified. Since we didn't save an
@@ -103,6 +108,19 @@ void main() {
 
     // File should have been deleted too
     expect(await localStorage.fileExists(localUri), isFalse);
+
+    final nonVerboseMessages = [
+      for (final (level, message) in records)
+        if (level >= Level.INFO) message
+    ];
+    expect(nonVerboseMessages, [
+      'Watching attachments...',
+      'AttachmentQueue started syncing.',
+      startsWith('Starting download for attachment'),
+      startsWith('Successfully downloaded file'),
+      'Deleting 1 archived attachments (exceeding maxArchivedCount=0)...',
+      'Deleted 1 archived attachments.'
+    ]);
   });
 
   test('stores relative paths', () async {
