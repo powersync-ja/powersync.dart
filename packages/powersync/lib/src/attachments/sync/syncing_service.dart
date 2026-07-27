@@ -205,11 +205,12 @@ final class SyncingService {
         e,
         st,
       );
-      if (errorHandler != null) {
-        final shouldRetry =
-            await errorHandler!.onUploadError(attachment, e, st);
+      if (errorHandler case final errorHandler?) {
+        final shouldRetry = await errorHandler.onUploadError(attachment, e, st);
         if (!shouldRetry) {
-          logger.info('Attachment with ID ${attachment.id} has been archived');
+          logger.info(
+            'Attachment with ID ${attachment.id} has been archived after upload error',
+          );
           return attachment.copyWith(state: AttachmentState.archived);
         }
       }
@@ -235,23 +236,23 @@ final class SyncingService {
         hasSynced: true,
       );
     } catch (e, st) {
+      logger.warning(
+        'Download error for attachment $attachment',
+        e,
+        st,
+      );
+
       if (errorHandler case final errorHandler?) {
         final shouldRetry =
             await errorHandler.onDownloadError(attachment, e, st);
         if (!shouldRetry) {
-          logger.info(
+          logger.warning(
             'Attachment with ID ${attachment.id} has been archived after download error',
-            e,
-            st,
           );
           return attachment.copyWith(state: AttachmentState.archived);
         }
       }
-      logger.warning(
-        'Download attachment error for attachment $attachment',
-        e,
-        st,
-      );
+
       return attachment;
     }
   }
@@ -274,18 +275,17 @@ final class SyncingService {
       await context.deleteAttachment(attachment.id);
       return attachment.copyWith(state: AttachmentState.archived);
     } catch (e, st) {
+      logger.warning('Error deleting attachment: $e', e, st);
+
       if (errorHandler case final errorHandler?) {
         final shouldRetry = await errorHandler.onDeleteError(attachment, e, st);
         if (!shouldRetry) {
-          logger.info(
+          logger.warning(
             'Attachment with ID ${attachment.id} has been archived after error on delete.',
-            e,
-            st,
           );
           return attachment.copyWith(state: AttachmentState.archived);
         }
       }
-      logger.warning('Error deleting attachment: $e', e, st);
       return attachment;
     }
   }
