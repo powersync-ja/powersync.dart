@@ -72,9 +72,9 @@ final class SyncingService {
       final attachments = await attachmentsService.withContext(
         (context) => context.getActiveAttachments(),
       );
-      logger.info('Found ${attachments.length} active attachments');
+      logger.finest('Found ${attachments.length} active attachments');
 
-      await handleSync(
+      await _handleSync(
         attachments,
         isActive: () => sub == _syncSubscription,
       );
@@ -88,7 +88,7 @@ final class SyncingService {
     _periodicSubscription = Stream<void>.periodic(period, (_) {}).listen((
       _,
     ) {
-      logger.info('Periodically syncing attachments');
+      logger.finer('Periodically syncing attachments (interval $period)');
       triggerSync();
     });
   }
@@ -133,11 +133,11 @@ final class SyncingService {
   /// [isActive]: Polled between attachments; when it returns `false` the loop
   /// exits early. Used by `stopSync` to interrupt a running batch within one
   /// attachment's processing time.
-  Future<void> handleSync(
+  Future<void> _handleSync(
     List<Attachment> attachments, {
     bool Function()? isActive,
   }) async {
-    logger.info('Starting handleSync with ${attachments.length} attachments');
+    logger.finer('Starting handleSync with ${attachments.length} attachments');
 
     for (final attachment in attachments) {
       if (isActive != null && !isActive()) {
@@ -145,7 +145,7 @@ final class SyncingService {
         return;
       }
 
-      logger.info(
+      logger.finest(
         'Processing attachment ${attachment.id} with state: ${attachment.state}',
       );
 
@@ -153,23 +153,18 @@ final class SyncingService {
         final Attachment updated;
         switch (attachment.state) {
           case AttachmentState.queuedDownload:
-            logger.info('Downloading [${attachment.filename}]');
-            updated = await downloadAttachment(attachment);
+            updated = await _downloadAttachment(attachment);
           case AttachmentState.queuedUpload:
-            logger.info('Uploading [${attachment.filename}]');
-            updated = await uploadAttachment(attachment);
+            updated = await _uploadAttachment(attachment);
           case AttachmentState.queuedDelete:
-            logger.info('Deleting [${attachment.filename}]');
             // `deleteAttachment` needs a context (it removes the row in a
             // transaction); briefly re-acquire the mutex for just this row.
             updated = await attachmentsService.withContext(
               (context) => deleteAttachment(attachment, context),
             );
           case AttachmentState.synced:
-            logger.info('Attachment ${attachment.id} is already synced');
-            continue;
           case AttachmentState.archived:
-            logger.info('Attachment ${attachment.id} is archived');
+            // Nothing to do for these attachments.
             continue;
         }
 
@@ -186,8 +181,9 @@ final class SyncingService {
   ///
   /// [attachment]: The attachment to upload.
   /// Returns the updated attachment with its new state.
-  Future<Attachment> uploadAttachment(Attachment attachment) async {
-    logger.info('Starting upload for attachment ${attachment.id}');
+  Future<Attachment> _uploadAttachment(Attachment attachment) async {
+    logger.info(
+        'Starting upload for attachment ${attachment.id} (local filename ${attachment.filename})');
     try {
       if (attachment.localUri == null) {
         throw Exception('No localUri for attachment $attachment');
@@ -225,7 +221,7 @@ final class SyncingService {
   ///
   /// [attachment]: The attachment to download.
   /// Returns the updated attachment with its new state.
-  Future<Attachment> downloadAttachment(Attachment attachment) async {
+  Future<Attachment> _downloadAttachment(Attachment attachment) async {
     logger.info('Starting download for attachment ${attachment.id}');
     final attachmentPath = attachment.filename;
     try {
@@ -239,11 +235,15 @@ final class SyncingService {
         hasSynced: true,
       );
     } catch (e, st) {
-      if (errorHandler != null) {
+      if (errorHandler case final errorHandler?) {
         final shouldRetry =
-            await errorHandler!.onDownloadError(attachment, e, st);
+            await errorHandler.onDownloadError(attachment, e, st);
         if (!shouldRetry) {
-          logger.info('Attachment with ID ${attachment.id} has been archived');
+          logger.info(
+            'Attachment with ID ${attachment.id} has been archived after download error',
+            e,
+            st,
+          );
           return attachment.copyWith(state: AttachmentState.archived);
         }
       }
@@ -274,11 +274,14 @@ final class SyncingService {
       await context.deleteAttachment(attachment.id);
       return attachment.copyWith(state: AttachmentState.archived);
     } catch (e, st) {
-      if (errorHandler != null) {
-        final shouldRetry =
-            await errorHandler!.onDeleteError(attachment, e, st);
+      if (errorHandler case final errorHandler?) {
+        final shouldRetry = await errorHandler.onDeleteError(attachment, e, st);
         if (!shouldRetry) {
-          logger.info('Attachment with ID ${attachment.id} has been archived');
+          logger.info(
+            'Attachment with ID ${attachment.id} has been archived after error on delete.',
+            e,
+            st,
+          );
           return attachment.copyWith(state: AttachmentState.archived);
         }
       }

@@ -180,6 +180,7 @@ base class AttachmentQueue {
       var previouslyConnected = _db.currentStatus.connected;
       _syncStatusSubscription = _db.statusStream.listen((status) {
         if (!previouslyConnected && status.connected) {
+          _logger.fine('Scanning attachments after connecting');
           _syncingService.triggerSync();
         }
 

@@ -1,3 +1,7 @@
+## 2.3.4 (unreleased)
+
+- Reduce log noise from attachments service ([#408](https://github.com/powersync-ja/powersync.dart/issues/408)).
+
 ## 2.3.3
 
 - Restore the ability to call `disconnect()` on closed databases.
