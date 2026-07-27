@@ -61,6 +61,8 @@ final class NativePowerSyncDatabase extends BasePowerSyncDatabase {
     final receivedIsolateExit = Completer<void>();
 
     Future<void> waitForShutdown() async {
+      logger.info(
+          'waitForShutdown called. tried spawning? $triedSpawningIsolate');
       // Only complete the abortion signal after the isolate shuts down. This
       // ensures absolutely no trace of this sync iteration remains.
       if (triedSpawningIsolate) {
@@ -75,6 +77,7 @@ final class NativePowerSyncDatabase extends BasePowerSyncDatabase {
       mutexServer.handleChildIsolateExit();
 
       abort.completeAbort();
+      logger.info('cleanup complete');
     }
 
     Future<void> close() async {
@@ -180,6 +183,7 @@ final class NativePowerSyncDatabase extends BasePowerSyncDatabase {
 
     // Spawning the isolate can't be interrupted
     triedSpawningIsolate = true;
+    logger.info('spawning sync isolate');
     await Isolate.spawn(
       _syncIsolate,
       _PowerSyncDatabaseIsolateArgs(
@@ -193,7 +197,9 @@ final class NativePowerSyncDatabase extends BasePowerSyncDatabase {
       errorsAreFatal: true,
       onExit: receiveExit.sendPort,
     );
+    logger.info('sync isolate spawned');
     await hasInitPort.future;
+    logger.info('has init port');
 
     // Automatically complete the abort controller once the isolate exits.
     unawaited(Future.any([abort.onAbort, receivedIsolateExit.future])

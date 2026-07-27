@@ -4,7 +4,7 @@ import 'dart:async';
 /// before or after it started.
 class AbortController {
   /// True if an abort has been requested.
-  bool aborted = false;
+  bool get aborted => _abortRequested.isCompleted;
 
   final Completer<void> _abortRequested = Completer();
   final Completer<void> _abortCompleter = Completer();
@@ -20,8 +20,7 @@ class AbortController {
 
   /// Abort, and wait until aborting is complete.
   Future<void> abort() async {
-    aborted = true;
-    if (!_abortRequested.isCompleted) {
+    if (!aborted) {
       _abortRequested.complete();
     }
 

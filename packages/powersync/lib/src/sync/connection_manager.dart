@@ -58,16 +58,10 @@ final class ConnectionManager {
 
   Future<void> _abortCurrentSync() async {
     if (_abortActiveSync case final disconnector?) {
-      /// Checking `disconnecter.aborted` prevents race conditions
-      /// where multiple calls to `disconnect` can attempt to abort
-      /// the controller more than once before it has finished aborting.
-      if (disconnector.aborted == false) {
-        await disconnector.abort();
-        _abortActiveSync = null;
-      } else {
-        /// Wait for the abort to complete. Continue updating the sync status after completed
-        await disconnector.onCompletion;
-      }
+      db.logger.info('aborting previous sync on connect call');
+
+      await disconnector.abort();
+      _abortActiveSync = null;
     }
   }
 
@@ -103,11 +97,7 @@ final class ConnectionManager {
     required PowerSyncBackendConnector connector,
     required ResolvedSyncOptions options,
   }) async {
-    if (db.schema.rawTables.isNotEmpty &&
-        options.source.syncImplementation != SyncClientImplementation.rust) {
-      throw UnsupportedError(
-          'Raw tables are only supported by the Rust client.');
-    }
+    db.logger.info('connect() called');
 
     var thisConnectAborter = AbortController();
     final zone = Zone.current;
@@ -115,6 +105,7 @@ final class ConnectionManager {
     late void Function() retryHandler;
 
     Future<void> connectWithSyncLock() async {
+      db.logger.info('connectWithSyncLock() called');
       // Ensure there has not been a subsequent connect() call installing a new
       // sync client.
       assert(identical(_abortActiveSync, thisConnectAborter));
@@ -140,6 +131,7 @@ final class ConnectionManager {
         asyncWorkZone: zone,
       );
 
+      db.logger.info('connectInternal completed');
       thisConnectAborter.onCompletion.whenComplete(retryHandler);
     }
 
@@ -152,6 +144,8 @@ final class ConnectionManager {
         // Is this still supposed to be active? (abort is only called within
         // mutex)
         if (!thisConnectAborter.aborted) {
+          db.logger.info('failure without abort, retrying');
+
           // We only change _abortActiveSync after disconnecting, which resets
           // the abort controller.
           assert(identical(_abortActiveSync, thisConnectAborter));
@@ -165,7 +159,10 @@ final class ConnectionManager {
       });
     });
 
+    db.logger.info('trying to acquire sync connect mutex');
     await _activeGroup.syncConnectMutex.lock(() async {
+      db.logger.info('has mutex, reconnecting...');
+
       // Disconnect a previous sync client, if one is active.
       await _abortCurrentSync();
       assert(_abortActiveSync == null);

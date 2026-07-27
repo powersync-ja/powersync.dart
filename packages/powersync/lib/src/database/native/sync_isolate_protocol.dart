@@ -179,7 +179,7 @@ final class RemoteMutexes {
     final completer = _inflightRequests[id] = Completer.sync();
     sendPort.sendAcquireMutex(name, id);
 
-    await completer.future;
+    await completer.future.timeout(const Duration(seconds: 10));
     return GrantedRemoteMutex._(this, id);
   }
 
