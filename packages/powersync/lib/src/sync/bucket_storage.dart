@@ -10,11 +10,8 @@ import 'package:sqlite3/common.dart';
 import '../crud.dart';
 import '../schema_logic.dart';
 
-class BucketStorage {
-  final SqliteConnection _internalDb;
-
-  BucketStorage(this._internalDb);
-
+@internal
+extension type BucketStorage(SqliteConnection _internalDb) {
   // Use only for read statements
   Future<ResultSet> select(String query,
       [List<Object?> parameters = const []]) async {
@@ -26,14 +23,16 @@ class BucketStorage {
     return rows.first['client_id'] as String;
   }
 
-  Future<bool> updateLocalTarget(
+  Future<bool> updateTargetCheckpointRequest(
       Future<String> Function() checkpointCallback) async {
-    final rs1 = await select(
-        'SELECT CAST(target_op AS TEXT) FROM ps_buckets WHERE name = \'\$local\' AND target_op = $maxOpId');
-    if (rs1.isEmpty) {
+    final currentTarget = await _internalDb
+        .writeTransaction((db) => db.targetCheckpointRequestId());
+
+    if (currentTarget != maxOpId) {
       // Nothing to update
       return false;
     }
+
     final rs = await select(
         'SELECT seq FROM main.sqlite_sequence WHERE name = \'ps_crud\'');
     if (rs.isEmpty) {
@@ -43,7 +42,7 @@ class BucketStorage {
     int seqBefore = rs.first['seq'] as int;
     var opId = await checkpointCallback();
 
-    return await writeTransaction((tx) async {
+    return await _internalDb.writeTransaction((tx) async {
       final anyData = await tx.execute('SELECT 1 FROM ps_crud LIMIT 1');
       if (anyData.isNotEmpty) {
         return false;
@@ -58,13 +57,9 @@ class BucketStorage {
         return false;
       }
 
-      await tx.execute(
-          "UPDATE ps_buckets SET target_op = CAST(? as INTEGER) WHERE name='\$local'",
-          [opId]);
-
+      await tx.targetCheckpointRequestId(opId);
       return true;
-      // Flush here - don't want to lose the write checkpoint updates.
-    }, flush: true);
+    });
   }
 
   Future<CrudEntry?> nextCrudItem() async {
@@ -95,50 +90,54 @@ class BucketStorage {
     }
     final last = all[all.length - 1];
     return CrudBatch(
-        crud: all,
-        haveMore: true,
-        complete: ({String? writeCheckpoint}) async {
-          await writeTransaction((tx) async {
-            await tx
-                .execute('DELETE FROM ps_crud WHERE id <= ?', [last.clientId]);
-            if (writeCheckpoint != null &&
-                (await tx.execute('SELECT 1 FROM ps_crud LIMIT 1')).isEmpty) {
-              await tx.execute(
-                  'UPDATE ps_buckets SET target_op = CAST(? as INTEGER) WHERE name=\'\$local\'',
-                  [writeCheckpoint]);
-            } else {
-              await tx.execute(
-                  'UPDATE ps_buckets SET target_op = $maxOpId WHERE name=\'\$local\'');
-            }
-            // Flush here - don't want to lose the write checkpoint updates.
-          }, flush: true);
-        });
-  }
-
-  Future<String> control(String op, [Object? payload]) async {
-    return await writeTransaction(
-      (tx) async {
-        final [row] =
-            await tx.execute('SELECT powersync_control(?, ?)', [op, payload]);
-        return row.columnAt(0) as String;
-      },
-      // We flush when powersync_control yields an instruction to do so.
-      flush: false,
+      crud: all,
+      haveMore: true,
+      complete: crudCompletionCallback(last.clientId),
     );
   }
 
-  Future<void> flushFileSystem() async {
-    // Noop outside of web.
+  Future<void> Function({String? writeCheckpoint}) crudCompletionCallback(
+      int lastClientId) {
+    return ({String? writeCheckpoint}) async {
+      await _internalDb.writeTransaction((db) async {
+        await db.execute('DELETE FROM ps_crud WHERE id <= ?', [lastClientId]);
+        if (writeCheckpoint != null &&
+            await db.getOptional('SELECT 1 FROM ps_crud LIMIT 1') == null) {
+          await db.targetCheckpointRequestId(writeCheckpoint);
+        } else {
+          await db.targetCheckpointRequestId(maxOpId);
+        }
+      });
+    };
   }
 
-  /// Note: The asynchronous nature of this is due to this needing a global
-  /// lock. The actual database operations are still synchronous, and it
-  /// is assumed that multiple functions on this instance won't be called
-  /// concurrently.
-  Future<T> writeTransaction<T>(
-      Future<T> Function(SqliteWriteContext tx) callback,
-      {Duration? lockTimeout,
-      required bool flush}) async {
-    return _internalDb.writeTransaction(callback, lockTimeout: lockTimeout);
+  Future<String> control(String op, [Object? payload]) async {
+    return await _internalDb.writeTransaction(
+      (tx) async {
+        return (await tx.control(op, payload))!;
+      },
+    );
+  }
+}
+
+extension PowerSyncControl on SqliteWriteContext {
+  Future<String?> control(String op, [Object? payload]) async {
+    final [row] = await execute(
+        'SELECT CAST(powersync_control(?, ?) AS TEXT)', [op, payload]);
+    return row.columnAt(0) as String?;
+  }
+
+  /// Reads the current target checkpoint request id, or updates it when an
+  /// [update] is supplied.
+  ///
+  /// The target checkpoint request is a checkpoint the sync service needs to
+  /// include in a `checkpoint_complete` message for new changes to be applied.
+  /// This guards against uploaded changes that have not yet been synced to
+  /// flicker if we apply an intermediate checkpoint.
+  ///
+  /// [maxOpId] can be used as a sentinel value in case there are pending
+  /// changes that have not yet been uploaded.
+  Future<String?> targetCheckpointRequestId([String? update]) async {
+    return await control('target_checkpoint_request_id', update);
   }
 }

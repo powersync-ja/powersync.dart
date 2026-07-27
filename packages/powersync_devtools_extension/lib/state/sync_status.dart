@@ -43,7 +43,13 @@ final isWaitingForCheckpoint = StreamProvider.autoDispose<bool>((ref) {
   if (db != null) {
     return db
         .watchUnthrottled(
-          r"SELECT 1 FROM ps_buckets WHERE target_op > last_op AND name = '$local'",
+          'SELECT 1 FROM ps_buckets WHERE '
+          '(SELECT value FROM ps_kv WHERE key = ?) > '
+          '(SELECT value FROM ps_kv WHERE key = ?)',
+          parameters: [
+            'target_checkpoint_request_id',
+            'last_seen_checkpoint_request_id',
+          ],
         )
         .map((rs) => rs.isNotEmpty);
   } else {

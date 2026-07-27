@@ -13,13 +13,6 @@ Future<void> updateSchema(SqliteWriteContext tx, Schema schema) async {
   await tx.execute('SELECT powersync_replace_schema(?)', [jsonEncode(schema)]);
 }
 
-Future<void> updateSchemaInIsolate(
-    SqliteConnection database, Schema schema) async {
-  await database.writeTransaction((tx) async {
-    await updateSchema(tx, schema);
-  });
-}
-
 String? friendlyTableName(String table) {
   const prefix1 = 'ps_data__';
   const prefix2 = 'ps_data_local__';
