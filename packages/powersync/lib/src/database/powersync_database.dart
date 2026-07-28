@@ -339,7 +339,9 @@ abstract base class PowerSyncDatabase extends SqliteConnection {
   ///
   /// Use [connect] to connect again.
   Future<void> disconnect() async {
-    await _connections.disconnect();
+    if (!database.closed) {
+      await _connections.disconnect();
+    }
   }
 
   /// Disconnect and clear the database.

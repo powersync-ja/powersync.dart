@@ -1,5 +1,6 @@
 ## 2.3.3
 
+- Restore the ability to call `disconnect()` on closed databases.
 - Internal: Update PowerSync SQLite core extension to latest version.
 
 ## 2.3.2
