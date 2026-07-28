@@ -43,7 +43,7 @@ final isWaitingForCheckpoint = StreamProvider.autoDispose<bool>((ref) {
   if (db != null) {
     return db
         .watchUnthrottled(
-          'SELECT 1 FROM ps_buckets WHERE '
+          'SELECT 1 WHERE '
           '(SELECT value FROM ps_kv WHERE key = ?) > '
           '(SELECT value FROM ps_kv WHERE key = ?)',
           parameters: [
