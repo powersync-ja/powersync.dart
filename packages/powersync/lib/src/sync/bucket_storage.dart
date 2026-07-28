@@ -26,7 +26,7 @@ extension type BucketStorage(SqliteConnection _internalDb) {
   Future<bool> updateTargetCheckpointRequest(
       Future<String> Function() checkpointCallback) async {
     final currentTarget = await _internalDb
-        .writeTransaction((db) => db.targetCheckpointRequestId());
+        .readTransaction((db) => db.targetCheckpointRequestId());
 
     if (currentTarget != maxOpId) {
       // Nothing to update
@@ -114,15 +114,15 @@ extension type BucketStorage(SqliteConnection _internalDb) {
   Future<String> control(String op, [Object? payload]) async {
     return await _internalDb.writeTransaction(
       (tx) async {
-        return (await tx.control(op, payload))!;
+        return (await tx._control(op, payload))!;
       },
     );
   }
 }
 
-extension PowerSyncControl on SqliteWriteContext {
-  Future<String?> control(String op, [Object? payload]) async {
-    final [row] = await execute(
+extension PowerSyncControl on SqliteReadContext {
+  Future<String?> _control(String op, [Object? payload]) async {
+    final row = await get(
         'SELECT CAST(powersync_control(?, ?) AS TEXT)', [op, payload]);
     return row.columnAt(0) as String?;
   }
@@ -139,6 +139,6 @@ extension PowerSyncControl on SqliteWriteContext {
   /// changes that have been uploaded, but for which no checkpoint request has
   /// been created yet.
   Future<String?> targetCheckpointRequestId([String? update]) async {
-    return await control('target_checkpoint_request_id', update);
+    return await _control('target_checkpoint_request_id', update);
   }
 }
