@@ -1,4 +1,4 @@
-## 2.3.3 (unreleased)
+## 2.3.3
 
 - Internal: Update PowerSync SQLite core extension to latest version.
 
