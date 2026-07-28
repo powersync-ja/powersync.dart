@@ -988,5 +988,16 @@ void _declareTests(String name, SyncOptions options, bool bson) {
         expect(database.currentStatus.anyError, isNull);
       });
     });
+
+    test('can call disconnect on closed database', () async {
+      // Regression test for https://github.com/powersync-ja/powersync.dart/issues/448,
+      // calling disconnect() on a closed database should be a harmless no-op.
+      final status = await waitForConnection();
+      await database.close();
+      await expectLater(status, emitsThrough(isSyncStatus(connected: false)));
+      await expectLater(status, emitsDone);
+
+      await database.disconnect();
+    });
   });
 }
