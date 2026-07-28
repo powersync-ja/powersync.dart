@@ -136,7 +136,8 @@ extension PowerSyncControl on SqliteWriteContext {
   /// flicker if we apply an intermediate checkpoint.
   ///
   /// [maxOpId] can be used as a sentinel value in case there are pending
-  /// changes that have not yet been uploaded.
+  /// changes that have been uploaded, but for which no checkpoint request has
+  /// been created yet.
   Future<String?> targetCheckpointRequestId([String? update]) async {
     return await control('target_checkpoint_request_id', update);
   }
