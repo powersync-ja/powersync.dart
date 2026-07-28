@@ -1,4 +1,4 @@
-From 4104d3cac5592cc19f5b37e63d8bb79a5cddcea1 Mon Sep 17 00:00:00 2001
+From 610f10a75550811c3c6b0f9a14fab1f240b2fce2 Mon Sep 17 00:00:00 2001
 From: Simon Binder <oss@simonbinder.eu>
 Date: Wed, 1 Apr 2026 15:50:52 +0200
 Subject: [PATCH] Link PowerSync core extension
@@ -9,7 +9,7 @@ Subject: [PATCH] Link PowerSync core extension
  2 files changed, 17 insertions(+), 1 deletion(-)
 
 diff --git a/sqlite3_wasm_build/src/CMakeLists.txt b/sqlite3_wasm_build/src/CMakeLists.txt
-index 52c3df1..bcaeae5 100644
+index 50a1c7e..010a3d2 100644
 --- a/sqlite3_wasm_build/src/CMakeLists.txt
 +++ b/sqlite3_wasm_build/src/CMakeLists.txt
 @@ -6,6 +6,7 @@ project(${PROJECT_NAME} LANGUAGES C)
@@ -18,9 +18,9 @@ index 52c3df1..bcaeae5 100644
  set(clang "clang" CACHE FILEPATH "Path to wasm-capable clang executable")
 +set(POWERSYNC_VERSION "0.4.12" CACHE STRING "PowerSync core version to use")
  
- include(FetchContent)
+ file(GLOB headers ${CMAKE_CURRENT_SOURCE_DIR}/*.h)
  
-@@ -25,6 +26,9 @@ FetchContent_Declare(
+@@ -27,6 +28,9 @@ FetchContent_Declare(
  FetchContent_MakeAvailable(sqlite3)
  FetchContent_MakeAvailable(sqlite3mc)
  
@@ -30,7 +30,7 @@ index 52c3df1..bcaeae5 100644
  # Generate symbols we need to export from the sqlite3.wasm build
  add_custom_command(
      OUTPUT required_symbols.txt
-@@ -64,6 +68,8 @@ macro(base_sqlite3_target name debug crypto)
+@@ -66,6 +70,8 @@ macro(base_sqlite3_target name debug crypto)
      list(APPEND sources "${sqlite3_SOURCE_DIR}/sqlite3.c")
    endif()
  
