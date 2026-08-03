@@ -62,17 +62,63 @@ class IsolateResult<T> {
 
 const abortedResponse = 'aborted';
 
+/// An exception or error that couldn't be sent across isolates and thus needs
+/// to be serialized.
+///
+/// For these errors, we send their [Object.toString] representation across
+/// isolates, along with a [Capability] that stays the same when sent across
+/// ports (and, on the isolate originally throwing the error, can be used to
+/// reconstruct the error).
+final class SerializedError {
+  /// A capability, owned by the isolate on which the error was thrown, that can
+  /// be used to reconstruct the original error.
+  final Capability token;
+
+  /// The original error message of the error.
+  final String message;
+
+  SerializedError._(this.token, this.message);
+
+  factory SerializedError(Object error) {
+    final cap = Capability();
+    _capturedErrors[cap] = error;
+
+    return SerializedError._(cap, error.toString());
+  }
+
+  @override
+  String toString() => message;
+
+  /// Attempts to recover the original error object that couldn't be serialized.
+  ///
+  /// When called on the isolate where the error was first thrown, this can
+  /// return the original error (instead of just having the message available).
+  Object? recoverError() {
+    return _capturedErrors[token];
+  }
+
+  // Weak map from capabilities created on this isolate to the error they
+  // represent.
+  static final _capturedErrors = Expando();
+}
+
 class PortCompleter<T> {
   final SendPort sendPort;
 
   PortCompleter(this.sendPort);
 
-  void complete([FutureOr<T>? value]) {
+  void complete([T? value]) {
     sendPort.send(PortResult.success(value));
   }
 
   void completeError(Object error, [StackTrace? stackTrace]) {
-    sendPort.send(PortResult<void>.error(error, stackTrace));
+    try {
+      sendPort.send(PortResult<void>.error(error, stackTrace));
+    } on Object {
+      // The error can't be sent across ports directly. Send a serialized copy
+      // of it instead.
+      sendPort.send(PortResult<void>.error(SerializedError(error), stackTrace));
+    }
   }
 
   Future<void> handle(FutureOr<T> Function() callback,

@@ -114,7 +114,25 @@ final class NativePowerSyncDatabase extends BasePowerSyncDatabase {
             await connector.uploadData(this);
           });
         case SyncIsolateToClientMessageType.status:
-          setStatus(payload as SyncStatus);
+          final original = payload as SyncStatus;
+          final recoveredDownloadError = switch (original.downloadError) {
+            final SerializedError e => e.recoverError(),
+            _ => null,
+          };
+          final recoveredUploadError = switch (original.uploadError) {
+            final SerializedError e => e.recoverError(),
+            _ => null,
+          };
+
+          if (recoveredUploadError != null || recoveredDownloadError != null) {
+            setStatus(payload.changeErrors(
+              uploadError: recoveredUploadError ?? payload.uploadError,
+              downloadError: recoveredDownloadError ?? payload.downloadError,
+            ));
+          } else {
+            setStatus(payload);
+          }
+
         case SyncIsolateToClientMessageType.log:
           LogRecord record = payload as LogRecord;
           logger.log(

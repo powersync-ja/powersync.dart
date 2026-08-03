@@ -84,5 +84,31 @@ void main() {
 
       await expectLater(result.future, throwsArgumentError);
     });
+
+    test('can serialize unsendable exceptions', () async {
+      final result = collection.createPending<int>();
+      final unsendable = _UnsendableException();
+      result.completer.completeError(unsendable);
+
+      final SerializedError caught;
+      try {
+        await result.future;
+        fail('Expected error');
+      } on SerializedError catch (e) {
+        caught = e;
+      }
+
+      // Should forward inner error.
+      expect(caught.toString(), 'unsendable error');
+      expect(caught.recoverError(), unsendable);
+    });
   });
+}
+
+class _UnsendableException implements Exception {
+  // ignore: unused_field
+  final Object _unsendable = Completer<void>();
+
+  @override
+  String toString() => 'unsendable error';
 }
