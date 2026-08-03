@@ -5,6 +5,7 @@ library;
 import 'dart:async';
 import 'dart:math';
 
+import 'package:async/async.dart';
 import 'package:logging/logging.dart';
 import 'package:powersync/powersync.dart';
 import 'package:test/test.dart';
@@ -239,5 +240,29 @@ void main() {
 
       server.close();
     });
+
+    test('can report unsendable errors in sync status', () async {
+      final pdb = await testUtils.setupPowerSync(path: path);
+      final exception = _UnsendableException();
+
+      final connector = TestConnector(() async => throw exception);
+      final statusChanges = StreamQueue(pdb.statusStream);
+      await pdb.connect(connector: connector);
+      await expectLater(
+          statusChanges,
+          emitsThrough(isA<SyncStatus>()
+              .having((e) => e.downloadError, 'downloadError', isNotNull)));
+      await statusChanges.cancel();
+
+      expect(pdb.currentStatus.downloadError, exception);
+    });
   });
+}
+
+class _UnsendableException implements Exception {
+  // ignore: unused_field
+  final Object _unsendable = Completer<void>();
+
+  @override
+  String toString() => 'fetchCredentials failed';
 }

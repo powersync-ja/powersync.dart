@@ -258,6 +258,22 @@ final class SyncStatus {
 extension InternalSyncStatusAccess on SyncStatus {
   List<CoreActiveStreamSubscription>? get internalSubscriptions =>
       _internalSubscriptions;
+
+  SyncStatus changeErrors(
+      {required Object? downloadError, required Object? uploadError}) {
+    return SyncStatus(
+      connected: connected,
+      connecting: connecting,
+      lastSyncedAt: lastSyncedAt,
+      downloadProgress: downloadProgress,
+      downloading: downloading,
+      uploading: uploading,
+      downloadError: downloadError,
+      uploadError: uploadError,
+      priorityStatusEntries: priorityStatusEntries,
+      streamSubscriptions: _internalSubscriptions,
+    );
+  }
 }
 
 /// Current information about a [SyncStream] that the sync client is subscribed

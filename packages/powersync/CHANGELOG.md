@@ -1,6 +1,7 @@
 ## 2.3.4 (unreleased)
 
 - Reduce log noise from attachments service ([#408](https://github.com/powersync-ja/powersync.dart/issues/408)).
+- Fix errors that can't be sent across isolates disrupting the sync isolate.
 
 ## 2.3.3
 
