@@ -256,6 +256,35 @@ void main() {
 
       expect(pdb.currentStatus.downloadError, exception);
     });
+
+    test('recovers from stuck fetchCredentials call', () async {
+      final pdb = await testUtils.setupPowerSync(path: path);
+      final server = await createServer();
+      final statusChanges = StreamQueue(pdb.statusStream);
+
+      // First, connect with a broken connector that never completes its
+      // fetchCredentials call.
+      await pdb.connect(
+        connector:
+            TestConnector(() => Completer<PowerSyncCredentials>().future),
+      );
+      await expectLater(
+          statusChanges,
+          emitsThrough(isA<SyncStatus>()
+              .having((e) => e.connecting, 'connecting', isTrue)));
+
+      // Disconnect in this stuck state, then reconnect with a proper connector.
+      await pdb.disconnect();
+      await pdb.connect(
+          connector: TestConnector(() async =>
+              PowerSyncCredentials(endpoint: server.endpoint, token: 'token')));
+
+      await expectLater(
+          statusChanges,
+          emitsThrough(isA<SyncStatus>()
+              .having((e) => e.connected, 'connected', isTrue)));
+      await statusChanges.cancel();
+    });
   });
 }
 
