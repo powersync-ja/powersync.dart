@@ -233,11 +233,14 @@ Future<void> _syncIsolate(_PowerSyncDatabaseIsolateArgs args) async {
   Future<void> shutdown() {
     if (!shutdownCompleter.isCompleted) {
       shutdownCompleter.complete(Future(() async {
+        // Closing this makes pending requests complete with an exception. Good,
+        // we only use this to acquire mutexes and interact with backend
+        // connectors, and we're about to abort that anyway.
+        results.close();
+
         await openedStreamingSync?.abort();
         await database.close();
-
         rPort.close();
-        results.close();
       }));
     }
 
