@@ -1,6 +1,6 @@
 // ignore_for_file: avoid_print
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import './utils/constants.dart';
 import './pages/splash_page.dart';
 import './powersync.dart';

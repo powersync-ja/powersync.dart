@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:sqlite3/common.dart' as sqlite;
 
 import './resultset_table.dart';

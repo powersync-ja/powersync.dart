@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:powersync_django_todolist_demo/api_client.dart';
 import 'package:powersync_django_todolist_demo/app_config.dart';
 import 'package:powersync_django_todolist_demo/powersync.dart';

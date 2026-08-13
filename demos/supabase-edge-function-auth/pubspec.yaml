@@ -18,6 +18,7 @@ dependencies:
   logging: ^1.2.0
   sqlite_async: ^0.14.0
   universal_io: ^2.2.2
+  material_ui: any
 
 dev_dependencies:
   flutter_test:

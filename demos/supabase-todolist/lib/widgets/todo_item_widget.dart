@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:powersync_flutter_demo/app_config.dart';
 import 'package:powersync_flutter_demo/attachments/photo_widget.dart';
 import 'package:powersync_flutter_demo/attachments/queue.dart';

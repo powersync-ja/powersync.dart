@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:camera/camera.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:logging/logging.dart';
 import 'package:powersync_flutter_demo/attachments/queue.dart';
 

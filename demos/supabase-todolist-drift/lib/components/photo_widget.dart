@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:auto_route/auto_route.dart';
 import 'package:camera/camera.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:logging/logging.dart';
 import 'package:powersync_attachments_helper/powersync_attachments_helper.dart';
