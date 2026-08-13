@@ -1,5 +1,5 @@
 import 'package:devtools_extensions/devtools_extensions.dart';
-import 'package:material_ui/material_ui.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:powersync_devtools_extension/ui/appbar.dart';
 
