@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:powersync/powersync.dart' hide Column;
 import 'package:powersync_flutter_demo/powersync.dart';
 

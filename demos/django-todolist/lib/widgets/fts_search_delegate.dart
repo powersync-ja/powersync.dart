@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:logging/logging.dart';
 import 'package:powersync_django_todolist_demo/fts_helpers.dart' as fts_helpers;
 import 'package:powersync_django_todolist_demo/models/todo_list.dart';

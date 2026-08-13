@@ -1,5 +1,5 @@
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:logging/logging.dart';
 import 'package:powersync_flutter_supabase_todolist_optional_sync_demo/app_config.dart';
 import 'package:powersync_flutter_supabase_todolist_optional_sync_demo/models/schema.dart';

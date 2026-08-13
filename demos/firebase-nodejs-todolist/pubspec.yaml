@@ -20,6 +20,7 @@ dependencies:
   firebase_core: ^4.6.0
   firebase_auth: ^6.3.0
   http: ^1.2.2
+  material_ui: ^1.0.0
 
 dev_dependencies:
   flutter_test:

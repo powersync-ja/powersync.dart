@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:powersync_flutter_supabase_todolist_optional_sync_demo/powersync.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
