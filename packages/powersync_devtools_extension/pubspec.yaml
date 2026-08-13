@@ -23,7 +23,6 @@ dependencies:
   powersync:
   hooks_riverpod: ^3.3.1
   flutter_hooks: ^0.21.3+1
-  material_ui: any
 
 dev_dependencies:
   flutter_test:
