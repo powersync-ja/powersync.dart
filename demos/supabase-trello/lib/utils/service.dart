@@ -557,8 +557,7 @@ mixin Service {
   }
 
   Future<void> uploadFile(Cardlist crd) async {
-    FilePickerResult? result =
-        await FilePicker.platform.pickFiles(allowMultiple: false);
+    FilePickerResult? result = await FilePicker.pickFiles(allowMultiple: false);
     if (result != null) {
       addAttachment(result.files[0].path ?? "", crd);
     }

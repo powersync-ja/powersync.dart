@@ -40,7 +40,7 @@ abstract class _$ListsNotifier
   Stream<List<ListItemWithStats>> build();
   @$mustCallSuper
   @override
-  void runBuild() {
+  WhenComplete runBuild() {
     final ref = this.ref
         as $Ref<AsyncValue<List<ListItemWithStats>>, List<ListItemWithStats>>;
     final element = ref.element as $ClassProviderElement<
@@ -49,6 +49,6 @@ abstract class _$ListsNotifier
         AsyncValue<List<ListItemWithStats>>,
         Object?,
         Object?>;
-    element.handleCreate(ref, build);
+    return element.handleCreate(ref, build);
   }
 }

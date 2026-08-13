@@ -24,7 +24,7 @@ workspace:
 
 dependencies:
   lints: ^6.1.0
-  melos: ^7.5.0
+  melos: ^8.2.2
   test: ^1.25.0
   path: ^1.0.0
   yaml: ^3.1.2
@@ -35,12 +35,6 @@ hooks:
       # To run PowerSync encryption tests, replace this with sqlite3mc or sqlcipher and run
       # dart test -P encryption
       source: sqlite3
-
-dependency_overrides:
-  # The only drift version with support for version 3.x of the sqlite3 package
-  # needs this analyzer, but riverpod doesn't support it yet:
-  # https://github.com/rrousselGit/riverpod/pull/4680
-  analyzer: ^10.0.0
 
 melos:
   repository: https://github.com/powersync-ja/powersync.dart
