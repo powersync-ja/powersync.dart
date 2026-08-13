@@ -82,14 +82,14 @@ abstract class _$ItemsNotifier extends $StreamNotifier<List<TodoItem>> {
   );
   @$mustCallSuper
   @override
-  void runBuild() {
+  WhenComplete runBuild() {
     final ref = this.ref as $Ref<AsyncValue<List<TodoItem>>, List<TodoItem>>;
     final element = ref.element as $ClassProviderElement<
         AnyNotifier<AsyncValue<List<TodoItem>>, List<TodoItem>>,
         AsyncValue<List<TodoItem>>,
         Object?,
         Object?>;
-    element.handleCreate(
+    return element.handleCreate(
         ref,
         () => build(
               _$args,

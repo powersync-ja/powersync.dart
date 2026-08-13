@@ -41,13 +41,7 @@ final class $$TodoItemsTableReferences extends i0
   static i1.$ListItemsTable _listIdTable(i0.GeneratedDatabase db) =>
       i3.ReadDatabaseContainer(db)
           .resultSet<i1.$ListItemsTable>('lists')
-          .createAlias(i0.$_aliasNameGenerator(
-              i3.ReadDatabaseContainer(db)
-                  .resultSet<i1.$TodoItemsTable>('todos')
-                  .listId,
-              i3.ReadDatabaseContainer(db)
-                  .resultSet<i1.$ListItemsTable>('lists')
-                  .id));
+          .createAlias('todos__list_id__lists__id');
 
   i1.$$ListItemsTableProcessedTableManager get listId {
     final $_column = $_itemColumn<String>('list_id')!;
@@ -395,13 +389,7 @@ final class $$ListItemsTableReferences extends i0
           i0.MultiTypedResultKey.fromTable(
               i3.ReadDatabaseContainer(db)
                   .resultSet<i1.$TodoItemsTable>('todos'),
-              aliasName: i0.$_aliasNameGenerator(
-                  i3.ReadDatabaseContainer(db)
-                      .resultSet<i1.$ListItemsTable>('lists')
-                      .id,
-                  i3.ReadDatabaseContainer(db)
-                      .resultSet<i1.$TodoItemsTable>('todos')
-                      .listId));
+              aliasName: 'lists__id__todos__list_id');
 
   i1.$$TodoItemsTableProcessedTableManager get todoItemsRefs {
     final manager = i1

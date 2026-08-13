@@ -73,19 +73,18 @@ final class AttachmentsQueueTable extends Table {
   AttachmentsQueueTable(
       {String attachmentsQueueTableName = defaultAttachmentsQueueTableName,
       List<Column> additionalColumns = const [],
-      List<Index> indexes = const [],
-      String? viewName})
+      super.indexes,
+      super.viewName})
       : super.localOnly(
-            attachmentsQueueTableName,
-            [
-              const Column.text('filename'),
-              const Column.text('local_uri'),
-              const Column.integer('timestamp'),
-              const Column.integer('size'),
-              const Column.text('media_type'),
-              const Column.integer('state'),
-              ...additionalColumns,
-            ],
-            viewName: viewName,
-            indexes: indexes);
+          attachmentsQueueTableName,
+          [
+            const Column.text('filename'),
+            const Column.text('local_uri'),
+            const Column.integer('timestamp'),
+            const Column.integer('size'),
+            const Column.text('media_type'),
+            const Column.integer('state'),
+            ...additionalColumns,
+          ],
+        );
 }
