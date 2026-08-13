@@ -74,3 +74,71 @@ Widget _getStatusIcon(SyncStatus status) {
     return _makeIcon('Connected', Icons.cloud_queue);
   }
 }
+
+/// A port of `auto_route`'s` `AutoLeadingButton` that works with the standalone
+/// `material_ui` package.
+class AutoLeadingButton extends StatefulWidget {
+  const AutoLeadingButton({super.key});
+
+  @override
+  State<AutoLeadingButton> createState() => _AutoLeadingButtonState();
+}
+
+class _AutoLeadingButtonState extends State<AutoLeadingButton> {
+  late final PagelessRoutesObserver _pagelessRoutesObserver;
+
+  @override
+  void initState() {
+    super.initState();
+    _pagelessRoutesObserver = AutoRouter.of(context).pagelessRoutesObserver;
+    _pagelessRoutesObserver.addListener(_handleRebuild);
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+    _pagelessRoutesObserver.removeListener(_handleRebuild);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scope = RouterScope.of(context, watch: true);
+    Widget? leading;
+    if (scope.controller.canPop()) {
+      final topPage = scope.controller.topPage;
+      final useCloseButton = topPage?.fullscreenDialog ?? false;
+      leading = useCloseButton
+          ? CloseButton(
+              key: const ValueKey(LeadingType.close),
+              onPressed: scope.controller.maybePopTop,
+            )
+          : BackButton(
+              key: const ValueKey(LeadingType.back),
+              onPressed: scope.controller.maybePopTop,
+            );
+    }
+    final ScaffoldState? scaffold = Scaffold.maybeOf(context);
+    if (scaffold?.hasDrawer == true) {
+      leading = IconButton(
+        key: const ValueKey(LeadingType.drawer),
+        icon: const Icon(Icons.menu),
+        iconSize: Theme.of(context).iconTheme.size ?? 24,
+        onPressed: _handleDrawerButton,
+        tooltip: MaterialLocalizations.of(context).openAppDrawerTooltip,
+      );
+    }
+
+    return leading ??
+        const SizedBox.shrink(
+          key: ValueKey(LeadingType.noLeading),
+        );
+  }
+
+  void _handleDrawerButton() {
+    Scaffold.of(context).openDrawer();
+  }
+
+  void _handleRebuild() {
+    setState(() {});
+  }
+}
