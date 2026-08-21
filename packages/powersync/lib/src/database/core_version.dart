@@ -52,7 +52,7 @@ extension type const PowerSyncCoreVersion((int, int, int) _tuple) {
       throw SqliteException(
           extendedResultCode: 1,
           message:
-              'Unsupported powersync extension version. Need >=0.2.0 <1.0.0, got: $version. Details: $e');
+              'Unsupported powersync extension version. Need >=$minimum <$maximumExclusive, got: $version. Details: $e');
     }
   }
 
@@ -63,9 +63,9 @@ extension type const PowerSyncCoreVersion((int, int, int) _tuple) {
   //
   //  - ../setup/native.dart
   //  - packages/sqlite3_wasm_build/build.sh
-  static const minimum = PowerSyncCoreVersion((0, 4, 13));
+  static const minimum = PowerSyncCoreVersion((0, 5, 3));
 
   /// The first version of the core extensions that this version of the Dart
   /// SDK doesn't support.
-  static const maximumExclusive = PowerSyncCoreVersion((1, 0, 0));
+  static const maximumExclusive = PowerSyncCoreVersion((0, 6, 0));
 }
