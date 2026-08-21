@@ -45,28 +45,40 @@ Schema makeSchema(bool online) {
   }
 
   final tables = [
-    Table('assets', [
-      Column.text('created_at'),
-      Column.text('make'),
-      Column.text('model'),
-      Column.text('serial_number'),
-      Column.integer('quantity'),
-      Column.text('user_id'),
-      Column.text('customer_id'),
-      Column.text('description'),
-    ], indexes: [
-      Index('makemodel', [IndexedColumn('make'), IndexedColumn('model')])
-    ]),
+    Table(
+      'assets',
+      [
+        Column.text('created_at'),
+        Column.text('make'),
+        Column.text('model'),
+        Column.text('serial_number'),
+        Column.integer('quantity'),
+        Column.text('user_id'),
+        Column.text('customer_id'),
+        Column.text('description'),
+      ],
+      indexes: [
+        Index('makemodel', [IndexedColumn('make'), IndexedColumn('model')]),
+      ],
+    ),
     Table('customers', [Column.text('name'), Column.text('email')]),
   ];
 
   return Schema([
     for (var table in tables)
-      Table(table.name, table.columns,
-          indexes: table.indexes, viewName: onlineName(table.name)),
+      Table(
+        table.name,
+        table.columns,
+        indexes: table.indexes,
+        viewName: onlineName(table.name),
+      ),
     for (var table in tables)
-      Table.localOnly('local_${table.name}', table.columns,
-          indexes: table.indexes, viewName: localName(table.name))
+      Table.localOnly(
+        'local_${table.name}',
+        table.columns,
+        indexes: table.indexes,
+        viewName: localName(table.name),
+      ),
   ]);
 }
 
@@ -82,19 +94,27 @@ void main() {
     test('Switch from offline-only to online', () async {
       // Start with "offline-only" schema.
       // This does not record any operations to the crud queue.
-      final db =
-          await testUtils.setupPowerSync(path: path, schema: makeSchema(false));
+      final db = await testUtils.setupPowerSync(
+        path: path,
+        schema: makeSchema(false),
+      );
 
-      await db.execute('INSERT INTO customers(id, name, email) VALUES(?, ?, ?)',
-          [customerId, 'test customer', 'test@example.org']);
       await db.execute(
-          'INSERT INTO assets(id, description, customer_id) VALUES(?, ?, ?)',
-          [assetId, 'test', customerId]);
-      await db
-          .execute('UPDATE assets SET description = description || ?', ['.']);
+        'INSERT INTO customers(id, name, email) VALUES(?, ?, ?)',
+        [customerId, 'test customer', 'test@example.org'],
+      );
+      await db.execute(
+        'INSERT INTO assets(id, description, customer_id) VALUES(?, ?, ?)',
+        [assetId, 'test', customerId],
+      );
+      await db.execute('UPDATE assets SET description = description || ?', [
+        '.',
+      ]);
 
       expect(
-          await db.getAll('SELECT data FROM ps_crud ORDER BY id'), equals([]));
+        await db.getAll('SELECT data FROM ps_crud ORDER BY id'),
+        equals([]),
+      );
 
       // Now switch to the "online" schema
       await db.updateSchema(makeSchema(true));
@@ -109,55 +129,65 @@ void main() {
         // This records each operation to the crud queue.
         await tx.execute('INSERT INTO customers SELECT * FROM local_customers');
         await tx.execute(
-            'INSERT INTO assets(id, description, customer_id, user_id) SELECT id, description, customer_id, ? FROM local_assets',
-            [userId]);
+          'INSERT INTO assets(id, description, customer_id, user_id) SELECT id, description, customer_id, ? FROM local_assets',
+          [userId],
+        );
 
         // Delete the "offline-only" data.
         await tx.execute('DELETE FROM local_customers');
         await tx.execute('DELETE FROM local_assets');
       });
 
-      final crud = (await db.getAll('SELECT data FROM ps_crud ORDER BY id'))
-          .map((d) => jsonDecode(d['data'] as String))
-          .toList();
+      final crud = (await db.getAll(
+        'SELECT data FROM ps_crud ORDER BY id',
+      )).map((d) => jsonDecode(d['data'] as String)).toList();
       expect(
-          crud,
-          equals([
-            {
-              "op": "PUT",
-              "type": "customers",
-              "id": customerId,
-              "data": {"email": "test@example.org", "name": "test customer"}
+        crud,
+        equals([
+          {
+            "op": "PUT",
+            "type": "customers",
+            "id": customerId,
+            "data": {"email": "test@example.org", "name": "test customer"},
+          },
+          {
+            "op": "PUT",
+            "type": "assets",
+            "id": assetId,
+            "data": {
+              "user_id": userId,
+              "customer_id": customerId,
+              "description": "test.",
             },
-            {
-              "op": "PUT",
-              "type": "assets",
-              "id": assetId,
-              "data": {
-                "user_id": userId,
-                "customer_id": customerId,
-                "description": "test."
-              }
-            }
-          ]));
+          },
+        ]),
+      );
     });
 
     test('Watch correct table after switching schema', () async {
       // Start with "offline-only" schema.
       // This does not record any operations to the crud queue.
-      var db =
-          await testUtils.setupPowerSync(path: path, schema: makeSchema(false));
+      var db = await testUtils.setupPowerSync(
+        path: path,
+        schema: makeSchema(false),
+      );
 
-      final customerWatchTables =
-          await getSourceTables(db, 'SELECT * FROM customers');
+      final customerWatchTables = await getSourceTables(
+        db,
+        'SELECT * FROM customers',
+      );
 
       expect(
-          customerWatchTables.contains('ps_data_local__local_customers'), true);
+        customerWatchTables.contains('ps_data_local__local_customers'),
+        true,
+      );
       await db.updateSchema(makeSchema(true));
       await db.refreshSchema();
 
-      final onlineCustomerWatchTables =
-          await getSourceTables(db, 'SELECT * FROM customers');
+      final onlineCustomerWatchTables = await getSourceTables(
+        db,
+        'SELECT * FROM customers',
+      );
 
       expect(onlineCustomerWatchTables.contains('ps_data__customers'), true);
     });

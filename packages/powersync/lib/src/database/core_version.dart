@@ -10,9 +10,9 @@ extension type const PowerSyncCoreVersion((int, int, int) _tuple) {
   int compareTo(PowerSyncCoreVersion other) {
     return switch (major.compareTo(other.major)) {
       0 => switch (minor.compareTo(other.minor)) {
-          0 => patch.compareTo(other.patch),
-          var other => other,
-        },
+        0 => patch.compareTo(other.patch),
+        var other => other,
+      },
       var other => other,
     };
   }
@@ -44,15 +44,19 @@ extension type const PowerSyncCoreVersion((int, int, int) _tuple) {
   /// a [PowerSyncCoreVersion].
   static PowerSyncCoreVersion parse(String version) {
     try {
-      final [major, minor, patch] =
-          version.split(RegExp(r'[./]')).take(3).map(int.parse).toList();
+      final [major, minor, patch] = version
+          .split(RegExp(r'[./]'))
+          .take(3)
+          .map(int.parse)
+          .toList();
 
       return PowerSyncCoreVersion((major, minor, patch));
     } catch (e) {
       throw SqliteException(
-          extendedResultCode: 1,
-          message:
-              'Unsupported powersync extension version. Need >=$minimum <$maximumExclusive, got: $version. Details: $e');
+        extendedResultCode: 1,
+        message:
+            'Unsupported powersync extension version. Need >=$minimum <$maximumExclusive, got: $version. Details: $e',
+      );
     }
   }
 

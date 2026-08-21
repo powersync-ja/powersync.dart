@@ -23,10 +23,11 @@ void main() {
         // A blank endpoint will fail, but that's okay for this test
         final endpoint = '';
         return PowerSyncCredentials(
-            endpoint: endpoint,
-            token: 'token',
-            userId: 'u1',
-            expiresAt: DateTime.now());
+          endpoint: endpoint,
+          token: 'token',
+          userId: 'u1',
+          expiresAt: DateTime.now(),
+        );
       }
 
       // ignore: deprecated_member_use_from_same_package
@@ -46,8 +47,9 @@ void main() {
       final db = await testUtils.setupPowerSync(path: path, schema: testSchema);
 
       await db.execute(
-          'INSERT INTO customers (id, name, email) VALUES(uuid(), ?, ?)',
-          ['Steven', 'steven@journeyapps.com']);
+        'INSERT INTO customers (id, name, email) VALUES(uuid(), ?, ?)',
+        ['Steven', 'steven@journeyapps.com'],
+      );
 
       final getCustomersQuery = 'SELECT * from customers';
       final initialCustomers = await db.getAll(getCustomersQuery);

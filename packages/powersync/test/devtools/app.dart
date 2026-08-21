@@ -17,7 +17,7 @@ void main(List<String> args) async {
   }
 
   const schema = Schema([
-    Table('users', [Column.text('name')])
+    Table('users', [Column.text('name')]),
   ]);
   final database = PowerSyncDatabase(schema: schema, path: databasePath);
   await database.initialize();

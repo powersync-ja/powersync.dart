@@ -15,14 +15,16 @@ Future<void> hybridMain(StreamChannel<Object?> channel) async {
 
   if (!(await File(sqliteOutputPath).exists())) {
     throw AssertionError(
-        'sqlite3.wasm file should be present in the powersync/assets folder');
+      'sqlite3.wasm file should be present in the powersync/assets folder',
+    );
   }
 
   final workerOutputPath = p.join(assetsDirectory, 'powersync_db.worker.js');
 
   if (!(await File(workerOutputPath).exists())) {
     throw AssertionError(
-        'powersync_db.worker.js file should be present in the powersync/assets folder');
+      'powersync_db.worker.js file should be present in the powersync/assets folder',
+    );
   }
 
   final server = await HttpServer.bind('localhost', 0);

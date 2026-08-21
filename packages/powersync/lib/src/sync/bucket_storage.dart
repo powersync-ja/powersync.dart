@@ -13,8 +13,10 @@ import '../schema_logic.dart';
 @internal
 extension type BucketStorage(SqliteConnection _internalDb) {
   // Use only for read statements
-  Future<ResultSet> select(String query,
-      [List<Object?> parameters = const []]) async {
+  Future<ResultSet> select(
+    String query, [
+    List<Object?> parameters = const [],
+  ]) async {
     return await _internalDb.getAll(query, parameters);
   }
 
@@ -24,9 +26,11 @@ extension type BucketStorage(SqliteConnection _internalDb) {
   }
 
   Future<bool> updateTargetCheckpointRequest(
-      Future<String> Function() checkpointCallback) async {
-    final currentTarget = await _internalDb
-        .readTransaction((db) => db.targetCheckpointRequestId());
+    Future<String> Function() checkpointCallback,
+  ) async {
+    final currentTarget = await _internalDb.readTransaction(
+      (db) => db.targetCheckpointRequestId(),
+    );
 
     if (currentTarget != maxOpId) {
       // Nothing to update
@@ -34,7 +38,8 @@ extension type BucketStorage(SqliteConnection _internalDb) {
     }
 
     final rs = await select(
-        'SELECT seq FROM main.sqlite_sequence WHERE name = \'ps_crud\'');
+      'SELECT seq FROM main.sqlite_sequence WHERE name = \'ps_crud\'',
+    );
     if (rs.isEmpty) {
       // Nothing to update
       return false;
@@ -48,7 +53,8 @@ extension type BucketStorage(SqliteConnection _internalDb) {
         return false;
       }
       final rs = await tx.execute(
-          'SELECT seq FROM main.sqlite_sequence WHERE name = \'ps_crud\'');
+        'SELECT seq FROM main.sqlite_sequence WHERE name = \'ps_crud\'',
+      );
       assert(rs.isNotEmpty);
 
       int seqAfter = rs.first['seq'] as int;
@@ -63,8 +69,9 @@ extension type BucketStorage(SqliteConnection _internalDb) {
   }
 
   Future<CrudEntry?> nextCrudItem() async {
-    var next = await _internalDb
-        .getOptional('SELECT * FROM ps_crud ORDER BY id ASC LIMIT 1');
+    var next = await _internalDb.getOptional(
+      'SELECT * FROM ps_crud ORDER BY id ASC LIMIT 1',
+    );
     return next == null ? null : CrudEntry.fromRow(next);
   }
 
@@ -79,8 +86,9 @@ extension type BucketStorage(SqliteConnection _internalDb) {
       return null;
     }
 
-    final rows =
-        await select('SELECT * FROM ps_crud ORDER BY id ASC LIMIT ?', [limit]);
+    final rows = await select('SELECT * FROM ps_crud ORDER BY id ASC LIMIT ?', [
+      limit,
+    ]);
     List<CrudEntry> all = [];
     for (var row in rows) {
       all.add(CrudEntry.fromRow(row));
@@ -97,7 +105,8 @@ extension type BucketStorage(SqliteConnection _internalDb) {
   }
 
   Future<void> Function({String? writeCheckpoint}) crudCompletionCallback(
-      int lastClientId) {
+    int lastClientId,
+  ) {
     return ({String? writeCheckpoint}) async {
       await _internalDb.writeTransaction((db) async {
         await db.execute('DELETE FROM ps_crud WHERE id <= ?', [lastClientId]);
@@ -112,18 +121,18 @@ extension type BucketStorage(SqliteConnection _internalDb) {
   }
 
   Future<String> control(String op, [Object? payload]) async {
-    return await _internalDb.writeTransaction(
-      (tx) async {
-        return (await tx._control(op, payload))!;
-      },
-    );
+    return await _internalDb.writeTransaction((tx) async {
+      return (await tx._control(op, payload))!;
+    });
   }
 }
 
 extension PowerSyncControl on SqliteReadContext {
   Future<String?> _control(String op, [Object? payload]) async {
-    final row = await get(
-        'SELECT CAST(powersync_control(?, ?) AS TEXT)', [op, payload]);
+    final row = await get('SELECT CAST(powersync_control(?, ?) AS TEXT)', [
+      op,
+      payload,
+    ]);
     return row.columnAt(0) as String?;
   }
 

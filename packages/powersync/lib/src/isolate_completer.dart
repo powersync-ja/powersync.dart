@@ -121,8 +121,10 @@ class PortCompleter<T> {
     }
   }
 
-  Future<void> handle(FutureOr<T> Function() callback,
-      {bool ignoreStackTrace = false}) async {
+  Future<void> handle(
+    FutureOr<T> Function() callback, {
+    bool ignoreStackTrace = false,
+  }) async {
     Isolate.current.addOnExitListener(sendPort, response: abortedResponse);
 
     try {
@@ -147,14 +149,14 @@ class PortResult<T> {
   final StackTrace? stackTrace;
 
   const PortResult.success(T result)
-      : success = true,
-        _error = null,
-        stackTrace = null,
-        _result = result;
+    : success = true,
+      _error = null,
+      stackTrace = null,
+      _result = result;
   const PortResult.error(Object error, [this.stackTrace])
-      : success = false,
-        _result = null,
-        _error = error;
+    : success = false,
+      _result = null,
+      _error = error;
 
   void _applyTo(Completer<dynamic> completer) {
     if (success) {

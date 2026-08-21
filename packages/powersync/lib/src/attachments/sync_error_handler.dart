@@ -8,11 +8,12 @@ import 'attachment.dart';
 /// It returns `true` if the operation should be retried.
 ///
 /// {@category attachments}
-typedef AttachmentExceptionHandler = Future<bool> Function(
-  Attachment attachment,
-  Object exception,
-  StackTrace stackTrace,
-);
+typedef AttachmentExceptionHandler =
+    Future<bool> Function(
+      Attachment attachment,
+      Object exception,
+      StackTrace stackTrace,
+    );
 
 /// Interface for handling errors during attachment operations.
 /// Implementations determine whether failed operations should be retried.
@@ -74,29 +75,38 @@ final class _FunctionBasedErrorHandler implements AttachmentErrorHandler {
   final AttachmentExceptionHandler _onDownloadError;
   final AttachmentExceptionHandler _onUploadError;
 
-  const _FunctionBasedErrorHandler(
-      {required AttachmentExceptionHandler onDeleteError,
-      required AttachmentExceptionHandler onDownloadError,
-      required AttachmentExceptionHandler onUploadError})
-      : _onDeleteError = onDeleteError,
-        _onDownloadError = onDownloadError,
-        _onUploadError = onUploadError;
+  const _FunctionBasedErrorHandler({
+    required AttachmentExceptionHandler onDeleteError,
+    required AttachmentExceptionHandler onDownloadError,
+    required AttachmentExceptionHandler onUploadError,
+  }) : _onDeleteError = onDeleteError,
+       _onDownloadError = onDownloadError,
+       _onUploadError = onUploadError;
 
   @override
   Future<bool> onDeleteError(
-      Attachment attachment, Object exception, StackTrace stackTrace) {
+    Attachment attachment,
+    Object exception,
+    StackTrace stackTrace,
+  ) {
     return _onDeleteError(attachment, exception, stackTrace);
   }
 
   @override
   Future<bool> onDownloadError(
-      Attachment attachment, Object exception, StackTrace stackTrace) {
+    Attachment attachment,
+    Object exception,
+    StackTrace stackTrace,
+  ) {
     return _onDownloadError(attachment, exception, stackTrace);
   }
 
   @override
   Future<bool> onUploadError(
-      Attachment attachment, Object exception, StackTrace stackTrace) {
+    Attachment attachment,
+    Object exception,
+    StackTrace stackTrace,
+  ) {
     return _onUploadError(attachment, exception, stackTrace);
   }
 }

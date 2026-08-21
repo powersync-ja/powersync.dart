@@ -11,18 +11,22 @@ import 'utils/test_utils_impl.dart';
 final testUtils = TestUtils();
 
 const testSchema = Schema([
-  Table('assets', [
-    Column.text('created_at'),
-    Column.text('make'),
-    Column.text('model'),
-    Column.text('serial_number'),
-    Column.integer('quantity'),
-    Column.text('user_id'),
-    Column.text('customer_id'),
-    Column.text('description'),
-  ], indexes: [
-    Index('makemodel', [IndexedColumn('make'), IndexedColumn('model')])
-  ]),
+  Table(
+    'assets',
+    [
+      Column.text('created_at'),
+      Column.text('make'),
+      Column.text('model'),
+      Column.text('serial_number'),
+      Column.integer('quantity'),
+      Column.text('user_id'),
+      Column.text('customer_id'),
+      Column.text('description'),
+    ],
+    indexes: [
+      Index('makemodel', [IndexedColumn('make'), IndexedColumn('model')]),
+    ],
+  ),
   Table('customers', [Column.text('name'), Column.text('email')]),
   Table('other_customers', [Column.text('name'), Column.text('email')]),
 ]);
@@ -37,29 +41,36 @@ void main() {
     });
 
     test('watch', () async {
-      final powersync =
-          await testUtils.setupPowerSync(path: path, schema: testSchema);
+      final powersync = await testUtils.setupPowerSync(
+        path: path,
+        schema: testSchema,
+      );
 
       const baseTime = 20;
 
       const throttleDuration = Duration(milliseconds: baseTime);
 
       final stream = powersync.watch(
-          'SELECT count() AS count FROM assets INNER JOIN customers ON customers.id = assets.customer_id',
-          throttle: throttleDuration);
+        'SELECT count() AS count FROM assets INNER JOIN customers ON customers.id = assets.customer_id',
+        throttle: throttleDuration,
+      );
 
       var id = uuid.v4();
-      await powersync.execute(
-          'INSERT INTO customers(id, name) VALUES (?, ?)', [id, 'a customer']);
+      await powersync.execute('INSERT INTO customers(id, name) VALUES (?, ?)', [
+        id,
+        'a customer',
+      ]);
 
       var done = false;
       Future<void> inserts() async {
         while (!done) {
           await powersync.execute(
-              'INSERT INTO assets(id, make, customer_id) VALUES (uuid(), ?, ?)',
-              ['test', id]);
+            'INSERT INTO assets(id, make, customer_id) VALUES (uuid(), ?, ?)',
+            ['test', id],
+          );
           await Future<void>.delayed(
-              Duration(milliseconds: Random().nextInt(baseTime * 2)));
+            Duration(milliseconds: Random().nextInt(baseTime * 2)),
+          );
         }
       }
 
@@ -86,8 +97,10 @@ void main() {
 
         // The number of read queries must not be greater than the number of
         //writes overall, plus one for an initial read.
-        expect(numberOfQueries,
-            lessThanOrEqualTo((results.last.first['count'] as int) + 1));
+        expect(
+          numberOfQueries,
+          lessThanOrEqualTo((results.last.first['count'] as int) + 1),
+        );
 
         DateTime? lastTime;
         for (var r in times) {
@@ -105,8 +118,10 @@ void main() {
     });
 
     test('onChange', () async {
-      final powersync =
-          await testUtils.setupPowerSync(path: path, schema: testSchema);
+      final powersync = await testUtils.setupPowerSync(
+        path: path,
+        schema: testSchema,
+      );
 
       const baseTime = 20;
 
@@ -116,30 +131,35 @@ void main() {
       Future<void> inserts() async {
         while (!done) {
           await powersync.execute(
-              'INSERT INTO assets(id, make) VALUES (uuid(), ?)', ['test']);
+            'INSERT INTO assets(id, make) VALUES (uuid(), ?)',
+            ['test'],
+          );
           await Future<void>.delayed(
-              Duration(milliseconds: Random().nextInt(baseTime)));
+            Duration(milliseconds: Random().nextInt(baseTime)),
+          );
         }
       }
 
       final insertsFuture = inserts();
 
-      final stream = powersync.onChange({'assets', 'customers'},
-          throttle: throttleDuration).asyncMap((event) async {
-        // This is where queries would typically be executed
-        return event;
-      });
+      final stream = powersync
+          .onChange({'assets', 'customers'}, throttle: throttleDuration)
+          .asyncMap((event) async {
+            // This is where queries would typically be executed
+            return event;
+          });
 
       var events = await stream.take(3).toList();
       done = true;
 
       expect(
-          events,
-          equals([
-            UpdateNotification.empty(),
-            UpdateNotification.single('assets'),
-            UpdateNotification.single('assets')
-          ]));
+        events,
+        equals([
+          UpdateNotification.empty(),
+          UpdateNotification.single('assets'),
+          UpdateNotification.single('assets'),
+        ]),
+      );
       await insertsFuture;
     });
 
@@ -147,22 +167,22 @@ void main() {
       final powersync = await testUtils.setupPowerSync(
         path: path,
         schema: Schema([
-          Table.localOnly('users', [
-            Column.text('name'),
-          ]),
-          Table('assets', [
-            Column.text('name'),
-          ]),
+          Table.localOnly('users', [Column.text('name')]),
+          Table('assets', [Column.text('name')]),
         ]),
       );
 
       final updates = StreamQueue(powersync.updates);
-      await powersync
-          .execute('INSERT INTO users (id, name) VALUES (uuid(), ?)', ['test']);
+      await powersync.execute(
+        'INSERT INTO users (id, name) VALUES (uuid(), ?)',
+        ['test'],
+      );
       await expectLater(updates, emits(UpdateNotification({'users'})));
 
       await powersync.execute(
-          'INSERT INTO assets (id, name) VALUES (uuid(), ?)', ['test']);
+        'INSERT INTO assets (id, name) VALUES (uuid(), ?)',
+        ['test'],
+      );
       await expectLater(updates, emits(UpdateNotification({'assets'})));
     });
   });

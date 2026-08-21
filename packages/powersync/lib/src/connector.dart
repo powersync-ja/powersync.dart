@@ -38,12 +38,14 @@ abstract class PowerSyncBackendConnector {
   ///
   /// This may be called before the current credentials have expired.
   Future<PowerSyncCredentials?> prefetchCredentials() async {
-    _fetchRequest ??= fetchCredentials().then((value) {
-      _cachedCredentials = value;
-      return value;
-    }).whenComplete(() {
-      _fetchRequest = null;
-    });
+    _fetchRequest ??= fetchCredentials()
+        .then((value) {
+          _cachedCredentials = value;
+          return value;
+        })
+        .whenComplete(() {
+          _fetchRequest = null;
+        });
 
     return _fetchRequest!;
   }
@@ -81,11 +83,12 @@ class PowerSyncCredentials {
   /// When the token expires. Only use for debugging purposes.
   final DateTime? expiresAt;
 
-  PowerSyncCredentials(
-      {required this.endpoint,
-      required this.token,
-      this.userId,
-      this.expiresAt}) {
+  PowerSyncCredentials({
+    required this.endpoint,
+    required this.token,
+    this.userId,
+    this.expiresAt,
+  }) {
     _validateEndpoint();
   }
 
@@ -94,10 +97,11 @@ class PowerSyncCredentials {
     DateTime? expiresAt = getExpiryDate(token);
 
     return PowerSyncCredentials(
-        endpoint: parsed['endpoint'] as String,
-        token: token,
-        userId: parsed['user_id'] as String?,
-        expiresAt: expiresAt);
+      endpoint: parsed['endpoint'] as String,
+      token: token,
+      userId: parsed['user_id'] as String?,
+      expiresAt: expiresAt,
+    );
   }
 
   /// Get an expiry date from a JWT token, if specified.
@@ -136,7 +140,9 @@ class PowerSyncCredentials {
     if ((!parsed.isScheme('http') && !parsed.isScheme('https')) ||
         parsed.host.isEmpty) {
       throw ArgumentError.value(
-          endpoint, 'PowerSync endpoint must be a valid URL');
+        endpoint,
+        'PowerSync endpoint must be a valid URL',
+      );
     }
   }
 }
@@ -162,9 +168,10 @@ class DevCredentials {
 
   factory DevCredentials.fromJson(Map<String, dynamic> parsed) {
     return DevCredentials(
-        endpoint: parsed['endpoint'] as String,
-        token: parsed['token'] as String?,
-        userId: parsed['user_id'] as String?);
+      endpoint: parsed['endpoint'] as String,
+      token: parsed['token'] as String?,
+      userId: parsed['user_id'] as String?,
+    );
   }
 
   factory DevCredentials.fromString(String credentials) {
@@ -244,23 +251,29 @@ class DevConnector extends PowerSyncBackendConnector {
   }
 
   /// Use the PowerSync dev API to log in.
-  Future<void> devLogin(
-      {required String endpoint,
-      required String user,
-      required String password}) async {
+  Future<void> devLogin({
+    required String endpoint,
+    required String user,
+    required String password,
+  }) async {
     final uri = Uri.parse(endpoint).resolve('dev/auth.json');
-    final res = await http.post(uri,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'user': user, 'password': password}));
+    final res = await http.post(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'user': user, 'password': password}),
+    );
 
     if (res.statusCode == 200) {
       var parsed = jsonDecode(res.body);
       var data = parsed['data'] as Map<String, dynamic>;
 
-      storeDevCredentials(DevCredentials(
+      storeDevCredentials(
+        DevCredentials(
           endpoint: endpoint,
           token: data['token'] as String?,
-          userId: data['user_id'] as String?));
+          userId: data['user_id'] as String?,
+        ),
+      );
     } else {
       throw http.ClientException(res.reasonPhrase ?? 'Request failed', uri);
     }
@@ -274,8 +287,10 @@ class DevConnector extends PowerSyncBackendConnector {
       return null;
     }
     final uri = Uri.parse(devCredentials!.endpoint).resolve('dev/token.json');
-    final res = await http
-        .post(uri, headers: {'Authorization': 'Token ${devCredentials.token}'});
+    final res = await http.post(
+      uri,
+      headers: {'Authorization': 'Token ${devCredentials.token}'},
+    );
     if (res.statusCode == 401) {
       clearDevToken();
     }
@@ -284,7 +299,8 @@ class DevConnector extends PowerSyncBackendConnector {
     }
 
     return PowerSyncCredentials.fromJson(
-        jsonDecode(res.body)['data'] as Map<String, dynamic>);
+      jsonDecode(res.body)['data'] as Map<String, dynamic>,
+    );
   }
 
   /// Upload changes using the PowerSync dev API.
@@ -301,13 +317,15 @@ class DevConnector extends PowerSyncBackendConnector {
     }
     final uri = credentials.endpointUri('crud.json');
 
-    final response = await http.post(uri,
-        headers: {
-          'Content-Type': 'application/json',
-          'User-Id': credentials.userId ?? '',
-          'Authorization': "Token ${credentials.token}"
-        },
-        body: jsonEncode({'data': batch.crud, 'write_checkpoint': true}));
+    final response = await http.post(
+      uri,
+      headers: {
+        'Content-Type': 'application/json',
+        'User-Id': credentials.userId ?? '',
+        'Authorization': "Token ${credentials.token}",
+      },
+      body: jsonEncode({'data': batch.crud, 'write_checkpoint': true}),
+    );
 
     if (response.statusCode == 401) {
       // Credentials have expired - fetch a new token on the next call
@@ -316,7 +334,9 @@ class DevConnector extends PowerSyncBackendConnector {
 
     if (response.statusCode != 200) {
       throw http.ClientException(
-          response.reasonPhrase ?? "Failed due to server error.", uri);
+        response.reasonPhrase ?? "Failed due to server error.",
+        uri,
+      );
     }
 
     final body = jsonDecode(response.body);

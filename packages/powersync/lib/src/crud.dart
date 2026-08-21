@@ -16,8 +16,11 @@ class CrudBatch {
   /// Call to remove the changes from the local queue, once successfully uploaded.
   Future<void> Function({String? writeCheckpoint}) complete;
 
-  CrudBatch(
-      {required this.crud, required this.haveMore, required this.complete});
+  CrudBatch({
+    required this.crud,
+    required this.haveMore,
+    required this.complete,
+  });
 }
 
 class CrudTransaction {
@@ -32,10 +35,11 @@ class CrudTransaction {
   /// Call to remove the changes from the local queue, once successfully uploaded.
   final Future<void> Function({String? writeCheckpoint}) complete;
 
-  CrudTransaction(
-      {required this.crud,
-      required this.complete,
-      required this.transactionId});
+  CrudTransaction({
+    required this.crud,
+    required this.complete,
+    required this.transactionId,
+  });
 
   @override
   String toString() {
@@ -148,8 +152,14 @@ class CrudEntry {
 
   @override
   int get hashCode {
-    return Object.hash(transactionId, clientId, op.toJson(), table, id,
-        const MapEquality<String, dynamic>().hash(opData));
+    return Object.hash(
+      transactionId,
+      clientId,
+      op.toJson(),
+      table,
+      id,
+      const MapEquality<String, dynamic>().hash(opData),
+    );
   }
 }
 

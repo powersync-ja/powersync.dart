@@ -6,18 +6,22 @@ import 'sync_status.dart';
 sealed class Instruction {
   factory Instruction.fromJson(Map<String, Object?> json) {
     return switch (json) {
-      {'LogLine': final logLine} =>
-        LogLine.fromJson(logLine as Map<String, Object?>),
-      {'UpdateSyncStatus': final updateStatus} =>
-        UpdateSyncStatus.fromJson(updateStatus as Map<String, Object?>),
-      {'EstablishSyncStream': final establish} =>
-        EstablishSyncStream.fromJson(establish as Map<String, Object?>),
-      {'FetchCredentials': final creds} =>
-        FetchCredentials.fromJson(creds as Map<String, Object?>),
+      {'LogLine': final logLine} => LogLine.fromJson(
+        logLine as Map<String, Object?>,
+      ),
+      {'UpdateSyncStatus': final updateStatus} => UpdateSyncStatus.fromJson(
+        updateStatus as Map<String, Object?>,
+      ),
+      {'EstablishSyncStream': final establish} => EstablishSyncStream.fromJson(
+        establish as Map<String, Object?>,
+      ),
+      {'FetchCredentials': final creds} => FetchCredentials.fromJson(
+        creds as Map<String, Object?>,
+      ),
       {'CloseSyncStream': final closeOptions as Map<String, Object?>} =>
         CloseSyncStream(closeOptions['hide_disconnect'] as bool),
       {'DidCompleteSync': _} => const DidCompleteSync(),
-      _ => UnknownSyncInstruction(json)
+      _ => UnknownSyncInstruction(json),
     };
   }
 }
@@ -56,8 +60,8 @@ final class UpdateSyncStatus implements NonInterruptingInstruction {
 
   factory UpdateSyncStatus.fromJson(Map<String, Object?> json) {
     return UpdateSyncStatus(
-        status:
-            CoreSyncStatus.fromJson(json['status'] as Map<String, Object?>));
+      status: CoreSyncStatus.fromJson(json['status'] as Map<String, Object?>),
+    );
   }
 }
 
@@ -82,15 +86,18 @@ final class CoreSyncStatus {
       connecting: json['connecting'] as bool,
       priorityStatus: [
         for (final entry in json['priority_status'] as List)
-          _priorityStatusFromJson(entry as Map<String, Object?>)
+          _priorityStatusFromJson(entry as Map<String, Object?>),
       ],
       downloading: switch (json['downloading']) {
         null => null,
         final raw as Map<String, Object?> => DownloadProgress.fromJson(raw),
       },
       streams: (json['streams'] as List<Object?>)
-          .map((e) =>
-              CoreActiveStreamSubscription.fromJson(e as Map<String, Object?>))
+          .map(
+            (e) => CoreActiveStreamSubscription.fromJson(
+              e as Map<String, Object?>,
+            ),
+          )
           .toList(),
     );
   }
@@ -101,8 +108,9 @@ final class CoreSyncStatus {
       hasSynced: json['has_synced'] as bool?,
       lastSyncedAt: switch (json['last_synced_at']) {
         null => null,
-        final lastSyncedAt as int =>
-          DateTime.fromMicrosecondsSinceEpoch(lastSyncedAt),
+        final lastSyncedAt as int => DateTime.fromMicrosecondsSinceEpoch(
+          lastSyncedAt,
+        ),
       },
     );
   }
@@ -116,12 +124,11 @@ final class DownloadProgress {
   factory DownloadProgress.fromJson(Map<String, Object?> line) {
     final rawBuckets = line['buckets'] as Map<String, Object?>;
 
-    return DownloadProgress(rawBuckets.map((k, v) {
-      return MapEntry(
-        k,
-        _bucketProgressFromJson(v as Map<String, Object?>),
-      );
-    }));
+    return DownloadProgress(
+      rawBuckets.map((k, v) {
+        return MapEntry(k, _bucketProgressFromJson(v as Map<String, Object?>));
+      }),
+    );
   }
 
   Map<String, Object?> toJson() {
@@ -132,9 +139,9 @@ final class DownloadProgress {
             'priority': value.priority.priorityNumber,
             'at_last': value.atLast,
             'since_last': value.sinceLast,
-            'target_count': value.targetCount
+            'target_count': value.targetCount,
           },
-      }
+      },
     };
   }
 

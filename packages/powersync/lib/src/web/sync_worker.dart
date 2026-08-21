@@ -36,20 +36,15 @@ class SyncWorker {
   }
 
   SyncRunner _referenceSyncTask(
-      String databaseIdentifier,
-      SyncOptions options,
-      String schemaJson,
-      List<SubscribedStream> subscriptions,
-      ConnectedClient client) {
+    String databaseIdentifier,
+    SyncOptions options,
+    String schemaJson,
+    List<SubscribedStream> subscriptions,
+    ConnectedClient client,
+  ) {
     return requestedSyncTasks.putIfAbsent(databaseIdentifier, () {
       return SyncRunner(databaseIdentifier);
-    })
-      ..registerClient(
-        client,
-        options,
-        schemaJson,
-        subscriptions,
-      );
+    })..registerClient(client, options, schemaJson, subscriptions);
   }
 }
 
@@ -71,8 +66,9 @@ class ConnectedClient {
             channel.observeRemoteLockName(request.lockName);
 
             final recoveredOptions = SyncOptions(
-              crudThrottleTime:
-                  Duration(milliseconds: request.crudThrottleTimeMs),
+              crudThrottleTime: Duration(
+                milliseconds: request.crudThrottleTimeMs,
+              ),
               retryDelay: switch (request.retryDelayMs) {
                 null => null,
                 final retryDelay => Duration(milliseconds: retryDelay),
@@ -89,7 +85,8 @@ class ConnectedClient {
               appMetadata: switch (request.appMetadataEncoded) {
                 null => null,
                 final encodedAppMetadata => Map<String, String>.from(
-                    jsonDecode(encodedAppMetadata) as Map<String, dynamic>),
+                  jsonDecode(encodedAppMetadata) as Map<String, dynamic>,
+                ),
               },
               httpClient: request.customHttpClient == true
                   ? () => RemoteHttpClient(channel)
@@ -110,7 +107,9 @@ class ConnectedClient {
             return (JSObject(), null);
           case SyncWorkerMessageType.updateSubscriptions:
             _runner?.updateClientSubscriptions(
-                this, (payload as UpdateSubscriptions).toDart);
+              this,
+              (payload as UpdateSubscriptions).toDart,
+            );
             return (JSObject(), null);
           default:
             throw StateError('Unexpected message type $type');
@@ -121,7 +120,8 @@ class ConnectedClient {
 
     _logSubscription = _logger.onRecord.listen((record) {
       final msg = StringBuffer(
-          '[${record.loggerName}] ${record.level.name}: ${record.time}: ${record.message}');
+        '[${record.loggerName}] ${record.level.name}: ${record.time}: ${record.message}',
+      );
 
       if (record.error != null) {
         msg
@@ -172,11 +172,11 @@ class SyncRunner {
         try {
           switch (event) {
             case _AddConnection(
-                :final client,
-                :final options,
-                :final schemaJson,
-                :final subscriptions,
-              ):
+              :final client,
+              :final options,
+              :final schemaJson,
+              :final subscriptions,
+            ):
               connections[client] = subscriptions;
               final (newOptions, reconnect) = this.options.applyFrom(options);
               this.options = newOptions;
@@ -210,9 +210,9 @@ class SyncRunner {
               await sync?.abort();
               sync = null;
             case _ClientSubscriptionsChanged(
-                :final client,
-                :final subscriptions
-              ):
+              :final client,
+              :final subscriptions,
+            ):
               connections[client] = subscriptions;
               reindexSubscriptions();
           }
@@ -242,7 +242,8 @@ class SyncRunner {
     final after = connections.values.flattenedToSet;
     if (!const SetEquality<SubscribedStream>().equals(before, after)) {
       _logger.info(
-          'Subscriptions across tabs have changed, checking whether a reconnect is necessary');
+        'Subscriptions across tabs have changed, checking whether a reconnect is necessary',
+      );
       currentStreams = after.toList();
       sync?.updateSubscriptions(currentStreams);
     }
@@ -262,19 +263,25 @@ class SyncRunner {
     var pendingRequests = candidates.length;
 
     for (final candidate in candidates) {
-      candidate.channel.ping().then((_) {
-        pendingRequests--;
-        if (!firstResponder.isCompleted) {
-          firstResponder.complete(candidate);
-        }
-      }).timeout(const Duration(seconds: 5), onTimeout: () {
-        pendingRequests--;
-        candidate.markClosed();
-        if (pendingRequests == 0 && !firstResponder.isCompleted) {
-          // All requests have timed out, no connection remains
-          firstResponder.complete(null);
-        }
-      });
+      candidate.channel
+          .ping()
+          .then((_) {
+            pendingRequests--;
+            if (!firstResponder.isCompleted) {
+              firstResponder.complete(candidate);
+            }
+          })
+          .timeout(
+            const Duration(seconds: 5),
+            onTimeout: () {
+              pendingRequests--;
+              candidate.markClosed();
+              if (pendingRequests == 0 && !firstResponder.isCompleted) {
+                // All requests have timed out, no connection remains
+                firstResponder.complete(null);
+              }
+            },
+          );
     }
 
     return firstResponder.future;
@@ -300,10 +307,12 @@ class SyncRunner {
     });
 
     final tables = ['ps_crud'];
-    Stream<UpdateNotification> crudStream =
-        powerSyncUpdateNotifications(Stream.empty());
-    final filteredStream = database.updates
-        .transform(UpdateNotification.filterTablesTransformer(tables));
+    Stream<UpdateNotification> crudStream = powerSyncUpdateNotifications(
+      Stream.empty(),
+    );
+    final filteredStream = database.updates.transform(
+      UpdateNotification.filterTablesTransformer(tables),
+    );
     crudStream = UpdateNotification.throttleStream(
       filteredStream,
       options.crudThrottleTime,
@@ -339,8 +348,12 @@ class SyncRunner {
     sync!.streamingSync();
   }
 
-  void registerClient(ConnectedClient client, SyncOptions options,
-      String schemaJson, List<SubscribedStream> subscriptions) {
+  void registerClient(
+    ConnectedClient client,
+    SyncOptions options,
+    String schemaJson,
+    List<SubscribedStream> subscriptions,
+  ) {
     _mainEvents.add(_AddConnection(client, options, schemaJson, subscriptions));
   }
 
@@ -355,7 +368,9 @@ class SyncRunner {
   }
 
   void updateClientSubscriptions(
-      ConnectedClient client, List<SubscribedStream> subscriptions) {
+    ConnectedClient client,
+    List<SubscribedStream> subscriptions,
+  ) {
     _mainEvents.add(_ClientSubscriptionsChanged(client, subscriptions));
   }
 }
@@ -369,7 +384,11 @@ final class _AddConnection implements _RunnerEvent {
   final List<SubscribedStream> subscriptions;
 
   _AddConnection(
-      this.client, this.options, this.schemaJson, this.subscriptions);
+    this.client,
+    this.options,
+    this.schemaJson,
+    this.subscriptions,
+  );
 }
 
 final class _RemoveConnection implements _RunnerEvent {

@@ -10,13 +10,16 @@ sealed class StreamingSyncLine {
       return Checkpoint.fromJson(line['checkpoint'] as Map<String, Object?>);
     } else if (line.containsKey('checkpoint_diff')) {
       return StreamingSyncCheckpointDiff.fromJson(
-          line['checkpoint_diff'] as Map<String, Object?>);
+        line['checkpoint_diff'] as Map<String, Object?>,
+      );
     } else if (line.containsKey('checkpoint_complete')) {
       return StreamingSyncCheckpointComplete.fromJson(
-          line['checkpoint_complete'] as Map<String, Object?>);
+        line['checkpoint_complete'] as Map<String, Object?>,
+      );
     } else if (line.containsKey('partial_checkpoint_complete')) {
       return StreamingSyncCheckpointPartiallyComplete.fromJson(
-          line['partial_checkpoint_complete'] as Map<String, Object?>);
+        line['partial_checkpoint_complete'] as Map<String, Object?>,
+      );
     } else if (line.containsKey('data')) {
       return SyncDataBatch([
         SyncBucketData.fromJson(line['data'] as Map<String, Object?>),
@@ -45,15 +48,18 @@ final class Checkpoint extends StreamingSyncLine {
   final String? writeCheckpoint;
   final List<BucketChecksum> checksums;
 
-  const Checkpoint(
-      {required this.lastOpId, required this.checksums, this.writeCheckpoint});
+  const Checkpoint({
+    required this.lastOpId,
+    required this.checksums,
+    this.writeCheckpoint,
+  });
 
   Checkpoint.fromJson(Map<String, dynamic> json)
-      : lastOpId = json['last_op_id'] as String,
-        writeCheckpoint = json['write_checkpoint'] as String?,
-        checksums = (json['buckets'] as List)
-            .map((b) => BucketChecksum.fromJson(b as Map<String, dynamic>))
-            .toList();
+    : lastOpId = json['last_op_id'] as String,
+      writeCheckpoint = json['write_checkpoint'] as String?,
+      checksums = (json['buckets'] as List)
+          .map((b) => BucketChecksum.fromJson(b as Map<String, dynamic>))
+          .toList();
 
   Map<String, dynamic> toJson({int? priority}) {
     return {
@@ -62,7 +68,7 @@ final class Checkpoint extends StreamingSyncLine {
       'buckets': checksums
           .where((c) => priority == null || c.priority <= priority)
           .map((c) => c.toJson())
-          .toList(growable: false)
+          .toList(growable: false),
     };
   }
 }
@@ -76,22 +82,23 @@ class BucketChecksum {
   final int? count;
   final String? lastOpId;
 
-  const BucketChecksum(
-      {required this.bucket,
-      required this.priority,
-      required this.checksum,
-      this.count,
-      this.lastOpId});
+  const BucketChecksum({
+    required this.bucket,
+    required this.priority,
+    required this.checksum,
+    this.count,
+    this.lastOpId,
+  });
 
   BucketChecksum.fromJson(Map<String, dynamic> json)
-      : bucket = json['bucket'] as String,
-        // Use the default priority (3) as a fallback if the server doesn't send
-        // priorities. This value is arbitrary though, it won't get used since
-        // servers not sending priorities also won't send partial checkpoints.
-        priority = json['priority'] as int? ?? 3,
-        checksum = json['checksum'] as int,
-        count = json['count'] as int?,
-        lastOpId = json['last_op_id'] as String?;
+    : bucket = json['bucket'] as String,
+      // Use the default priority (3) as a fallback if the server doesn't send
+      // priorities. This value is arbitrary though, it won't get used since
+      // servers not sending priorities also won't send partial checkpoints.
+      priority = json['priority'] as int? ?? 3,
+      checksum = json['checksum'] as int,
+      count = json['count'] as int?,
+      lastOpId = json['last_op_id'] as String?;
 
   Map<String, Object?> toJson() {
     return {
@@ -115,15 +122,18 @@ final class StreamingSyncCheckpointDiff extends StreamingSyncLine {
   String? writeCheckpoint;
 
   StreamingSyncCheckpointDiff(
-      this.lastOpId, this.updatedBuckets, this.removedBuckets);
+    this.lastOpId,
+    this.updatedBuckets,
+    this.removedBuckets,
+  );
 
   StreamingSyncCheckpointDiff.fromJson(Map<String, dynamic> json)
-      : lastOpId = json['last_op_id'] as String,
-        writeCheckpoint = json['write_checkpoint'] as String?,
-        updatedBuckets = (json['updated_buckets'] as List)
-            .map((e) => BucketChecksum.fromJson(e as Map<String, Object?>))
-            .toList(),
-        removedBuckets = (json['removed_buckets'] as List).cast();
+    : lastOpId = json['last_op_id'] as String,
+      writeCheckpoint = json['write_checkpoint'] as String?,
+      updatedBuckets = (json['updated_buckets'] as List)
+          .map((e) => BucketChecksum.fromJson(e as Map<String, Object?>))
+          .toList(),
+      removedBuckets = (json['removed_buckets'] as List).cast();
 }
 
 /// Sent after the last [SyncBucketData] message for a checkpoint.
@@ -137,7 +147,7 @@ final class StreamingSyncCheckpointComplete extends StreamingSyncLine {
   StreamingSyncCheckpointComplete(this.lastOpId);
 
   StreamingSyncCheckpointComplete.fromJson(Map<String, dynamic> json)
-      : lastOpId = json['last_op_id'] as String;
+    : lastOpId = json['last_op_id'] as String;
 }
 
 /// Sent after all the [SyncBucketData] messages for a given priority within a
@@ -149,8 +159,8 @@ final class StreamingSyncCheckpointPartiallyComplete extends StreamingSyncLine {
   StreamingSyncCheckpointPartiallyComplete(this.lastOpId, this.bucketPriority);
 
   StreamingSyncCheckpointPartiallyComplete.fromJson(Map<String, dynamic> json)
-      : lastOpId = json['last_op_id'] as String,
-        bucketPriority = json['priority'] as int;
+    : lastOpId = json['last_op_id'] as String,
+      bucketPriority = json['priority'] as int;
 }
 
 /// Sent as a periodic ping to keep the connection alive and to notify the
@@ -164,7 +174,7 @@ final class StreamingSyncKeepalive extends StreamingSyncLine {
   StreamingSyncKeepalive(this.tokenExpiresIn);
 
   StreamingSyncKeepalive.fromJson(Map<String, dynamic> json)
-      : tokenExpiresIn = json['token_expires_in'] as int;
+    : tokenExpiresIn = json['token_expires_in'] as int;
 }
 
 class StreamingSyncRequest {
@@ -175,7 +185,11 @@ class StreamingSyncRequest {
   Map<String, String>? appMetadata;
 
   StreamingSyncRequest(
-      this.buckets, this.parameters, this.clientId, this.appMetadata);
+    this.buckets,
+    this.parameters,
+    this.clientId,
+    this.appMetadata,
+  );
 
   Map<String, dynamic> toJson() {
     final Map<String, dynamic> json = {
@@ -200,10 +214,7 @@ class BucketRequest {
 
   BucketRequest(this.name, this.after);
 
-  Map<String, dynamic> toJson() => {
-        'name': name,
-        'after': after,
-      };
+  Map<String, dynamic> toJson() => {'name': name, 'after': after};
 }
 
 /// A batch of sync operations being delivered from the sync service.
@@ -227,21 +238,22 @@ final class SyncBucketData {
   final String? after;
   final String? nextAfter;
 
-  const SyncBucketData(
-      {required this.bucket,
-      required this.data,
-      this.hasMore = false,
-      this.after,
-      this.nextAfter});
+  const SyncBucketData({
+    required this.bucket,
+    required this.data,
+    this.hasMore = false,
+    this.after,
+    this.nextAfter,
+  });
 
   SyncBucketData.fromJson(Map<String, dynamic> json)
-      : bucket = json['bucket'] as String,
-        hasMore = json['has_more'] as bool? ?? false,
-        after = json['after'] as String?,
-        nextAfter = json['next_after'] as String?,
-        data = (json['data'] as List)
-            .map((e) => OplogEntry.fromJson(e as Map<String, dynamic>))
-            .toList();
+    : bucket = json['bucket'] as String,
+      hasMore = json['has_more'] as bool? ?? false,
+      after = json['after'] as String?,
+      nextAfter = json['next_after'] as String?,
+      data = (json['data'] as List)
+          .map((e) => OplogEntry.fromJson(e as Map<String, dynamic>))
+          .toList();
 
   Map<String, dynamic> toJson() {
     return {
@@ -249,7 +261,7 @@ final class SyncBucketData {
       'has_more': hasMore,
       'after': after,
       'next_after': nextAfter,
-      'data': data
+      'data': data,
     };
   }
 }
@@ -271,29 +283,30 @@ class OplogEntry {
   final String? data;
   final int checksum;
 
-  const OplogEntry(
-      {required this.opId,
-      required this.op,
-      this.subkey,
-      this.rowType,
-      this.rowId,
-      this.data,
-      required this.checksum});
+  const OplogEntry({
+    required this.opId,
+    required this.op,
+    this.subkey,
+    this.rowType,
+    this.rowId,
+    this.data,
+    required this.checksum,
+  });
 
   OplogEntry.fromJson(Map<String, dynamic> json)
-      : opId = json['op_id'] as String,
-        op = OpType.fromJson(json['op'] as String),
-        rowType = json['object_type'] as String?,
-        rowId = json['object_id'] as String?,
-        checksum = json['checksum'] as int,
-        data = switch (json['data']) {
-          String data => data,
-          var other => jsonEncode(other),
-        },
-        subkey = switch (json['subkey']) {
-          String subkey => subkey,
-          _ => null,
-        };
+    : opId = json['op_id'] as String,
+      op = OpType.fromJson(json['op'] as String),
+      rowType = json['object_type'] as String?,
+      rowId = json['object_id'] as String?,
+      checksum = json['checksum'] as int,
+      data = switch (json['data']) {
+        String data => data,
+        var other => jsonEncode(other),
+      },
+      subkey = switch (json['subkey']) {
+        String subkey => subkey,
+        _ => null,
+      };
 
   Map<String, dynamic>? get parsedData {
     return switch (data) {
@@ -317,7 +330,7 @@ class OplogEntry {
       'object_id': rowId,
       'checksum': checksum,
       'subkey': subkey,
-      'data': data
+      'data': data,
     };
   }
 }

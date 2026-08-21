@@ -11,30 +11,39 @@ void main() {
 
     test('fromStreamedResponse', () async {
       final exc = await SyncResponseException.fromStreamedResponse(
-          StreamedResponse(Stream.value(utf8.encode(errorResponse)), 401));
+        StreamedResponse(Stream.value(utf8.encode(errorResponse)), 401),
+      );
 
       expect(exc.statusCode, 401);
-      expect(exc.description,
-          'Request failed: PSYNC_S2106(AuthorizationError): Authentication required');
+      expect(
+        exc.description,
+        'Request failed: PSYNC_S2106(AuthorizationError): Authentication required',
+      );
     });
 
     test('fromResponse', () {
-      final exc =
-          SyncResponseException.fromResponse(Response(errorResponse, 401));
+      final exc = SyncResponseException.fromResponse(
+        Response(errorResponse, 401),
+      );
       expect(exc.statusCode, 401);
-      expect(exc.description,
-          'Request failed: PSYNC_S2106(AuthorizationError): Authentication required');
+      expect(
+        exc.description,
+        'Request failed: PSYNC_S2106(AuthorizationError): Authentication required',
+      );
     });
 
     test('with description', () {
       const errorResponse =
           '{"error":{"code":"PSYNC_S2106","status":401,"description":"Authentication required","name":"AuthorizationError", "details": "Missing authorization header"}}';
 
-      final exc =
-          SyncResponseException.fromResponse(Response(errorResponse, 401));
+      final exc = SyncResponseException.fromResponse(
+        Response(errorResponse, 401),
+      );
       expect(exc.statusCode, 401);
-      expect(exc.description,
-          'Request failed: PSYNC_S2106(AuthorizationError): Authentication required, Missing authorization header');
+      expect(
+        exc.description,
+        'Request failed: PSYNC_S2106(AuthorizationError): Authentication required, Missing authorization header',
+      );
     });
 
     test('malformed', () {
@@ -43,12 +52,14 @@ void main() {
 
       final exc = SyncResponseException.fromResponse(Response(malformed, 401));
       expect(exc.statusCode, 401);
-      expect(exc.description,
-          'Request failed: {"message":"Route GET:/foo/bar not found","error":"Not Found","statusCode":404}');
+      expect(
+        exc.description,
+        'Request failed: {"message":"Route GET:/foo/bar not found","error":"Not Found","statusCode":404}',
+      );
 
-      final exc2 = SyncResponseException.fromResponse(Response(
-          'not even json', 500,
-          reasonPhrase: 'Internal server error'));
+      final exc2 = SyncResponseException.fromResponse(
+        Response('not even json', 500, reasonPhrase: 'Internal server error'),
+      );
       expect(exc2.statusCode, 500);
       expect(exc2.description, 'Internal server error');
     });

@@ -16,8 +16,12 @@ void main() {
 
     tearDown(() async {});
 
-    Stream<String> genStream(String prefix, Duration delay,
-        [int count = 50, Object? error]) async* {
+    Stream<String> genStream(
+      String prefix,
+      Duration delay, [
+      int count = 50,
+      Object? error,
+    ]) async* {
       for (var i = 0; i < count; i++) {
         yield "$prefix $i";
         await Future<void>.delayed(delay);
@@ -29,16 +33,22 @@ void main() {
 
     test('addBroadcast - basic', () async {
       Stream<String> stream1 = genStream('S1:', Duration(milliseconds: 5));
-      Stream<String> stream2 =
-          genStream('S2:', Duration(milliseconds: 20)).asBroadcastStream();
+      Stream<String> stream2 = genStream(
+        'S2:',
+        Duration(milliseconds: 20),
+      ).asBroadcastStream();
 
       var merged = addBroadcast(stream1, stream2);
 
       var data = await merged.take(20).toList();
-      var countS1 =
-          data.where((element) => element.startsWith('S1')).toList().length;
-      var countS2 =
-          data.where((element) => element.startsWith('S2')).toList().length;
+      var countS1 = data
+          .where((element) => element.startsWith('S1'))
+          .toList()
+          .length;
+      var countS2 = data
+          .where((element) => element.startsWith('S2'))
+          .toList()
+          .length;
       expect(countS1 + countS2, equals(20));
       expect(countS1, greaterThanOrEqualTo(10));
       expect(countS2, greaterThanOrEqualTo(0));
@@ -46,10 +56,16 @@ void main() {
 
     test('addBroadcast - errors', () async {
       Object simulatedError = AssertionError('Closed');
-      Stream<String> stream1 =
-          genStream('S1:', Duration(milliseconds: 5), 5, simulatedError);
-      Stream<String> stream2 =
-          genStream('S2:', Duration(milliseconds: 20)).asBroadcastStream();
+      Stream<String> stream1 = genStream(
+        'S1:',
+        Duration(milliseconds: 5),
+        5,
+        simulatedError,
+      );
+      Stream<String> stream2 = genStream(
+        'S2:',
+        Duration(milliseconds: 20),
+      ).asBroadcastStream();
 
       var merged = addBroadcast(stream1, stream2);
 
@@ -68,8 +84,10 @@ void main() {
 
     test('addBroadcast - errors on cancel', () async {
       Object simulatedError = AssertionError('Closed');
-      Stream<String> stream2 =
-          genStream('S2:', Duration(milliseconds: 20)).asBroadcastStream();
+      Stream<String> stream2 = genStream(
+        'S2:',
+        Duration(milliseconds: 20),
+      ).asBroadcastStream();
 
       var controller = StreamController<String>();
       var stream1 = controller.stream;
@@ -99,10 +117,16 @@ void main() {
 
     test('addBroadcast - re-use broadcast after error', () async {
       Object simulatedError = AssertionError('Closed');
-      Stream<String> stream1 =
-          genStream('S1:', Duration(milliseconds: 5), 5, simulatedError);
-      Stream<String> sb =
-          genStream('SB:', Duration(milliseconds: 20)).asBroadcastStream();
+      Stream<String> stream1 = genStream(
+        'S1:',
+        Duration(milliseconds: 5),
+        5,
+        simulatedError,
+      );
+      Stream<String> sb = genStream(
+        'SB:',
+        Duration(milliseconds: 20),
+      ).asBroadcastStream();
 
       var merged = addBroadcast(stream1, sb);
 
@@ -123,10 +147,14 @@ void main() {
       var merged2 = addBroadcast(stream3, sb);
 
       var data = await merged2.take(20).toList();
-      var countS1 =
-          data.where((element) => element.startsWith('S3')).toList().length;
-      var countS2 =
-          data.where((element) => element.startsWith('SB')).toList().length;
+      var countS1 = data
+          .where((element) => element.startsWith('S3'))
+          .toList()
+          .length;
+      var countS2 = data
+          .where((element) => element.startsWith('SB'))
+          .toList()
+          .length;
       expect(countS1 + countS2, equals(20));
       expect(countS1, greaterThanOrEqualTo(10));
       expect(countS2, greaterThanOrEqualTo(0));
@@ -157,11 +185,12 @@ void main() {
       var parsedStream = sourceStream.lines.parseJson;
       var data = await parsedStream.toList();
       expect(
-          data,
-          equals([
-            {"line": 1},
-            {"line": 2}
-          ]));
+        data,
+        equals([
+          {"line": 1},
+          {"line": 2},
+        ]),
+      );
     });
 
     test('ndjson over Pipe', () async {
@@ -178,11 +207,12 @@ void main() {
       var parsedStream = ByteStream(pipe.read).lines.parseJson;
       var data = await parsedStream.toList();
       expect(
-          data,
-          equals([
-            {"line": 1},
-            {"line": 2}
-          ]));
+        data,
+        equals([
+          {"line": 1},
+          {"line": 2},
+        ]),
+      );
     });
 
     test('ndjson with partial data', () async {
@@ -206,12 +236,15 @@ void main() {
         error = e;
       }
       expect(
-          result,
-          equals([
-            {"line": 1}
-          ]));
-      expect(error.toString(),
-          startsWith('FormatException: Unexpected end of input'));
+        result,
+        equals([
+          {"line": 1},
+        ]),
+      );
+      expect(
+        error.toString(),
+        startsWith('FormatException: Unexpected end of input'),
+      );
     });
 
     test('ndjson with partial data and merged stream', () async {
@@ -225,8 +258,10 @@ void main() {
       writer();
       var parsedStream = ByteStream(pipe.read).lines.parseJson;
 
-      Stream<String> stream2 =
-          genStream('S2:', Duration(milliseconds: 50)).asBroadcastStream();
+      Stream<String> stream2 = genStream(
+        'S2:',
+        Duration(milliseconds: 50),
+      ).asBroadcastStream();
 
       var merged = addBroadcast(parsedStream, stream2);
 
@@ -240,13 +275,16 @@ void main() {
         error = e;
       }
       expect(
-          result,
-          equals([
-            'S2: 0',
-            {"line": 1}
-          ]));
-      expect(error.toString(),
-          startsWith('FormatException: Unexpected end of input'));
+        result,
+        equals([
+          'S2: 0',
+          {"line": 1},
+        ]),
+      );
+      expect(
+        error.toString(),
+        startsWith('FormatException: Unexpected end of input'),
+      );
     });
   });
 }

@@ -41,7 +41,7 @@ enum SyncIsolateToClientMessageType {
   mutexAcquire,
 
   /// The sync isolate wants to release a mutex, payload is an [int] request id.
-  mutexRelease;
+  mutexRelease,
 }
 
 enum ClientToSyncIsolateMessageType {
@@ -89,14 +89,19 @@ extension type SyncClientPort(SendPort port) {
   }
 
   void sendGetCredentialsCached(
-      PortCompleter<PowerSyncCredentials?> completer) {
+    PortCompleter<PowerSyncCredentials?> completer,
+  ) {
     send(SyncIsolateToClientMessageType.getCredentialsCached, completer);
   }
 
   void sendPrefetchCredentials(
-      PortCompleter<PowerSyncCredentials?> completer, bool invalidate) {
-    send(SyncIsolateToClientMessageType.prefetchCredentials,
-        (completer, invalidate));
+    PortCompleter<PowerSyncCredentials?> completer,
+    bool invalidate,
+  ) {
+    send(SyncIsolateToClientMessageType.prefetchCredentials, (
+      completer,
+      invalidate,
+    ));
   }
 
   void sendUploadCrud(PortCompleter<void> completer) {
@@ -200,8 +205,10 @@ final class _RemoteMutex implements Mutex {
   _RemoteMutex(this._server, this.name);
 
   @override
-  Future<T> lock<T>(Future<T> Function() callback,
-      {Future<void>? abortTrigger}) async {
+  Future<T> lock<T>(
+    Future<T> Function() callback, {
+    Future<void>? abortTrigger,
+  }) async {
     final grant = await _server.acquire(name);
     try {
       return await callback();

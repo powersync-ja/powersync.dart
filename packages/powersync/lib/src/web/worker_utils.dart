@@ -8,7 +8,11 @@ import 'package:web/web.dart';
 final class PowerSyncAsyncSqliteController extends AsyncSqliteController {
   @override
   CommonDatabase openUnderlying(
-      WasmSqlite3 sqlite3, String path, String vfs, JSAny? additionalData) {
+    WasmSqlite3 sqlite3,
+    String path,
+    String vfs,
+    JSAny? additionalData,
+  ) {
     final options = additionalData == null
         ? null
         : additionalData as PowerSyncAdditionalOpenOptions;
@@ -56,7 +60,7 @@ final class PowerSyncWorkerConnector implements WorkerConnector {
   final WorkerConnector _inner;
 
   PowerSyncWorkerConnector(String uri)
-      : _inner = WorkerConnector.defaultWorkers(uri);
+    : _inner = WorkerConnector.defaultWorkers(uri);
 
   @override
   WorkerHandle? spawnDedicatedWorker() {
@@ -82,7 +86,9 @@ final class _SharedWorkerHandle implements WorkerHandle {
   @override
   void postMessage(JSAny? msg, JSObject transfer) {
     _inner.postMessage(
-        SharedWorkerMessage(isForSyncWorker: false, message: msg), transfer);
+      SharedWorkerMessage(isForSyncWorker: false, message: msg),
+      transfer,
+    );
   }
 
   @override

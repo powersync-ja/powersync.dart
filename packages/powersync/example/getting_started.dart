@@ -1,7 +1,7 @@
 import 'package:powersync/powersync.dart';
 
 const schema = Schema([
-  Table('customers', [Column.text('name'), Column.text('email')])
+  Table('customers', [Column.text('name'), Column.text('email')]),
 ]);
 
 late PowerSyncDatabase db;
@@ -38,8 +38,9 @@ Future<void> openDatabase() async {
 
   // Run local statements.
   await db.execute(
-      'INSERT INTO customers(id, name, email) VALUES(uuid(), ?, ?)',
-      ['Fred', 'fred@example.org']);
+    'INSERT INTO customers(id, name, email) VALUES(uuid(), ?, ?)',
+    ['Fred', 'fred@example.org'],
+  );
 
   // Connect to backend
   db.connect(connector: BackendConnector(db));

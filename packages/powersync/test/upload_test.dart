@@ -45,30 +45,38 @@ void main() {
       }
 
       final records = <String>[];
-      final sub =
-          testWarningLogger.onRecord.listen((log) => records.add(log.message));
+      final sub = testWarningLogger.onRecord.listen(
+        (log) => records.add(log.message),
+      );
 
-      powersync =
-          await testUtils.setupPowerSync(path: path, logger: testWarningLogger);
+      powersync = await testUtils.setupPowerSync(
+        path: path,
+        logger: testWarningLogger,
+      );
       // Use a short retry delay here.
       // A zero retry delay makes this test unstable, since it expects `2` error logs later.
       // ignore: deprecated_member_use_from_same_package
       powersync.retryDelay = Duration(milliseconds: 100);
-      var connector =
-          TestConnector(credentialsCallback, uploadData: uploadData);
+      var connector = TestConnector(
+        credentialsCallback,
+        uploadData: uploadData,
+      );
       powersync.connect(connector: connector);
 
       // Create something with CRUD in it.
       await powersync.execute(
-          'INSERT INTO assets(id, description) VALUES(?, ?)', [testId, 'test']);
+        'INSERT INTO assets(id, description) VALUES(?, ?)',
+        [testId, 'test'],
+      );
 
       // Wait for the uploadData to be called.
       await Future<void>.delayed(Duration(milliseconds: 100));
 
       // Create something else with CRUD in it.
       await powersync.execute(
-          'INSERT INTO assets(id, description) VALUES(?, ?)',
-          [testId2, 'test2']);
+        'INSERT INTO assets(id, description) VALUES(?, ?)',
+        [testId2, 'test2'],
+      );
 
       sub.cancel();
 

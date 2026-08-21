@@ -135,13 +135,15 @@ final class CoreActiveStreamSubscription
       hasExplicitSubscription: json['has_explicit_subscription'] as bool,
       expiresAt: switch (json['expires_at']) {
         null => null,
-        final timestamp as int =>
-          DateTime.fromMicrosecondsSinceEpoch(timestamp),
+        final timestamp as int => DateTime.fromMicrosecondsSinceEpoch(
+          timestamp,
+        ),
       },
       lastSyncedAt: switch (json['last_synced_at']) {
         null => null,
-        final timestamp as int =>
-          DateTime.fromMicrosecondsSinceEpoch(timestamp),
+        final timestamp as int => DateTime.fromMicrosecondsSinceEpoch(
+          timestamp,
+        ),
       },
     );
   }
@@ -151,10 +153,7 @@ final class CoreActiveStreamSubscription
       'name': name,
       'parameters': parameters,
       'priority': priority.priorityNumber,
-      'progress': {
-        'total': progress.total,
-        'downloaded': progress.downloaded,
-      },
+      'progress': {'total': progress.total, 'downloaded': progress.downloaded},
       'active': active,
       'is_default': isDefault,
       'has_explicit_subscription': hasExplicitSubscription,
@@ -165,12 +164,13 @@ final class CoreActiveStreamSubscription
       'last_synced_at': switch (lastSyncedAt) {
         null => null,
         final lastSyncedAt => lastSyncedAt.microsecondsSinceEpoch,
-      }
+      },
     };
   }
 
   static ({int total, int downloaded}) _progressFromJson(
-      Map<String, Object?> json) {
+    Map<String, Object?> json,
+  ) {
     return (total: json['total'] as int, downloaded: json['downloaded'] as int);
   }
 }

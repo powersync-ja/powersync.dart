@@ -50,7 +50,7 @@ class SyncWorkerHandle implements StreamingSync {
                 databasePort: endpoint.connectPort,
                 lockName: endpoint.lockName,
               ),
-              [endpoint.connectPort].toJS
+              [endpoint.connectPort].toJS,
             );
           case SyncWorkerMessageType.uploadCrud:
             await connector.uploadData(database);
@@ -61,7 +61,7 @@ class SyncWorkerHandle implements StreamingSync {
               credentials != null
                   ? SerializedCredentials.from(credentials)
                   : null,
-              null
+              null,
             );
           case SyncWorkerMessageType.credentialsCallback:
             final credentials = await connector.getCredentialsCached();
@@ -69,7 +69,7 @@ class SyncWorkerHandle implements StreamingSync {
               credentials != null
                   ? SerializedCredentials.from(credentials)
                   : null,
-              null
+              null,
             );
           default:
             throw StateError('Unexpected message type $type');
@@ -100,10 +100,7 @@ class SyncWorkerHandle implements StreamingSync {
     // the shared worker.
     worker.port.start();
     worker.port.postMessage(
-      SharedWorkerMessage(
-        isForSyncWorker: true,
-        message: port2,
-      ),
+      SharedWorkerMessage(isForSyncWorker: true, message: port2),
       [port2].toJS,
     );
 

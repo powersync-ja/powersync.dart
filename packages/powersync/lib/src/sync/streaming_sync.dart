@@ -81,12 +81,12 @@ class StreamingSyncImplementation implements StreamingSync {
     /// A unique identifier for this streaming sync implementation
     /// A good value is typically the DB file path which it will mutate when syncing.
     String? identifier = "unknown",
-  })  : _client = options.createHttpClient(),
-        syncMutex = syncMutex ?? potentiallySharedMutex("sync-$identifier"),
-        crudMutex = crudMutex ?? potentiallySharedMutex("crud-$identifier"),
-        _userAgentHeaders = userAgentHeaders(),
-        logger = logger ?? isolateLogger,
-        _activeSubscriptions = activeSubscriptions;
+  }) : _client = options.createHttpClient(),
+       syncMutex = syncMutex ?? potentiallySharedMutex("sync-$identifier"),
+       crudMutex = crudMutex ?? potentiallySharedMutex("crud-$identifier"),
+       _userAgentHeaders = userAgentHeaders(),
+       logger = logger ?? isolateLogger,
+       _activeSubscriptions = activeSubscriptions;
 
   Duration get _retryDelay => options.retryDelay;
 
@@ -199,8 +199,10 @@ class StreamingSyncImplementation implements StreamingSync {
     // but it should not result in excessive uploads since the
     // sync reconnects are also throttled.
     // The stream here is closed on abort.
-    await for (var _ in mergeStreams(
-        [crudUpdateTriggerStream, _internalCrudTriggerController.stream])) {
+    await for (var _ in mergeStreams([
+      crudUpdateTriggerStream,
+      _internalCrudTriggerController.stream,
+    ])) {
       await _uploadAllCrud();
     }
   }
@@ -208,69 +210,75 @@ class StreamingSyncImplementation implements StreamingSync {
   Future<void> _uploadAllCrud() {
     assert(_activeCrudUpload == null);
     final completer = _activeCrudUpload = Completer();
-    return crudMutex.lock(() async {
-      // Keep track of the first item in the CRUD queue for the last `uploadCrud` iteration.
-      CrudEntry? checkedCrudItem;
+    return crudMutex
+        .lock(() async {
+          // Keep track of the first item in the CRUD queue for the last `uploadCrud` iteration.
+          CrudEntry? checkedCrudItem;
 
-      while (true) {
-        try {
-          // It's possible that an abort or disconnect operation could
-          // be followed by a `close` operation. The close would cause these
-          // operations, which use the DB, to throw an exception. Breaking the loop
-          // here prevents unnecessary potential (caught) exceptions.
-          if (aborted) {
-            break;
-          }
-          // This is the first item in the FIFO CRUD queue.
-          CrudEntry? nextCrudItem = await adapter.nextCrudItem();
-          if (nextCrudItem != null) {
-            _state.updateStatus((s) => s.uploading = true);
-            if (nextCrudItem.clientId == checkedCrudItem?.clientId) {
-              // This will force a higher log level than exceptions which are caught here.
-              logger.warning(
-                  """Potentially previously uploaded CRUD entries are still present in the upload queue. 
+          while (true) {
+            try {
+              // It's possible that an abort or disconnect operation could
+              // be followed by a `close` operation. The close would cause these
+              // operations, which use the DB, to throw an exception. Breaking the loop
+              // here prevents unnecessary potential (caught) exceptions.
+              if (aborted) {
+                break;
+              }
+              // This is the first item in the FIFO CRUD queue.
+              CrudEntry? nextCrudItem = await adapter.nextCrudItem();
+              if (nextCrudItem != null) {
+                _state.updateStatus((s) => s.uploading = true);
+                if (nextCrudItem.clientId == checkedCrudItem?.clientId) {
+                  // This will force a higher log level than exceptions which are caught here.
+                  logger.warning(
+                    """Potentially previously uploaded CRUD entries are still present in the upload queue. 
                 Make sure to handle uploads and complete CRUD transactions or batches by calling and awaiting their [.complete()] method.
-                The next upload iteration will be delayed.""");
-              throw Exception(
-                  'Delaying due to previously encountered CRUD item.');
+                The next upload iteration will be delayed.""",
+                  );
+                  throw Exception(
+                    'Delaying due to previously encountered CRUD item.',
+                  );
+                }
+
+                checkedCrudItem = nextCrudItem;
+                await connector.uploadCrud();
+                _state.updateStatus((s) => s.uploadError = null);
+              } else {
+                // Uploading is completed
+                await adapter.updateTargetCheckpointRequest(
+                  () => getWriteCheckpoint(),
+                );
+                break;
+              }
+            } catch (e, stacktrace) {
+              checkedCrudItem = null;
+              logger.warning('Data upload error', e, stacktrace);
+              _state.updateStatus((s) => s.applyUploadError(e));
+              await _delayRetry();
+
+              if (!_state.status.connected) {
+                // Exit the upload loop if the sync stream is no longer connected
+                break;
+              }
+              logger.warning(
+                "Caught exception when uploading. Upload will retry after a delay",
+                e,
+                stacktrace,
+              );
+            } finally {
+              _state.updateStatus((s) => s.uploading = false);
             }
-
-            checkedCrudItem = nextCrudItem;
-            await connector.uploadCrud();
-            _state.updateStatus((s) => s.uploadError = null);
-          } else {
-            // Uploading is completed
-            await adapter
-                .updateTargetCheckpointRequest(() => getWriteCheckpoint());
-            break;
           }
-        } catch (e, stacktrace) {
-          checkedCrudItem = null;
-          logger.warning('Data upload error', e, stacktrace);
-          _state.updateStatus((s) => s.applyUploadError(e));
-          await _delayRetry();
-
-          if (!_state.status.connected) {
-            // Exit the upload loop if the sync stream is no longer connected
-            break;
+        }, abortTrigger: _delayRetry())
+        .whenComplete(() {
+          if (!aborted) {
+            _nonLineSyncEvents.add(const UploadCompleted());
           }
-          logger.warning(
-              "Caught exception when uploading. Upload will retry after a delay",
-              e,
-              stacktrace);
-        } finally {
-          _state.updateStatus((s) => s.uploading = false);
-        }
-      }
-    }, abortTrigger: _delayRetry()).whenComplete(() {
-      if (!aborted) {
-        _nonLineSyncEvents.add(const UploadCompleted());
-      }
 
-      assert(identical(_activeCrudUpload, completer));
-      _activeCrudUpload = null;
-      completer.complete();
-    });
+          assert(identical(_activeCrudUpload, completer));
+          _activeCrudUpload = null;
+          completer.complete();
+        });
   }
 
   Future<String> getWriteCheckpoint() async {
@@ -278,13 +286,14 @@ class StreamingSyncImplementation implements StreamingSync {
     if (credentials == null) {
       throw CredentialsException("Not logged in");
     }
-    final uri =
-        credentials.endpointUri('write-checkpoint2.json?client_id=$clientId');
+    final uri = credentials.endpointUri(
+      'write-checkpoint2.json?client_id=$clientId',
+    );
 
     Map<String, String> headers = {
       'Content-Type': 'application/json',
       'Authorization': "Token ${credentials.token}",
-      ..._userAgentHeaders
+      ..._userAgentHeaders,
     };
 
     final response = await _client.get(uri, headers: headers);
@@ -300,17 +309,23 @@ class StreamingSyncImplementation implements StreamingSync {
   }
 
   Future<RustSyncIterationResult> _rustStreamingSyncIteration(
-      AbortController abortController) async {
+    AbortController abortController,
+  ) async {
     logger.info('Starting Rust sync iteration');
-    final response = await _ActiveRustStreamingIteration(this, abortController)
-        .syncIteration();
+    final response = await _ActiveRustStreamingIteration(
+      this,
+      abortController,
+    ).syncIteration();
     logger.info(
-        'Ending Rust sync iteration. Immediate restart: ${response.immediateRestart}');
+      'Ending Rust sync iteration. Immediate restart: ${response.immediateRestart}',
+    );
     return response;
   }
 
-  Future<http.StreamedResponse?> _postStreamRequest(Object? data,
-      {Future<void>? onAbort}) async {
+  Future<http.StreamedResponse?> _postStreamRequest(
+    Object? data, {
+    Future<void>? onAbort,
+  }) async {
     const ndJson = 'application/x-ndjson';
     const bson = 'application/vnd.powersync.bson-stream';
 
@@ -320,8 +335,11 @@ class StreamingSyncImplementation implements StreamingSync {
     }
     final uri = credentials.endpointUri('sync/stream');
 
-    final request = http.AbortableRequest('POST', uri,
-        abortTrigger: onAbort ?? _abort!.onAbort);
+    final request = http.AbortableRequest(
+      'POST',
+      uri,
+      abortTrigger: onAbort ?? _abort!.onAbort,
+    );
     request.headers['Content-Type'] = 'application/json';
     request.headers['Authorization'] = "Token ${credentials.token}";
     request.headers['Accept'] = '$bson;q=0.9,$ndJson;q=0.8';
@@ -391,10 +409,7 @@ String _syncErrorMessage(Object? error) {
   }
 }
 
-typedef BucketDescription = ({
-  String name,
-  int priority,
-});
+typedef BucketDescription = ({String name, int priority});
 
 final class _ActiveRustStreamingIteration {
   final StreamingSyncImplementation sync;
@@ -407,8 +422,9 @@ final class _ActiveRustStreamingIteration {
 
   List<Object?> _encodeSubscriptions(List<SubscribedStream> subscriptions) {
     return sync._activeSubscriptions
-        .map((s) =>
-            {'name': s.name, 'params': convert.json.decode(s.parameters)})
+        .map(
+          (s) => {'name': s.name, 'params': convert.json.decode(s.parameters)},
+        )
         .toList();
   }
 
@@ -454,8 +470,8 @@ final class _ActiveRustStreamingIteration {
 
   Stream<SyncEvent> _receiveLines(Object? data) {
     return streamFromFutureAwaitInCancellation(
-            sync._postStreamRequest(data, onAbort: _abortController.onAbort))
-        .asyncExpand<SyncEvent>((response) async* {
+      sync._postStreamRequest(data, onAbort: _abortController.onAbort),
+    ).asyncExpand<SyncEvent>((response) async* {
       if (response == null) {
         return;
       } else {
@@ -554,8 +570,10 @@ final class _ActiveRustStreamingIteration {
     }
   }
 
-  Future<Iterable<Instruction>> _invokePowerSyncControl(String operation,
-      [Object? payload]) async {
+  Future<Iterable<Instruction>> _invokePowerSyncControl(
+    String operation, [
+    Object? payload,
+  ]) async {
     final rawResponse = await sync.adapter.control(operation, payload);
     final instructions = convert.json.decode(rawResponse) as List;
 
@@ -563,29 +581,31 @@ final class _ActiveRustStreamingIteration {
   }
 
   Future<void> _handleInstruction(
-      NonInterruptingInstruction instruction) async {
+    NonInterruptingInstruction instruction,
+  ) async {
     switch (instruction) {
       case LogLine(:final severity, :final line):
-        sync.logger.log(
-            switch (severity) {
-              'DEBUG' => Level.FINE,
-              'INFO' => Level.INFO,
-              _ => Level.WARNING,
-            },
-            line);
+        sync.logger.log(switch (severity) {
+          'DEBUG' => Level.FINE,
+          'INFO' => Level.INFO,
+          _ => Level.WARNING,
+        }, line);
       case UpdateSyncStatus(:final status):
         sync._state.updateStatus((m) => m.applyFromCore(status));
       case FetchCredentials(:final didExpire):
         if (didExpire) {
           await sync.connector.prefetchCredentials(invalidate: true);
         } else {
-          sync.connector.prefetchCredentials().then((_) {
-            if (!sync.aborted) {
-              sync._nonLineSyncEvents.add(const TokenRefreshComplete());
-            }
-          }, onError: (Object e, StackTrace s) {
-            sync.logger.warning('Could not prefetch credentials', e, s);
-          });
+          sync.connector.prefetchCredentials().then(
+            (_) {
+              if (!sync.aborted) {
+                sync._nonLineSyncEvents.add(const TokenRefreshComplete());
+              }
+            },
+            onError: (Object e, StackTrace s) {
+              sync.logger.warning('Could not prefetch credentials', e, s);
+            },
+          );
         }
       case DidCompleteSync():
         sync._state.updateStatus((m) => m.downloadError = null);
@@ -599,10 +619,7 @@ typedef RustSyncIterationResult = ({bool immediateRestart});
 
 sealed class SyncEvent {}
 
-enum ConnectionEvent implements SyncEvent {
-  established,
-  end,
-}
+enum ConnectionEvent implements SyncEvent { established, end }
 
 final class ReceivedLine implements SyncEvent {
   final Object /* String|Uint8List|StreamingSyncLine */ line;

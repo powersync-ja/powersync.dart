@@ -52,9 +52,9 @@ final class WatchedAttachmentItem {
     this.filename,
     this.metaData,
   }) : assert(
-          fileExtension != null || filename != null,
-          'Either fileExtension or filename must be provided.',
-        );
+         fileExtension != null || filename != null,
+         'Either fileExtension or filename must be provided.',
+       );
 }
 
 /// Class used to implement the attachment queue.
@@ -78,21 +78,21 @@ base class AttachmentQueue {
   final AttachmentService _attachmentsService;
   final SyncingService _syncingService;
 
-  AttachmentQueue._(
-      {required PowerSyncDatabase db,
-      required Stream<List<WatchedAttachmentItem>> Function() watchAttachments,
-      required LocalStorage localStorage,
-      required bool downloadAttachments,
-      required Logger logger,
-      required AttachmentService attachmentsService,
-      required SyncingService syncingService})
-      : _db = db,
-        _watchAttachments = watchAttachments,
-        _localStorage = localStorage,
-        _downloadAttachments = downloadAttachments,
-        _logger = logger,
-        _attachmentsService = attachmentsService,
-        _syncingService = syncingService;
+  AttachmentQueue._({
+    required PowerSyncDatabase db,
+    required Stream<List<WatchedAttachmentItem>> Function() watchAttachments,
+    required LocalStorage localStorage,
+    required bool downloadAttachments,
+    required Logger logger,
+    required AttachmentService attachmentsService,
+    required SyncingService syncingService,
+  }) : _db = db,
+       _watchAttachments = watchAttachments,
+       _localStorage = localStorage,
+       _downloadAttachments = downloadAttachments,
+       _logger = logger,
+       _attachmentsService = attachmentsService,
+       _syncingService = syncingService;
 
   /// Creates a new attachment queue.
   ///
@@ -172,8 +172,9 @@ base class AttachmentQueue {
       // Listen for connectivity changes and watched attachments
       await _syncingService.startSync();
 
-      _watchedAttachmentsSubscription =
-          _watchAttachments().listen((items) async {
+      _watchedAttachmentsSubscription = _watchAttachments().listen((
+        items,
+      ) async {
         await _processWatchedAttachments(items);
       });
 
@@ -249,15 +250,17 @@ base class AttachmentQueue {
       final List<Attachment> attachmentUpdates = [];
 
       for (final item in items) {
-        final existingQueueItem =
-            currentAttachments.where((a) => a.id == item.id).firstOrNull;
+        final existingQueueItem = currentAttachments
+            .where((a) => a.id == item.id)
+            .firstOrNull;
 
         if (existingQueueItem == null) {
           if (!_downloadAttachments) continue;
 
           // This item should be added to the queue.
           // This item is assumed to be coming from an upstream sync.
-          final String filename = item.filename ??
+          final String filename =
+              item.filename ??
               await resolveNewAttachmentFilename(item.id, item.fileExtension);
 
           attachmentUpdates.add(
@@ -334,8 +337,10 @@ base class AttachmentQueue {
     String? metaData,
     String? id,
     required Future<void> Function(
-            SqliteWriteContext context, Attachment attachment)
-        updateHook,
+      SqliteWriteContext context,
+      Attachment attachment,
+    )
+    updateHook,
   }) async {
     final resolvedId = id ?? await generateAttachmentId();
 
@@ -372,8 +377,10 @@ base class AttachmentQueue {
   Future<Attachment> deleteFile({
     required String attachmentId,
     required Future<void> Function(
-            SqliteWriteContext context, Attachment attachment)
-        updateHook,
+      SqliteWriteContext context,
+      Attachment attachment,
+    )
+    updateHook,
   }) async {
     return await _attachmentsService.withContext((attachmentContext) async {
       final attachment = await attachmentContext.getAttachment(attachmentId);

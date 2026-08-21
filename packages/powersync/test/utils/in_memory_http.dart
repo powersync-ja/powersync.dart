@@ -34,7 +34,9 @@ final class _MockServer implements shelf.Server {
   Uri get url => mockHttpUri;
 
   Future<StreamedResponse> handleRequest(
-      BaseRequest request, ByteStream body) async {
+    BaseRequest request,
+    ByteStream body,
+  ) async {
     final cancellationFuture = switch (request) {
       Abortable(:final abortTrigger) => abortTrigger,
       _ => null,
@@ -73,29 +75,26 @@ extension<T> on Stream<T> {
       return this;
     }
 
-    return Stream.multi(
-      (listener) {
-        final subscription = listen(
-          listener.addSync,
-          onError: listener.addErrorSync,
-          onDone: listener.closeSync,
-        );
+    return Stream.multi((listener) {
+      final subscription = listen(
+        listener.addSync,
+        onError: listener.addErrorSync,
+        onDone: listener.closeSync,
+      );
 
-        listener
-          ..onPause = subscription.pause
-          ..onResume = subscription.resume
-          ..onCancel = subscription.cancel;
+      listener
+        ..onPause = subscription.pause
+        ..onResume = subscription.resume
+        ..onCancel = subscription.cancel;
 
-        token.whenComplete(() {
-          if (!listener.isClosed) {
-            listener
-              ..addErrorSync(RequestAbortedException())
-              ..closeSync();
-            subscription.cancel();
-          }
-        });
-      },
-      isBroadcast: isBroadcast,
-    );
+      token.whenComplete(() {
+        if (!listener.isClosed) {
+          listener
+            ..addErrorSync(RequestAbortedException())
+            ..closeSync();
+          subscription.cancel();
+        }
+      });
+    }, isBroadcast: isBroadcast);
   }
 }

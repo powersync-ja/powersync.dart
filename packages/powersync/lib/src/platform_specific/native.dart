@@ -12,9 +12,15 @@ Mutex potentiallySharedMutex(String identifier) {
 }
 
 SqliteOpenFactory powerSyncOpenFactory(
-    String path, SqliteOptions options, EncryptionOptions? encryption) {
+  String path,
+  SqliteOptions options,
+  EncryptionOptions? encryption,
+) {
   return NativePowerSyncOpenFactory(
-      path: path, sqliteOptions: options, encryptionOptions: encryption);
+    path: path,
+    sqliteOptions: options,
+    encryptionOptions: encryption,
+  );
 }
 
 BasePowerSyncDatabase openPowerSyncDatabase(

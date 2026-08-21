@@ -35,8 +35,10 @@ void main() {
       final server = await createServer();
       final ignoreLogger = Logger.detached('powersync.test');
 
-      final pdb =
-          await testUtils.setupPowerSync(path: path, logger: ignoreLogger);
+      final pdb = await testUtils.setupPowerSync(
+        path: path,
+        logger: ignoreLogger,
+      );
       const options = SyncOptions(retryDelay: Duration(seconds: 5));
       final connector = TestConnector(() async {
         return PowerSyncCredentials(endpoint: server.endpoint, token: 'token');
@@ -68,12 +70,19 @@ void main() {
       final server = await createServer(mockSyncService: service);
       final ignoreLogger = Logger.detached('powersync.test');
 
-      final pdb =
-          await testUtils.setupPowerSync(path: path, logger: ignoreLogger);
+      final pdb = await testUtils.setupPowerSync(
+        path: path,
+        logger: ignoreLogger,
+      );
       const options = SyncOptions(retryDelay: Duration(seconds: 5));
-      final connector = TestConnector(expectAsync0(() async {
-        return PowerSyncCredentials(endpoint: server.endpoint, token: 'token');
-      }));
+      final connector = TestConnector(
+        expectAsync0(() async {
+          return PowerSyncCredentials(
+            endpoint: server.endpoint,
+            token: 'token',
+          );
+        }),
+      );
 
       await pdb.connect(connector: connector, options: options);
       while (server.connectionCount != 1) {
@@ -107,13 +116,18 @@ void main() {
       final ignoreLogger = Logger.detached('powersync.test');
 
       final pdb = await testUtils.setupPowerSync(
-          path: path, logger: ignoreLogger, initialize: false);
+        path: path,
+        logger: ignoreLogger,
+        initialize: false,
+      );
       const options = SyncOptions(retryDelay: Duration(seconds: 5));
 
       await pdb.connect(
         connector: TestConnector(() async {
           return PowerSyncCredentials(
-              endpoint: server.endpoint, token: 'token');
+            endpoint: server.endpoint,
+            token: 'token',
+          );
         }),
         options: options,
       );
@@ -121,7 +135,8 @@ void main() {
       await expectLater(
         pdb.statusStream,
         emitsThrough(
-            isA<SyncStatus>().having((e) => e.connected, 'connected', isTrue)),
+          isA<SyncStatus>().having((e) => e.connected, 'connected', isTrue),
+        ),
       );
     });
 
@@ -135,7 +150,9 @@ void main() {
 
         credentialsCallback() async {
           return PowerSyncCredentials(
-              endpoint: server.endpoint, token: 'token');
+            endpoint: server.endpoint,
+            token: 'token',
+          );
         }
 
         final pdb = await testUtils.setupPowerSync(path: path);
@@ -154,7 +171,8 @@ void main() {
         final watch = Stopwatch()..start();
         while (server.connectionCount != 0 && watch.elapsedMilliseconds < 100) {
           await Future<void>.delayed(
-              Duration(milliseconds: random.nextInt(10)));
+            Duration(milliseconds: random.nextInt(10)),
+          );
         }
 
         expect(server.connectionCount, equals(0));
@@ -249,9 +267,15 @@ void main() {
       final statusChanges = StreamQueue(pdb.statusStream);
       await pdb.connect(connector: connector);
       await expectLater(
-          statusChanges,
-          emitsThrough(isA<SyncStatus>()
-              .having((e) => e.downloadError, 'downloadError', isNotNull)));
+        statusChanges,
+        emitsThrough(
+          isA<SyncStatus>().having(
+            (e) => e.downloadError,
+            'downloadError',
+            isNotNull,
+          ),
+        ),
+      );
       await statusChanges.cancel();
 
       expect(pdb.currentStatus.downloadError, exception);

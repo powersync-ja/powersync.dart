@@ -110,21 +110,23 @@ void main() {
     });
 
     group('edge cases and robustness', () {
-      test('saveFile with empty data writes empty file and returns 0 size',
-          () async {
-        const filePath = 'empty_file';
+      test(
+        'saveFile with empty data writes empty file and returns 0 size',
+        () async {
+          const filePath = 'empty_file';
 
-        final size = await storage.saveFile(filePath, Stream.empty());
-        expect(size, 0);
+          final size = await storage.saveFile(filePath, Stream.empty());
+          expect(size, 0);
 
-        final resultStream = storage.readFile(filePath);
-        final chunks = await resultStream.toList();
-        expect(chunks, isEmpty);
+          final resultStream = storage.readFile(filePath);
+          final chunks = await resultStream.toList();
+          expect(chunks, isEmpty);
 
-        final file = File(p.join(d.sandbox, filePath));
-        expect(await file.exists(), isTrue);
-        expect(await file.length(), 0);
-      });
+          final file = File(p.join(d.sandbox, filePath));
+          expect(await file.exists(), isTrue);
+          expect(await file.length(), 0);
+        },
+      );
 
       test('readFile preserves byte order (chunking may differ)', () async {
         const filePath = 'ordered_chunks';
@@ -133,8 +135,9 @@ void main() {
           Uint8List.fromList([3, 4]),
           Uint8List.fromList([5, 6, 7, 8]),
         ];
-        final expectedBytes =
-            Uint8List.fromList(chunks.expand((c) => c).toList());
+        final expectedBytes = Uint8List.fromList(
+          chunks.expand((c) => c).toList(),
+        );
         await storage.saveFile(filePath, Stream.value(expectedBytes));
 
         final outChunks = await storage.readFile(filePath).toList();
@@ -165,20 +168,22 @@ void main() {
         expect(await storage.fileExists(filePath), isTrue);
       });
 
-      test('clear works even if base directory was removed externally',
-          () async {
-        await storage.initialize();
+      test(
+        'clear works even if base directory was removed externally',
+        () async {
+          await storage.initialize();
 
-        // Remove the base dir manually
-        final baseDir = Directory(d.sandbox);
-        if (await baseDir.exists()) {
-          await baseDir.delete(recursive: true);
-        }
+          // Remove the base dir manually
+          final baseDir = Directory(d.sandbox);
+          if (await baseDir.exists()) {
+            await baseDir.delete(recursive: true);
+          }
 
-        // Calling clear should recreate base dir
-        await storage.clear();
-        expect(await baseDir.exists(), isTrue);
-      });
+          // Calling clear should recreate base dir
+          await storage.clear();
+          expect(await baseDir.exists(), isTrue);
+        },
+      );
 
       test('supports unicode and emoji filenames', () async {
         const filePath = '測試_файл_📷.bin';
@@ -191,16 +196,19 @@ void main() {
         await d.file(filePath, bytes).validate();
       });
 
-      test('readFile accepts mediaType parameter (ignored by IO impl)',
-          () async {
-        const filePath = 'with_media_type';
-        final data = Uint8List.fromList([1, 2, 3]);
-        await storage.saveFile(filePath, Stream.value(data));
+      test(
+        'readFile accepts mediaType parameter (ignored by IO impl)',
+        () async {
+          const filePath = 'with_media_type';
+          final data = Uint8List.fromList([1, 2, 3]);
+          await storage.saveFile(filePath, Stream.value(data));
 
-        final result =
-            await storage.readFile(filePath, mediaType: 'image/jpeg').toList();
-        expect(result, equals([data]));
-      });
+          final result = await storage
+              .readFile(filePath, mediaType: 'image/jpeg')
+              .toList();
+          expect(result, equals([data]));
+        },
+      );
     });
 
     group('deleteFile', () {
@@ -227,8 +235,9 @@ void main() {
 
     group('initialize and clear', () {
       test('initialize creates the base directory', () async {
-        final newStorage =
-            IOLocalStorage(Directory(p.join(d.sandbox, 'new_dir')));
+        final newStorage = IOLocalStorage(
+          Directory(p.join(d.sandbox, 'new_dir')),
+        );
         final baseDir = Directory(p.join(d.sandbox, 'new_dir'));
 
         expect(await baseDir.exists(), isFalse);

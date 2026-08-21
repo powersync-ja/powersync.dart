@@ -25,11 +25,11 @@ void main() {
     await powersync.connect(
       connector: TestConnector(
         () async => PowerSyncCredentials(
-            endpoint: 'http://test.powersync.example.org', token: 'token'),
+          endpoint: 'http://test.powersync.example.org',
+          token: 'token',
+        ),
       ),
-      options: SyncOptions(
-        httpClient: _createMockClient,
-      ),
+      options: SyncOptions(httpClient: _createMockClient),
     );
 
     await powersync.waitForFirstSync();

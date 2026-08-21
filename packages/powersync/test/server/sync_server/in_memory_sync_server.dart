@@ -10,14 +10,14 @@ final class MockSyncService {
   final bool useBson;
 
   // Use a queued stream to make tests easier.
-  StreamController<Object /* String | Uint8List */ > controller =
+  StreamController<Object /* String | Uint8List */> controller =
       StreamController();
   Completer<Request> _listener = Completer();
 
   var router = Router();
   Object? Function() writeCheckpoint = () {
     return {
-      'data': {'write_checkpoint': '10'}
+      'data': {'write_checkpoint': '10'},
     };
   };
 
@@ -25,8 +25,9 @@ final class MockSyncService {
     router
       ..post('/sync/stream', (Request request) async {
         if (useBson &&
-            !request.headers['Accept']!
-                .contains('application/vnd.powersync.bson-stream')) {
+            !request.headers['Accept']!.contains(
+              'application/vnd.powersync.bson-stream',
+            )) {
           throw "Want to serve bson, but client doesn't accept it";
         }
 
@@ -40,20 +41,23 @@ final class MockSyncService {
           };
         });
 
-        return Response.ok(bytes, headers: {
-          'Content-Type': useBson
-              ? 'application/vnd.powersync.bson-stream'
-              : 'application/x-ndjson',
-          'Cache-Control': 'no-cache',
-          'Connection': 'keep-alive',
-        }, context: {
-          "shelf.io.buffer_output": false
-        });
+        return Response.ok(
+          bytes,
+          headers: {
+            'Content-Type': useBson
+                ? 'application/vnd.powersync.bson-stream'
+                : 'application/x-ndjson',
+            'Cache-Control': 'no-cache',
+            'Connection': 'keep-alive',
+          },
+          context: {"shelf.io.buffer_output": false},
+        );
       })
       ..get('/write-checkpoint2.json', (request) {
-        return Response.ok(json.encode(writeCheckpoint()), headers: {
-          'Content-Type': 'application/json',
-        });
+        return Response.ok(
+          json.encode(writeCheckpoint()),
+          headers: {'Content-Type': 'application/json'},
+        );
       });
   }
 

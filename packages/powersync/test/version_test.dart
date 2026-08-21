@@ -12,8 +12,11 @@ void main() {
     final pubspec = loadYamlDocument(File('pubspec.yaml').readAsStringSync());
     final versionInPubspec = (pubspec.contents as YamlMap)['version'] as String;
 
-    expect(libraryVersion, versionInPubspec,
-        reason:
-            'Version in lib/src/version.dart ($libraryVersion) must match version in pubspec ($versionInPubspec)');
+    expect(
+      libraryVersion,
+      versionInPubspec,
+      reason:
+          'Version in lib/src/version.dart ($libraryVersion) must match version in pubspec ($versionInPubspec)',
+    );
   });
 }

@@ -32,7 +32,9 @@ import 'encryption_options.dart';
 
 const powerSyncDefaultSqliteOptions = SqliteOptions(
   webSqliteOptions: WebSqliteOptions(
-      wasmUri: 'sqlite3.wasm', workerUri: 'powersync_db.worker.js'),
+    wasmUri: 'sqlite3.wasm',
+    workerUri: 'powersync_db.worker.js',
+  ),
 );
 
 /// A PowerSync managed database.
@@ -205,14 +207,15 @@ abstract base class PowerSyncDatabase extends SqliteConnection {
     // Get version
     String version;
     try {
-      final row =
-          await database.get('SELECT powersync_rs_version() as version');
+      final row = await database.get(
+        'SELECT powersync_rs_version() as version',
+      );
       version = row['version'] as String;
     } catch (e) {
       throw SqliteException(
-          extendedResultCode: 1,
-          message:
-              'The powersync extension is not loaded correctly. Details: $e');
+        extendedResultCode: 1,
+        message: 'The powersync extension is not loaded correctly. Details: $e',
+      );
     }
 
     PowerSyncCoreVersion.parse(version).checkSupported();
@@ -383,8 +386,9 @@ abstract base class PowerSyncDatabase extends SqliteConnection {
       _connections.checkNotConnected();
 
       this.schema = schema;
-      await database
-          .writeTransaction((tx) => schema_logic.updateSchema(tx, schema));
+      await database.writeTransaction(
+        (tx) => schema_logic.updateSchema(tx, schema),
+      );
     });
   }
 
@@ -396,13 +400,17 @@ abstract base class PowerSyncDatabase extends SqliteConnection {
   }
 
   /// Get upload queue size estimate and count.
-  Future<UploadQueueStats> getUploadQueueStats(
-      {bool includeSize = false}) async {
+  Future<UploadQueueStats> getUploadQueueStats({
+    bool includeSize = false,
+  }) async {
     if (includeSize) {
       final row = await getOptional(
-          'SELECT SUM(cast(data as blob) + 20) as size, count(*) as count FROM ps_crud');
+        'SELECT SUM(cast(data as blob) + 20) as size, count(*) as count FROM ps_crud',
+      );
       return UploadQueueStats(
-          count: row?['count'] as int? ?? 0, size: row?['size'] as int? ?? 0);
+        count: row?['count'] as int? ?? 0,
+        size: row?['size'] as int? ?? 0,
+      );
     } else {
       final row = await getOptional('SELECT count(*) as count FROM ps_crud');
       return UploadQueueStats(count: row?['count'] as int? ?? 0);
@@ -426,8 +434,9 @@ abstract base class PowerSyncDatabase extends SqliteConnection {
   /// and a single transaction may be split over multiple batches.
   Future<CrudBatch?> getCrudBatch({int limit = 100}) async {
     final rows = await getAll(
-        'SELECT id, tx_id, data FROM ps_crud ORDER BY id ASC LIMIT ?',
-        [limit + 1]);
+      'SELECT id, tx_id, data FROM ps_crud ORDER BY id ASC LIMIT ?',
+      [limit + 1],
+    );
     List<CrudEntry> all = [for (var row in rows) CrudEntry.fromRow(row)];
 
     var haveMore = false;
@@ -532,37 +541,48 @@ SELECT * FROM crud_entries;
 
   @override
   Future<T> readTransaction<T>(
-      Future<T> Function(SqliteReadContext tx) callback,
-      {Duration? lockTimeout}) async {
+    Future<T> Function(SqliteReadContext tx) callback, {
+    Duration? lockTimeout,
+  }) async {
     await isInitialized;
     return database.readTransaction(callback, lockTimeout: lockTimeout);
   }
 
   @override
   Future<T> abortableReadLock<T>(
-      Future<T> Function(SqliteReadContext tx) callback,
-      {Future<void>? abortTrigger,
-      String? debugContext}) async {
+    Future<T> Function(SqliteReadContext tx) callback, {
+    Future<void>? abortTrigger,
+    String? debugContext,
+  }) async {
     await isInitialized;
-    return database.abortableReadLock(callback,
-        abortTrigger: abortTrigger, debugContext: debugContext);
+    return database.abortableReadLock(
+      callback,
+      abortTrigger: abortTrigger,
+      debugContext: debugContext,
+    );
   }
 
   @override
   Future<T> abortableWriteLock<T>(
-      Future<T> Function(SqliteWriteContext tx) callback,
-      {Future<void>? abortTrigger,
-      String? debugContext}) async {
+    Future<T> Function(SqliteWriteContext tx) callback, {
+    Future<void>? abortTrigger,
+    String? debugContext,
+  }) async {
     await isInitialized;
-    return database.abortableWriteLock(callback,
-        abortTrigger: abortTrigger, debugContext: debugContext);
+    return database.abortableWriteLock(
+      callback,
+      abortTrigger: abortTrigger,
+      debugContext: debugContext,
+    );
   }
 
   @override
-  Stream<ResultSet> watch(String sql,
-      {List<Object?> parameters = const [],
-      Duration? throttle = const Duration(milliseconds: 30),
-      Iterable<String>? triggerOnTables}) {
+  Stream<ResultSet> watch(
+    String sql, {
+    List<Object?> parameters = const [],
+    Duration? throttle = const Duration(milliseconds: 30),
+    Iterable<String>? triggerOnTables,
+  }) {
     if (triggerOnTables == null || triggerOnTables.isEmpty) {
       return database.watch(sql, parameters: parameters, throttle: throttle);
     }
@@ -572,10 +592,12 @@ SELECT * FROM crud_entries;
       powersyncTables.add(_prefixTableNames(tableName, 'ps_data__'));
       powersyncTables.add(_prefixTableNames(tableName, 'ps_data_local__'));
     }
-    return database.watch(sql,
-        parameters: parameters,
-        throttle: throttle,
-        triggerOnTables: powersyncTables);
+    return database.watch(
+      sql,
+      parameters: parameters,
+      throttle: throttle,
+      triggerOnTables: powersyncTables,
+    );
   }
 
   @protected
@@ -617,9 +639,11 @@ abstract base class BasePowerSyncDatabase extends PowerSyncDatabase {
   @override
   final Logger logger;
 
-  BasePowerSyncDatabase(
-      {required this.schema, required this.database, required this.logger})
-      : super._() {
+  BasePowerSyncDatabase({
+    required this.schema,
+    required this.database,
+    required this.logger,
+  }) : super._() {
     isInitialized = baseInit();
   }
 
@@ -644,8 +668,9 @@ abstract base class BasePowerSyncDatabase extends PowerSyncDatabase {
 
     await database.initialize();
     await _checkVersion();
-    await database
-        .writeTransaction((tx) => tx.execute('SELECT powersync_init();'));
+    await database.writeTransaction(
+      (tx) => tx.execute('SELECT powersync_init();'),
+    );
     await updateSchema(schema);
     await _connections.resolveOfflineSyncStatus();
   }
@@ -653,10 +678,12 @@ abstract base class BasePowerSyncDatabase extends PowerSyncDatabase {
 
 @internal
 Stream<UpdateNotification> powerSyncUpdateNotifications(
-    Stream<UpdateNotification> inner) {
+  Stream<UpdateNotification> inner,
+) {
   return inner
-      .map((update) =>
-          PowerSyncUpdateNotification.fromUpdateNotification(update))
+      .map(
+        (update) => PowerSyncUpdateNotification.fromUpdateNotification(update),
+      )
       .where((update) => update.isNotEmpty)
       .cast<UpdateNotification>();
 }

@@ -68,8 +68,10 @@ void main() {
   });
 
   test('can get version', () async {
-    final response = await vm.callServiceExtension('ext.powersync.version',
-        isolateId: isolateId);
+    final response = await vm.callServiceExtension(
+      'ext.powersync.version',
+      isolateId: isolateId,
+    );
 
     expect(response.json, {'version': libraryVersion});
   });
@@ -89,9 +91,9 @@ void main() {
       'ok': {
         'columnNames': ['?'],
         'rows': [
-          [123]
-        ]
-      }
+          [123],
+        ],
+      },
     });
   });
 
@@ -104,8 +106,8 @@ void main() {
     expect(response.json, {
       'ok': {
         'raw_tables': <Object?>[],
-        'tables': [containsPair('name', 'users')]
-      }
+        'tables': [containsPair('name', 'users')],
+      },
     });
   });
 
@@ -116,7 +118,8 @@ void main() {
       isolateId: isolateId,
     );
 
-    expect(response.json,
-        {'ok': containsPair('current', containsPair('connected', false))});
+    expect(response.json, {
+      'ok': containsPair('current', containsPair('connected', false)),
+    });
   });
 }

@@ -56,14 +56,22 @@ void main() {
   test('aborts sync when database is closed', () async {
     final handle = createWorkerHandle(connector: _ThrowingBackendConnector());
     final hasError = expectLater(
-        db.statusStream,
-        emitsThrough(isA<SyncStatus>()
-            .having((e) => e.downloadError, 'downloadError', isNotNull)));
+      db.statusStream,
+      emitsThrough(
+        isA<SyncStatus>().having(
+          (e) => e.downloadError,
+          'downloadError',
+          isNotNull,
+        ),
+      ),
+    );
     await handle.streamingSync();
     await hasError;
 
-    expect(db.currentStatus.downloadError.toString(),
-        contains('Expected error from fetchCredentials'));
+    expect(
+      db.currentStatus.downloadError.toString(),
+      contains('Expected error from fetchCredentials'),
+    );
     final syncRunner = syncWorker.requestedSyncTasks.values.single;
     expect(syncRunner.sync, isNotNull);
     expect(syncRunner.connections, hasLength(1));
@@ -79,18 +87,20 @@ void main() {
   test('handles tabs closing while serving a request', () async {
     late SyncWorkerHandle handle;
     final didRequestCredentials = Completer<void>();
-    handle = createWorkerHandle(connector: _ThrowingBackendConnector(() {
-      // When the fetchCredentials request is sent, there should be a sync
-      // process.
-      final syncRunner = syncWorker.requestedSyncTasks.values.single;
-      expect(syncRunner.sync, isNotNull);
-      expect(syncRunner.connections, hasLength(1));
+    handle = createWorkerHandle(
+      connector: _ThrowingBackendConnector(() {
+        // When the fetchCredentials request is sent, there should be a sync
+        // process.
+        final syncRunner = syncWorker.requestedSyncTasks.values.single;
+        expect(syncRunner.sync, isNotNull);
+        expect(syncRunner.connections, hasLength(1));
 
-      // Close the handle while the fetchCredentials request is active, meaning
-      // the sync worker will never receive a response.
-      handle.closeChannel();
-      didRequestCredentials.complete();
-    }));
+        // Close the handle while the fetchCredentials request is active, meaning
+        // the sync worker will never receive a response.
+        handle.closeChannel();
+        didRequestCredentials.complete();
+      }),
+    );
 
     await handle.streamingSync();
     await didRequestCredentials.future;
@@ -112,7 +122,9 @@ void main() {
     final handle = createWorkerHandle(
       connector: TestConnector(
         () async => PowerSyncCredentials(
-            endpoint: 'http://test.powersync.example.org', token: 'token'),
+          endpoint: 'http://test.powersync.example.org',
+          token: 'token',
+        ),
       ),
       options: SyncOptions(httpClient: () => client),
     );
