@@ -2,6 +2,7 @@
 
 - Reduce log noise from attachments service ([#408](https://github.com/powersync-ja/powersync.dart/issues/408)).
 - Fix errors that can't be sent across isolates disrupting the sync isolate.
+- Update PowerSync SQLite core extension to 0.5.3, improving error messages for failed internal SQL statements.
 
 ## 2.3.3
 

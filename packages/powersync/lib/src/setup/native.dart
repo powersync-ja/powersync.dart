@@ -1,48 +1,48 @@
 /// After updating this, run `dart tool/update_core_extension_hashes.dart` to
 /// update [assetNameToSha256Hash].
-const releaseVersion = 'v0.5.2';
+const releaseVersion = 'v0.5.3';
 
 const Map<String, String> assetNameToSha256Hash = {
   // start of generated hashes
   'libpowersync_aarch64.android.so':
-      '61cf891d8ff86726dc0d507304653d2f58a4e65e1730db4c8a19ed6c1017b70b',
+      'da416aaaaaa6bbc96049a4d28cd36dc5a85b6123bbf8eff18353a491814d43ba',
   'libpowersync_aarch64.ios-sim.dylib':
-      '8ea8ef8e51168f9ddd40b5ffeb9664db7a3c9c852adc2d8f2337f3743a215b1a',
+      '9358c7dccaee821c329a0ba0c82554dfe970afe5595fd869b5a272a6e76fa0a1',
   'libpowersync_aarch64.ios.dylib':
-      '537c4729b5cb6d8b5682f52d2b216c882116be93796018bb0f031c256f939d11',
+      'd91691d26077b973bf38dd3ddd4649539f28445a919c8fa103528c3d37d2ba4a',
   'libpowersync_aarch64.linux.so':
-      '50817891679aa5598009119aa6cf00561e28c04078c6045c109281cf32bcf747',
+      'f27b1cadce2210541903ba2f4e9652782c9e14c913cde4f67c463cec00d46d14',
   'libpowersync_aarch64.macos.dylib':
-      'a3a37b9f346a7d12717149209f01c5f580a2ee3471b37bcdfa59a324834fd698',
+      '4fa96a98d7edb64a188493beb277bddcb7e85b286e2533d685ecf49ff51c6807',
   'libpowersync_aarch64.tvos-sim.dylib':
-      'cb91be6bc214a389e5c9e5c546ba9b83044d1eba1ad0d0c966ac9c6afd820929',
+      '54c69fe96b46d447bbad308da2843846eaef8831942de954dfa66d62f973c3c3',
   'libpowersync_aarch64.tvos.dylib':
-      '2b8be0637aa0f93afcf5121a5eed80181ce71455734faeb93df7e3251dc85d19',
+      'ca6f85b785862a57a3471e6dbde1158b167cdf60adced8a360a9cbba5f77cb4d',
   'libpowersync_armv7.android.so':
-      '97a7ec85b03a24c0511e916716077707aba90ee65c51da66086a5c8f2d5c9ef8',
+      '4f8ac9fc318f23d931d7ed8d0ba5cb7d4468062ed643c7bc1cb9dafe662d7d10',
   'libpowersync_armv7.linux.so':
-      'c0028d3536fdd8684c6be20988d7edf91eb290da0b53a6f3b6752c3f0462daa7',
+      '3f6ddf0838fbd34e0986e21de0db89b5a0462cdc1eaee95e42c9dcdc1f0c4cc5',
   'libpowersync_riscv64gc.linux.so':
-      'c636d46f0e591953e37e306efd8c055b44216fb019733cbdae718d70387b6042',
+      '5eaa1458153ab562ca0047aa2af4aa3303ee7291eabd92baeb2e9ab2f07935ba',
   'libpowersync_x64.android.so':
-      'c47a049447efd133450b7b782c0f4df84c93c1d18ac93c2c0aea9b697cf84f04',
+      '901be3196a958b0e5ec4566b7086b1de6f5ec73b78f074bafb51831f9c1a6f45',
   'libpowersync_x64.ios-sim.dylib':
-      '477f303746280b3dfef4b751cebf77a52f53d944c6b162ffb457358108ae70b3',
+      '440df6a7c4961a345ed630e873dcf30dba2fa02d12c21d892d3d0c08ec851b30',
   'libpowersync_x64.linux.so':
-      'e3288d3e1e2bfc5ccee4fb66d5afb9c691e7da7010b3a561892857a922659819',
+      'a6de0c79151ad6243ca18633f0df10bed32b692095fdf0f01ebdac6eb01d2edf',
   'libpowersync_x64.macos.dylib':
-      '53359ad66f31160795cf2728b1125567593bb00bd62197372fca8e461040abce',
+      '1209f802bcd886a112bd0de9ca5d7497a62af045fc64b78e703bdd465ee40979',
   'libpowersync_x64.tvos-sim.dylib':
-      '3e630c070cea2c062746024219b7db27e0b2d77355dec367dc8623c82e02800d',
+      'e354094a55902d3c48a3267c9585c3b699d8d52a3a44ba92952bbd89755ba93f',
   'libpowersync_x86.android.so':
-      '83f185bc4313d5f68cb71ec0f9d7988face78d011fea8ac591adcfb07b69377b',
+      'c48de38afbb764971691815b0a20c49eebf2208711da02a08faffd36bee5908e',
   'libpowersync_x86.linux.so':
-      '3be78268b546796c5e8983d37b3c4b28e2c6d2a5c4ec21757164c0d6b7bc11f8',
+      'dc9be35f8a5b5511be8f6b28f8c9d1e00e6ecdb72074ea8e67b826474810276f',
   'powersync_aarch64.dll':
-      '42a66fff06b2c927c60c78941ff8c069ad878761a46802a13dc33b9d503f6589',
+      '19afce715bf63b4f590fb2c00d18c3681b818cd6eee5a35284bd3a804f090b20',
   'powersync_x64.dll':
-      '95b1aa81b5307793fcf5ef4d0982f38076e14cdd7b97ea1a84faa545af0b74db',
+      'b3f62293f26d3ee309880d30e1e54819ac21b4d0b1ba9b9177f92e1dcbfdb0c7',
   'powersync_x86.dll':
-      '215d4aa2a08972dea7cbc91c316c111c2968ec47bd40865a78237b649d8d2e9a',
+      'd2403446c5b2d0550eb99cb195db01798ef78a740ba4f462cd0b887e0ce4bd8a',
   // end of generated hashes
 };
