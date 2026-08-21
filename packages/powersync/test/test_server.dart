@@ -22,7 +22,10 @@ final class TestServer {
     app.post('/sync/stream', handleSyncStream);
     // Open on an arbitrary open port
     server = await shelf_io.serve(
-        mockSyncService?.router.call ?? app.call, 'localhost', 0);
+      mockSyncService?.router.call ?? app.call,
+      'localhost',
+      0,
+    );
   }
 
   String get endpoint {
@@ -52,12 +55,8 @@ final class TestServer {
 
     return Response.ok(
       encodeNdjson(stream()),
-      headers: {
-        'Content-Type': 'application/x-ndjson',
-      },
-      context: {
-        'shelf.io.buffer_output': false,
-      },
+      headers: {'Content-Type': 'application/x-ndjson'},
+      context: {'shelf.io.buffer_output': false},
     );
   }
 

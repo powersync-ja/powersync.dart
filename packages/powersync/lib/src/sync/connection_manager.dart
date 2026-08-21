@@ -95,9 +95,9 @@ final class ConnectionManager {
   }
 
   List<SubscribedStream> get _subscribedStreams => [
-        for (final active in _locallyActiveSubscriptions.values)
-          (name: active.name, parameters: active.encodedParameters)
-      ];
+    for (final active in _locallyActiveSubscriptions.values)
+      (name: active.name, parameters: active.encodedParameters),
+  ];
 
   Future<void> connect({
     required PowerSyncBackendConnector connector,
@@ -106,7 +106,8 @@ final class ConnectionManager {
     if (db.schema.rawTables.isNotEmpty &&
         options.source.syncImplementation != SyncClientImplementation.rust) {
       throw UnsupportedError(
-          'Raw tables are only supported by the Rust client.');
+        'Raw tables are only supported by the Rust client.',
+      );
     }
 
     var thisConnectAborter = AbortController();
@@ -185,15 +186,21 @@ final class ConnectionManager {
   }
 
   _SyncStreamSubscriptionHandle _referenceStreamSubscription(
-      String stream, Map<String, Object?>? parameters) {
+    String stream,
+    Map<String, Object?>? parameters,
+  ) {
     final key = (stream, json.encode(parameters));
     _ActiveSubscription active;
 
     if (_locallyActiveSubscriptions[key] case final current?) {
       active = current;
     } else {
-      active = _ActiveSubscription(this,
-          name: stream, parameters: parameters, encodedParameters: key.$2);
+      active = _ActiveSubscription(
+        this,
+        name: stream,
+        parameters: parameters,
+        encodedParameters: key.$2,
+      );
       _locallyActiveSubscriptions[key] = active;
       _subscriptionsChanged?.add(null);
     }
@@ -203,17 +210,19 @@ final class ConnectionManager {
 
   void _clearSubscription(_ActiveSubscription subscription) {
     assert(subscription.refcount == 0);
-    _locallyActiveSubscriptions
-        .remove((subscription.name, subscription.encodedParameters));
+    _locallyActiveSubscriptions.remove((
+      subscription.name,
+      subscription.encodedParameters,
+    ));
     _subscriptionsChanged?.add(null);
   }
 
   Future<void> _subscriptionsCommand(Object? command) async {
     await db.writeTransaction((tx) {
-      return tx.execute(
-        'SELECT powersync_control(?, ?)',
-        ['subscriptions', json.encode(command)],
-      );
+      return tx.execute('SELECT powersync_control(?, ?)', [
+        'subscriptions',
+        json.encode(command),
+      ]);
     });
     _subscriptionsChanged?.add(null);
   }
@@ -226,10 +235,7 @@ final class ConnectionManager {
   }) async {
     await _subscriptionsCommand({
       'subscribe': {
-        'stream': {
-          'name': stream,
-          'params': parameters,
-        },
+        'stream': {'name': stream, 'params': parameters},
         'ttl': ttl?.inSeconds,
         'priority': priority,
       },
@@ -250,10 +256,7 @@ final class ConnectionManager {
     required Object? parameters,
   }) async {
     await _subscriptionsCommand({
-      'unsubscribe': {
-        'name': stream,
-        'params': parameters,
-      },
+      'unsubscribe': {'name': stream, 'params': parameters},
     });
   }
 
@@ -263,10 +266,12 @@ final class ConnectionManager {
     );
 
     final status = CoreSyncStatus.fromJson(
-        json.decode(row['r'] as String) as Map<String, Object?>);
+      json.decode(row['r'] as String) as Map<String, Object?>,
+    );
 
     manuallyChangeSyncStatus(
-        (MutableSyncStatus()..applyFromCore(status)).immutableSnapshot());
+      (MutableSyncStatus()..applyFromCore(status)).immutableSnapshot(),
+    );
   }
 
   SyncStream syncStream(String name, Map<String, Object?>? parameters) {
@@ -367,10 +372,11 @@ final class _SyncStreamSubscriptionHandle implements SyncStreamSubscription {
 
   static final Finalizer<_ActiveSubscription> _finalizer = Finalizer((sub) {
     sub.connections.db.logger.warning(
-        'A subscription to ${sub.name} (with parameters ${sub.parameters}) '
-        'leaked! Please ensure calling SyncStreamSubscription.unsubscribe() '
-        "when you don't need a subscription anymore. For global "
-        'subscriptions, consider storing them in global fields to avoid this '
-        'warning.');
+      'A subscription to ${sub.name} (with parameters ${sub.parameters}) '
+      'leaked! Please ensure calling SyncStreamSubscription.unsubscribe() '
+      "when you don't need a subscription anymore. For global "
+      'subscriptions, consider storing them in global fields to avoid this '
+      'warning.',
+    );
   });
 }

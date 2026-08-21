@@ -58,8 +58,10 @@ final class TrackPreviousValuesOptions {
   /// instead of always including all old values.
   final bool onlyWhenChanged;
 
-  const TrackPreviousValuesOptions(
-      {this.columnFilter, this.onlyWhenChanged = false});
+  const TrackPreviousValuesOptions({
+    this.columnFilter,
+    this.onlyWhenChanged = false,
+  });
 }
 
 /// Common options that can be applied on [Table] and [RawTable] (through
@@ -119,7 +121,8 @@ final class TableOptions {
 
 /// A single table in the schema.
 @Deprecated.subclass(
-    'Avoid extending table, create an instance or extension type around it instead.')
+  'Avoid extending table, create an instance or extension type around it instead.',
+)
 base class Table extends TableOptions {
   static const _maxNumberOfColumns = 1999;
 
@@ -164,16 +167,19 @@ base class Table extends TableOptions {
     super.ignoreEmptyUpdates,
     super.trackMetadata,
     super.trackPreviousValues,
-  })  : _viewNameOverride = viewName,
-        super(insertOnly: false);
+  }) : _viewNameOverride = viewName,
+       super(insertOnly: false);
 
   /// Create a table that only exists locally.
   ///
   /// This table does not record changes, and is not synchronized from the service.
-  const Table.localOnly(this.name, this.columns,
-      {this.indexes = const [], String? viewName})
-      : _viewNameOverride = viewName,
-        super(localOnly: true);
+  const Table.localOnly(
+    this.name,
+    this.columns, {
+    this.indexes = const [],
+    String? viewName,
+  }) : _viewNameOverride = viewName,
+       super(localOnly: true);
 
   /// Create a table that only supports inserts.
   ///
@@ -190,9 +196,9 @@ base class Table extends TableOptions {
     super.ignoreEmptyUpdates,
     super.trackMetadata,
     super.trackPreviousValues,
-  })  : indexes = const [],
-        _viewNameOverride = viewName,
-        super(localOnly: false, insertOnly: true);
+  }) : indexes = const [],
+       _viewNameOverride = viewName,
+       super(localOnly: false, insertOnly: true);
 
   Column operator [](String columnName) {
     return columns.firstWhere((element) => element.name == columnName);
@@ -208,7 +214,8 @@ base class Table extends TableOptions {
   void validate() {
     if (columns.length > _maxNumberOfColumns) {
       throw AssertionError(
-          "Table $name has more than $_maxNumberOfColumns columns, which is not supported");
+        "Table $name has more than $_maxNumberOfColumns columns, which is not supported",
+      );
     }
 
     if (invalidSqliteCharacters.hasMatch(name)) {
@@ -218,7 +225,8 @@ base class Table extends TableOptions {
     if (_viewNameOverride != null &&
         invalidSqliteCharacters.hasMatch(_viewNameOverride)) {
       throw AssertionError(
-          "Invalid characters in view name: $_viewNameOverride");
+        "Invalid characters in view name: $_viewNameOverride",
+      );
     }
 
     _validateOptions();
@@ -227,12 +235,14 @@ base class Table extends TableOptions {
     for (var column in columns) {
       if (column.name == 'id') {
         throw AssertionError(
-            "$name: id column is automatically added, custom id columns are not supported");
+          "$name: id column is automatically added, custom id columns are not supported",
+        );
       } else if (columnNames.contains(column.name)) {
         throw AssertionError("Duplicate column $name.${column.name}");
       } else if (invalidSqliteCharacters.hasMatch(column.name)) {
         throw AssertionError(
-            "Invalid characters in column name: $name.${column.name}");
+          "Invalid characters in column name: $name.${column.name}",
+        );
       }
 
       columnNames.add(column.name);
@@ -244,13 +254,15 @@ base class Table extends TableOptions {
         throw AssertionError("Duplicate index $name.${index.name}");
       } else if (invalidSqliteCharacters.hasMatch(index.name)) {
         throw AssertionError(
-            "Invalid characters in index name: $name.${index.name}");
+          "Invalid characters in index name: $name.${index.name}",
+        );
       }
 
       for (var column in index.columns) {
         if (!columnNames.contains(column.column)) {
           throw AssertionError(
-              "Column $name.${column.column} not found for index ${index.name}");
+            "Column $name.${column.column} not found for index ${index.name}",
+          );
         }
       }
 
@@ -265,12 +277,12 @@ base class Table extends TableOptions {
   }
 
   Map<String, dynamic> toJson() => {
-        'name': name,
-        'view_name': _viewNameOverride,
-        'columns': columns,
-        'indexes': indexes.map((e) => e.toJson(this)).toList(growable: false),
-        ..._optionsToJson(),
-      };
+    'name': name,
+    'view_name': _viewNameOverride,
+    'columns': columns,
+    'indexes': indexes.map((e) => e.toJson(this)).toList(growable: false),
+    ..._optionsToJson(),
+  };
 }
 
 class Index {
@@ -285,8 +297,10 @@ class Index {
 
   /// Construct a new index with the specified column names.
   factory Index.ascending(String name, List<String> columns) {
-    return Index(name,
-        columns.map((e) => IndexedColumn.ascending(e)).toList(growable: false));
+    return Index(
+      name,
+      columns.map((e) => IndexedColumn.ascending(e)).toList(growable: false),
+    );
   }
 
   /// Internal use only.
@@ -297,9 +311,9 @@ class Index {
   }
 
   Map<String, dynamic> toJson(Table table) => {
-        'name': name,
-        'columns': columns.map((c) => c.toJson(table)).toList(growable: false)
-      };
+    'name': name,
+    'columns': columns.map((c) => c.toJson(table)).toList(growable: false),
+  };
 }
 
 /// Describes an indexed column.
@@ -420,12 +434,12 @@ final class RawTable {
   });
 
   Map<String, dynamic> toJson() => {
-        'name': name,
-        'put': put,
-        'delete': delete,
-        'clear': clear,
-        ...?schema?._toJson(this),
-      };
+    'name': name,
+    'put': put,
+    'delete': delete,
+    'clear': clear,
+    ...?schema?._toJson(this),
+  };
 }
 
 /// The schema of a [RawTable] in the local database.
@@ -464,10 +478,10 @@ final class RawTableSchema {
   });
 
   Map<String, dynamic> _toJson(RawTable tbl) => {
-        'table_name': tableName ?? tbl.name,
-        if (syncedColumns != null) 'synced_columns': syncedColumns,
-        ...options._optionsToJson(),
-      };
+    'table_name': tableName ?? tbl.name,
+    if (syncedColumns != null) 'synced_columns': syncedColumns,
+    ...options._optionsToJson(),
+  };
 }
 
 /// An SQL statement to be run by the sync client against raw tables.
@@ -490,10 +504,7 @@ final class PendingStatement {
 
   const PendingStatement({required this.sql, required this.params});
 
-  Map<String, dynamic> toJson() => {
-        'sql': sql,
-        'params': params,
-      };
+  Map<String, dynamic> toJson() => {'sql': sql, 'params': params};
 }
 
 /// A description of a value that will be resolved in the sync client when
@@ -520,9 +531,7 @@ class _PendingStmtValueColumn implements PendingStatementValue {
 
   @override
   dynamic toJson() {
-    return {
-      'Column': column,
-    };
+    return {'Column': column};
   }
 }
 

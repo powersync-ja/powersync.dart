@@ -16,8 +16,11 @@ var _didInstallExtension = false;
 base class NativePowerSyncOpenFactory extends NativeSqliteOpenFactory {
   final EncryptionOptions? encryptionOptions;
 
-  NativePowerSyncOpenFactory(
-      {required super.path, super.sqliteOptions, this.encryptionOptions});
+  NativePowerSyncOpenFactory({
+    required super.path,
+    super.sqliteOptions,
+    this.encryptionOptions,
+  });
 
   @override
   List<String> pragmaStatements(SqliteOpenOptions options) {
@@ -30,7 +33,8 @@ base class NativePowerSyncOpenFactory extends NativeSqliteOpenFactory {
   void enableExtension() {
     if (!_didInstallExtension) {
       final entrypoint = Native.addressOf<NativeFunction<ExtensionEntrypoint>>(
-          sqlite3_powersync_init);
+        sqlite3_powersync_init,
+      );
 
       sqlite3.ensureExtensionLoaded(SqliteExtension(entrypoint.cast()));
 

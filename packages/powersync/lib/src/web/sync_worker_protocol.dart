@@ -84,8 +84,10 @@ enum SyncWorkerMessageType {
 
 @anonymous
 extension type SyncWorkerMessage._(JSObject _) implements JSObject {
-  external factory SyncWorkerMessage(
-      {required String type, required JSAny payload});
+  external factory SyncWorkerMessage({
+    required String type,
+    required JSAny payload,
+  });
 
   external String get type;
   external JSAny get payload;
@@ -241,7 +243,8 @@ extension type SerializedBucketProgress._(JSObject _) implements JSObject {
   external int targetCount;
 
   static JSArray<SerializedBucketProgress> serialize(
-      Map<String, BucketProgress> buckets) {
+    Map<String, BucketProgress> buckets,
+  ) {
     return <SerializedBucketProgress>[
       for (final MapEntry(:key, :value) in buckets.entries)
         SerializedBucketProgress(
@@ -255,7 +258,8 @@ extension type SerializedBucketProgress._(JSObject _) implements JSObject {
   }
 
   static Map<String, BucketProgress> deserialize(
-      JSArray<SerializedBucketProgress> array) {
+    JSArray<SerializedBucketProgress> array,
+  ) {
     return {
       for (final entry in array.toDart)
         entry.name: (
@@ -300,12 +304,13 @@ extension type SerializedSyncStatus._(JSObject _) implements JSObject {
             entry.priority.priorityNumber.toJS,
             entry.lastSyncedAt?.microsecondsSinceEpoch.toJS,
             entry.hasSynced?.toJS,
-          ].toJS
+          ].toJS,
       ].toJS,
       syncProgress: switch (status.downloadProgress) {
         null => null,
         var other => SerializedBucketProgress.serialize(
-            InternalSyncDownloadProgress.ofPublic(other).buckets),
+          InternalSyncDownloadProgress.ofPublic(other).buckets,
+        ),
       },
       streamSubscriptions: json.encode(status.internalSubscriptions).toJS,
     );
@@ -351,20 +356,24 @@ extension type SerializedSyncStatus._(JSObject _) implements JSObject {
                   : null,
               hasSynced: (rawHasSynced as JSBoolean?)?.toDart,
             );
-          })
+          }),
       ],
       downloadProgress: switch (syncProgress) {
         null => null,
         final serializedProgress => InternalSyncDownloadProgress(
-                SerializedBucketProgress.deserialize(serializedProgress))
-            .asSyncDownloadProgress,
+          SerializedBucketProgress.deserialize(serializedProgress),
+        ).asSyncDownloadProgress,
       },
       streamSubscriptions: switch (streamSubscriptions) {
         null => null,
-        final serialized => (json.decode(serialized) as List?)
-            ?.map((e) => CoreActiveStreamSubscription.fromJson(
-                e as Map<String, Object?>))
-            .toList(),
+        final serialized =>
+          (json.decode(serialized) as List?)
+              ?.map(
+                (e) => CoreActiveStreamSubscription.fromJson(
+                  e as Map<String, Object?>,
+                ),
+              )
+              .toList(),
       },
     );
   }
@@ -386,7 +395,7 @@ final class WorkerCommunicationChannel {
 
   final MessagePort port;
   final FutureOr<(JSAny?, JSArray?)> Function(SyncWorkerMessageType, JSAny)
-      requestHandler;
+  requestHandler;
   final StreamController<(SyncWorkerMessageType, JSAny)> _events =
       StreamController();
   final Logger _logger;
@@ -402,10 +411,10 @@ final class WorkerCommunicationChannel {
     Stream<Event>? errors,
     Logger? logger,
     Client? exposedHttpClient,
-  })  : _logger = logger ?? autoLogger,
-        _httpServer = exposedHttpClient == null
-            ? null
-            : RemoteHttpServer(exposedHttpClient) {
+  }) : _logger = logger ?? autoLogger,
+       _httpServer = exposedHttpClient == null
+           ? null
+           : RemoteHttpServer(exposedHttpClient) {
     port.start();
     _incomingErrors = errors?.listen((event) {
       _hasError = true;
@@ -416,75 +425,86 @@ final class WorkerCommunicationChannel {
       _pendingRequests.clear();
     });
 
-    _incomingMessages =
-        EventStreamProviders.messageEvent.forTarget(port).listen((event) async {
-      final message = event.data as SyncWorkerMessage;
-      final type = SyncWorkerMessageType.values.byName(message.type);
-      _logger.fine('[in] $type');
+    _incomingMessages = EventStreamProviders.messageEvent
+        .forTarget(port)
+        .listen((event) async {
+          final message = event.data as SyncWorkerMessage;
+          final type = SyncWorkerMessageType.values.byName(message.type);
+          _logger.fine('[in] $type');
 
-      int requestId;
+          int requestId;
 
-      switch (type) {
-        case SyncWorkerMessageType.ping:
-          requestId = (message.payload as JSNumber).toDartInt;
-          return _respond(requestId, () async => (null, null));
-        case SyncWorkerMessageType.startSynchronization:
-          requestId = (message.payload as StartSynchronization).requestId;
-        case SyncWorkerMessageType.updateSubscriptions:
-          requestId = (message.payload as UpdateSubscriptions).requestId;
-        case SyncWorkerMessageType.requestEndpoint:
-        case SyncWorkerMessageType.abortSynchronization:
-        case SyncWorkerMessageType.credentialsCallback:
-        case SyncWorkerMessageType.invalidCredentialsCallback:
-        case SyncWorkerMessageType.uploadCrud:
-          requestId = (message.payload as JSNumber).toDartInt;
-        case SyncWorkerMessageType.sendHttpRequest:
-          final request = message.payload as HttpRequest;
-          return _respond(request.requestId,
-              () async => (await _httpServer!.handle(request), null));
-        case SyncWorkerMessageType.abortHttpRequest:
-          final payload = message.payload as AbortHttpResponse;
-          _httpServer!.abort(payload.transactionId, payload.cancelStream);
-          return;
-        case SyncWorkerMessageType.readResponseChunk:
-          final request = message.payload as ReadStreamChunk;
-          return _respond(request.requestId, () async {
-            return switch (
-                await _httpServer!.readResponse(request.transactionId)) {
-              null => (null, null),
-              final buffer => (buffer, <JSAny?>[buffer].toJS),
-            };
-          });
-        case SyncWorkerMessageType.okResponse:
-          final payload = message.payload as OkResponse;
-          _pendingRequests.remove(payload.requestId)!.complete(payload.payload);
-          return;
-        case SyncWorkerMessageType.errorResponse:
-          final payload = message.payload as ErrorResponse;
-          final error = switch (
-              payload.recognizedType ?? ErrorResponse.recognizedTypeNone) {
-            ErrorResponse.recognizedTypeRequestAbortedException =>
-              RequestAbortedException(),
-            _ => payload.errorMessage.toDart,
-          };
+          switch (type) {
+            case SyncWorkerMessageType.ping:
+              requestId = (message.payload as JSNumber).toDartInt;
+              return _respond(requestId, () async => (null, null));
+            case SyncWorkerMessageType.startSynchronization:
+              requestId = (message.payload as StartSynchronization).requestId;
+            case SyncWorkerMessageType.updateSubscriptions:
+              requestId = (message.payload as UpdateSubscriptions).requestId;
+            case SyncWorkerMessageType.requestEndpoint:
+            case SyncWorkerMessageType.abortSynchronization:
+            case SyncWorkerMessageType.credentialsCallback:
+            case SyncWorkerMessageType.invalidCredentialsCallback:
+            case SyncWorkerMessageType.uploadCrud:
+              requestId = (message.payload as JSNumber).toDartInt;
+            case SyncWorkerMessageType.sendHttpRequest:
+              final request = message.payload as HttpRequest;
+              return _respond(
+                request.requestId,
+                () async => (await _httpServer!.handle(request), null),
+              );
+            case SyncWorkerMessageType.abortHttpRequest:
+              final payload = message.payload as AbortHttpResponse;
+              _httpServer!.abort(payload.transactionId, payload.cancelStream);
+              return;
+            case SyncWorkerMessageType.readResponseChunk:
+              final request = message.payload as ReadStreamChunk;
+              return _respond(request.requestId, () async {
+                return switch (await _httpServer!.readResponse(
+                  request.transactionId,
+                )) {
+                  null => (null, null),
+                  final buffer => (buffer, <JSAny?>[buffer].toJS),
+                };
+              });
+            case SyncWorkerMessageType.okResponse:
+              final payload = message.payload as OkResponse;
+              _pendingRequests
+                  .remove(payload.requestId)!
+                  .complete(payload.payload);
+              return;
+            case SyncWorkerMessageType.errorResponse:
+              final payload = message.payload as ErrorResponse;
+              final error = switch (payload.recognizedType ??
+                  ErrorResponse.recognizedTypeNone) {
+                ErrorResponse.recognizedTypeRequestAbortedException =>
+                  RequestAbortedException(),
+                _ => payload.errorMessage.toDart,
+              };
 
-          _pendingRequests.remove(payload.requestId)!.completeError(error);
-          return;
-        case SyncWorkerMessageType.notifySyncStatus:
-          _events.add((type, message.payload));
-          return;
-        case SyncWorkerMessageType.logEvent:
-          final msg = (message.payload as JSString).toDart;
-          _logger.info('[Sync Worker]: $msg');
-          return;
-      }
+              _pendingRequests.remove(payload.requestId)!.completeError(error);
+              return;
+            case SyncWorkerMessageType.notifySyncStatus:
+              _events.add((type, message.payload));
+              return;
+            case SyncWorkerMessageType.logEvent:
+              final msg = (message.payload as JSString).toDart;
+              _logger.info('[Sync Worker]: $msg');
+              return;
+          }
 
-      await _respond(requestId, () => requestHandler(type, message.payload));
-    });
+          await _respond(
+            requestId,
+            () => requestHandler(type, message.payload),
+          );
+        });
   }
 
-  Future<void> _respond(int requestId,
-      FutureOr<(JSAny?, JSArray?)> Function() generateResponse) async {
+  Future<void> _respond(
+    int requestId,
+    FutureOr<(JSAny?, JSArray?)> Function() generateResponse,
+  ) async {
     try {
       final (response, transfer) = await generateResponse();
       final responseMessage = SyncWorkerMessage(
@@ -498,18 +518,20 @@ final class WorkerCommunicationChannel {
         port.postMessage(responseMessage);
       }
     } catch (e) {
-      port.postMessage(SyncWorkerMessage(
-        type: SyncWorkerMessageType.errorResponse.name,
-        payload: ErrorResponse(
-          requestId: requestId,
-          recognizedType: switch (e) {
-            RequestAbortedException() =>
-              ErrorResponse.recognizedTypeRequestAbortedException,
-            _ => ErrorResponse.recognizedTypeNone,
-          },
-          errorMessage: e.toString().toJS,
+      port.postMessage(
+        SyncWorkerMessage(
+          type: SyncWorkerMessageType.errorResponse.name,
+          payload: ErrorResponse(
+            requestId: requestId,
+            recognizedType: switch (e) {
+              RequestAbortedException() =>
+                ErrorResponse.recognizedTypeRequestAbortedException,
+              _ => ErrorResponse.recognizedTypeNone,
+            },
+            errorMessage: e.toString().toJS,
+          ),
         ),
-      ));
+      );
     }
   }
 
@@ -531,7 +553,8 @@ final class WorkerCommunicationChannel {
 
   void notify(SyncWorkerMessageType notificationType, JSAny payload) {
     port.postMessage(
-        SyncWorkerMessage(type: notificationType.name, payload: payload));
+      SyncWorkerMessage(type: notificationType.name, payload: payload),
+    );
   }
 
   Future<void> ping() async {
@@ -554,37 +577,41 @@ final class WorkerCommunicationChannel {
     bool customHttpClient,
   ) async {
     final (id, completion) = _newRequest();
-    port.postMessage(SyncWorkerMessage(
-      type: SyncWorkerMessageType.startSynchronization.name,
-      payload: StartSynchronization(
-        databaseName: databaseName,
-        crudThrottleTimeMs: options.crudThrottleTime.inMilliseconds,
-        retryDelayMs: options.retryDelay.inMilliseconds,
-        requestId: id,
-        implementationName: options.source.syncImplementation.name,
-        schemaJson: jsonEncode(schema),
-        syncParamsEncoded: switch (options.source.params) {
-          null => null,
-          final params => jsonEncode(params),
-        },
-        subscriptions: UpdateSubscriptions(-1, streams),
-        appMetadataEncoded: switch (options.source.appMetadata) {
-          null => null,
-          final appMetadata => jsonEncode(appMetadata),
-        },
-        lockName: await lockName,
-        customHttpClient: customHttpClient,
+    port.postMessage(
+      SyncWorkerMessage(
+        type: SyncWorkerMessageType.startSynchronization.name,
+        payload: StartSynchronization(
+          databaseName: databaseName,
+          crudThrottleTimeMs: options.crudThrottleTime.inMilliseconds,
+          retryDelayMs: options.retryDelay.inMilliseconds,
+          requestId: id,
+          implementationName: options.source.syncImplementation.name,
+          schemaJson: jsonEncode(schema),
+          syncParamsEncoded: switch (options.source.params) {
+            null => null,
+            final params => jsonEncode(params),
+          },
+          subscriptions: UpdateSubscriptions(-1, streams),
+          appMetadataEncoded: switch (options.source.appMetadata) {
+            null => null,
+            final appMetadata => jsonEncode(appMetadata),
+          },
+          lockName: await lockName,
+          customHttpClient: customHttpClient,
+        ),
       ),
-    ));
+    );
     await completion;
   }
 
   Future<void> updateSubscriptions(List<SubscribedStream> streams) async {
     final (id, completion) = _newRequest();
-    port.postMessage(SyncWorkerMessage(
-      type: SyncWorkerMessageType.updateSubscriptions.name,
-      payload: UpdateSubscriptions(id, streams),
-    ));
+    port.postMessage(
+      SyncWorkerMessage(
+        type: SyncWorkerMessageType.updateSubscriptions.name,
+        payload: UpdateSubscriptions(id, streams),
+      ),
+    );
 
     await completion;
   }

@@ -62,32 +62,31 @@ final class SyncingService {
 
     late StreamSubscription<void> sub;
     final syncStream =
-        StreamGroup.merge<void>([attachmentChanges, manualTriggers])
-            .takeWhile((_) => sub == _syncSubscription)
-            .asyncMap((_) async {
-      // Read the active set inside the mutex; release it before doing any
-      // per-attachment I/O so that concurrent `saveFile`/`deleteFile` and
-      // `_processWatchedAttachments` calls aren't blocked for the duration
-      // of the whole batch.
-      final attachments = await attachmentsService.withContext(
-        (context) => context.getActiveAttachments(),
-      );
-      logger.finest('Found ${attachments.length} active attachments');
+        StreamGroup.merge<void>([
+          attachmentChanges,
+          manualTriggers,
+        ]).takeWhile((_) => sub == _syncSubscription).asyncMap((_) async {
+          // Read the active set inside the mutex; release it before doing any
+          // per-attachment I/O so that concurrent `saveFile`/`deleteFile` and
+          // `_processWatchedAttachments` calls aren't blocked for the duration
+          // of the whole batch.
+          final attachments = await attachmentsService.withContext(
+            (context) => context.getActiveAttachments(),
+          );
+          logger.finest('Found ${attachments.length} active attachments');
 
-      await _handleSync(
-        attachments,
-        isActive: () => sub == _syncSubscription,
-      );
+          await _handleSync(
+            attachments,
+            isActive: () => sub == _syncSubscription,
+          );
 
-      await attachmentsService.withContext(deleteArchivedAttachments);
-    });
+          await attachmentsService.withContext(deleteArchivedAttachments);
+        });
 
     _syncSubscription = sub = syncStream.listen(null);
 
     // Start periodic sync using instance period
-    _periodicSubscription = Stream<void>.periodic(period, (_) {}).listen((
-      _,
-    ) {
+    _periodicSubscription = Stream<void>.periodic(period, (_) {}).listen((_) {
       logger.finer('Periodically syncing attachments (interval $period)');
       triggerSync();
     });
@@ -183,7 +182,8 @@ final class SyncingService {
   /// Returns the updated attachment with its new state.
   Future<Attachment> _uploadAttachment(Attachment attachment) async {
     logger.info(
-        'Starting upload for attachment ${attachment.id} (local filename ${attachment.filename})');
+      'Starting upload for attachment ${attachment.id} (local filename ${attachment.filename})',
+    );
     try {
       if (attachment.localUri == null) {
         throw Exception('No localUri for attachment $attachment');
@@ -236,15 +236,14 @@ final class SyncingService {
         hasSynced: true,
       );
     } catch (e, st) {
-      logger.warning(
-        'Download error for attachment $attachment',
-        e,
-        st,
-      );
+      logger.warning('Download error for attachment $attachment', e, st);
 
       if (errorHandler case final errorHandler?) {
-        final shouldRetry =
-            await errorHandler.onDownloadError(attachment, e, st);
+        final shouldRetry = await errorHandler.onDownloadError(
+          attachment,
+          e,
+          st,
+        );
         if (!shouldRetry) {
           logger.warning(
             'Attachment with ID ${attachment.id} has been archived after download error',
@@ -262,7 +261,9 @@ final class SyncingService {
   /// [attachment]: The attachment to delete.
   /// Returns the updated attachment with its new state.
   Future<Attachment> deleteAttachment(
-      Attachment attachment, AttachmentContext context) async {
+    Attachment attachment,
+    AttachmentContext context,
+  ) async {
     try {
       logger.info('Deleting attachment ${attachment.id} from remote storage');
       await remoteStorage.deleteFile(attachment);
@@ -294,9 +295,7 @@ final class SyncingService {
   ///
   /// [context]: The attachment context used to retrieve and manage archived attachments.
   /// Returns `true` if all archived attachments were successfully deleted, `false` otherwise.
-  Future<bool> deleteArchivedAttachments(
-    AttachmentContext context,
-  ) async {
+  Future<bool> deleteArchivedAttachments(AttachmentContext context) async {
     return context.deleteArchivedAttachments((pendingDelete) async {
       for (final attachment in pendingDelete) {
         if (attachment.localUri == null) continue;

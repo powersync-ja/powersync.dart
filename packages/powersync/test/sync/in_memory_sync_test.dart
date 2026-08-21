@@ -50,17 +50,14 @@ void _declareTests(String name, SyncOptions options, bool bson) {
 
       database.httpClient = client;
       await database.connect(
-        connector: TestConnector(
-          () async {
-            credentialsCallbackCount++;
-            return PowerSyncCredentials(
-              endpoint: server.url.toString(),
-              token: 'token$credentialsCallbackCount',
-              expiresAt: DateTime.now(),
-            );
-          },
-          uploadData: (db) => uploadData(db),
-        ),
+        connector: TestConnector(() async {
+          credentialsCallbackCount++;
+          return PowerSyncCredentials(
+            endpoint: server.url.toString(),
+            token: 'token$credentialsCallbackCount',
+            expiresAt: DateTime.now(),
+          );
+        }, uploadData: (db) => uploadData(db)),
         options: options,
       );
     }
@@ -79,8 +76,10 @@ void _declareTests(String name, SyncOptions options, bool bson) {
       await syncService.stop();
     });
 
-    Future<StreamQueue<SyncStatus>> waitForConnection(
-        {bool expectNoWarnings = true, bool addKeepLive = true}) async {
+    Future<StreamQueue<SyncStatus>> waitForConnection({
+      bool expectNoWarnings = true,
+      bool addKeepLive = true,
+    }) async {
       if (expectNoWarnings) {
         logger.onRecord.listen((e) {
           if (e.level >= Level.WARNING) {
@@ -100,8 +99,10 @@ void _declareTests(String name, SyncOptions options, bool bson) {
         syncService.addKeepAlive();
       }
 
-      await expectLater(status,
-          emitsThrough(isSyncStatus(connected: true, hasSynced: false)));
+      await expectLater(
+        status,
+        emitsThrough(isSyncStatus(connected: true, hasSynced: false)),
+      );
       return status;
     }
 
@@ -112,20 +113,19 @@ void _declareTests(String name, SyncOptions options, bool bson) {
         'checkpoint': {
           'last_op_id': '0',
           'buckets': [
-            {
-              'bucket': 'bkt',
-              'checksum': 0,
-            }
+            {'bucket': 'bkt', 'checksum': 0},
           ],
         },
       });
       await expectLater(status, emits(isSyncStatus(downloading: true)));
 
       syncService.addLine({
-        'checkpoint_complete': {'last_op_id': '0'}
+        'checkpoint_complete': {'last_op_id': '0'},
       });
       await expectLater(
-          status, emits(isSyncStatus(downloading: false, hasSynced: true)));
+        status,
+        emits(isSyncStatus(downloading: false, hasSynced: true)),
+      );
       await database.disconnect();
 
       final independentDb = TestDatabase(
@@ -140,25 +140,31 @@ void _declareTests(String name, SyncOptions options, bool bson) {
       expect(independentDb.currentStatus.hasSynced, isTrue);
       // A complete sync also means that all partial syncs have completed
       expect(
-          independentDb.currentStatus
-              .statusForPriority(StreamPriority(3))
-              .hasSynced,
-          isTrue);
+        independentDb.currentStatus
+            .statusForPriority(StreamPriority(3))
+            .hasSynced,
+        isTrue,
+      );
     });
 
     // raw tables are only supported by the rust sync client
     test('raw tables with implicit statements', () async {
-      final schema = const Schema([], rawTables: [
-        RawTable.inferred(
-          name: 'lists',
-          schema: RawTableSchema(tableName: 'lists'),
-        ),
-      ]);
+      final schema = const Schema(
+        [],
+        rawTables: [
+          RawTable.inferred(
+            name: 'lists',
+            schema: RawTableSchema(tableName: 'lists'),
+          ),
+        ],
+      );
 
       await database.execute(
-          'CREATE TABLE lists (id TEXT NOT NULL PRIMARY KEY, name TEXT);');
+        'CREATE TABLE lists (id TEXT NOT NULL PRIMARY KEY, name TEXT);',
+      );
       final query = StreamQueue(
-          database.watch('SELECT * FROM lists', throttle: Duration.zero));
+        database.watch('SELECT * FROM lists', throttle: Duration.zero),
+      );
       await expectLater(query, emits(isEmpty));
 
       await database.updateSchema(schema);
@@ -170,7 +176,7 @@ void _declareTests(String name, SyncOptions options, bool bson) {
             lastOpId: '1',
             writeCheckpoint: null,
             checksums: [BucketChecksum(bucket: 'a', priority: 3, checksum: 0)],
-          )
+          ),
         })
         ..addLine({
           'data': {
@@ -182,22 +188,19 @@ void _declareTests(String name, SyncOptions options, bool bson) {
                 'op': 'PUT',
                 'op_id': '1',
                 'object_id': 'my_list',
-                'object_type': 'lists'
-              }
-            ]
-          }
+                'object_type': 'lists',
+              },
+            ],
+          },
         })
         ..addLine({
-          'checkpoint_complete': {'last_op_id': '1'}
+          'checkpoint_complete': {'last_op_id': '1'},
         });
 
       await expectLater(
         query,
         emits([
-          {
-            'id': 'my_list',
-            'name': 'custom list',
-          }
+          {'id': 'my_list', 'name': 'custom list'},
         ]),
       );
 
@@ -207,7 +210,7 @@ void _declareTests(String name, SyncOptions options, bool bson) {
             lastOpId: '2',
             writeCheckpoint: null,
             checksums: [BucketChecksum(bucket: 'a', priority: 3, checksum: 0)],
-          )
+          ),
         })
         ..addLine({
           'data': {
@@ -218,44 +221,47 @@ void _declareTests(String name, SyncOptions options, bool bson) {
                 'op': 'REMOVE',
                 'op_id': '2',
                 'object_id': 'my_list',
-                'object_type': 'lists'
-              }
-            ]
-          }
+                'object_type': 'lists',
+              },
+            ],
+          },
         })
         ..addLine({
-          'checkpoint_complete': {'last_op_id': '2'}
+          'checkpoint_complete': {'last_op_id': '2'},
         });
 
       await expectLater(query, emits(isEmpty));
     });
 
     test('raw tables with explicit statements', () async {
-      final schema = Schema(const [], rawTables: [
-        RawTable(
-          name: 'lists',
-          put: PendingStatement(
-            sql:
-                'INSERT OR REPLACE INTO lists (id, name, _rest) VALUES (?, ?, ?)',
-            params: [
-              PendingStatementValue.id(),
-              PendingStatementValue.column('name'),
-              PendingStatementValue.rest(),
-            ],
+      final schema = Schema(
+        const [],
+        rawTables: [
+          RawTable(
+            name: 'lists',
+            put: PendingStatement(
+              sql:
+                  'INSERT OR REPLACE INTO lists (id, name, _rest) VALUES (?, ?, ?)',
+              params: [
+                PendingStatementValue.id(),
+                PendingStatementValue.column('name'),
+                PendingStatementValue.rest(),
+              ],
+            ),
+            delete: PendingStatement(
+              sql: 'DELETE FROM lists WHERE id = ?',
+              params: [PendingStatementValue.id()],
+            ),
           ),
-          delete: PendingStatement(
-            sql: 'DELETE FROM lists WHERE id = ?',
-            params: [
-              PendingStatementValue.id(),
-            ],
-          ),
-        ),
-      ]);
+        ],
+      );
 
       await database.execute(
-          'CREATE TABLE lists (id TEXT NOT NULL PRIMARY KEY, name TEXT, _rest TEXT);');
+        'CREATE TABLE lists (id TEXT NOT NULL PRIMARY KEY, name TEXT, _rest TEXT);',
+      );
       final query = StreamQueue(
-          database.watch('SELECT * FROM lists', throttle: Duration.zero));
+        database.watch('SELECT * FROM lists', throttle: Duration.zero),
+      );
       await expectLater(query, emits(isEmpty));
 
       await database.updateSchema(schema);
@@ -267,7 +273,7 @@ void _declareTests(String name, SyncOptions options, bool bson) {
             lastOpId: '1',
             writeCheckpoint: null,
             checksums: [BucketChecksum(bucket: 'a', priority: 3, checksum: 0)],
-          )
+          ),
         })
         ..addLine({
           'data': {
@@ -275,18 +281,20 @@ void _declareTests(String name, SyncOptions options, bool bson) {
             'data': [
               {
                 'checksum': 0,
-                'data': json.encode(
-                    {'name': 'custom list', 'additional_column': 'foo'}),
+                'data': json.encode({
+                  'name': 'custom list',
+                  'additional_column': 'foo',
+                }),
                 'op': 'PUT',
                 'op_id': '1',
                 'object_id': 'my_list',
-                'object_type': 'lists'
-              }
-            ]
-          }
+                'object_type': 'lists',
+              },
+            ],
+          },
         })
         ..addLine({
-          'checkpoint_complete': {'last_op_id': '1'}
+          'checkpoint_complete': {'last_op_id': '1'},
         });
 
       await expectLater(
@@ -295,8 +303,8 @@ void _declareTests(String name, SyncOptions options, bool bson) {
           {
             'id': 'my_list',
             'name': 'custom list',
-            '_rest': json.encode({'additional_column': 'foo'})
-          }
+            '_rest': json.encode({'additional_column': 'foo'}),
+          },
         ]),
       );
 
@@ -306,7 +314,7 @@ void _declareTests(String name, SyncOptions options, bool bson) {
             lastOpId: '2',
             writeCheckpoint: null,
             checksums: [BucketChecksum(bucket: 'a', priority: 3, checksum: 0)],
-          )
+          ),
         })
         ..addLine({
           'data': {
@@ -317,13 +325,13 @@ void _declareTests(String name, SyncOptions options, bool bson) {
                 'op': 'REMOVE',
                 'op_id': '2',
                 'object_id': 'my_list',
-                'object_type': 'lists'
-              }
-            ]
-          }
+                'object_type': 'lists',
+              },
+            ],
+          },
         })
         ..addLine({
-          'checkpoint_complete': {'last_op_id': '2'}
+          'checkpoint_complete': {'last_op_id': '2'},
         });
 
       await expectLater(query, emits(isEmpty));
@@ -341,14 +349,17 @@ void _declareTests(String name, SyncOptions options, bool bson) {
         final checksums = [
           for (var prio = 0; prio <= 3; prio++)
             BucketChecksum(
-                bucket: 'prio$prio', priority: prio, checksum: 10 + prio)
+              bucket: 'prio$prio',
+              priority: prio,
+              checksum: 10 + prio,
+            ),
         ];
         syncService.addLine({
           'checkpoint': Checkpoint(
             lastOpId: '4',
             writeCheckpoint: null,
             checksums: checksums,
-          )
+          ),
         });
         var operationId = 1;
 
@@ -363,16 +374,18 @@ void _declareTests(String name, SyncOptions options, bool bson) {
                   'op': 'PUT',
                   'op_id': '${operationId++}',
                   'object_id': 'prio$priority',
-                  'object_type': 'customers'
-                }
-              ]
-            }
+                  'object_type': 'customers',
+                },
+              ],
+            },
           });
         }
 
         // Receiving the checkpoint sets the state to downloading
         await expectLater(
-            status, emits(isSyncStatus(downloading: true, hasSynced: false)));
+          status,
+          emits(isSyncStatus(downloading: true, hasSynced: false)),
+        );
 
         // Emit partial sync complete for each priority but the last.
         for (var prio = 0; prio < 3; prio++) {
@@ -381,32 +394,37 @@ void _declareTests(String name, SyncOptions options, bool bson) {
             'partial_checkpoint_complete': {
               'last_op_id': operationId.toString(),
               'priority': prio,
-            }
+            },
           });
 
           await expectLater(
             status,
             emitsThrough(
-                isSyncStatus(downloading: true, hasSynced: false).having(
-              (e) => e.statusForPriority(StreamPriority(0)).hasSynced,
-              'status for $prio',
-              isTrue,
-            )),
+              isSyncStatus(downloading: true, hasSynced: false).having(
+                (e) => e.statusForPriority(StreamPriority(0)).hasSynced,
+                'status for $prio',
+                isTrue,
+              ),
+            ),
           );
 
           await database.waitForFirstSync(priority: StreamPriority(prio));
-          expect(await database.getAll('SELECT * FROM customers'),
-              hasLength(prio + 1));
+          expect(
+            await database.getAll('SELECT * FROM customers'),
+            hasLength(prio + 1),
+          );
         }
 
         // Complete the sync
         addRow(3);
         syncService.addLine({
-          'checkpoint_complete': {'last_op_id': operationId.toString()}
+          'checkpoint_complete': {'last_op_id': operationId.toString()},
         });
 
-        await expectLater(status,
-            emitsThrough(isSyncStatus(downloading: false, hasSynced: true)));
+        await expectLater(
+          status,
+          emitsThrough(isSyncStatus(downloading: false, hasSynced: true)),
+        );
         await database.waitForFirstSync();
         expect(await database.getAll('SELECT * FROM customers'), hasLength(4));
       });
@@ -419,17 +437,14 @@ void _declareTests(String name, SyncOptions options, bool bson) {
             lastOpId: '0',
             writeCheckpoint: null,
             checksums: [
-              BucketChecksum(bucket: 'bkt', priority: 1, checksum: 0)
+              BucketChecksum(bucket: 'bkt', priority: 1, checksum: 0),
             ],
-          )
+          ),
         });
         await expectLater(status, emits(isSyncStatus(downloading: true)));
 
         syncService.addLine({
-          'partial_checkpoint_complete': {
-            'last_op_id': '0',
-            'priority': 1,
-          }
+          'partial_checkpoint_complete': {'last_op_id': '0', 'priority': 1},
         });
         await database.waitForFirstSync(priority: StreamPriority(1));
         expect(database.currentStatus.hasSynced, isFalse);
@@ -446,15 +461,17 @@ void _declareTests(String name, SyncOptions options, bool bson) {
         expect(independentDb.currentStatus.hasSynced, isFalse);
         // Completing a sync for prio 1 implies a completed sync for prio 0
         expect(
-            independentDb.currentStatus
-                .statusForPriority(StreamPriority(0))
-                .hasSynced,
-            isTrue);
+          independentDb.currentStatus
+              .statusForPriority(StreamPriority(0))
+              .hasSynced,
+          isTrue,
+        );
         expect(
-            independentDb.currentStatus
-                .statusForPriority(StreamPriority(3))
-                .hasSynced,
-            isFalse);
+          independentDb.currentStatus
+              .statusForPriority(StreamPriority(3))
+              .hasSynced,
+          isFalse,
+        );
       });
 
       test(
@@ -468,16 +485,14 @@ void _declareTests(String name, SyncOptions options, bool bson) {
                 lastOpId: '0',
                 writeCheckpoint: null,
                 checksums: [
-                  BucketChecksum(bucket: 'bkt', priority: 1, checksum: 0)
+                  BucketChecksum(bucket: 'bkt', priority: 1, checksum: 0),
                 ],
-              )
+              ),
             });
             await expectLater(status, emits(isSyncStatus(downloading: true)));
 
             syncService.addLine({
-              'checkpoint_complete': {
-                'last_op_id': '0',
-              }
+              'checkpoint_complete': {'last_op_id': '0'},
             });
 
             await expectLater(status, emits(isSyncStatus(downloading: false)));
@@ -523,8 +538,9 @@ void _declareTests(String name, SyncOptions options, bool bson) {
 
       // Trigger an upload
       await database.execute(
-          'INSERT INTO customers (id, name, email) VALUES (uuid(), ?, ?)',
-          ['local', 'local@example.org']);
+        'INSERT INTO customers (id, name, email) VALUES (uuid(), ?, ?)',
+        ['local', 'local@example.org'],
+      );
       await expectCustomerRows(hasLength(1));
       await uploadStarted.future;
 
@@ -535,7 +551,7 @@ void _declareTests(String name, SyncOptions options, bool bson) {
           writeCheckpoint: '1',
           lastOpId: '2',
           checksums: [BucketChecksum(bucket: 'a', priority: 3, checksum: 0)],
-        )
+        ),
       });
       await expectLater(status, emitsThrough(isSyncStatus(downloading: true)));
 
@@ -546,12 +562,14 @@ void _declareTests(String name, SyncOptions options, bool bson) {
             'data': [
               {
                 'checksum': 0,
-                'data': json.encode(
-                    {'name': 'from local', 'email': 'local@example.org'}),
+                'data': json.encode({
+                  'name': 'from local',
+                  'email': 'local@example.org',
+                }),
                 'op': 'PUT',
                 'op_id': '1',
                 'object_id': '1',
-                'object_type': 'customers'
+                'object_type': 'customers',
               },
               {
                 'checksum': 0,
@@ -559,13 +577,13 @@ void _declareTests(String name, SyncOptions options, bool bson) {
                 'op': 'PUT',
                 'op_id': '2',
                 'object_id': '2',
-                'object_type': 'customers'
-              }
-            ]
-          }
+                'object_type': 'customers',
+              },
+            ],
+          },
         })
         ..addLine({
-          'checkpoint_complete': {'last_op_id': '2'}
+          'checkpoint_complete': {'last_op_id': '2'},
         });
 
       // Despite receiving a valid checkpoint with two rows, it should not be
@@ -578,7 +596,7 @@ void _declareTests(String name, SyncOptions options, bool bson) {
       syncService.writeCheckpoint = () {
         sentCheckpoint.complete();
         return {
-          'data': {'write_checkpoint': '1'}
+          'data': {'write_checkpoint': '1'},
         };
       };
       uploadFinished.complete();
@@ -598,7 +616,11 @@ void _declareTests(String name, SyncOptions options, bool bson) {
 
       BucketChecksum bucket(String name, int count, {int priority = 3}) {
         return BucketChecksum(
-            bucket: name, priority: priority, checksum: 0, count: count);
+          bucket: name,
+          priority: priority,
+          checksum: 0,
+          count: count,
+        );
       }
 
       void addDataLine(String bucket, int amount) {
@@ -614,9 +636,9 @@ void _declareTests(String name, SyncOptions options, bool bson) {
                   'object_id': '$lastOpId',
                   'checksum': 0,
                   'data': '{}',
-                }
+                },
             ],
-          }
+          },
         });
       }
 
@@ -626,13 +648,11 @@ void _declareTests(String name, SyncOptions options, bool bson) {
             'partial_checkpoint_complete': {
               'last_op_id': '$lastOpId',
               'priority': partial,
-            }
+            },
           });
         } else {
           syncService.addLine({
-            'checkpoint_complete': {
-              'last_op_id': '$lastOpId',
-            }
+            'checkpoint_complete': {'last_op_id': '$lastOpId'},
           });
         }
       }
@@ -644,13 +664,15 @@ void _declareTests(String name, SyncOptions options, bool bson) {
       }) async {
         await expectLater(
           status,
-          emitsThrough(isSyncStatus(
-            downloading: true,
-            downloadProgress: isSyncDownloadProgress(
-              progress: total,
-              priorities: priorities,
+          emitsThrough(
+            isSyncStatus(
+              downloading: true,
+              downloadProgress: isSyncDownloadProgress(
+                progress: total,
+                priorities: priorities,
+              ),
             ),
-          )),
+          ),
         );
       }
 
@@ -660,7 +682,7 @@ void _declareTests(String name, SyncOptions options, bool bson) {
           'checkpoint': Checkpoint(
             lastOpId: '10',
             checksums: [bucket('a', 10)],
-          )
+          ),
         });
         await expectProgress(status, total: progress(0, 10));
 
@@ -668,8 +690,10 @@ void _declareTests(String name, SyncOptions options, bool bson) {
         await expectProgress(status, total: progress(10, 10));
 
         addCheckpointComplete();
-        await expectLater(status,
-            emits(isSyncStatus(downloading: false, downloadProgress: isNull)));
+        await expectLater(
+          status,
+          emits(isSyncStatus(downloading: false, downloadProgress: isNull)),
+        );
 
         // Emit new data, progress should be 0/2 instead of 10/12
         syncService.addLine({
@@ -683,8 +707,10 @@ void _declareTests(String name, SyncOptions options, bool bson) {
         addDataLine('a', 2);
         await expectProgress(status, total: progress(2, 2));
         addCheckpointComplete();
-        await expectLater(status,
-            emits(isSyncStatus(downloading: false, downloadProgress: isNull)));
+        await expectLater(
+          status,
+          emits(isSyncStatus(downloading: false, downloadProgress: isNull)),
+        );
       });
 
       test('interrupted sync', () async {
@@ -693,7 +719,7 @@ void _declareTests(String name, SyncOptions options, bool bson) {
           'checkpoint': Checkpoint(
             lastOpId: '10',
             checksums: [bucket('a', 10)],
-          )
+          ),
         });
         await expectProgress(status, total: progress(0, 10));
         addDataLine('a', 5);
@@ -710,14 +736,16 @@ void _declareTests(String name, SyncOptions options, bool bson) {
           'checkpoint': Checkpoint(
             lastOpId: '10',
             checksums: [bucket('a', 10)],
-          )
+          ),
         });
 
         // Progress should be restored instead of saying e.g 0/5 now.
         await expectProgress(status, total: progress(5, 10));
         addCheckpointComplete();
-        await expectLater(status,
-            emits(isSyncStatus(downloading: false, downloadProgress: isNull)));
+        await expectLater(
+          status,
+          emits(isSyncStatus(downloading: false, downloadProgress: isNull)),
+        );
       });
 
       test('interrupted sync with new checkpoint', () async {
@@ -726,7 +754,7 @@ void _declareTests(String name, SyncOptions options, bool bson) {
           'checkpoint': Checkpoint(
             lastOpId: '10',
             checksums: [bucket('a', 10)],
-          )
+          ),
         });
         await expectProgress(status, total: progress(0, 10));
         addDataLine('a', 5);
@@ -743,13 +771,15 @@ void _declareTests(String name, SyncOptions options, bool bson) {
           'checkpoint': Checkpoint(
             lastOpId: '12',
             checksums: [bucket('a', 12)],
-          )
+          ),
         });
 
         await expectProgress(status, total: progress(5, 12));
         addCheckpointComplete();
-        await expectLater(status,
-            emits(isSyncStatus(downloading: false, downloadProgress: isNull)));
+        await expectLater(
+          status,
+          emits(isSyncStatus(downloading: false, downloadProgress: isNull)),
+        );
       });
 
       test('interrupt and defrag', () async {
@@ -758,7 +788,7 @@ void _declareTests(String name, SyncOptions options, bool bson) {
           'checkpoint': Checkpoint(
             lastOpId: '10',
             checksums: [bucket('a', 10)],
-          )
+          ),
         });
         await expectProgress(status, total: progress(0, 10));
         addDataLine('a', 5);
@@ -771,10 +801,7 @@ void _declareTests(String name, SyncOptions options, bool bson) {
 
         status = await waitForConnection();
         syncService.addLine({
-          'checkpoint': Checkpoint(
-            lastOpId: '14',
-            checksums: [bucket('a', 4)],
-          )
+          'checkpoint': Checkpoint(lastOpId: '14', checksums: [bucket('a', 4)]),
         });
 
         // In this special case, don't report 5/4 as progress
@@ -786,10 +813,7 @@ void _declareTests(String name, SyncOptions options, bool bson) {
         Future<void> checkProgress(Object prio0, Object prio2) async {
           await expectProgress(
             status,
-            priorities: {
-              StreamPriority(0): prio0,
-              StreamPriority(2): prio2,
-            },
+            priorities: {StreamPriority(0): prio0, StreamPriority(2): prio2},
             total: prio2,
           );
         }
@@ -799,7 +823,7 @@ void _declareTests(String name, SyncOptions options, bool bson) {
             lastOpId: '10',
             checksums: [
               bucket('a', 5, priority: 0),
-              bucket('b', 5, priority: 2)
+              bucket('b', 5, priority: 2),
             ],
           ),
         });
@@ -820,7 +844,7 @@ void _declareTests(String name, SyncOptions options, bool bson) {
             lastOpId: '14',
             checksums: [
               bucket('a', 8, priority: 0),
-              bucket('b', 6, priority: 2)
+              bucket('b', 6, priority: 2),
             ],
           ),
         });
@@ -835,8 +859,10 @@ void _declareTests(String name, SyncOptions options, bool bson) {
         await checkProgress(progress(8, 8), progress(14, 14));
 
         addCheckpointComplete();
-        await expectLater(status,
-            emits(isSyncStatus(downloading: false, downloadProgress: isNull)));
+        await expectLater(
+          status,
+          emits(isSyncStatus(downloading: false, downloadProgress: isNull)),
+        );
       });
     });
 
@@ -848,7 +874,7 @@ void _declareTests(String name, SyncOptions options, bool bson) {
           lastOpId: '4',
           writeCheckpoint: null,
           checksums: [checksum(bucket: 'a', checksum: 0)],
-        )
+        ),
       });
 
       await expectLater(status, emits(isSyncStatus(downloading: true)));
@@ -864,12 +890,12 @@ void _declareTests(String name, SyncOptions options, bool bson) {
           lastOpId: '4',
           writeCheckpoint: null,
           checksums: [checksum(bucket: 'a', checksum: 10)],
-        )
+        ),
       });
 
       await expectLater(status, emits(isSyncStatus(downloading: true)));
       syncService.addLine({
-        'checkpoint_complete': {'last_op_id': '10'}
+        'checkpoint_complete': {'last_op_id': '10'},
       });
       syncService.endCurrentListener();
 
@@ -885,7 +911,7 @@ void _declareTests(String name, SyncOptions options, bool bson) {
           lastOpId: '4',
           writeCheckpoint: null,
           checksums: [checksum(bucket: 'a', checksum: 10)],
-        )
+        ),
       });
 
       await expectLater(status, emits(isSyncStatus(downloading: true)));
@@ -900,8 +926,9 @@ void _declareTests(String name, SyncOptions options, bool bson) {
     test('uploads writes made while offline', () async {
       // Local write while not connected
       await database.execute(
-          'insert into customers (id, name) values (uuid(), ?)',
-          ['local customer']);
+        'insert into customers (id, name) values (uuid(), ?)',
+        ['local customer'],
+      );
       uploadData = (db) async {
         final batch = await db.getNextCrudTransaction();
         if (batch != null) {
@@ -909,12 +936,14 @@ void _declareTests(String name, SyncOptions options, bool bson) {
         }
       };
       syncService.writeCheckpoint = () => {
-            'data': {'write_checkpoint': '1'}
-          };
+        'data': {'write_checkpoint': '1'},
+      };
 
-      final query = StreamQueue(database
-          .watch('SELECT name FROM customers')
-          .map((e) => e.single['name']));
+      final query = StreamQueue(
+        database
+            .watch('SELECT name FROM customers')
+            .map((e) => e.single['name']),
+      );
       expect(await query.next, 'local customer');
 
       await waitForConnection();
@@ -925,7 +954,7 @@ void _declareTests(String name, SyncOptions options, bool bson) {
             lastOpId: '1',
             writeCheckpoint: '1',
             checksums: [BucketChecksum(bucket: 'a', priority: 3, checksum: 0)],
-          )
+          ),
         })
         ..addLine({
           'data': {
@@ -938,12 +967,12 @@ void _declareTests(String name, SyncOptions options, bool bson) {
                 'object_id': '1',
                 'checksum': 0,
                 'data': json.encode({'name': 'from server'}),
-              }
+              },
             ],
-          }
+          },
         })
         ..addLine({
-          'checkpoint_complete': {'last_op_id': '1'}
+          'checkpoint_complete': {'last_op_id': '1'},
         });
 
       expect(await query.next, 'from server');
@@ -954,12 +983,15 @@ void _declareTests(String name, SyncOptions options, bool bson) {
         final requestStarted = Completer<void>();
 
         syncService.router = Router()
-          ..post('/sync/stream', expectAsync1((Request request) async {
-            requestStarted.complete();
+          ..post(
+            '/sync/stream',
+            expectAsync1((Request request) async {
+              requestStarted.complete();
 
-            // emulate a network that never connects
-            await Completer<void>().future;
-          }));
+              // emulate a network that never connects
+              await Completer<void>().future;
+            }),
+          );
 
         await connect();
         await requestStarted.future;
@@ -975,10 +1007,7 @@ void _declareTests(String name, SyncOptions options, bool bson) {
           'checkpoint': {
             'last_op_id': '0',
             'buckets': [
-              {
-                'bucket': 'bkt',
-                'checksum': 0,
-              }
+              {'bucket': 'bkt', 'checksum': 0},
             ],
           },
         });

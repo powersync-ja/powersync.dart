@@ -14,15 +14,19 @@ import '../../web/worker_utils.dart';
 base class WebPowerSyncOpenFactory extends WebSqliteOpenFactory {
   final EncryptionOptions? encryptionOptions;
 
-  WebPowerSyncOpenFactory(
-      {required super.path, super.sqliteOptions, this.encryptionOptions});
+  WebPowerSyncOpenFactory({
+    required super.path,
+    super.sqliteOptions,
+    this.encryptionOptions,
+  });
 
   @override
   Future<WebSqlite> openWebSqlite(WebSqliteOptions options) async {
     return WebSqlite.open(
       wasmModule: sqliteOptions.webSqliteOptions.wasmUri,
-      workers:
-          PowerSyncWorkerConnector(sqliteOptions.webSqliteOptions.workerUri),
+      workers: PowerSyncWorkerConnector(
+        sqliteOptions.webSqliteOptions.workerUri,
+      ),
       controller: PowerSyncAsyncSqliteController(),
       handleCustomRequest: handleCustomRequest,
     );
@@ -30,11 +34,16 @@ base class WebPowerSyncOpenFactory extends WebSqliteOpenFactory {
 
   @override
   Future<ConnectToRecommendedResult> connectToWorker(
-      WebSqlite sqlite, String name) {
-    return sqlite.connectToRecommended(name,
-        additionalOptions: PowerSyncAdditionalOpenOptions(
-            useMultipleCiphersVfs: encryptionOptions != null),
-        preparedStatementCacheSize: sqliteOptions.preparedStatementCacheSize);
+    WebSqlite sqlite,
+    String name,
+  ) {
+    return sqlite.connectToRecommended(
+      name,
+      additionalOptions: PowerSyncAdditionalOpenOptions(
+        useMultipleCiphersVfs: encryptionOptions != null,
+      ),
+      preparedStatementCacheSize: sqliteOptions.preparedStatementCacheSize,
+    );
   }
 
   @override

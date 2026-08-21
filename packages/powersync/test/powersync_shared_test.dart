@@ -28,13 +28,17 @@ void main() {
       final subscription = logger.onRecord.listen(events.add);
       addTearDown(subscription.cancel);
 
-      final firstInstance =
-          await testUtils.setupPowerSync(path: path, logger: logger);
+      final firstInstance = await testUtils.setupPowerSync(
+        path: path,
+        logger: logger,
+      );
       await firstInstance.initialize();
       expect(events, isEmpty);
 
-      final secondInstance =
-          await testUtils.setupPowerSync(path: path, logger: logger);
+      final secondInstance = await testUtils.setupPowerSync(
+        path: path,
+        logger: logger,
+      );
       await secondInstance.initialize();
       expect(
         events,
@@ -43,71 +47,93 @@ void main() {
             (e) => e.message,
             'message',
             contains(
-                'Multiple instances for the same database have been detected.'),
+              'Multiple instances for the same database have been detected.',
+            ),
           ),
         ),
       );
     });
 
-    test('should not allow direct db calls within a transaction callback',
-        () async {
-      final db = await testUtils.setupPowerSync(path: path);
+    test(
+      'should not allow direct db calls within a transaction callback',
+      () async {
+        final db = await testUtils.setupPowerSync(path: path);
 
-      await db.writeTransaction((tx) async {
-        await expectLater(() async {
-          await db.execute('INSERT INTO assets(id) VALUES(?)', ['test']);
-        },
-            throwsA((dynamic e) =>
-                e is LockError && e.message.contains('tx.execute')));
-      });
-    });
+        await db.writeTransaction((tx) async {
+          await expectLater(
+            () async {
+              await db.execute('INSERT INTO assets(id) VALUES(?)', ['test']);
+            },
+            throwsA(
+              (dynamic e) => e is LockError && e.message.contains('tx.execute'),
+            ),
+          );
+        });
+      },
+    );
 
-    test('should not allow read-only db calls within transaction callback',
-        () async {
-      final db = await testUtils.setupPowerSync(path: path);
+    test(
+      'should not allow read-only db calls within transaction callback',
+      () async {
+        final db = await testUtils.setupPowerSync(path: path);
 
-      await db.writeTransaction((tx) async {
-        // This uses a different connection, so it _could_ work.
-        // But it's likely unintentional and could cause weird bugs, so we don't
-        // allow it by default.
-        await expectLater(() async {
-          await db.getAll('SELECT * FROM assets');
-        },
-            throwsA((dynamic e) =>
-                e is LockError && e.message.contains('tx.getAll')));
-      });
+        await db.writeTransaction((tx) async {
+          // This uses a different connection, so it _could_ work.
+          // But it's likely unintentional and could cause weird bugs, so we don't
+          // allow it by default.
+          await expectLater(
+            () async {
+              await db.getAll('SELECT * FROM assets');
+            },
+            throwsA(
+              (dynamic e) => e is LockError && e.message.contains('tx.getAll'),
+            ),
+          );
+        });
 
-      await db.readTransaction((tx) async {
-        // This does actually attempt a lock on the same connection, so it
-        // errors.
-        // This also exposes an interesting test case where the read transaction
-        // opens another connection, but doesn't use it.
-        await expectLater(() async {
-          await db.getAll('SELECT * FROM assets');
-        },
-            throwsA((dynamic e) =>
-                e is LockError && e.message.contains('tx.getAll')));
-      });
-    });
+        await db.readTransaction((tx) async {
+          // This does actually attempt a lock on the same connection, so it
+          // errors.
+          // This also exposes an interesting test case where the read transaction
+          // opens another connection, but doesn't use it.
+          await expectLater(
+            () async {
+              await db.getAll('SELECT * FROM assets');
+            },
+            throwsA(
+              (dynamic e) => e is LockError && e.message.contains('tx.getAll'),
+            ),
+          );
+        });
+      },
+    );
 
     test('should not allow read-only db calls within lock callback', () async {
       final db = await testUtils.setupPowerSync(path: path);
       // Locks - should behave the same as transactions above
 
       await db.writeLock((tx) async {
-        await expectLater(() async {
-          await db.getOptional('SELECT * FROM assets');
-        },
-            throwsA((dynamic e) =>
-                e is LockError && e.message.contains('tx.getOptional')));
+        await expectLater(
+          () async {
+            await db.getOptional('SELECT * FROM assets');
+          },
+          throwsA(
+            (dynamic e) =>
+                e is LockError && e.message.contains('tx.getOptional'),
+          ),
+        );
       });
 
       await db.readLock((tx) async {
-        await expectLater(() async {
-          await db.getOptional('SELECT * FROM assets');
-        },
-            throwsA((dynamic e) =>
-                e is LockError && e.message.contains('tx.getOptional')));
+        await expectLater(
+          () async {
+            await db.getOptional('SELECT * FROM assets');
+          },
+          throwsA(
+            (dynamic e) =>
+                e is LockError && e.message.contains('tx.getOptional'),
+          ),
+        );
       });
     });
 
@@ -130,21 +156,20 @@ void main() {
       final db = await testUtils.setupPowerSync(path: path);
       expectLater(
         db.statusStream,
-        emitsInOrder(
-          [
-            // Manual setStatus call. hasSynced set to true because lastSyncedAt is set
-            isA<SyncStatus>().having((e) => e.hasSynced, 'hasSynced', true),
-            // Closing the database emits a disconnected status
-            isA<SyncStatus>().having((e) => e.connected, 'connected', false),
-            emitsDone
-          ],
-        ),
+        emitsInOrder([
+          // Manual setStatus call. hasSynced set to true because lastSyncedAt is set
+          isA<SyncStatus>().having((e) => e.hasSynced, 'hasSynced', true),
+          // Closing the database emits a disconnected status
+          isA<SyncStatus>().having((e) => e.connected, 'connected', false),
+          emitsDone,
+        ]),
       );
 
-      final status = (MutableSyncStatus()
-            ..connected = true
-            ..lastSyncedAt = DateTime.now())
-          .immutableSnapshot();
+      final status =
+          (MutableSyncStatus()
+                ..connected = true
+                ..lastSyncedAt = DateTime.now())
+              .immutableSnapshot();
       db.setStatus(status);
       db.setStatus(status); // Should not re-emit!
 
@@ -153,18 +178,25 @@ void main() {
 
     test('can clear raw tables', () async {
       final db = await testUtils.setupPowerSync(path: path);
-      await db.updateSchema(const Schema([], rawTables: [
-        RawTable(
-          name: 'unused',
-          put: PendingStatement(sql: '', params: []),
-          delete: PendingStatement(sql: '', params: []),
-          clear: 'DELETE FROM lists',
-        )
-      ]));
+      await db.updateSchema(
+        const Schema(
+          [],
+          rawTables: [
+            RawTable(
+              name: 'unused',
+              put: PendingStatement(sql: '', params: []),
+              delete: PendingStatement(sql: '', params: []),
+              clear: 'DELETE FROM lists',
+            ),
+          ],
+        ),
+      );
       await db.execute(
-          'CREATE TABLE lists (id TEXT NOT NULL PRIMARY KEY, name TEXT)');
-      await db
-          .execute('INSERT INTO lists (id, name) VALUES (uuid(), ?)', ['list']);
+        'CREATE TABLE lists (id TEXT NOT NULL PRIMARY KEY, name TEXT)',
+      );
+      await db.execute('INSERT INTO lists (id, name) VALUES (uuid(), ?)', [
+        'list',
+      ]);
 
       expect(await db.getAll('SELECT * FROM lists'), hasLength(1));
       await db.disconnectAndClear();

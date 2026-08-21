@@ -24,8 +24,11 @@ final class RemoteHttpServer {
     final state = _HttpRequest();
     _pendingTransactions[request.transactionId] = state;
 
-    final inner = AbortableRequest(request.method, Uri.parse(request.uri),
-        abortTrigger: state._abortController.future);
+    final inner = AbortableRequest(
+      request.method,
+      Uri.parse(request.uri),
+      abortTrigger: state._abortController.future,
+    );
     inner.bodyBytes = request.body.toDart.asUint8List();
     request.decodedHeaders.forEach((k, v) => inner.headers[k] = v);
 

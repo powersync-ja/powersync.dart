@@ -68,22 +68,22 @@ final class SyncStatus {
     required this.uploadError,
     required this.priorityStatusEntries,
     required List<CoreActiveStreamSubscription>? streamSubscriptions,
-  })  : hasSynced = lastSyncedAt != null,
-        _internalSubscriptions = streamSubscriptions;
+  }) : hasSynced = lastSyncedAt != null,
+       _internalSubscriptions = streamSubscriptions;
 
   @internal
   const SyncStatus.uninitialized()
-      : connected = false,
-        connecting = false,
-        lastSyncedAt = null,
-        downloadProgress = null,
-        downloading = false,
-        uploading = false,
-        uploadError = null,
-        downloadError = null,
-        priorityStatusEntries = const [],
-        _internalSubscriptions = null,
-        hasSynced = null;
+    : connected = false,
+      connecting = false,
+      lastSyncedAt = null,
+      downloadProgress = null,
+      downloading = false,
+      uploading = false,
+      uploadError = null,
+      downloadError = null,
+      priorityStatusEntries = const [],
+      _internalSubscriptions = null,
+      hasSynced = null;
 
   @override
   bool operator ==(Object other) {
@@ -97,9 +97,13 @@ final class SyncStatus {
         other.lastSyncedAt == lastSyncedAt &&
         other.hasSynced == hasSynced &&
         _listEquality.equals(
-            other.priorityStatusEntries, priorityStatusEntries) &&
+          other.priorityStatusEntries,
+          priorityStatusEntries,
+        ) &&
         _listEquality.equals(
-            other._internalSubscriptions, _internalSubscriptions) &&
+          other._internalSubscriptions,
+          _internalSubscriptions,
+        ) &&
         other.downloadProgress == downloadProgress);
   }
 
@@ -159,8 +163,12 @@ final class SyncStatus {
   /// in priority `2` necessarily includes a consistent view over data in
   /// priority `1`.
   SyncPriorityStatus statusForPriority(StreamPriority priority) {
-    assert(priorityStatusEntries.isSortedByCompare(
-        (e) => e.priority, StreamPriority.comparator));
+    assert(
+      priorityStatusEntries.isSortedByCompare(
+        (e) => e.priority,
+        StreamPriority.comparator,
+      ),
+    );
 
     for (final known in priorityStatusEntries) {
       // Lower-priority buckets are synchronized after higher-priority buckets,
@@ -175,7 +183,7 @@ final class SyncStatus {
     return (
       priority: priority,
       hasSynced: hasSynced,
-      lastSyncedAt: lastSyncedAt
+      lastSyncedAt: lastSyncedAt,
     );
   }
 
@@ -259,8 +267,10 @@ extension InternalSyncStatusAccess on SyncStatus {
   List<CoreActiveStreamSubscription>? get internalSubscriptions =>
       _internalSubscriptions;
 
-  SyncStatus changeErrors(
-      {required Object? downloadError, required Object? uploadError}) {
+  SyncStatus changeErrors({
+    required Object? downloadError,
+    required Object? uploadError,
+  }) {
     return SyncStatus(
       connected: connected,
       connecting: connecting,
@@ -294,7 +304,7 @@ final class SyncStreamStatus {
   StreamPriority get priority => _internal.priority;
 
   SyncStreamStatus._(this._internal, SyncDownloadProgress? progress)
-      : progress = progress?._internal._forStream(_internal);
+    : progress = progress?._internal._forStream(_internal);
 }
 
 @Deprecated('Use StreamPriority instead')
@@ -364,10 +374,10 @@ final class InternalSyncDownloadProgress extends ProgressWithOperations {
   final Map<String, BucketProgress> buckets;
 
   InternalSyncDownloadProgress(this.buckets)
-      : super._(
-          buckets.values.map((e) => e.targetCount - e.atLast).sum,
-          buckets.values.map((e) => e.sinceLast).sum,
-        );
+    : super._(
+        buckets.values.map((e) => e.targetCount - e.atLast).sum,
+        buckets.values.map((e) => e.sinceLast).sum,
+      );
 
   static InternalSyncDownloadProgress ofPublic(SyncDownloadProgress public) {
     return public._internal;

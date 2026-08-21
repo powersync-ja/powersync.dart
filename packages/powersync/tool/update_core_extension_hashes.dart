@@ -35,7 +35,8 @@ Future<void> main() async {
   final newContents = StringBuffer();
   newContents
     ..write(
-        originalContents.substring(0, originalContents.indexOf(startMarker)))
+      originalContents.substring(0, originalContents.indexOf(startMarker)),
+    )
     ..writeln(startMarker);
   for (final (fileName, digest) in entries) {
     newContents
@@ -43,25 +44,33 @@ Future<void> main() async {
       ..writeln("      '$digest',");
   }
 
-  newContents
-      .write(originalContents.substring(originalContents.indexOf(endMarker)));
+  newContents.write(
+    originalContents.substring(originalContents.indexOf(endMarker)),
+  );
 
   client.close();
   await sourceFile.writeAsString(newContents.toString());
 }
 
 Future<List<Map<String, dynamic>>> _fetchReleaseAssets(
-    http.Client client, String tag) async {
+  http.Client client,
+  String tag,
+) async {
   final uri = Uri.parse(
-      'https://api.github.com/repos/powersync-ja/powersync-sqlite-core/releases/tags/$tag');
-  final response = await client.get(uri, headers: {
-    'Accept': 'application/vnd.github+json',
-    'User-Agent': 'powersync-dart-tool',
-  });
+    'https://api.github.com/repos/powersync-ja/powersync-sqlite-core/releases/tags/$tag',
+  );
+  final response = await client.get(
+    uri,
+    headers: {
+      'Accept': 'application/vnd.github+json',
+      'User-Agent': 'powersync-dart-tool',
+    },
+  );
 
   if (response.statusCode != 200) {
     throw Exception(
-        'GitHub API error ${response.statusCode} fetching release $tag');
+      'GitHub API error ${response.statusCode} fetching release $tag',
+    );
   }
 
   final release = json.decode(response.body) as Map<String, dynamic>;

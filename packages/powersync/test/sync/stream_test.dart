@@ -28,17 +28,14 @@ void main() {
 
     database.httpClient = client;
     await database.connect(
-      connector: TestConnector(
-        () async {
-          credentialsCallbackCount++;
-          return PowerSyncCredentials(
-            endpoint: server.url.toString(),
-            token: 'token$credentialsCallbackCount',
-            expiresAt: DateTime.now(),
-          );
-        },
-        uploadData: (db) async {},
-      ),
+      connector: TestConnector(() async {
+        credentialsCallbackCount++;
+        return PowerSyncCredentials(
+          endpoint: server.url.toString(),
+          token: 'token$credentialsCallbackCount',
+          expiresAt: DateTime.now(),
+        );
+      }, uploadData: (db) async {}),
       options: options,
     );
   }
@@ -63,8 +60,9 @@ void main() {
     await syncService.stop();
   });
 
-  Future<StreamQueue<SyncStatus>> waitForConnection(
-      {bool expectNoWarnings = true}) async {
+  Future<StreamQueue<SyncStatus>> waitForConnection({
+    bool expectNoWarnings = true,
+  }) async {
     if (expectNoWarnings) {
       logger.onRecord.listen((e) {
         if (e.level >= Level.WARNING) {
@@ -82,7 +80,9 @@ void main() {
 
     syncService.addKeepAlive();
     await expectLater(
-        status, emitsThrough(isSyncStatus(connected: true, hasSynced: false)));
+      status,
+      emitsThrough(isSyncStatus(connected: true, hasSynced: false)),
+    );
     return status;
   }
 
@@ -94,14 +94,17 @@ void main() {
 
     await waitForConnection();
     final request = await syncService.waitForListener;
-    expect(json.decode(await request.readAsString()),
-        containsPair('streams', containsPair('include_defaults', false)));
+    expect(
+      json.decode(await request.readAsString()),
+      containsPair('streams', containsPair('include_defaults', false)),
+    );
   });
 
   test('subscribes with streams', () async {
     final a = await database.syncStream('stream', {'foo': 'a'}).subscribe();
-    final b = await database.syncStream('stream', {'foo': 'b'}).subscribe(
-        priority: StreamPriority(1));
+    final b = await database
+        .syncStream('stream', {'foo': 'b'})
+        .subscribe(priority: StreamPriority(1));
 
     final statusStream = await waitForConnection();
     final request = await syncService.waitForListener;
@@ -128,16 +131,21 @@ void main() {
       checkpoint(
         lastOpId: 0,
         buckets: [
-          bucketDescription('a', subscriptions: [
-            {'sub': 0}
-          ]),
-          bucketDescription('b', priority: 1, subscriptions: [
-            {'sub': 1}
-          ])
+          bucketDescription(
+            'a',
+            subscriptions: [
+              {'sub': 0},
+            ],
+          ),
+          bucketDescription(
+            'b',
+            priority: 1,
+            subscriptions: [
+              {'sub': 1},
+            ],
+          ),
         ],
-        streams: [
-          stream('stream', false),
-        ],
+        streams: [stream('stream', false)],
       ),
     );
 
@@ -206,18 +214,16 @@ void main() {
     await didStop.future;
     syncService.endCurrentListener();
     final request = await syncService.waitForListener;
-    expect(logLines,
-        contains('Ending Rust sync iteration. Immediate restart: true'));
+    expect(
+      logLines,
+      contains('Ending Rust sync iteration. Immediate restart: true'),
+    );
     expect(
       json.decode(await request.readAsString()),
       containsPair(
         'streams',
         containsPair('subscriptions', [
-          {
-            'stream': 'a',
-            'parameters': null,
-            'override_priority': null,
-          },
+          {'stream': 'a', 'parameters': null, 'override_priority': null},
         ]),
       ),
     );
@@ -247,16 +253,14 @@ void main() {
     // the core extension extends the lifetime of streams currently referenced
     // before connecting.
     await database.execute(
-        'UPDATE ps_stream_subscriptions SET expires_at = unixepoch() - 1000');
+      'UPDATE ps_stream_subscriptions SET expires_at = unixepoch() - 1000',
+    );
 
     await waitForConnection();
     final request = await syncService.waitForListener;
     expect(
       json.decode(await request.readAsString()),
-      containsPair(
-        'streams',
-        containsPair('subscriptions', isNotEmpty),
-      ),
+      containsPair('streams', containsPair('subscriptions', isNotEmpty)),
     );
     aAgain.unsubscribe();
   });
@@ -270,10 +274,7 @@ void main() {
     final request = await syncService.waitForListener;
     expect(
       json.decode(await request.readAsString()),
-      containsPair(
-        'streams',
-        containsPair('subscriptions', isEmpty),
-      ),
+      containsPair('streams', containsPair('subscriptions', isEmpty)),
     );
     a.unsubscribe();
   });
@@ -289,10 +290,7 @@ void main() {
     final request = await syncService.waitForListener;
     expect(
       json.decode(await request.readAsString()),
-      containsPair(
-        'app_metadata',
-        containsPair('foo', 'bar'),
-      ),
+      containsPair('app_metadata', containsPair('foo', 'bar')),
     );
   });
 }

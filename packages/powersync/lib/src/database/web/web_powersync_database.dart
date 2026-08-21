@@ -24,8 +24,11 @@ import '../../web/sync_controller.dart';
 /// All changes to local tables are automatically recorded, whether connected
 /// or not. Once connected, the changes are uploaded.
 final class WebPowerSyncDatabase extends BasePowerSyncDatabase {
-  WebPowerSyncDatabase(
-      {required super.schema, required super.database, required super.logger});
+  WebPowerSyncDatabase({
+    required super.schema,
+    required super.database,
+    required super.logger,
+  });
 
   @override
   @internal
@@ -43,7 +46,8 @@ final class WebPowerSyncDatabase extends BasePowerSyncDatabase {
     // duplicating work across tabs.
     try {
       final workerUri = Uri.parse(
-          database.openFactory.sqliteOptions.webSqliteOptions.workerUri);
+        database.openFactory.sqliteOptions.webSqliteOptions.workerUri,
+      );
       // This only affects our tests, where webSqliteOptions.workerUri is a blob
       // loading the worker. Using this as a sync worker seems to cause the test
       // runner to hang, so we want to throw an assertion error and continue
@@ -65,8 +69,9 @@ final class WebPowerSyncDatabase extends BasePowerSyncDatabase {
         'Could not use shared worker for synchronization, falling back to locks.',
         e,
       );
-      final crudStream =
-          database.onChange(['ps_crud'], throttle: options.crudThrottleTime);
+      final crudStream = database.onChange([
+        'ps_crud',
+      ], throttle: options.crudThrottleTime);
 
       sync = StreamingSyncImplementation(
         adapter: storage,
@@ -99,18 +104,25 @@ final class WebPowerSyncDatabase extends BasePowerSyncDatabase {
   ///
   /// In most cases, [readTransaction] should be used instead.
   @override
-  Future<T> readLock<T>(Future<T> Function(SqliteReadContext tx) callback,
-      {String? debugContext, Duration? lockTimeout}) async {
+  Future<T> readLock<T>(
+    Future<T> Function(SqliteReadContext tx) callback, {
+    String? debugContext,
+    Duration? lockTimeout,
+  }) async {
     await isInitialized;
-    return database.readLock(callback,
-        debugContext: debugContext, lockTimeout: lockTimeout);
+    return database.readLock(
+      callback,
+      debugContext: debugContext,
+      lockTimeout: lockTimeout,
+    );
   }
 
   @override
   Future<T> readTransaction<T>(
-      Future<T> Function(SqliteReadContext tx) callback,
-      {Duration? lockTimeout,
-      String? debugContext}) async {
+    Future<T> Function(SqliteReadContext tx) callback, {
+    Duration? lockTimeout,
+    String? debugContext,
+  }) async {
     await isInitialized;
     return database.readTransaction(callback, lockTimeout: lockTimeout);
   }
@@ -119,11 +131,17 @@ final class WebPowerSyncDatabase extends BasePowerSyncDatabase {
   ///
   /// In most cases, [writeTransaction] should be used instead.
   @override
-  Future<T> writeLock<T>(Future<T> Function(SqliteWriteContext tx) callback,
-      {String? debugContext, Duration? lockTimeout}) async {
+  Future<T> writeLock<T>(
+    Future<T> Function(SqliteWriteContext tx) callback, {
+    String? debugContext,
+    Duration? lockTimeout,
+  }) async {
     await isInitialized;
-    return database.writeLock(callback,
-        debugContext: debugContext, lockTimeout: lockTimeout);
+    return database.writeLock(
+      callback,
+      debugContext: debugContext,
+      lockTimeout: lockTimeout,
+    );
   }
 
   /// Uses the database writeTransaction instead of the locally
@@ -131,9 +149,10 @@ final class WebPowerSyncDatabase extends BasePowerSyncDatabase {
   /// tracking to be correctly configured.
   @override
   Future<T> writeTransaction<T>(
-      Future<T> Function(SqliteWriteContext tx) callback,
-      {Duration? lockTimeout,
-      String? debugContext}) async {
+    Future<T> Function(SqliteWriteContext tx) callback, {
+    Duration? lockTimeout,
+    String? debugContext,
+  }) async {
     await isInitialized;
     return database.writeTransaction(callback, lockTimeout: lockTimeout);
   }

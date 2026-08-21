@@ -5,12 +5,14 @@ class PowerSyncUpdateNotification extends UpdateNotification {
   PowerSyncUpdateNotification(super.tables);
 
   factory PowerSyncUpdateNotification.fromRawTables(
-      Iterable<String> originalTables) {
+    Iterable<String> originalTables,
+  ) {
     return PowerSyncUpdateNotification(_friendlyTableNames(originalTables));
   }
 
   factory PowerSyncUpdateNotification.fromUpdateNotification(
-      UpdateNotification updateNotification) {
+    UpdateNotification updateNotification,
+  ) {
     return PowerSyncUpdateNotification.fromRawTables(updateNotification.tables);
   }
 
@@ -31,8 +33,11 @@ class PowerSyncUpdateNotification extends UpdateNotification {
     if (other is PowerSyncUpdateNotification) {
       return PowerSyncUpdateNotification(tables.union(other.tables));
     } else {
-      return PowerSyncUpdateNotification(tables.union(
-          PowerSyncUpdateNotification.fromUpdateNotification(other).tables));
+      return PowerSyncUpdateNotification(
+        tables.union(
+          PowerSyncUpdateNotification.fromUpdateNotification(other).tables,
+        ),
+      );
     }
   }
 

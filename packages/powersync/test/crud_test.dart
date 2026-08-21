@@ -26,251 +26,318 @@ void main() {
     test('INSERT', () async {
       expect(await powersync.getAll('SELECT * FROM ps_crud'), equals([]));
       await powersync.execute(
-          'INSERT INTO assets(id, description) VALUES(?, ?)', [testId, 'test']);
+        'INSERT INTO assets(id, description) VALUES(?, ?)',
+        [testId, 'test'],
+      );
 
       expect(
-          await powersync.getAll('SELECT data FROM ps_crud ORDER BY id'),
-          equals([
-            {
-              'data':
-                  '{"op":"PUT","id":"$testId","type":"assets","data":{"description":"test"}}'
-            }
-          ]));
+        await powersync.getAll('SELECT data FROM ps_crud ORDER BY id'),
+        equals([
+          {
+            'data':
+                '{"op":"PUT","id":"$testId","type":"assets","data":{"description":"test"}}',
+          },
+        ]),
+      );
 
       var tx = (await powersync.getNextCrudTransaction())!;
       expect(tx.transactionId, equals(1));
       expect(
-          tx.crud,
-          equals([
-            CrudEntry(
-                1, UpdateType.put, 'assets', testId, 1, {"description": "test"})
-          ]));
+        tx.crud,
+        equals([
+          CrudEntry(1, UpdateType.put, 'assets', testId, 1, {
+            "description": "test",
+          }),
+        ]),
+      );
     });
 
     test('INSERT OR REPLACE', () async {
       await powersync.execute(
-          'INSERT INTO assets(id, description) VALUES(?, ?)', [testId, 'test']);
+        'INSERT INTO assets(id, description) VALUES(?, ?)',
+        [testId, 'test'],
+      );
       await powersync.execute('DELETE FROM ps_crud WHERE 1');
 
       // Replace
       await powersync.execute(
-          'INSERT OR REPLACE INTO assets(id, description) VALUES(?, ?)',
-          [testId, 'test2']);
+        'INSERT OR REPLACE INTO assets(id, description) VALUES(?, ?)',
+        [testId, 'test2'],
+      );
 
       // This generates another PUT
       expect(
-          await powersync.getAll('SELECT data FROM ps_crud ORDER BY id'),
-          equals([
-            {
-              'data':
-                  '{"op":"PUT","id":"$testId","type":"assets","data":{"description":"test2"}}'
-            }
-          ]));
+        await powersync.getAll('SELECT data FROM ps_crud ORDER BY id'),
+        equals([
+          {
+            'data':
+                '{"op":"PUT","id":"$testId","type":"assets","data":{"description":"test2"}}',
+          },
+        ]),
+      );
 
-      expect(await powersync.get('SELECT count(*) AS count FROM assets'),
-          equals({'count': 1}));
+      expect(
+        await powersync.get('SELECT count(*) AS count FROM assets'),
+        equals({'count': 1}),
+      );
 
       // Make sure uniqueness is enforced
-      expect(() async {
-        await powersync.execute(
+      expect(
+        () async {
+          await powersync.execute(
             'INSERT INTO assets(id, description) VALUES(?, ?)',
-            [testId, 'test3']);
-      },
-          throwsA((dynamic e) =>
+            [testId, 'test3'],
+          );
+        },
+        throwsA(
+          (dynamic e) =>
               e is SqliteException &&
-              e.message.contains('UNIQUE constraint failed')));
+              e.message.contains('UNIQUE constraint failed'),
+        ),
+      );
     });
 
     test('UPDATE', () async {
       await powersync.execute(
-          'INSERT INTO assets(id, description, make) VALUES(?, ?, ?)',
-          [testId, 'test', 'test']);
+        'INSERT INTO assets(id, description, make) VALUES(?, ?, ?)',
+        [testId, 'test', 'test'],
+      );
       await powersync.execute('DELETE FROM ps_crud WHERE 1');
 
       await powersync.execute(
-          'UPDATE assets SET description = ? WHERE id = ?', ['test2', testId]);
+        'UPDATE assets SET description = ? WHERE id = ?',
+        ['test2', testId],
+      );
 
       expect(
-          await powersync.getAll('SELECT data FROM ps_crud ORDER BY id'),
-          equals([
-            {
-              'data':
-                  '{"op":"PATCH","id":"$testId","type":"assets","data":{"description":"test2"}}'
-            }
-          ]));
+        await powersync.getAll('SELECT data FROM ps_crud ORDER BY id'),
+        equals([
+          {
+            'data':
+                '{"op":"PATCH","id":"$testId","type":"assets","data":{"description":"test2"}}',
+          },
+        ]),
+      );
 
       var tx = (await powersync.getNextCrudTransaction())!;
       expect(tx.transactionId, equals(2));
       expect(
-          tx.crud,
-          equals([
-            CrudEntry(2, UpdateType.patch, 'assets', testId, 2,
-                {"description": "test2"})
-          ]));
+        tx.crud,
+        equals([
+          CrudEntry(2, UpdateType.patch, 'assets', testId, 2, {
+            "description": "test2",
+          }),
+        ]),
+      );
     });
 
     test('DELETE', () async {
       await powersync.execute(
-          'INSERT INTO assets(id, description, make) VALUES(?, ?, ?)',
-          [testId, 'test', 'test']);
+        'INSERT INTO assets(id, description, make) VALUES(?, ?, ?)',
+        [testId, 'test', 'test'],
+      );
       await powersync.execute('DELETE FROM ps_crud WHERE 1');
 
       await powersync.execute('DELETE FROM assets WHERE id = ?', [testId]);
 
       expect(
-          await powersync.getAll('SELECT data FROM ps_crud ORDER BY id'),
-          equals([
-            {'data': '{"op":"DELETE","id":"$testId","type":"assets"}'}
-          ]));
+        await powersync.getAll('SELECT data FROM ps_crud ORDER BY id'),
+        equals([
+          {'data': '{"op":"DELETE","id":"$testId","type":"assets"}'},
+        ]),
+      );
 
       var tx = (await powersync.getNextCrudTransaction())!;
       expect(tx.transactionId, equals(2));
-      expect(tx.crud,
-          equals([CrudEntry(2, UpdateType.delete, 'assets', testId, 2, null)]));
+      expect(
+        tx.crud,
+        equals([CrudEntry(2, UpdateType.delete, 'assets', testId, 2, null)]),
+      );
     });
 
     test('UPSERT not supported', () async {
       // Just shows that we cannot currently do this
-      expect(() async {
-        await powersync.execute(
+      expect(
+        () async {
+          await powersync.execute(
             'INSERT INTO assets(id, description) VALUES(?, ?) ON CONFLICT DO UPDATE SET description = ?',
-            [testId, 'test2', 'test3']);
-      },
-          throwsA((dynamic e) =>
+            [testId, 'test2', 'test3'],
+          );
+        },
+        throwsA(
+          (dynamic e) =>
               e is SqliteException &&
-              e.message.contains('cannot UPSERT a view')));
+              e.message.contains('cannot UPSERT a view'),
+        ),
+      );
     });
 
     test('INSERT-only tables', () async {
       await powersync.disconnectAndClear();
       await powersync.close();
       powersync = await testUtils.setupPowerSync(
-          path: path,
-          schema: const Schema([
-            Table.insertOnly(
-                'logs', [Column.text('level'), Column.text('content')])
-          ]));
+        path: path,
+        schema: const Schema([
+          Table.insertOnly('logs', [
+            Column.text('level'),
+            Column.text('content'),
+          ]),
+        ]),
+      );
       expect(await powersync.getAll('SELECT * FROM ps_crud'), equals([]));
       await powersync.execute(
-          'INSERT INTO logs(id, level, content) VALUES(?, ?, ?)',
-          [testId, 'INFO', 'test log']);
+        'INSERT INTO logs(id, level, content) VALUES(?, ?, ?)',
+        [testId, 'INFO', 'test log'],
+      );
 
       expect(
-          await powersync.getAll(
-              "SELECT json_extract(data, '\$.id') as id FROM ps_crud ORDER BY id"),
-          equals([
-            {'id': testId}
-          ]));
+        await powersync.getAll(
+          "SELECT json_extract(data, '\$.id') as id FROM ps_crud ORDER BY id",
+        ),
+        equals([
+          {'id': testId},
+        ]),
+      );
 
       expect(await powersync.getAll('SELECT * FROM logs'), equals([]));
 
       var tx = (await powersync.getNextCrudTransaction())!;
       expect(tx.transactionId, equals(1));
       expect(
-          tx.crud,
-          equals([
-            CrudEntry(1, UpdateType.put, 'logs', testId, 1,
-                {"level": "INFO", "content": "test log"})
-          ]));
+        tx.crud,
+        equals([
+          CrudEntry(1, UpdateType.put, 'logs', testId, 1, {
+            "level": "INFO",
+            "content": "test log",
+          }),
+        ]),
+      );
     });
 
     test('big numbers - integer', () async {
       const bigNumber = 1 << 62;
-      await powersync.execute(
-          'INSERT INTO assets(id, quantity) VALUES(?, ?)', [testId, bigNumber]);
+      await powersync.execute('INSERT INTO assets(id, quantity) VALUES(?, ?)', [
+        testId,
+        bigNumber,
+      ]);
 
       expect(
-          await powersync
-              .get('SELECT quantity FROM assets WHERE id = ?', [testId]),
-          equals({'quantity': bigNumber}));
+        await powersync.get('SELECT quantity FROM assets WHERE id = ?', [
+          testId,
+        ]),
+        equals({'quantity': bigNumber}),
+      );
       expect(
-          await powersync.getAll(
-              "SELECT json_extract(data, '\$.id') as id FROM ps_crud ORDER BY id"),
-          equals([
-            {"id": testId}
-          ]));
+        await powersync.getAll(
+          "SELECT json_extract(data, '\$.id') as id FROM ps_crud ORDER BY id",
+        ),
+        equals([
+          {"id": testId},
+        ]),
+      );
 
       var tx = (await powersync.getNextCrudTransaction())!;
       expect(tx.transactionId, equals(1));
       expect(
-          tx.crud,
-          equals([
-            CrudEntry(
-                1, UpdateType.put, 'assets', testId, 1, {"quantity": bigNumber})
-          ]));
+        tx.crud,
+        equals([
+          CrudEntry(1, UpdateType.put, 'assets', testId, 1, {
+            "quantity": bigNumber,
+          }),
+        ]),
+      );
     });
 
     test('big numbers - text', () async {
       const bigNumber = 1 << 62;
-      await powersync.execute('INSERT INTO assets(id, quantity) VALUES(?, ?)',
-          [testId, '$bigNumber']);
+      await powersync.execute('INSERT INTO assets(id, quantity) VALUES(?, ?)', [
+        testId,
+        '$bigNumber',
+      ]);
 
       // Cast as INTEGER when querying
       expect(
-          await powersync
-              .get('SELECT quantity FROM assets WHERE id = ?', [testId]),
-          equals({'quantity': bigNumber}));
+        await powersync.get('SELECT quantity FROM assets WHERE id = ?', [
+          testId,
+        ]),
+        equals({'quantity': bigNumber}),
+      );
 
       // Not cast as part of crud / persistance
       expect(
-          await powersync.getAll('SELECT data FROM ps_crud ORDER BY id'),
-          equals([
-            {
-              'data':
-                  '{"op":"PUT","id":"$testId","type":"assets","data":{"quantity":"$bigNumber"}}'
-            }
-          ]));
+        await powersync.getAll('SELECT data FROM ps_crud ORDER BY id'),
+        equals([
+          {
+            'data':
+                '{"op":"PUT","id":"$testId","type":"assets","data":{"quantity":"$bigNumber"}}',
+          },
+        ]),
+      );
 
       await powersync.execute('DELETE FROM ps_crud WHERE 1');
 
       await powersync.execute(
-          'UPDATE assets SET quantity = quantity + 1 WHERE id = ?', [testId]);
+        'UPDATE assets SET quantity = quantity + 1 WHERE id = ?',
+        [testId],
+      );
 
       expect(
-          await powersync.getAll('SELECT data FROM ps_crud ORDER BY id'),
-          equals([
-            {
-              'data':
-                  '{"op":"PATCH","id":"$testId","type":"assets","data":{"quantity":${bigNumber + 1}}}'
-            }
-          ]));
+        await powersync.getAll('SELECT data FROM ps_crud ORDER BY id'),
+        equals([
+          {
+            'data':
+                '{"op":"PATCH","id":"$testId","type":"assets","data":{"quantity":${bigNumber + 1}}}',
+          },
+        ]),
+      );
     });
 
     test('Transaction grouping', () async {
       expect(await powersync.getAll('SELECT * FROM ps_crud'), equals([]));
       await powersync.writeTransaction((tx) async {
-        await tx.execute('INSERT INTO assets(id, description) VALUES(?, ?)',
-            [testId, 'test1']);
-        await tx.execute('INSERT INTO assets(id, description) VALUES(?, ?)',
-            ['test2', 'test2']);
+        await tx.execute('INSERT INTO assets(id, description) VALUES(?, ?)', [
+          testId,
+          'test1',
+        ]);
+        await tx.execute('INSERT INTO assets(id, description) VALUES(?, ?)', [
+          'test2',
+          'test2',
+        ]);
       });
 
       await powersync.writeTransaction((tx) async {
-        await tx.execute('UPDATE assets SET description = ? WHERE id = ?',
-            ['updated', testId]);
+        await tx.execute('UPDATE assets SET description = ? WHERE id = ?', [
+          'updated',
+          testId,
+        ]);
       });
 
       var tx1 = (await powersync.getNextCrudTransaction())!;
 
       expect(tx1.transactionId, equals(1));
       expect(
-          tx1.crud,
-          equals([
-            CrudEntry(1, UpdateType.put, 'assets', testId, 1,
-                {"description": "test1"}),
-            CrudEntry(2, UpdateType.put, 'assets', 'test2', 1,
-                {"description": "test2"})
-          ]));
+        tx1.crud,
+        equals([
+          CrudEntry(1, UpdateType.put, 'assets', testId, 1, {
+            "description": "test1",
+          }),
+          CrudEntry(2, UpdateType.put, 'assets', 'test2', 1, {
+            "description": "test2",
+          }),
+        ]),
+      );
       await tx1.complete();
 
       var tx2 = (await powersync.getNextCrudTransaction())!;
       expect(tx2.transactionId, equals(2));
       expect(
-          tx2.crud,
-          equals([
-            CrudEntry(3, UpdateType.patch, 'assets', testId, 2,
-                {"description": "updated"}),
-          ]));
+        tx2.crud,
+        equals([
+          CrudEntry(3, UpdateType.patch, 'assets', testId, 2, {
+            "description": "updated",
+          }),
+        ]),
+      );
       await tx2.complete();
       expect(await powersync.getNextCrudTransaction(), equals(null));
     });
@@ -309,76 +376,89 @@ void main() {
     });
 
     test('include metadata', () async {
-      await powersync.updateSchema(Schema([
-        Table(
-          'lists',
-          [Column.text('name')],
-          trackMetadata: true,
-        )
-      ]));
+      await powersync.updateSchema(
+        Schema([
+          Table('lists', [Column.text('name')], trackMetadata: true),
+        ]),
+      );
 
       await powersync.execute(
-          'INSERT INTO lists (id, name, _metadata) VALUES (uuid(), ?, ?)',
-          ['entry', 'so meta']);
+        'INSERT INTO lists (id, name, _metadata) VALUES (uuid(), ?, ?)',
+        ['entry', 'so meta'],
+      );
 
       final batch = await powersync.getNextCrudTransaction();
       expect(batch!.crud[0].metadata, 'so meta');
     });
 
     test('include old values', () async {
-      await powersync.updateSchema(Schema([
-        Table(
-          'lists',
-          [Column.text('name'), Column.text('content')],
-          trackPreviousValues: TrackPreviousValuesOptions(),
-        )
-      ]));
+      await powersync.updateSchema(
+        Schema([
+          Table('lists', [
+            Column.text('name'),
+            Column.text('content'),
+          ], trackPreviousValues: TrackPreviousValuesOptions()),
+        ]),
+      );
 
       await powersync.execute(
-          'INSERT INTO lists (id, name, content) VALUES (uuid(), ?, ?)',
-          ['entry', 'content']);
+        'INSERT INTO lists (id, name, content) VALUES (uuid(), ?, ?)',
+        ['entry', 'content'],
+      );
       await powersync.execute('DELETE FROM ps_crud;');
       await powersync.execute('UPDATE lists SET name = ?;', ['new name']);
 
       final batch = await powersync.getNextCrudTransaction();
-      expect(batch!.crud[0].previousValues,
-          {'name': 'entry', 'content': 'content'});
+      expect(batch!.crud[0].previousValues, {
+        'name': 'entry',
+        'content': 'content',
+      });
     });
 
     test('include old values with column filter', () async {
-      await powersync.updateSchema(Schema([
-        Table(
-          'lists',
-          [Column.text('name'), Column.text('content')],
-          trackPreviousValues:
-              TrackPreviousValuesOptions(columnFilter: ['name']),
-        )
-      ]));
+      await powersync.updateSchema(
+        Schema([
+          Table(
+            'lists',
+            [Column.text('name'), Column.text('content')],
+            trackPreviousValues: TrackPreviousValuesOptions(
+              columnFilter: ['name'],
+            ),
+          ),
+        ]),
+      );
 
       await powersync.execute(
-          'INSERT INTO lists (id, name, content) VALUES (uuid(), ?, ?)',
-          ['name', 'content']);
+        'INSERT INTO lists (id, name, content) VALUES (uuid(), ?, ?)',
+        ['name', 'content'],
+      );
       await powersync.execute('DELETE FROM ps_crud;');
-      await powersync.execute('UPDATE lists SET name = ?, content = ?',
-          ['new name', 'new content']);
+      await powersync.execute('UPDATE lists SET name = ?, content = ?', [
+        'new name',
+        'new content',
+      ]);
 
       final batch = await powersync.getNextCrudTransaction();
       expect(batch!.crud[0].previousValues, {'name': 'name'});
     });
 
     test('include old values when changed', () async {
-      await powersync.updateSchema(Schema([
-        Table(
-          'lists',
-          [Column.text('name'), Column.text('content')],
-          trackPreviousValues:
-              TrackPreviousValuesOptions(onlyWhenChanged: true),
-        )
-      ]));
+      await powersync.updateSchema(
+        Schema([
+          Table(
+            'lists',
+            [Column.text('name'), Column.text('content')],
+            trackPreviousValues: TrackPreviousValuesOptions(
+              onlyWhenChanged: true,
+            ),
+          ),
+        ]),
+      );
 
       await powersync.execute(
-          'INSERT INTO lists (id, name, content) VALUES (uuid(), ?, ?)',
-          ['name', 'content']);
+        'INSERT INTO lists (id, name, content) VALUES (uuid(), ?, ?)',
+        ['name', 'content'],
+      );
       await powersync.execute('DELETE FROM ps_crud;');
       await powersync.execute('UPDATE lists SET name = ?', ['new name']);
 
@@ -387,16 +467,16 @@ void main() {
     });
 
     test('ignore empty update', () async {
-      await powersync.updateSchema(Schema([
-        Table(
-          'lists',
-          [Column.text('name')],
-          ignoreEmptyUpdates: true,
-        )
-      ]));
+      await powersync.updateSchema(
+        Schema([
+          Table('lists', [Column.text('name')], ignoreEmptyUpdates: true),
+        ]),
+      );
 
-      await powersync
-          .execute('INSERT INTO lists (id, name) VALUES (uuid(), ?)', ['name']);
+      await powersync.execute(
+        'INSERT INTO lists (id, name) VALUES (uuid(), ?)',
+        ['name'],
+      );
       await powersync.execute('DELETE FROM ps_crud;');
       await powersync.execute('UPDATE lists SET name = ?;', ['name']);
       expect(await powersync.getNextCrudTransaction(), isNull);
@@ -409,8 +489,10 @@ void main() {
         'SELECT powersync_create_raw_table_crud_trigger(?, ?, ?)',
         [json.encode(table), 'users_insert', 'INSERT'],
       );
-      await powersync.execute(
-          'INSERT INTO users (id, name) VALUES (?, ?);', ['id', 'user']);
+      await powersync.execute('INSERT INTO users (id, name) VALUES (?, ?);', [
+        'id',
+        'user',
+      ]);
 
       final tx = await powersync.getNextCrudTransaction();
       expect(tx!.crud, [
@@ -435,31 +517,39 @@ void main() {
         ),
       );
 
-      await powersync
-          .execute('CREATE TABLE users (id TEXT, name TEXT, local TEXT);');
       await powersync.execute(
-          'INSERT INTO users (id, name, local) VALUES (?, ?, ?);',
-          ['id', 'name', 'local']);
+        'CREATE TABLE users (id TEXT, name TEXT, local TEXT);',
+      );
+      await powersync.execute(
+        'INSERT INTO users (id, name, local) VALUES (?, ?, ?);',
+        ['id', 'name', 'local'],
+      );
 
       await powersync.execute(
         'SELECT powersync_create_raw_table_crud_trigger(?, ?, ?)',
         [json.encode(table), 'users_update', 'UPDATE'],
       );
 
-      await powersync.execute('UPDATE users SET name = ?, local = ?',
-          ['updated_name', 'updated_local']);
+      await powersync.execute('UPDATE users SET name = ?, local = ?', [
+        'updated_name',
+        'updated_local',
+      ]);
       // This should not generate a CRUD entry because the only syned column is
       // not affected.
-      await powersync.execute('UPDATE users SET name = ?, local = ?',
-          ['updated_name', 'updated_local_2']);
+      await powersync.execute('UPDATE users SET name = ?, local = ?', [
+        'updated_name',
+        'updated_local_2',
+      ]);
 
       final tx = await powersync.getNextCrudTransaction();
       expect(tx!.crud, [
         isA<CrudEntry>()
             .having((e) => e.op, 'op', UpdateType.patch)
             .having((e) => e.id, 'id', 'id')
-            .having((e) => e.opData, 'opData', {'name': 'updated_name'}).having(
-                (e) => e.previousValues, 'previousValues', {'name': 'name'}),
+            .having((e) => e.opData, 'opData', {'name': 'updated_name'})
+            .having((e) => e.previousValues, 'previousValues', {
+              'name': 'name',
+            }),
       ]);
     });
   });

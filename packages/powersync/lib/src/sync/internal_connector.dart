@@ -25,12 +25,14 @@ abstract interface class InternalConnector {
   const factory InternalConnector({
     required Future<PowerSyncCredentials?> Function() getCredentialsCached,
     required Future<PowerSyncCredentials?> Function({required bool invalidate})
-        prefetchCredentials,
+    prefetchCredentials,
     required Future<void> Function() uploadCrud,
   }) = _CallbackConnector;
 
   factory InternalConnector.wrap(
-      PowerSyncBackendConnector connector, PowerSyncDatabase db) {
+    PowerSyncBackendConnector connector,
+    PowerSyncDatabase db,
+  ) {
     return _WrapConnector(connector, db);
   }
 }
@@ -63,17 +65,17 @@ final class _WrapConnector implements InternalConnector {
 final class _CallbackConnector implements InternalConnector {
   final Future<PowerSyncCredentials?> Function() _getCredentialsCached;
   final Future<PowerSyncCredentials?> Function({required bool invalidate})
-      _prefetchCredentials;
+  _prefetchCredentials;
   final Future<void> Function() _uploadCrud;
 
   const _CallbackConnector({
     required Future<PowerSyncCredentials?> Function() getCredentialsCached,
     required Future<PowerSyncCredentials?> Function({required bool invalidate})
-        prefetchCredentials,
+    prefetchCredentials,
     required Future<void> Function() uploadCrud,
-  })  : _getCredentialsCached = getCredentialsCached,
-        _prefetchCredentials = prefetchCredentials,
-        _uploadCrud = uploadCrud;
+  }) : _getCredentialsCached = getCredentialsCached,
+       _prefetchCredentials = prefetchCredentials,
+       _uploadCrud = uploadCrud;
 
   @override
   Future<PowerSyncCredentials?> getCredentialsCached() {

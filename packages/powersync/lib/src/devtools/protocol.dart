@@ -29,8 +29,8 @@ Object? serializeSyncStatus(SyncStatus status) {
     'downloadProgress': switch (status.downloadProgress) {
       null => null,
       final progress => DownloadProgress(
-              InternalSyncDownloadProgress.ofPublic(progress).buckets)
-          .toJson()
+        InternalSyncDownloadProgress.ofPublic(progress).buckets,
+      ).toJson(),
     },
     'uploading': status.uploading,
     'lastSyncedAt': status.lastSyncedAt?.millisecondsSinceEpoch,
@@ -42,10 +42,11 @@ Object? serializeSyncStatus(SyncStatus status) {
           'priority': entry.priority.priorityNumber,
           'lastSyncedAt': entry.lastSyncedAt?.millisecondsSinceEpoch,
           'hasSynced': entry.hasSynced,
-        }
+        },
     ],
-    'internalSubscriptions':
-        status.internalSubscriptions?.map((s) => s.toJson()).toList(),
+    'internalSubscriptions': status.internalSubscriptions
+        ?.map((s) => s.toJson())
+        .toList(),
   };
 }
 
@@ -63,29 +64,34 @@ SyncStatus deserializeSyncStatus(Map<String, Object?> serialized) {
     downloadProgress: switch (serialized['downloadProgress']) {
       null => null,
       final downloadProgress => InternalSyncDownloadProgress(
-              DownloadProgress.fromJson(
-                      downloadProgress as Map<String, Object?>)
-                  .buckets)
-          .asSyncDownloadProgress
+        DownloadProgress.fromJson(
+          downloadProgress as Map<String, Object?>,
+        ).buckets,
+      ).asSyncDownloadProgress,
     },
     uploading: serialized['uploading'] as bool,
     lastSyncedAt: readDateTime(serialized['lastSyncedAt'] as int?),
     uploadError: serialized['uploadError'],
     downloadError: serialized['downloadError'],
     priorityStatusEntries: [
-      for (final entry in (serialized['priorityStatusEntries'] as List)
-          .cast<Map<String, Object?>>())
+      for (final entry
+          in (serialized['priorityStatusEntries'] as List)
+              .cast<Map<String, Object?>>())
         (
           priority: StreamPriority(entry['priority'] as int),
           lastSyncedAt: readDateTime(entry['lastSyncedAt']),
-          hasSynced: entry['hasSynced'] as bool?
-        )
+          hasSynced: entry['hasSynced'] as bool?,
+        ),
     ],
     streamSubscriptions: switch (serialized['internalSubscriptions']) {
-      final List<Object?> entries => entries
-          .map((e) =>
-              CoreActiveStreamSubscription.fromJson(e as Map<String, Object?>))
-          .toList(),
+      final List<Object?> entries =>
+        entries
+            .map(
+              (e) => CoreActiveStreamSubscription.fromJson(
+                e as Map<String, Object?>,
+              ),
+            )
+            .toList(),
       _ => null,
     },
   );

@@ -35,8 +35,9 @@ final class PowerSyncDevToolsExtension {
             .map(decodeSqlValue)
             .toList();
 
-        final rs = await tracked.database
-            .writeLock((ctx) => ctx.getAll(sql, sqlParameters));
+        final rs = await tracked.database.writeLock(
+          (ctx) => ctx.getAll(sql, sqlParameters),
+        );
         return {
           'columnNames': rs.columnNames,
           'rows': [
@@ -47,8 +48,10 @@ final class PowerSyncDevToolsExtension {
       case 'schema':
         return tracked.database.schema.toJson();
       case 'table-updates-listen':
-        final stream = tracked.database
-            .onChange(null, throttle: const Duration(milliseconds: 100));
+        final stream = tracked.database.onChange(
+          null,
+          throttle: const Duration(milliseconds: 100),
+        );
         final id = _subscriptionId++;
         _clientSubscriptions[id] = stream.listen((updateNotification) {
           postEvent('table-updates', {
@@ -106,27 +109,30 @@ final class PowerSyncDevToolsExtension {
 
       registerExtension('ext.powersync.version', (method, parameters) async {
         return ServiceExtensionResponse.result(
-            json.encode({'version': libraryVersion}));
+          json.encode({'version': libraryVersion}),
+        );
       });
 
       registerExtension('ext.powersync.list', (method, parameters) async {
-        return ServiceExtensionResponse.result(json.encode({
-          'databases': [
-            for (final db in ExposedPowerSyncDatabase.byId.values)
-              {
-                'id': db.id,
-                'path': db.database.group.identifier,
-                'name': p.basename(db.database.group.identifier),
-                'lastCredentials': switch (db.lastCredentials) {
-                  null => null,
-                  final credentials => {
+        return ServiceExtensionResponse.result(
+          json.encode({
+            'databases': [
+              for (final db in ExposedPowerSyncDatabase.byId.values)
+                {
+                  'id': db.id,
+                  'path': db.database.group.identifier,
+                  'name': p.basename(db.database.group.identifier),
+                  'lastCredentials': switch (db.lastCredentials) {
+                    null => null,
+                    final credentials => {
                       'endpoint': credentials.endpoint,
                       'token': credentials.token,
                     },
-                }
-              }
-          ]
-        }));
+                  },
+                },
+            ],
+          }),
+        );
       });
     }
   }

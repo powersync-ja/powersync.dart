@@ -18,7 +18,8 @@ Logger _makeDebugLogger() {
   logger.level = Level.FINE;
   logger.onRecord.listen((record) {
     print(
-        '[${record.loggerName}] ${record.level.name}: ${record.time}: ${record.message}');
+      '[${record.loggerName}] ${record.level.name}: ${record.time}: ${record.message}',
+    );
 
     if (record.error != null) {
       print(record.error);

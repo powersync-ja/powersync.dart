@@ -79,10 +79,12 @@ final class _LengthTrackingSink implements StreamConsumer<List<int>> {
 
   @override
   Future<void> addStream(Stream<List<int>> stream) {
-    return inner.addStream(stream.map((event) {
-      bytesWritten += event.length;
-      return event;
-    }));
+    return inner.addStream(
+      stream.map((event) {
+        bytesWritten += event.length;
+        return event;
+      }),
+    );
   }
 
   @override

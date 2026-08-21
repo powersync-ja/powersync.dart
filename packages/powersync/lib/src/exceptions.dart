@@ -35,7 +35,8 @@ class PowerSyncProtocolException implements Exception {
 class SyncResponseException implements Exception {
   /// Parse an error response from the PowerSync service
   static Future<SyncResponseException> fromStreamedResponse(
-      http.StreamedResponse response) async {
+    http.StreamedResponse response,
+  ) async {
     try {
       final body = await response.stream.bytesToString();
       return _fromResponseBody(response, body);
@@ -59,9 +60,12 @@ class SyncResponseException implements Exception {
   }
 
   static SyncResponseException _fromResponseBody(
-      http.BaseResponse response, String body) {
+    http.BaseResponse response,
+    String body,
+  ) {
     final decoded = convert.jsonDecode(body);
-    final details = switch (decoded['error']) {
+    final details =
+        switch (decoded['error']) {
           final Map<String, Object?> details => _errorDescription(details),
           _ => null,
         } ??

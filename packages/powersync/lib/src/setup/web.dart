@@ -62,9 +62,14 @@ Future<void> downloadWebAssets(List<String> arguments) async {
   try {
     const sqlitePackageName = 'sqlite3';
 
-    final (tag: powersyncTag, version: powerSyncVersion) =
-        await powerSyncVersionOrLatest(
-            httpClient, packageConfig, packageConfigFile);
+    final (
+      tag: powersyncTag,
+      version: powerSyncVersion,
+    ) = await powerSyncVersionOrLatest(
+      httpClient,
+      packageConfig,
+      packageConfigFile,
+    );
     final firstPowerSyncVersionWithOwnWasm = Version(1, 12, 0);
 
     if (downloadWorker) {
@@ -76,8 +81,10 @@ Future<void> downloadWebAssets(List<String> arguments) async {
       final oldSyncWorker = File(syncWorkerPath);
       if (await oldSyncWorker.exists()) {
         await oldSyncWorker.delete();
-        print('Deleted powersync_sync.worker.js. Going forward, '
-            'powersync_db.worker.js is the only worker required.');
+        print(
+          'Deleted powersync_sync.worker.js. Going forward, '
+          'powersync_db.worker.js is the only worker required.',
+        );
       }
     }
 
@@ -93,15 +100,18 @@ Future<void> downloadWebAssets(List<String> arguments) async {
           "v${getPubspecVersion(packageConfigFile, sqlite3Pkg, sqlitePackageName)}";
 
       List<String> tags = await getLatestTagsFromRelease(httpClient);
-      String? matchTag = tags.firstWhereOrNull((element) =>
-          element.contains(sqlite3Version) && coreVersionIsInRange(element));
+      String? matchTag = tags.firstWhereOrNull(
+        (element) =>
+            element.contains(sqlite3Version) && coreVersionIsInRange(element),
+      );
       if (matchTag != null) {
         sqlite3Version = matchTag;
       } else {
         throw Exception(
-            """No compatible powersync core version found for sqlite3 version $sqlite3Version
+          """No compatible powersync core version found for sqlite3 version $sqlite3Version
           Latest supported sqlite3 versions: ${tags.take(3).map((tag) => tag.split('-')[0]).join(', ')}.
-          You can view the full list of releases at https://github.com/powersync-ja/sqlite3.dart/releases""");
+          You can view the full list of releases at https://github.com/powersync-ja/sqlite3.dart/releases""",
+        );
       }
 
       final sqliteUrl =
@@ -118,25 +128,36 @@ Future<void> downloadWebAssets(List<String> arguments) async {
 }
 
 Future<({String tag, Version version})> powerSyncVersionOrLatest(
-    HttpClient client, dynamic packageConfig, File packageConfigFile) async {
+  HttpClient client,
+  dynamic packageConfig,
+  File packageConfigFile,
+) async {
   const powersyncPackageName = 'powersync';
   // Don't require powersync dependency. The user has one if running this script
   // and we also want to support powersync_sqlcipher (for which we download
   // the latest versions).
-  final powersyncPkg = getPackageFromConfig(packageConfig, powersyncPackageName,
-      required: false);
+  final powersyncPkg = getPackageFromConfig(
+    packageConfig,
+    powersyncPackageName,
+    required: false,
+  );
   if (powersyncPkg == null) {
-    final [tag, ...] =
-        await getLatestTagsFromRelease(client, repo: 'powersync.dart');
+    final [tag, ...] = await getLatestTagsFromRelease(
+      client,
+      repo: 'powersync.dart',
+    );
 
     return (
       tag: tag,
-      version: Version.parse(tag.substring('powersync-v'.length))
+      version: Version.parse(tag.substring('powersync-v'.length)),
     );
   }
 
-  final powersyncVersion =
-      getPubspecVersion(packageConfigFile, powersyncPkg, powersyncPackageName);
+  final powersyncVersion = getPubspecVersion(
+    packageConfigFile,
+    powersyncPkg,
+    powersyncPackageName,
+  );
   return (
     tag: 'powersync-v$powersyncVersion',
     version: Version.parse(powersyncVersion),
@@ -152,8 +173,9 @@ bool coreVersionIsInRange(String tag) {
   String powersyncPart = parts[1];
 
   List<String> versionParts = powersyncPart.split('.');
-  String extractedVersion =
-      versionParts.sublist(versionParts.length - 3).join('.');
+  String extractedVersion = versionParts
+      .sublist(versionParts.length - 3)
+      .join('.');
   final coreVersion = Version.parse(extractedVersion);
   if (constraint.allows(coreVersion)) {
     return true;
@@ -161,8 +183,11 @@ bool coreVersionIsInRange(String tag) {
   return false;
 }
 
-dynamic getPackageFromConfig(dynamic packageConfig, String packageName,
-    {bool required = false}) {
+dynamic getPackageFromConfig(
+  dynamic packageConfig,
+  String packageName, {
+  bool required = false,
+}) {
   final pkg = (packageConfig['packages'] as List? ?? <dynamic>[]).firstWhere(
     (dynamic e) => e['name'] == packageName,
     orElse: () => null,
@@ -174,28 +199,37 @@ dynamic getPackageFromConfig(dynamic packageConfig, String packageName,
 }
 
 String getPubspecVersion(
-    File packageConfigFile, dynamic package, String packageName) {
-  final rootUri =
-      packageConfigFile.uri.resolve(package['rootUri'] as String? ?? '');
+  File packageConfigFile,
+  dynamic package,
+  String packageName,
+) {
+  final rootUri = packageConfigFile.uri.resolve(
+    package['rootUri'] as String? ?? '',
+  );
   print('Using package:$packageName from ${rootUri.toFilePath()}');
 
-  String pubspec =
-      File('${rootUri.toFilePath()}/pubspec.yaml').readAsStringSync();
+  String pubspec = File(
+    '${rootUri.toFilePath()}/pubspec.yaml',
+  ).readAsStringSync();
   Pubspec parsed = Pubspec.parse(pubspec);
   final version = parsed.version?.toString();
   if (version == null) {
     throw Exception(
-        "${capitalize(packageName)} version not found. Run `flutter pub get` first.");
+      "${capitalize(packageName)} version not found. Run `flutter pub get` first.",
+    );
   }
   return version;
 }
 
 String capitalize(String s) => s[0].toUpperCase() + s.substring(1);
 
-Future<List<String>> getLatestTagsFromRelease(HttpClient httpClient,
-    {String repo = 'sqlite3.dart'}) async {
+Future<List<String>> getLatestTagsFromRelease(
+  HttpClient httpClient, {
+  String repo = 'sqlite3.dart',
+}) async {
   var request = await httpClient.getUrl(
-      Uri.parse("https://api.github.com/repos/powersync-ja/$repo/releases"));
+    Uri.parse("https://api.github.com/repos/powersync-ja/$repo/releases"),
+  );
   var response = await request.close();
   if (response.statusCode == HttpStatus.ok) {
     var res = await response.transform(utf8.decoder).join();
@@ -213,7 +247,10 @@ Future<List<String>> getLatestTagsFromRelease(HttpClient httpClient,
 }
 
 Future<void> downloadFile(
-    HttpClient httpClient, String url, String savePath) async {
+  HttpClient httpClient,
+  String url,
+  String savePath,
+) async {
   print('Downloading: $url');
   var request = await httpClient.getUrl(Uri.parse(url));
   var response = await request.close();
@@ -222,7 +259,8 @@ Future<void> downloadFile(
     await response.pipe(file.openWrite());
   } else {
     throw Exception(
-        'Failed to download file: ${response.statusCode} ${response.reasonPhrase}');
+      'Failed to download file: ${response.statusCode} ${response.reasonPhrase}',
+    );
   }
 }
 
@@ -234,7 +272,10 @@ Future<void> downloadFile(
 /// Copying from there ensures we run web tests against our current SQLite web
 /// build and avoids downloading from GitHub releases for every package we test.
 Future<void> _copyPrecompiled(
-    Directory project, String wasmFile, String outputDir) async {
+  Directory project,
+  String wasmFile,
+  String outputDir,
+) async {
   // The package config will always be $root/.dart_tool/package_config.json
   final packageConfig = (await Isolate.packageConfig)!;
 
@@ -242,7 +283,8 @@ Future<void> _copyPrecompiled(
   // sqlite3_wasm_build package.
   final destination = p.join(project.path, outputDir);
   final wasmSource = File.fromUri(
-      packageConfig.resolve('../packages/sqlite3_wasm_build/dist/$wasmFile'));
+    packageConfig.resolve('../packages/sqlite3_wasm_build/dist/$wasmFile'),
+  );
   print('Copying $wasmSource to $destination');
   await wasmSource.copy(p.join(destination, wasmFile));
 }

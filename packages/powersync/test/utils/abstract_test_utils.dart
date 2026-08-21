@@ -16,19 +16,23 @@ import 'package:test/test.dart';
 import 'package:test_api/src/backend/invoker.dart';
 
 const schema = Schema([
-  Table('assets', [
-    Column.text('created_at'),
-    Column.text('make'),
-    Column.text('model'),
-    Column.text('serial_number'),
-    Column.integer('quantity'),
-    Column.text('user_id'),
-    Column.text('customer_id'),
-    Column.text('description'),
-  ], indexes: [
-    Index('makemodel', [IndexedColumn('make'), IndexedColumn('model')])
-  ]),
-  Table('customers', [Column.text('name'), Column.text('email')])
+  Table(
+    'assets',
+    [
+      Column.text('created_at'),
+      Column.text('make'),
+      Column.text('model'),
+      Column.text('serial_number'),
+      Column.integer('quantity'),
+      Column.text('user_id'),
+      Column.text('customer_id'),
+      Column.text('description'),
+    ],
+    indexes: [
+      Index('makemodel', [IndexedColumn('make'), IndexedColumn('model')]),
+    ],
+  ),
+  Table('customers', [Column.text('name'), Column.text('email')]),
 ]);
 
 const defaultSchema = schema;
@@ -42,7 +46,8 @@ Logger _makeTestLogger({Level level = Level.ALL, String? name}) {
   logger.level = level;
   logger.onRecord.listen((record) {
     print(
-        '[${record.loggerName}] ${record.level.name}: ${record.time}: ${record.message}');
+      '[${record.loggerName}] ${record.level.name}: ${record.time}: ${record.message}',
+    );
     if (record.error != null) {
       print(record.error);
     }
@@ -67,8 +72,9 @@ abstract class AbstractTestUtils {
   String get _testName => Invoker.current!.liveTest.test.name;
 
   String dbPath() {
-    var testShortName =
-        _testName.replaceAll(RegExp(r'[\s\./]'), '_').toLowerCase();
+    var testShortName = _testName
+        .replaceAll(RegExp(r'[\s\./]'), '_')
+        .toLowerCase();
     var dbName = "test-db/$testShortName.db";
     return dbName;
   }
@@ -89,9 +95,10 @@ abstract class AbstractTestUtils {
     bool initialize = true,
   }) async {
     final db = PowerSyncDatabase.withFactory(
-        await testFactory(path: path, encryption: encryption),
-        schema: schema ?? defaultSchema,
-        logger: logger ?? _makeTestLogger(name: _testName));
+      await testFactory(path: path, encryption: encryption),
+      schema: schema ?? defaultSchema,
+      logger: logger ?? _makeTestLogger(name: _testName),
+    );
     if (initialize) {
       await db.initialize();
     }
@@ -119,7 +126,8 @@ abstract class AbstractTestUtils {
   }) {
     return TestDatabase(
       database: SqliteDatabase.singleConnection(
-          SqliteConnection.synchronousWrapper(raw)),
+        SqliteConnection.synchronousWrapper(raw),
+      ),
       logger: logger ?? Logger.detached('PowerSync.test'),
       schema: customSchema ?? schema,
     );
@@ -130,9 +138,10 @@ class TestConnector extends PowerSyncBackendConnector {
   Future<PowerSyncCredentials> Function() fetchCredentialsCallback;
   Future<void> Function(PowerSyncDatabase)? uploadDataCallback;
 
-  TestConnector(this.fetchCredentialsCallback,
-      {Future<void> Function(PowerSyncDatabase)? uploadData})
-      : uploadDataCallback = uploadData;
+  TestConnector(
+    this.fetchCredentialsCallback, {
+    Future<void> Function(PowerSyncDatabase)? uploadData,
+  }) : uploadDataCallback = uploadData;
 
   @override
   Future<PowerSyncCredentials?> fetchCredentials() {
@@ -178,8 +187,9 @@ final class TestDatabase extends BasePowerSyncDatabase {
       options: options,
       connector: InternalConnector.wrap(connector, this),
       logger: logger,
-      crudUpdateTriggerStream: database
-          .onChange(['ps_crud'], throttle: const Duration(milliseconds: 10)),
+      crudUpdateTriggerStream: database.onChange([
+        'ps_crud',
+      ], throttle: const Duration(milliseconds: 10)),
       activeSubscriptions: initiallyActiveStreams,
     );
     impl.statusStream.listen(setStatus);
@@ -195,18 +205,30 @@ final class TestDatabase extends BasePowerSyncDatabase {
   }
 
   @override
-  Future<T> readLock<T>(Future<T> Function(SqliteReadContext tx) callback,
-      {String? debugContext, Duration? lockTimeout}) async {
+  Future<T> readLock<T>(
+    Future<T> Function(SqliteReadContext tx) callback, {
+    String? debugContext,
+    Duration? lockTimeout,
+  }) async {
     await isInitialized;
-    return database.readLock(callback,
-        debugContext: debugContext, lockTimeout: lockTimeout);
+    return database.readLock(
+      callback,
+      debugContext: debugContext,
+      lockTimeout: lockTimeout,
+    );
   }
 
   @override
-  Future<T> writeLock<T>(Future<T> Function(SqliteWriteContext tx) callback,
-      {String? debugContext, Duration? lockTimeout}) async {
+  Future<T> writeLock<T>(
+    Future<T> Function(SqliteWriteContext tx) callback, {
+    String? debugContext,
+    Duration? lockTimeout,
+  }) async {
     await isInitialized;
-    return database.writeLock(callback,
-        debugContext: debugContext, lockTimeout: lockTimeout);
+    return database.writeLock(
+      callback,
+      debugContext: debugContext,
+      lockTimeout: lockTimeout,
+    );
   }
 }

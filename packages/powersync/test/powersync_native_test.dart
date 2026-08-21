@@ -27,26 +27,31 @@ void main() {
 
     test('Basic Setup', () async {
       final db = await testUtils.setupPowerSync(path: path);
-      await db.execute(
-          'INSERT INTO assets(id, make) VALUES(uuid(), ?)', ['Test Make']);
+      await db.execute('INSERT INTO assets(id, make) VALUES(uuid(), ?)', [
+        'Test Make',
+      ]);
       final result = await db.get('SELECT make FROM assets');
       expect(result, equals({'make': 'Test Make'}));
       expect(
-          await db.execute('PRAGMA journal_mode'),
-          equals([
-            {'journal_mode': 'wal'}
-          ]));
+        await db.execute('PRAGMA journal_mode'),
+        equals([
+          {'journal_mode': 'wal'},
+        ]),
+      );
       expect(
-          await db.execute('PRAGMA locking_mode'),
-          equals([
-            {'locking_mode': 'normal'}
-          ]));
+        await db.execute('PRAGMA locking_mode'),
+        equals([
+          {'locking_mode': 'normal'},
+        ]),
+      );
     });
 
     test('Concurrency', () async {
       final db = PowerSyncDatabase.withFactory(
         await testUtils.testFactory(
-            path: path, options: SqliteOptions(maxReaders: 3)),
+          path: path,
+          options: SqliteOptions(maxReaders: 3),
+        ),
         schema: defaultSchema,
       );
       addTearDown(db.close);
@@ -84,68 +89,79 @@ void main() {
       await db.getAll("WITH test AS (SELECT 1 AS one) SELECT * FROM test");
 
       // Cannot write
-      await expectLater(() async {
-        await db.getAll('INSERT INTO assets(id) VALUES(?)', ['test']);
-      },
-          throwsA((dynamic e) =>
+      await expectLater(
+        () async {
+          await db.getAll('INSERT INTO assets(id) VALUES(?)', ['test']);
+        },
+        throwsA(
+          (dynamic e) =>
               e is SqliteException &&
-              e.message.contains('attempt to write a readonly database')));
+              e.message.contains('attempt to write a readonly database'),
+        ),
+      );
 
       // Can use WITH ... SELECT
       await db.getAll("WITH test AS (SELECT 1 AS one) SELECT * FROM test");
 
       // Cannot use WITH .... INSERT
-      await expectLater(() async {
-        await db.getAll(
-            "WITH test AS (SELECT 1 AS one) INSERT INTO assets(id) SELECT one FROM test");
-      },
-          throwsA((dynamic e) =>
+      await expectLater(
+        () async {
+          await db.getAll(
+            "WITH test AS (SELECT 1 AS one) INSERT INTO assets(id) SELECT one FROM test",
+          );
+        },
+        throwsA(
+          (dynamic e) =>
               e is SqliteException &&
-              e.message.contains('attempt to write a readonly database')));
+              e.message.contains('attempt to write a readonly database'),
+        ),
+      );
 
       await db.writeTransaction((tx) async {
         // Within a write transaction, this is fine
-        await tx
-            .getAll('INSERT INTO assets(id) VALUES(?) RETURNING *', ['test']);
+        await tx.getAll('INSERT INTO assets(id) VALUES(?) RETURNING *', [
+          'test',
+        ]);
       });
     });
 
     test(
-        'should allow read-only db calls within transaction callback in separate zone',
-        () async {
-      final db = await testUtils.setupPowerSync(path: path);
+      'should allow read-only db calls within transaction callback in separate zone',
+      () async {
+        final db = await testUtils.setupPowerSync(path: path);
 
-      // Get a reference to the parent zone (outside the transaction).
-      final zone = Zone.current;
+        // Get a reference to the parent zone (outside the transaction).
+        final zone = Zone.current;
 
-      // Each of these are fine, since it could use a separate connection.
-      // Note: In highly concurrent cases, it could exhaust the connection pool and cause a deadlock.
+        // Each of these are fine, since it could use a separate connection.
+        // Note: In highly concurrent cases, it could exhaust the connection pool and cause a deadlock.
 
-      await db.writeTransaction((tx) async {
-        // Use the parent zone to avoid the "recursive lock" error.
-        await zone.fork().run(() async {
-          await db.getAll('SELECT * FROM assets');
+        await db.writeTransaction((tx) async {
+          // Use the parent zone to avoid the "recursive lock" error.
+          await zone.fork().run(() async {
+            await db.getAll('SELECT * FROM assets');
+          });
         });
-      });
 
-      await db.readTransaction((tx) async {
-        await zone.fork().run(() async {
-          await db.getAll('SELECT * FROM assets');
+        await db.readTransaction((tx) async {
+          await zone.fork().run(() async {
+            await db.getAll('SELECT * FROM assets');
+          });
         });
-      });
 
-      await db.readTransaction((tx) async {
-        await zone.fork().run(() async {
-          await db.execute('SELECT * FROM assets');
+        await db.readTransaction((tx) async {
+          await zone.fork().run(() async {
+            await db.execute('SELECT * FROM assets');
+          });
         });
-      });
 
-      // Note: This would deadlock, since it shares a global write lock.
-      // await db.writeTransaction((tx) async {
-      //   await zone.fork().run(() async {
-      //     await db.execute('SELECT * FROM test_data');
-      //   });
-      // });
-    });
+        // Note: This would deadlock, since it shares a global write lock.
+        // await db.writeTransaction((tx) async {
+        //   await zone.fork().run(() async {
+        //     await db.execute('SELECT * FROM test_data');
+        //   });
+        // });
+      },
+    );
   });
 }

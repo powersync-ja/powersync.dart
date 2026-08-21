@@ -4,7 +4,7 @@ import 'package:powersync/powersync.dart';
 late PowerSyncDatabase db;
 
 const schema = Schema([
-  Table.localOnly('data', [Column.text('contents')])
+  Table.localOnly('data', [Column.text('contents')]),
 ]);
 
 final parameterSets = List.generate(1000, (i) => [uuid.v4(), 'Row $i']);
@@ -37,7 +37,9 @@ Future<void> batchWrites() async {
   // This avoids the overhead of asynchronously waiting for each call to complete,
   // and also only parses the SQL statement once.
   await db.executeBatch(
-      'INSERT INTO data(id, contents) VALUES(?, ?)', parameterSets);
+    'INSERT INTO data(id, contents) VALUES(?, ?)',
+    parameterSets,
+  );
 }
 
 Future<void> inIsolateWrites() async {
@@ -66,7 +68,7 @@ Future<void> main() async {
     singleWrites,
     transactionalWrites,
     batchWrites,
-    inIsolateWrites
+    inIsolateWrites,
   ]) {
     await db.execute('DELETE FROM data WHERE 1');
     var watch = Stopwatch()..start();

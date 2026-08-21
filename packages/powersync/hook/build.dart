@@ -34,12 +34,14 @@ void main(List<String> args) async {
       coreExtension = await _reuseOrDownloadCoreExtension(input);
     }
 
-    output.assets.code.add(CodeAsset(
-      package: 'powersync',
-      name: 'src/open_factory/native/sqlite3_powersync_init.dart',
-      linkMode: DynamicLoadingBundled(),
-      file: coreExtension.uri,
-    ));
+    output.assets.code.add(
+      CodeAsset(
+        package: 'powersync',
+        name: 'src/open_factory/native/sqlite3_powersync_init.dart',
+        linkMode: DynamicLoadingBundled(),
+        file: coreExtension.uri,
+      ),
+    );
   });
 }
 
@@ -47,18 +49,23 @@ Future<File> _reuseOrDownloadCoreExtension(BuildInput input) async {
   final sourceFileName = _fileNameForBuild(input.config.code);
   final digest = assetNameToSha256Hash[sourceFileName]!;
 
-  final targetUri = input.outputDirectoryShared
-      .resolve('download-${digest.substring(0, 8)}/');
+  final targetUri = input.outputDirectoryShared.resolve(
+    'download-${digest.substring(0, 8)}/',
+  );
   final targetDirectory = Directory(targetUri.toFilePath());
   if (!targetDirectory.existsSync()) {
     targetDirectory.createSync();
   }
-  final file = File(targetUri
-      .resolve(input.config.code.targetOS.libraryFileName(
-        'powersync_core',
-        DynamicLoadingBundled(),
-      ))
-      .toFilePath());
+  final file = File(
+    targetUri
+        .resolve(
+          input.config.code.targetOS.libraryFileName(
+            'powersync_core',
+            DynamicLoadingBundled(),
+          ),
+        )
+        .toFilePath(),
+  );
 
   if (file.existsSync()) {
     // Hook is re-run with an existing cache. Does the file match the digest we
@@ -78,11 +85,13 @@ Future<File> _reuseOrDownloadCoreExtension(BuildInput input) async {
 }
 
 Future<Uint8List> _fetchCoreExtension(String fileName, String hash) async {
-  final client = IOClient(HttpClient()
-    // From Dart 3.11, proxy-related environment variables are passed to
-    // hooks. We respect them to ensure we can download these binaries in
-    // environments where that's required.
-    ..findProxy = HttpClient.findProxyFromEnvironment);
+  final client = IOClient(
+    HttpClient()
+      // From Dart 3.11, proxy-related environment variables are passed to
+      // hooks. We respect them to ensure we can download these binaries in
+      // environments where that's required.
+      ..findProxy = HttpClient.findProxyFromEnvironment,
+  );
   final uri = Uri.https(
     'github.com',
     'powersync-ja/powersync-sqlite-core/releases/download/$releaseVersion/$fileName',
@@ -92,13 +101,15 @@ Future<Uint8List> _fetchCoreExtension(String fileName, String hash) async {
     final response = await client.get(uri);
     if (response.statusCode != 200) {
       throw Exception(
-          'Could not download $uri, got ${response.statusCode}: ${response.body}');
+        'Could not download $uri, got ${response.statusCode}: ${response.body}',
+      );
     }
 
     final digest = sha256.convert(response.bodyBytes);
     if (digest.toString() != hash) {
       throw Exception(
-          'Unexpected digest for $uri, expected $hash got $digest.');
+        'Unexpected digest for $uri, expected $hash got $digest.',
+      );
     }
 
     return response.bodyBytes;
@@ -153,7 +164,10 @@ String _fileNameForBuild(CodeConfig config) {
       return 'libpowersync_${architectureName()}.ios-sim.dylib';
     case OS.linux:
       final archName = architectureName(
-          supportArmv7: true, supportX86: true, supportRiscv: true);
+        supportArmv7: true,
+        supportX86: true,
+        supportRiscv: true,
+      );
       return 'libpowersync_$archName.linux.so';
     case OS.macOS:
       return 'libpowersync_${architectureName()}.macos.dylib';
@@ -169,7 +183,10 @@ String _fileNameForBuild(CodeConfig config) {
 }
 
 Future<File> _useLocalCoreExtension(
-    String root, BuildInput input, BuildOutputBuilder output) async {
+  String root,
+  BuildInput input,
+  BuildOutputBuilder output,
+) async {
   final config = input.config.code;
   if (config.targetOS != OS.current ||
       config.targetArchitecture != Architecture.current) {
@@ -193,9 +210,7 @@ Future<File> _useLocalCoreExtension(
   final rootUri = Uri.directory(root);
   final library = rootUri.resolve('target/debug/$outputName');
   final depsFile = File.fromUri(
-    library.resolve(
-      Platform.isWindows ? 'powersync.d' : 'libpowersync.d',
-    ),
+    library.resolve(Platform.isWindows ? 'powersync.d' : 'libpowersync.d'),
   );
 
   // Parse generated depfile to re-run this hook when a Rust source has changed.

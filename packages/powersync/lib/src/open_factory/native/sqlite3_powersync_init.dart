@@ -1,7 +1,7 @@
 import 'dart:ffi';
 
-typedef ExtensionEntrypoint = Int Function(
-    Pointer<Void>, Pointer<Void>, Pointer<Void>);
+typedef ExtensionEntrypoint =
+    Int Function(Pointer<Void>, Pointer<Void>, Pointer<Void>);
 
 @Native<ExtensionEntrypoint>()
 // ignore: non_constant_identifier_names

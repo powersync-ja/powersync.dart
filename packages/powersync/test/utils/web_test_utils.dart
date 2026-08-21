@@ -23,8 +23,10 @@ class TestUtils extends AbstractTestUtils {
   }
 
   Future<void> _init() async {
-    final channel =
-        spawnHybridUri('/test/server/worker_server.dart', stayAlive: true);
+    final channel = spawnHybridUri(
+      '/test/server/worker_server.dart',
+      stayAlive: true,
+    );
     final port = await channel.stream.first as int;
     sqlite3WASMUri = 'http://localhost:$port/sqlite3.wasm';
     sqlite3McUri = 'http://localhost:$port/sqlite3mc.wasm';
@@ -32,8 +34,9 @@ class TestUtils extends AbstractTestUtils {
     final workerUriSource = 'http://localhost:$port/powersync_db.worker.js';
 
     final blob = Blob(
-        <JSString>['importScripts("$workerUriSource");'.toJS].toJS,
-        BlobPropertyBag(type: 'application/javascript'));
+      <JSString>['importScripts("$workerUriSource");'.toJS].toJS,
+      BlobPropertyBag(type: 'application/javascript'),
+    );
     workerUri = _createObjectURL(blob);
   }
 

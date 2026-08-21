@@ -17,39 +17,42 @@ void main() {
 
   test('generates pragma statements', () {
     expect(
-      EncryptionOptions(key: 'foo', sqlcipherCompatibility: false)
-          .pragmaStatements(),
+      EncryptionOptions(
+        key: 'foo',
+        sqlcipherCompatibility: false,
+      ).pragmaStatements(),
       ["PRAGMA key = 'foo'"],
     );
     expect(
-      EncryptionOptions(key: 'foo', sqlcipherCompatibility: true)
-          .pragmaStatements(),
+      EncryptionOptions(
+        key: 'foo',
+        sqlcipherCompatibility: true,
+      ).pragmaStatements(),
       [
         "PRAGMA cipher = 'sqlcipher'",
         'PRAGMA legacy = 4',
-        "PRAGMA key = 'foo'"
+        "PRAGMA key = 'foo'",
       ],
     );
 
     expect(
-      EncryptionOptions(key: "f'o'o", sqlcipherCompatibility: false)
-          .pragmaStatements(),
+      EncryptionOptions(
+        key: "f'o'o",
+        sqlcipherCompatibility: false,
+      ).pragmaStatements(),
       ["PRAGMA key = 'f''o''o'"],
     );
   });
 
-  group(
-    'without encryption',
-    () {
-      test('throws when encryption options are used', () async {
-        await expectLater(() async {
-          await testUtils.setupPowerSync(
-              encryption: EncryptionOptions(key: 'foo'));
-        }, throwsA(anything));
-      });
-    },
-    tags: 'require_no_encryption',
-  );
+  group('without encryption', () {
+    test('throws when encryption options are used', () async {
+      await expectLater(() async {
+        await testUtils.setupPowerSync(
+          encryption: EncryptionOptions(key: 'foo'),
+        );
+      }, throwsA(anything));
+    });
+  }, tags: 'require_no_encryption');
 
   // To run the following tests, uncomment hook options in the monorepo's
   // pubspec.yaml and run dart test -P encryption.
@@ -65,8 +68,10 @@ void main() {
           encryption: EncryptionOptions(key: 'foo'),
         );
 
-        await db.execute('INSERT INTO customers (id, name) VALUES (uuid(), ?)',
-            ['secret customer']);
+        await db.execute(
+          'INSERT INTO customers (id, name) VALUES (uuid(), ?)',
+          ['secret customer'],
+        );
         await db.close();
       }
 

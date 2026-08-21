@@ -125,10 +125,12 @@ final class NativePowerSyncDatabase extends BasePowerSyncDatabase {
           };
 
           if (recoveredUploadError != null || recoveredDownloadError != null) {
-            setStatus(payload.changeErrors(
-              uploadError: recoveredUploadError ?? payload.uploadError,
-              downloadError: recoveredDownloadError ?? payload.downloadError,
-            ));
+            setStatus(
+              payload.changeErrors(
+                uploadError: recoveredUploadError ?? payload.uploadError,
+                downloadError: recoveredDownloadError ?? payload.downloadError,
+              ),
+            );
           } else {
             setStatus(payload);
           }
@@ -136,7 +138,11 @@ final class NativePowerSyncDatabase extends BasePowerSyncDatabase {
         case SyncIsolateToClientMessageType.log:
           LogRecord record = payload as LogRecord;
           logger.log(
-              record.level, record.message, record.error, record.stackTrace);
+            record.level,
+            record.message,
+            record.error,
+            record.stackTrace,
+          );
         case SyncIsolateToClientMessageType.mutexAcquire:
           final (name, id) = payload as (String, int);
           mutexServer.acquireRequest(initPort!, name, id);
@@ -196,8 +202,12 @@ final class NativePowerSyncDatabase extends BasePowerSyncDatabase {
     await hasInitPort.future;
 
     // Automatically complete the abort controller once the isolate exits.
-    unawaited(Future.any([abort.onAbort, receivedIsolateExit.future])
-        .whenComplete(close));
+    unawaited(
+      Future.any([
+        abort.onAbort,
+        receivedIsolateExit.future,
+      ]).whenComplete(close),
+    );
   }
 }
 
@@ -232,13 +242,15 @@ Future<void> _syncIsolate(_PowerSyncDatabaseIsolateArgs args) async {
 
   Future<void> shutdown() {
     if (!shutdownCompleter.isCompleted) {
-      shutdownCompleter.complete(Future(() async {
-        await openedStreamingSync?.abort();
-        await database.close();
+      shutdownCompleter.complete(
+        Future(() async {
+          await openedStreamingSync?.abort();
+          await database.close();
 
-        rPort.close();
-        results.close();
-      }));
+          rPort.close();
+          results.close();
+        }),
+      );
     }
 
     return shutdownCompleter.future;
@@ -250,8 +262,9 @@ Future<void> _syncIsolate(_PowerSyncDatabaseIsolateArgs args) async {
       case ClientToSyncIsolateMessageType.close:
         shutdown();
       case ClientToSyncIsolateMessageType.changedSubscriptions:
-        openedStreamingSync
-            ?.updateSubscriptions(payload as List<SubscribedStream>);
+        openedStreamingSync?.updateSubscriptions(
+          payload as List<SubscribedStream>,
+        );
       case ClientToSyncIsolateMessageType.mutexGranted:
         mutexes.markGranted(payload as int);
     }
@@ -262,8 +275,13 @@ Future<void> _syncIsolate(_PowerSyncDatabaseIsolateArgs args) async {
   // This only takes effect in this isolate.
   isolateLogger.level = Level.ALL;
   isolateLogger.onRecord.listen((record) {
-    var copy = LogRecord(record.level, record.message, record.loggerName,
-        record.error, record.stackTrace);
+    var copy = LogRecord(
+      record.level,
+      record.message,
+      record.loggerName,
+      record.error,
+      record.stackTrace,
+    );
     sPort.sendLog(copy);
   });
 
@@ -273,8 +291,9 @@ Future<void> _syncIsolate(_PowerSyncDatabaseIsolateArgs args) async {
     return r.future;
   }
 
-  Future<PowerSyncCredentials?> prefetchCredentials(
-      {required bool invalidate}) async {
+  Future<PowerSyncCredentials?> prefetchCredentials({
+    required bool invalidate,
+  }) async {
     final r = results.createPending<PowerSyncCredentials?>();
     sPort.sendPrefetchCredentials(r.completer, invalidate);
     return r.future;
@@ -286,33 +305,37 @@ Future<void> _syncIsolate(_PowerSyncDatabaseIsolateArgs args) async {
     return r.future;
   }
 
-  runZonedGuarded(() async {
-    final storage = BucketStorage(database);
-    final sync = openedStreamingSync = StreamingSyncImplementation(
-      adapter: storage,
-      schemaJson: args.schemaJson,
-      connector: InternalConnector(
-        getCredentialsCached: getCredentialsCached,
-        prefetchCredentials: prefetchCredentials,
-        uploadCrud: uploadCrud,
-      ),
-      crudUpdateTriggerStream: database
-          .onChange(['ps_crud'], throttle: args.options.crudThrottleTime),
-      options: args.options,
-      syncMutex: mutexes.mutex('sync'),
-      crudMutex: mutexes.mutex('crud'),
-    );
+  runZonedGuarded(
+    () async {
+      final storage = BucketStorage(database);
+      final sync = openedStreamingSync = StreamingSyncImplementation(
+        adapter: storage,
+        schemaJson: args.schemaJson,
+        connector: InternalConnector(
+          getCredentialsCached: getCredentialsCached,
+          prefetchCredentials: prefetchCredentials,
+          uploadCrud: uploadCrud,
+        ),
+        crudUpdateTriggerStream: database.onChange([
+          'ps_crud',
+        ], throttle: args.options.crudThrottleTime),
+        options: args.options,
+        syncMutex: mutexes.mutex('sync'),
+        crudMutex: mutexes.mutex('crud'),
+      );
 
-    sync.streamingSync();
-    sync.statusStream.listen((event) {
-      sPort.sendStatus(event);
-    });
-  }, (error, stack) async {
-    // Properly dispose the database if an uncaught error occurs.
-    // Unfortunately, this does not handle disposing while the database is opening.
-    // This should be rare - any uncaught error is a bug. And in most cases,
-    // it should occur after the database is already open.
-    await shutdown();
-    Error.throwWithStackTrace(error, stack);
-  });
+      sync.streamingSync();
+      sync.statusStream.listen((event) {
+        sPort.sendStatus(event);
+      });
+    },
+    (error, stack) async {
+      // Properly dispose the database if an uncaught error occurs.
+      // Unfortunately, this does not handle disposing while the database is opening.
+      // This should be rare - any uncaught error is a bug. And in most cases,
+      // it should occur after the database is already open.
+      await shutdown();
+      Error.throwWithStackTrace(error, stack);
+    },
+  );
 }

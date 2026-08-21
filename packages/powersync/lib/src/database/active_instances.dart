@@ -26,8 +26,8 @@ final class ActiveDatabaseGroup {
   final String identifier;
 
   ActiveDatabaseGroup._(this.identifier)
-      : syncMutex = potentiallySharedMutex('$identifier-sync'),
-        crudMutex = potentiallySharedMutex('$identifier-crud');
+    : syncMutex = potentiallySharedMutex('$identifier-sync'),
+      crudMutex = potentiallySharedMutex('$identifier-crud');
 
   Future<void> close() async {
     if (--refCount == 0) {
@@ -40,7 +40,9 @@ final class ActiveDatabaseGroup {
 
   static ActiveDatabaseGroup referenceDatabase(String identifier) {
     final group = _activeGroups.putIfAbsent(
-        identifier, () => ActiveDatabaseGroup._(identifier));
+      identifier,
+      () => ActiveDatabaseGroup._(identifier),
+    );
     group.refCount++;
     return group;
   }

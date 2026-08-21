@@ -6,11 +6,12 @@ import 'abstract_test_utils.dart';
 
 class TestUtils extends AbstractTestUtils {
   @override
-  Future<SqliteOpenFactory> testFactory(
-      {String? path,
-      String sqlitePath = '',
-      SqliteOptions options = const SqliteOptions(),
-      EncryptionOptions? encryption}) {
+  Future<SqliteOpenFactory> testFactory({
+    String? path,
+    String sqlitePath = '',
+    SqliteOptions options = const SqliteOptions(),
+    EncryptionOptions? encryption,
+  }) {
     throw UnimplementedError();
   }
 

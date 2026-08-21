@@ -177,22 +177,24 @@ extension type AttachmentsQueueTable._(Table _) implements Table {
     List<Index> indexes = const [],
     String? viewName,
   }) {
-    return AttachmentsQueueTable._(Table.localOnly(
-      attachmentsQueueTableName,
-      [
-        const Column.text('filename'),
-        const Column.text('local_uri'),
-        const Column.integer('timestamp'),
-        const Column.integer('size'),
-        const Column.text('media_type'),
-        const Column.integer('state'),
-        const Column.integer('has_synced'),
-        const Column.text('meta_data'),
-        ...additionalColumns,
-      ],
-      viewName: viewName,
-      indexes: indexes,
-    ));
+    return AttachmentsQueueTable._(
+      Table.localOnly(
+        attachmentsQueueTableName,
+        [
+          const Column.text('filename'),
+          const Column.text('local_uri'),
+          const Column.integer('timestamp'),
+          const Column.integer('size'),
+          const Column.text('media_type'),
+          const Column.integer('state'),
+          const Column.integer('has_synced'),
+          const Column.text('meta_data'),
+          ...additionalColumns,
+        ],
+        viewName: viewName,
+        indexes: indexes,
+      ),
+    );
   }
 
   static const defaultTableName = 'attachments_queue';

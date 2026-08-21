@@ -81,8 +81,9 @@ final class _InMemoryStorage implements LocalStorage {
   @override
   Stream<Uint8List> readFile(String filePath) {
     return switch (content[_keyForPath(filePath)]) {
-      null =>
-        Stream.error('file at $filePath does not exist in in-memory storage'),
+      null => Stream.error(
+        'file at $filePath does not exist in in-memory storage',
+      ),
       final contents => Stream.value(contents),
     };
   }

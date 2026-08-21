@@ -139,21 +139,24 @@ Stream<T> streamFromFutureAwaitInCancellation<T>(Future<T> future) {
   final controller = StreamController<T>(sync: true);
   var cancelled = false;
 
-  final handledFuture = future.then((value) {
-    controller
-      ..add(value)
-      ..close();
-  }, onError: (Object error, StackTrace trace) {
-    if (cancelled) {
-      // Make handledFuture complete with the error, so that controller.cancel
-      // throws (instead of the error being unhandled).
-      throw error;
-    } else {
+  final handledFuture = future.then(
+    (value) {
       controller
-        ..addError(error, trace)
+        ..add(value)
         ..close();
-    }
-  });
+    },
+    onError: (Object error, StackTrace trace) {
+      if (cancelled) {
+        // Make handledFuture complete with the error, so that controller.cancel
+        // throws (instead of the error being unhandled).
+        throw error;
+      } else {
+        controller
+          ..addError(error, trace)
+          ..close();
+      }
+    },
+  );
 
   controller.onCancel = () async {
     cancelled = true;
@@ -191,8 +194,12 @@ final class _BsonSplittingSink implements EventSink<List<int>> {
         assert(remainingBytes >= 0);
 
         if (remainingBytes == 0) {
-          _downstream.add(pending.buffer
-              .asUint8List(pending.offsetInBytes, pending.lengthInBytes));
+          _downstream.add(
+            pending.buffer.asUint8List(
+              pending.offsetInBytes,
+              pending.lengthInBytes,
+            ),
+          );
 
           // Prepare reading another document, starting with its length
           pendingBuffer = null;
@@ -220,7 +227,8 @@ final class _BsonSplittingSink implements EventSink<List<int>> {
           if (remainingBytes < 5) {
             _downstream.addError(
               PowerSyncProtocolException(
-                  'Invalid length for bson: $remainingBytes'),
+                'Invalid length for bson: $remainingBytes',
+              ),
               StackTrace.current,
             );
           }

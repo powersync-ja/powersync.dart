@@ -101,21 +101,19 @@ final class AttachmentContext {
 
     final results = await db.getAll(
       'SELECT * FROM $table WHERE state = ? ORDER BY timestamp DESC LIMIT ? OFFSET ?',
-      [
-        AttachmentState.archived.index,
-        limit,
-        maxArchivedCount,
-      ],
+      [AttachmentState.archived.index, limit, maxArchivedCount],
     );
-    final archivedAttachments =
-        results.map((row) => Attachment.fromRow(row)).toList();
+    final archivedAttachments = results
+        .map((row) => Attachment.fromRow(row))
+        .toList();
 
     if (archivedAttachments.isEmpty) {
       return false;
     }
 
     log.info(
-        'Deleting ${archivedAttachments.length} archived attachments (exceeding maxArchivedCount=$maxArchivedCount)...');
+      'Deleting ${archivedAttachments.length} archived attachments (exceeding maxArchivedCount=$maxArchivedCount)...',
+    );
     // Call the callback with the list of archived attachments before deletion
     await callback(archivedAttachments);
 

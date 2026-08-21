@@ -18,8 +18,9 @@ final _isDedicatedWorker = globalContext.has('DedicatedWorkerGlobalScope');
 
 void main() {
   final controller = PowerSyncAsyncSqliteController();
-  final connector =
-      PowerSyncWorkerConnector((globalContext as Window).location.href);
+  final connector = PowerSyncWorkerConnector(
+    (globalContext as Window).location.href,
+  );
   final messagesForDatabaseWorker = StreamController<MessageEvent>(sync: true);
 
   WebSqlite.workerEntrypoint(
@@ -37,10 +38,7 @@ void main() {
         syncWorker.trackPort(message.message as MessagePort);
       } else {
         messagesForDatabaseWorker.add(
-          MessageEvent(
-            'message',
-            MessageEventInit(data: message.message),
-          ),
+          MessageEvent('message', MessageEventInit(data: message.message)),
         );
       }
     }
@@ -53,10 +51,10 @@ void main() {
     EventStreamProviders.connectEvent
         .forTarget(globalContext as SharedWorkerGlobalScope)
         .listen((event) {
-      for (final port in (event as MessageEvent).ports.toDart) {
-        handlePort(port);
-      }
-    });
+          for (final port in (event as MessageEvent).ports.toDart) {
+            handlePort(port);
+          }
+        });
   } else {
     EventStreamProviders.messageEvent
         .forTarget(globalContext as DedicatedWorkerGlobalScope)

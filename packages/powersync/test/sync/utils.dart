@@ -26,7 +26,10 @@ TypeMatcher<SyncStatus> isSyncStatus({
   }
   if (downloadProgress != null) {
     matcher = matcher.having(
-        (e) => e.downloadProgress, 'downloadProgress', downloadProgress);
+      (e) => e.downloadProgress,
+      'downloadProgress',
+      downloadProgress,
+    );
   }
   if (syncStreams != null) {
     matcher = matcher.having((e) => e.syncStreams, 'syncStreams', syncStreams);
@@ -39,11 +42,17 @@ TypeMatcher<SyncDownloadProgress> isSyncDownloadProgress({
   required Object progress,
   Map<StreamPriority, Object> priorities = const {},
 }) {
-  var matcher =
-      isA<SyncDownloadProgress>().having((e) => e, 'untilCompletion', progress);
+  var matcher = isA<SyncDownloadProgress>().having(
+    (e) => e,
+    'untilCompletion',
+    progress,
+  );
   priorities.forEach((priority, expected) {
     matcher = matcher.having(
-        (e) => e.untilPriority(priority), 'untilPriority($priority)', expected);
+      (e) => e.untilPriority(priority),
+      'untilPriority($priority)',
+      expected,
+    );
   });
 
   return matcher;
@@ -59,8 +68,11 @@ TypeMatcher<SyncStreamStatus> isStreamStatus({
   required Object? subscription,
   Object? progress,
 }) {
-  var matcher = isA<SyncStreamStatus>()
-      .having((e) => e.subscription, 'subscription', subscription);
+  var matcher = isA<SyncStreamStatus>().having(
+    (e) => e.subscription,
+    'subscription',
+    subscription,
+  );
   if (progress case final progress?) {
     matcher = matcher.having((e) => e.progress, 'progress', progress);
   }
@@ -84,8 +96,11 @@ TypeMatcher<SyncSubscriptionDescription> isSyncSubscription({
   return matcher;
 }
 
-BucketChecksum checksum(
-    {required String bucket, required int checksum, int priority = 1}) {
+BucketChecksum checksum({
+  required String bucket,
+  required int checksum,
+  int priority = 1,
+}) {
   return BucketChecksum(bucket: bucket, priority: priority, checksum: checksum);
 }
 
@@ -102,7 +117,7 @@ Object checkpoint({
       'write_checkpoint': null,
       'buckets': buckets,
       'streams': streams,
-    }
+    },
   };
 }
 

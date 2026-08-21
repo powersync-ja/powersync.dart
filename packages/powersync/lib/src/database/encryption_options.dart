@@ -78,8 +78,10 @@ final class EncryptionOptions {
 
   /// Throws if the `cipher` pragma doesn't exist, as that indicates that
   /// SQLite3MultipleCiphers is not available.
-  @Deprecated('Unused in PowerSync SDK, check '
-      'EncryptedSqliteVariant.resolveOnDatabase instead')
+  @Deprecated(
+    'Unused in PowerSync SDK, check '
+    'EncryptedSqliteVariant.resolveOnDatabase instead',
+  )
   static void checkHasCipherPragma(CommonDatabase database) {
     if (database.select('pragma cipher').isEmpty) {
       throw UnsupportedError(

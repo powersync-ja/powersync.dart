@@ -112,12 +112,14 @@ extension type ResolvedSyncOptions(SyncOptions source) {
     Map<String, dynamic>? params,
     Map<String, String>? appMetadata,
   }) {
-    return ResolvedSyncOptions((source ?? SyncOptions())._copyWith(
-      crudThrottleTime: crudThrottleTime,
-      retryDelay: retryDelay,
-      params: params,
-      appMetadata: appMetadata,
-    ));
+    return ResolvedSyncOptions(
+      (source ?? SyncOptions())._copyWith(
+        crudThrottleTime: crudThrottleTime,
+        retryDelay: retryDelay,
+        params: params,
+        appMetadata: appMetadata,
+      ),
+    );
   }
 
   Map<String, String> get appMetadata => source.appMetadata ?? const {};
@@ -145,7 +147,8 @@ extension type ResolvedSyncOptions(SyncOptions source) {
       httpClient: other.httpClient ?? source.httpClient,
     );
 
-    final didChange = !_mapEquality.equals(newOptions.params, params) ||
+    final didChange =
+        !_mapEquality.equals(newOptions.params, params) ||
         newOptions.crudThrottleTime != crudThrottleTime ||
         newOptions.retryDelay != retryDelay ||
         newOptions.syncImplementation != source.syncImplementation ||

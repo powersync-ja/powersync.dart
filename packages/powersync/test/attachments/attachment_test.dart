@@ -25,7 +25,9 @@ void main() {
           (rs) => [
             for (final row in rs)
               WatchedAttachmentItem(
-                  id: row['photo_id'] as String, fileExtension: 'jpg')
+                id: row['photo_id'] as String,
+                fileExtension: 'jpg',
+              ),
           ],
         );
   }
@@ -111,7 +113,7 @@ void main() {
 
     final nonVerboseMessages = [
       for (final LogRecord(:level, :message) in logRecords)
-        if (level >= Level.INFO) message
+        if (level >= Level.INFO) message,
     ];
     expect(nonVerboseMessages, [
       'Watching attachments...',
@@ -119,7 +121,7 @@ void main() {
       startsWith('Starting download for attachment'),
       startsWith('Successfully downloaded file'),
       'Deleting 1 archived attachments (exceeding maxArchivedCount=0)...',
-      'Deleted 1 archived attachments.'
+      'Deleted 1 archived attachments.',
     ]);
   });
 
@@ -134,11 +136,15 @@ void main() {
 
     // Wait for attachment to sync.
     await expectLater(
-        attachments,
-        emitsThrough([
-          isA<Attachment>()
-              .having((e) => e.state, 'state', AttachmentState.synced)
-        ]));
+      attachments,
+      emitsThrough([
+        isA<Attachment>().having(
+          (e) => e.state,
+          'state',
+          AttachmentState.synced,
+        ),
+      ]),
+    );
 
     expect(await localStorage.fileExists('picture_id.jpg'), isTrue);
   });
@@ -156,7 +162,7 @@ void main() {
         1,
         AttachmentState.synced.toInt(),
         1,
-        ""
+        "",
       ],
     );
     await attachments.next;
@@ -229,8 +235,11 @@ void main() {
     await expectLater(
       attachments,
       emitsThrough([
-        isA<Attachment>()
-            .having((e) => e.state, 'state', AttachmentState.synced)
+        isA<Attachment>().having(
+          (e) => e.state,
+          'state',
+          AttachmentState.synced,
+        ),
       ]),
     );
 
@@ -268,12 +277,16 @@ void main() {
     await expectLater(
       attachments,
       emitsThrough([
-        isA<Attachment>()
-            .having((e) => e.state, 'state', AttachmentState.synced)
+        isA<Attachment>().having(
+          (e) => e.state,
+          'state',
+          AttachmentState.synced,
+        ),
       ]),
     );
-    final [id as String, localUri as String] =
-        (await db.get('SELECT id, local_uri FROM attachments_queue')).values;
+    final [id as String, localUri as String] = (await db.get(
+      'SELECT id, local_uri FROM attachments_queue',
+    )).values;
     verify(remoteStorage.downloadFile(argThat(isAttachment(id))));
     expect(await localStorage.fileExists(localUri), isTrue);
 
@@ -282,8 +295,11 @@ void main() {
     await expectLater(
       attachments,
       emitsThrough([
-        isA<Attachment>()
-            .having((e) => e.state, 'state', AttachmentState.archived)
+        isA<Attachment>().having(
+          (e) => e.state,
+          'state',
+          AttachmentState.archived,
+        ),
       ]),
     );
 
@@ -292,8 +308,11 @@ void main() {
     await expectLater(
       attachments,
       emitsThrough([
-        isA<Attachment>()
-            .having((e) => e.state, 'state', AttachmentState.synced)
+        isA<Attachment>().having(
+          (e) => e.state,
+          'state',
+          AttachmentState.synced,
+        ),
       ]),
     );
     expect(await localStorage.fileExists(localUri), isTrue);
@@ -304,7 +323,10 @@ void main() {
 
   test('skip failed download', () async {
     Future<bool> errorHandler(
-        Attachment attachment, Object exception, StackTrace trace) async {
+      Attachment attachment,
+      Object exception,
+      StackTrace trace,
+    ) async {
       return false;
     }
 
@@ -335,12 +357,18 @@ void main() {
     );
 
     expect(await attachments.next, [
-      isA<Attachment>()
-          .having((e) => e.state, 'state', AttachmentState.queuedDownload)
+      isA<Attachment>().having(
+        (e) => e.state,
+        'state',
+        AttachmentState.queuedDownload,
+      ),
     ]);
     expect(await attachments.next, [
-      isA<Attachment>()
-          .having((e) => e.state, 'state', AttachmentState.archived)
+      isA<Attachment>().having(
+        (e) => e.state,
+        'state',
+        AttachmentState.archived,
+      ),
     ]);
 
     expect(
@@ -370,10 +398,12 @@ void main() {
     );
 
     final queuedDownloadCounts = StreamQueue(
-      db.watchUnthrottled(
-        'SELECT COUNT(*) AS c FROM attachments_queue WHERE state = ?',
-        parameters: [AttachmentState.queuedDownload.index],
-      ).map((rs) => rs[0]['c'] as int),
+      db
+          .watchUnthrottled(
+            'SELECT COUNT(*) AS c FROM attachments_queue WHERE state = ?',
+            parameters: [AttachmentState.queuedDownload.index],
+          )
+          .map((rs) => rs[0]['c'] as int),
     );
 
     await queue.startSync();
@@ -398,8 +428,7 @@ void main() {
     await queuedDownloadCounts.cancel();
   });
 
-  test('attachments_queue commits per-attachment, not at end of batch',
-      () async {
+  test('attachments_queue commits per-attachment, not at end of batch', () async {
     _stubSlowRemoteStorage(remoteStorage, const Duration(milliseconds: 100));
     queue = AttachmentQueue(
       db: db,
@@ -411,10 +440,12 @@ void main() {
     );
 
     final syncedCounts = StreamQueue(
-      db.watchUnthrottled(
-        'SELECT COUNT(*) AS c FROM attachments_queue WHERE state = ?',
-        parameters: [AttachmentState.synced.index],
-      ).map((rs) => rs[0]['c'] as int),
+      db
+          .watchUnthrottled(
+            'SELECT COUNT(*) AS c FROM attachments_queue WHERE state = ?',
+            parameters: [AttachmentState.synced.index],
+          )
+          .map((rs) => rs[0]['c'] as int),
     );
 
     await queue.startSync();
@@ -448,10 +479,12 @@ void main() {
     );
 
     final queuedDownloadCounts = StreamQueue(
-      db.watchUnthrottled(
-        'SELECT COUNT(*) AS c FROM attachments_queue WHERE state = ?',
-        parameters: [AttachmentState.queuedDownload.index],
-      ).map((rs) => rs[0]['c'] as int),
+      db
+          .watchUnthrottled(
+            'SELECT COUNT(*) AS c FROM attachments_queue WHERE state = ?',
+            parameters: [AttachmentState.queuedDownload.index],
+          )
+          .map((rs) => rs[0]['c'] as int),
     );
 
     await queue.startSync();
@@ -489,8 +522,9 @@ void main() {
 
 extension on PowerSyncDatabase {
   Stream<List<Attachment>> get attachments {
-    return watch('SELECT * FROM attachments_queue')
-        .map((rs) => rs.map(Attachment.fromRow).toList());
+    return watch(
+      'SELECT * FROM attachments_queue',
+    ).map((rs) => rs.map(Attachment.fromRow).toList());
   }
 }
 
@@ -505,7 +539,9 @@ final class MockRemoteStorage extends Mock implements RemoteStorage {
 
   @override
   Future<void> uploadFile(
-      Stream<Uint8List>? fileData, Attachment? attachment) async {
+    Stream<Uint8List>? fileData,
+    Attachment? attachment,
+  ) async {
     await noSuchMethod(Invocation.method(#uploadFile, [fileData, attachment]));
   }
 
@@ -523,8 +559,11 @@ final class MockRemoteStorage extends Mock implements RemoteStorage {
 }
 
 final _schema = Schema([
-  Table('users',
-      [Column.text('name'), Column.text('email'), Column.text('photo_id')]),
+  Table('users', [
+    Column.text('name'),
+    Column.text('email'),
+    Column.text('photo_id'),
+  ]),
   AttachmentsQueueTable(),
 ]);
 
