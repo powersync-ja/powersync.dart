@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:collection';
 
 /// Controller to abort asynchronous requests or long-running tasks - either
 /// before or after it started.
@@ -8,7 +7,7 @@ final class AbortController {
   bool get aborted => _defaultAbortListener.isCompleted;
 
   final Completer<void> _defaultAbortListener = Completer();
-  final Set<Completer<void>> _abortListeners = LinkedHashSet.identity();
+  final Set<Completer<void>> _abortListeners = {};
 
   final Completer<void> _abortCompleter = Completer();
 
@@ -62,7 +61,7 @@ final class AbortController {
     } else {
       final onAbort = Completer<void>();
       _abortListeners.add(onAbort);
-      return Future(() => block(onAbort.future)).whenComplete(() {
+      return Future.sync(() => block(onAbort.future)).whenComplete(() {
         _abortListeners.remove(onAbort);
         if (!onAbort.isCompleted) onAbort.complete();
       });
