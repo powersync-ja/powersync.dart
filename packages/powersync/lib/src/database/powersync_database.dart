@@ -315,6 +315,14 @@ abstract base class PowerSyncDatabase extends SqliteConnection {
       params: params,
     );
 
+    if (resolvedOptions.checkpointMode is! RequestsCheckpointMode &&
+        connector is CustomCheckpointRequestConnector) {
+      logger.warning(
+        'A CustomCheckpointRequestConnector was used with legacy checkpoints, '
+        'postCheckpointRequest will not get called',
+      );
+    }
+
     if (devtools.enable) {
       connector = ExposeCredentialsConnector(connector, this);
     }

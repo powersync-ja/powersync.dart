@@ -91,6 +91,12 @@ class ConnectedClient {
               httpClient: request.customHttpClient == true
                   ? () => RemoteHttpClient(channel)
                   : null,
+              checkpointMode: switch (request.retryDelayMs) {
+                null => const CheckpointMode.legacy(),
+                final delay => CheckpointMode.requests(
+                  retryDelay: Duration(microseconds: delay),
+                ),
+              },
             );
 
             _runner = _worker._referenceSyncTask(

@@ -58,6 +58,15 @@ final class SyncOptions {
   /// Note that this function is sent across isolates on native platforms.
   final HttpClientFactory? httpClient;
 
+  /// The [CheckpointMode] used to request checkpoints from the PowerSync
+  /// service.
+  ///
+  /// Checkpoint requests are used to request a confirmation after uploading
+  /// local mutations. This defaults to [CheckpointMode.legacy], but can be set
+  /// to [CheckpointMode.requests] when PowerSync service version 1.24.0 or
+  /// later is used.
+  final CheckpointMode? checkpointMode;
+
   const SyncOptions({
     this.crudThrottleTime,
     this.retryDelay,
@@ -66,6 +75,7 @@ final class SyncOptions {
     this.includeDefaultStreams,
     this.appMetadata,
     this.httpClient,
+    this.checkpointMode,
   });
 
   SyncOptions _copyWith({
@@ -82,8 +92,76 @@ final class SyncOptions {
       includeDefaultStreams: includeDefaultStreams,
       appMetadata: appMetadata ?? this.appMetadata,
       httpClient: httpClient,
+      checkpointMode: checkpointMode,
     );
   }
+}
+
+/// The mechanism to reqeuest checkpoints from the PowerSync service.
+///
+/// Checkpoint requests are used after a client uploads local mutations. The
+/// PowerSync service later references them in downloaded data, allowing the SDK
+/// to assume that uploaded data has been synced down again.
+///
+/// There are two ways to send checkpoint requests: A legacy (but default and
+/// stable) format supported by all PowerSync service versions, and a newer
+/// ([CheckpointMode.requests]) method which is only available from PowerSync
+/// service version 1.24.0 or later.
+final class CheckpointMode {
+  const CheckpointMode._();
+
+  /// Uses an older mechanism for requesting checkpoints supported by all
+  /// PowerSync service versions.
+  const factory CheckpointMode.legacy() = LegacyCheckpointMode;
+
+  /// Uses a newer endpoint supported from PowerSync service 1.24.0 or later.
+  /// This method is more efficient and has better support for switching users
+  /// in your app.
+  ///
+  /// Requested checkpoints are retried automatically, using the configured
+  /// [retryDelay] (which defaults to 10 seconds, but can also be configured to
+  /// use a longer retry interval).
+  @experimental
+  factory CheckpointMode.requests({Duration retryDelay}) =
+      RequestsCheckpointMode;
+}
+
+@internal
+final class LegacyCheckpointMode extends CheckpointMode {
+  const LegacyCheckpointMode() : super._();
+
+  @override
+  bool operator ==(Object other) => other is LegacyCheckpointMode;
+
+  @override
+  int get hashCode => 'legacy'.hashCode;
+}
+
+final class RequestsCheckpointMode extends CheckpointMode {
+  final Duration retryDelay;
+
+  RequestsCheckpointMode({this.retryDelay = _defaultRetryDelay}) : super._() {
+    if (retryDelay < _minimumRetryDelay) {
+      throw ArgumentError.value(
+        retryDelay,
+        'retryDelay',
+        'Must be at least $_minimumRetryDelay',
+      );
+    }
+  }
+
+  @visibleForTesting
+  const RequestsCheckpointMode.unverifiedDuration(this.retryDelay) : super._();
+
+  @override
+  bool operator ==(Object other) =>
+      other is RequestsCheckpointMode && other.retryDelay == retryDelay;
+
+  @override
+  int get hashCode => retryDelay.hashCode;
+
+  static const _minimumRetryDelay = Duration(seconds: 10);
+  static const _defaultRetryDelay = _minimumRetryDelay;
 }
 
 /// Older versions of the PowerSync SDK offered two sync client implementations.
@@ -133,6 +211,9 @@ extension type ResolvedSyncOptions(SyncOptions source) {
 
   bool get includeDefaultStreams => source.includeDefaultStreams ?? true;
 
+  CheckpointMode get checkpointMode =>
+      source.checkpointMode ?? const CheckpointMode.legacy();
+
   Client createHttpClient() => source.httpClient?.call() ?? Client();
 
   (ResolvedSyncOptions, bool) applyFrom(SyncOptions other) {
@@ -145,6 +226,7 @@ extension type ResolvedSyncOptions(SyncOptions source) {
           other.includeDefaultStreams ?? includeDefaultStreams,
       appMetadata: other.appMetadata ?? appMetadata,
       httpClient: other.httpClient ?? source.httpClient,
+      checkpointMode: other.checkpointMode ?? source.checkpointMode,
     );
 
     final didChange =
@@ -153,7 +235,8 @@ extension type ResolvedSyncOptions(SyncOptions source) {
         newOptions.retryDelay != retryDelay ||
         newOptions.syncImplementation != source.syncImplementation ||
         newOptions.includeDefaultStreams != includeDefaultStreams ||
-        !_mapEquality.equals(newOptions.appMetadata, appMetadata);
+        !_mapEquality.equals(newOptions.appMetadata, appMetadata) ||
+        newOptions.checkpointMode != checkpointMode;
     return (ResolvedSyncOptions(newOptions), didChange);
   }
 

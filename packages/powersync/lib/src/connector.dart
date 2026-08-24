@@ -1,5 +1,9 @@
+/// @docImport 'sync/options.dart';
+library;
+
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:meta/meta.dart';
 import 'database/powersync_database.dart';
 
 /// Implement this to connect an app backend.
@@ -67,6 +71,31 @@ abstract class PowerSyncBackendConnector {
   ///
   /// Any thrown errors will result in a retry after the configured wait period (default: 5 seconds).
   Future<void> uploadData(PowerSyncDatabase database);
+}
+
+/// A [PowerSyncBackendConnector] capable of requesting checkpoints.
+///
+/// Mix in this class in your backend connector implementations when uploads are
+/// processed asynchronously by the backend (for example through a message
+/// queue): The sync client as part of the PowerSync Dart SDK generates a
+/// checkpoint request id and hands it to your backend via
+/// [postCheckpointRequest], which is responsible for creating a matching
+/// checkpoint once the uploads preceeding the request have been processed.
+///
+/// For more details, see [asynchronous backend uploads](https://docs.powersync.com/client-sdks/advanced/checkpoint-requests#asynchronous-upload-backends).
+///
+/// To use this connector, using [CheckpointMode.requests] is required. Note
+/// that this requires PowerSync service version 1.24.0 or later.
+@experimental
+abstract mixin class CustomCheckpointRequestConnector
+    implements PowerSyncBackendConnector {
+  /// Posts a client-generated checkpoint request to the backend and returns the
+  /// effective checkpoint request state.
+  ///
+  /// [clientId] is a random uuid generated for this device, and [requestId] is
+  /// an incrementing 64-bit integer (encoded as a string to avoid precision
+  /// issues with JavaScript targets).
+  Future<String> postCheckpointRequest(String clientId, String requestId);
 }
 
 /// Temporary credentials to connect to the PowerSync service.

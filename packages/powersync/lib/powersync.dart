@@ -1,4 +1,4 @@
-/// PowerSync Flutter SDK.
+/// PowerSync Dart and Flutter SDK.
 ///
 /// Use [PowerSyncDatabase] to open a database.
 library;
@@ -11,7 +11,8 @@ export 'src/database/encryption_options.dart';
 export 'src/exceptions.dart';
 export 'src/log.dart';
 export 'src/schema.dart';
-export 'src/sync/options.dart' hide ResolvedSyncOptions;
+export 'src/sync/options.dart'
+    hide ResolvedSyncOptions, LegacyCheckpointMode, RequestsCheckpointMode;
 export 'src/sync/stream.dart' hide CoreActiveStreamSubscription;
 export 'src/sync/sync_status.dart'
     hide BucketProgress, InternalSyncDownloadProgress, InternalSyncStatusAccess;

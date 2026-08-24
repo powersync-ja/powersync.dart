@@ -1,5 +1,7 @@
-## 2.3.4 (unreleased)
+## 2.4.0 (unreleased)
 
+- Add `SyncOptions.checkpointMode`, which can be used to replace a legacy implementation for write checkpoints
+  with a newer and more efficient endpoint.
 - Reduce log noise from attachments service ([#408](https://github.com/powersync-ja/powersync.dart/issues/408)).
 - Fix errors that can't be sent across isolates disrupting the sync isolate.
 - Update PowerSync SQLite core extension to 0.5.3, improving error messages for failed internal SQL statements.

@@ -6,6 +6,9 @@ import '../database/native/native_powersync_database.dart';
 import '../database/powersync_database.dart';
 import '../open_factory/native/native_open_factory.dart';
 import '../schema.dart';
+import 'int64.dart';
+
+Int64 parseInt64(String s) => NativeInt64.parse(s);
 
 Mutex potentiallySharedMutex(String identifier) {
   return Mutex.simple();

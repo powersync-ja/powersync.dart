@@ -107,6 +107,7 @@ extension type StartSynchronization._(JSObject _) implements JSObject {
     UpdateSubscriptions? subscriptions,
     String? appMetadataEncoded,
     bool? customHttpClient,
+    int? checkpointModeRequestsDelay,
   });
 
   external String get databaseName;
@@ -120,6 +121,7 @@ extension type StartSynchronization._(JSObject _) implements JSObject {
   external String? get appMetadataEncoded;
   external String get lockName;
   external bool? get customHttpClient;
+  external int? checkpointModeRequestsDelay;
 }
 
 @anonymous
@@ -598,6 +600,11 @@ final class WorkerCommunicationChannel {
           },
           lockName: await lockName,
           customHttpClient: customHttpClient,
+          checkpointModeRequestsDelay: switch (options.checkpointMode) {
+            RequestsCheckpointMode(:final retryDelay) =>
+              retryDelay.inMicroseconds,
+            _ => null,
+          },
         ),
       ),
     );

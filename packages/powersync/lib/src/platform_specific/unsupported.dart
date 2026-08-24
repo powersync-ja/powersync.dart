@@ -4,10 +4,13 @@ import 'package:sqlite_async/sqlite_async.dart';
 import '../database/encryption_options.dart';
 import '../database/powersync_database.dart';
 import '../schema.dart';
+import 'int64.dart';
 
 Never _unsupportedPlatform() {
   throw UnsupportedError('Unsupported platform for PowerSync SDK');
 }
+
+Int64 parseInt64(String s) => _unsupportedPlatform();
 
 /// Creates a [Mutex] that might be shared across isolates and tabs.
 ///

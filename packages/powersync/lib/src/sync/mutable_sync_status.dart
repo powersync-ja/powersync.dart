@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:collection/collection.dart';
 
+import '../platform_specific/int64.dart';
 import 'instruction.dart';
 import 'stream.dart';
 import 'sync_status.dart';
@@ -15,6 +16,7 @@ final class MutableSyncStatus {
   InternalSyncDownloadProgress? downloadProgress;
   List<SyncPriorityStatus> priorityStatusEntries = const [];
   List<CoreActiveStreamSubscription>? streams;
+  Int64? lastAppliedCheckpointRequestId;
 
   DateTime? lastSyncedAt;
 
@@ -47,6 +49,7 @@ final class MutableSyncStatus {
         .firstWhereOrNull((s) => s.priority == StreamPriority.fullSyncPriority)
         ?.lastSyncedAt;
     streams = status.streams;
+    lastAppliedCheckpointRequestId = status.lastAppliedCheckpointRequestId;
   }
 
   SyncStatus immutableSnapshot() {
