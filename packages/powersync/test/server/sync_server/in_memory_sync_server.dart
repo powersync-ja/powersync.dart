@@ -15,7 +15,7 @@ final class MockSyncService {
   Completer<Request> _listener = Completer();
 
   var router = Router();
-  Object? Function() writeCheckpoint = () {
+  FutureOr<Object?>? Function() writeCheckpoint = () {
     return {
       'data': {'write_checkpoint': '10'},
     };
@@ -53,9 +53,9 @@ final class MockSyncService {
           context: {"shelf.io.buffer_output": false},
         );
       })
-      ..get('/write-checkpoint2.json', (request) {
+      ..get('/write-checkpoint2.json', (request) async {
         return Response.ok(
-          json.encode(writeCheckpoint()),
+          json.encode(await writeCheckpoint()),
           headers: {'Content-Type': 'application/json'},
         );
       });
