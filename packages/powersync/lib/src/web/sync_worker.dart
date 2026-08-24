@@ -91,7 +91,7 @@ class ConnectedClient {
               httpClient: request.customHttpClient == true
                   ? () => RemoteHttpClient(channel)
                   : null,
-              checkpointMode: switch (request.retryDelayMs) {
+              checkpointMode: switch (request.checkpointModeRequestsDelay) {
                 null => const CheckpointMode.legacy(),
                 final delay => CheckpointMode.requests(
                   retryDelay: Duration(microseconds: delay),
@@ -335,6 +335,12 @@ class SyncRunner {
           return await client.channel.invalidCredentialsCallback();
         },
         uploadCrud: client.channel.uploadCrud,
+        postCheckpointRequests: (clientId, requestId) async {
+          return await client.channel.customCheckpointRequest(
+            clientId,
+            requestId,
+          );
+        },
       ),
       crudUpdateTriggerStream: crudStream,
       options: options,

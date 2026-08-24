@@ -49,7 +49,7 @@ Int64 parseInt64(String s) {
   if (has64BitInts) {
     return NativeInt64.parse(s);
   } else {
-    return JsBigInt64(JsBigInt64._stringToBigInt(s.toJS));
+    return JsBigInt64(_stringToBigInt(s.toJS));
   }
 }
 
@@ -76,13 +76,13 @@ final class JsBigInt64 implements Int64 {
   bool operator ==(Object other) {
     return other is JsBigInt64 && value.strictEquals(other.value).toDart;
   }
-
-  @JS('String')
-  external static JSString _bigIntToString(JSBigInt value);
-
-  @JS('Number')
-  external static JSNumber _bigIntToDouble(JSBigInt value);
-
-  @JS('BigInt')
-  external static JSBigInt _stringToBigInt(JSString value);
 }
+
+@JS('String')
+external JSString _bigIntToString(JSBigInt value);
+
+@JS('Number')
+external JSNumber _bigIntToDouble(JSBigInt value);
+
+@JS('BigInt')
+external JSBigInt _stringToBigInt(JSString value);

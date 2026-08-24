@@ -71,6 +71,18 @@ class SyncWorkerHandle implements StreamingSync {
                   : null,
               null,
             );
+          case SyncWorkerMessageType.customCheckpointRequest:
+            if (connector case final CustomCheckpointRequestConnector custom) {
+              final request = payload as CustomCheckpointRequest;
+              final resolved = await custom.postCheckpointRequest(
+                request.clientId,
+                request.requestId,
+              );
+
+              return (resolved.toJS, null);
+            } else {
+              return (null, null);
+            }
           default:
             throw StateError('Unexpected message type $type');
         }

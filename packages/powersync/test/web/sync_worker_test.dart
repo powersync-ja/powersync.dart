@@ -131,6 +131,57 @@ void main() {
     await handle.streamingSync();
     await db.waitForFirstSync();
   });
+
+  test('can use requests mode', () async {
+    final (client, server) = inMemoryServer();
+    final service = MockSyncService();
+    server.mount((r) => service.router(r));
+
+    final handle = createWorkerHandle(
+      connector: TestConnector(
+        () async => PowerSyncCredentials(
+          endpoint: 'http://test.powersync.example.org',
+          token: 'token',
+        ),
+      ),
+      options: SyncOptions(
+        httpClient: () => client,
+        checkpointMode: CheckpointMode.requests(),
+      ),
+    );
+    await handle.streamingSync();
+
+    service.waitForCheckpointRequest(
+      () => service.amountOfCheckpointRequests > 0,
+    );
+  });
+
+  test('can use custom checkpoint connector', () async {
+    final (client, server) = inMemoryServer();
+    final service = MockSyncService();
+    server.mount((r) => service.router(r));
+    final didRequestCheckpoint = Completer<void>();
+
+    final handle = createWorkerHandle(
+      connector: TestCustomCheckpointConnector(
+        () async => PowerSyncCredentials(
+          endpoint: 'http://test.powersync.example.org',
+          token: 'token',
+        ),
+        postCheckpointRequest: (clientId, checkpoint) async {
+          expect(checkpoint, '1');
+          didRequestCheckpoint.complete();
+          return checkpoint;
+        },
+      ),
+      options: SyncOptions(
+        httpClient: () => client,
+        checkpointMode: CheckpointMode.requests(),
+      ),
+    );
+    await handle.streamingSync();
+    await didRequestCheckpoint.future;
+  });
 }
 
 final class _ThrowingBackendConnector extends PowerSyncBackendConnector {
