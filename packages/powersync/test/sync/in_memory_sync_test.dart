@@ -1029,6 +1029,8 @@ void _declareTests(String name, bool bson) {
         await syncService.waitForCheckpointRequest(
           () => syncService.lastCheckpointRequest == 1,
         );
+        await pumpEventQueue();
+
         uploadData = (db) async {
           if (await db.getCrudBatch() case final batch?) {
             await batch.complete();
@@ -1135,7 +1137,7 @@ void _declareTests(String name, bool bson) {
         };
 
         // Destroy the initial connection by sending a bogus line.
-        final sw = Stopwatch();
+        final sw = Stopwatch()..start();
         syncService.addLine(
           checkpoint(lastOpId: 1, writeCheckpoint: 'invalid line'),
         );

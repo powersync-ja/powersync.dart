@@ -43,12 +43,12 @@ final class CheckpointStateSignals {
     return _waitingForWaiter.future;
   }
 
-  Future<void> markCheckpointsReady(Future<void> initialization) async {
-    final result = await Result.capture(initialization);
-    _updateState(_CheckpointSeeded(result));
+  void markCheckpointsReady() {
+    _updateState(_CheckpointSeeded(Result.value(null)));
+  }
 
-    // Rethrow errors (if there was one).
-    return await result.asFuture;
+  void markCheckpointsFailed(Object error, StackTrace trace) {
+    _updateState(_CheckpointSeeded(Result.error(error, trace)));
   }
 
   /// Waits until a download iteration is active and has seeded the checkpoint

@@ -226,7 +226,7 @@ extension type ResolvedSyncOptions(SyncOptions source) {
           other.includeDefaultStreams ?? includeDefaultStreams,
       appMetadata: other.appMetadata ?? appMetadata,
       httpClient: other.httpClient ?? source.httpClient,
-      checkpointMode: other.checkpointMode ?? source.checkpointMode,
+      checkpointMode: other.checkpointMode ?? checkpointMode,
     );
 
     final didChange =

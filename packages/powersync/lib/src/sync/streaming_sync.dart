@@ -188,12 +188,15 @@ class StreamingSyncImplementation implements StreamingSync {
       // On error, wait a little before retrying
       // When aborting, don't wait
       if (!abort.aborted && delayNextIteration) {
-        final (retryDelay, completeEarly) = _delayOr(_retryDelay);
-        _checkpointState.waitForCheckpointWaiter().whenComplete(() {
-          completeEarly();
-        });
+        await abort.scoped((onAbort) {
+          final (retryDelay, completeEarly) = _delayOr(_retryDelay);
+          onAbort.whenComplete(completeEarly);
+          _checkpointState.waitForCheckpointWaiter().whenComplete(
+            completeEarly,
+          );
 
-        await retryDelay;
+          return retryDelay;
+        });
       }
     }
   }
@@ -594,6 +597,7 @@ final class _ActiveRustStreamingIteration {
     const defaultResult = (immediateRestart: false);
     return _abortController.scoped((onAbort) async {
       Stream<SyncEvent>? events;
+      AbortController? checkpointSeed;
 
       for (final startInstruction in await _startCommand()) {
         switch (startInstruction) {
@@ -604,7 +608,9 @@ final class _ActiveRustStreamingIteration {
             );
 
             if (checkpointRequest != null) {
-              _seedCheckpointRequests(checkpointRequest, onAbort);
+              final nested = checkpointSeed = AbortController();
+
+              _seedCheckpointRequests(checkpointRequest, nested);
             }
           case CloseSyncStream():
             return defaultResult;
@@ -617,6 +623,9 @@ final class _ActiveRustStreamingIteration {
       try {
         return await _handleLines(events);
       } finally {
+        await checkpointSeed?.abort();
+
+        sync._checkpointState.downloadIterationEnded();
         await _stop();
       }
     });
@@ -640,27 +649,31 @@ final class _ActiveRustStreamingIteration {
 
   void _seedCheckpointRequests(
     CheckpointRequestPayload payload,
-    Future<void> abortTrigger,
+    AbortController abort,
   ) async {
     try {
-      await sync._checkpointState.markCheckpointsReady(
-        Future(() async {
-          final seed = await sync._requestCheckpointFromService(
-            checkpointRequest: payload.checkpointRequestId,
-            abortTrigger: abortTrigger,
-            clientId: payload.clientId,
-          );
-
-          sync.adapter.writeTransaction(
-            (tx) => tx.seedCheckpointRequestId(seed),
-            onAbort: abortTrigger,
-          );
-        }),
+      final seed = await sync._requestCheckpointFromService(
+        checkpointRequest: payload.checkpointRequestId,
+        abortTrigger: abort.onAbort,
+        clientId: payload.clientId,
       );
+
+      sync.adapter.writeTransaction(
+        (tx) => tx.seedCheckpointRequestId(seed),
+        onAbort: abort.onAbort,
+      );
+
+      sync._checkpointState.markCheckpointsReady();
     } catch (e, s) {
       if (!_aborted) {
         sync._nonLineSyncEvents.add(CheckpointSeedFailed(e, s));
+
+        // If this was aborted, syncIteration() is about to reset the state
+        // anyway.
+        sync._checkpointState.markCheckpointsFailed(e, s);
       }
+    } finally {
+      abort.completeAbort();
     }
   }
 
