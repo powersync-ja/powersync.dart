@@ -13,7 +13,7 @@ void main() {
     group('waitForCheckpointrequestsReady', () {
       test('resolves immediately when already ready', () async {
         final signals = CheckpointStateSignals();
-        signals.markCheckpointsReady(Future.syncValue(null));
+        signals.markCheckpointsReady();
         await signals.waitForCheckpointRequestsReady(abort: neverAbort);
       });
 
@@ -30,7 +30,7 @@ void main() {
       test('rejects with the error', () async {
         final signals = CheckpointStateSignals();
         final error = Exception('expected init error');
-        signals.markCheckpointsReady(Future.error(error)).ignore();
+        signals.markCheckpointsFailed(error, StackTrace.current);
 
         await expectLater(
           signals.waitForCheckpointRequestsReady(abort: neverAbort),
@@ -58,7 +58,7 @@ void main() {
           abort: neverAbort,
         );
 
-        signals.markCheckpointsReady(Future.syncValue(null));
+        signals.markCheckpointsReady();
         expect(first, completes);
         expect(second, completes);
       });

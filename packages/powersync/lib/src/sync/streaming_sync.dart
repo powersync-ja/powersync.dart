@@ -658,7 +658,7 @@ final class _ActiveRustStreamingIteration {
         clientId: payload.clientId,
       );
 
-      sync.adapter.writeTransaction(
+      await sync.adapter.writeTransaction(
         (tx) => tx.seedCheckpointRequestId(seed),
         onAbort: abort.onAbort,
       );

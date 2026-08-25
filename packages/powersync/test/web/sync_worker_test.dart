@@ -22,6 +22,8 @@ void main() {
   late SyncWorker syncWorker;
   late PowerSyncDatabase db;
 
+  var dbId = 0;
+
   setUpAll(() async {
     utils = TestUtils();
   });
@@ -29,7 +31,10 @@ void main() {
   setUp(() async {
     syncWorker = SyncWorker();
 
-    db = await utils.setupPowerSync(logger: Logger.detached('test_logger'));
+    db = await utils.setupPowerSync(
+      path: 'sync-worker-test-${dbId++}',
+      logger: Logger.detached('test_logger'),
+    );
     await db.initialize();
   });
 
@@ -154,6 +159,7 @@ void main() {
     service.waitForCheckpointRequest(
       () => service.amountOfCheckpointRequests > 0,
     );
+    await handle.abort();
   });
 
   test('can use custom checkpoint connector', () async {
@@ -181,6 +187,7 @@ void main() {
     );
     await handle.streamingSync();
     await didRequestCheckpoint.future;
+    await handle.abort();
   });
 }
 
