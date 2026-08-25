@@ -461,7 +461,7 @@ class StreamingSyncImplementation implements StreamingSync {
             abortSignal,
           );
         });
-      } on Exception catch (e, s) {
+      } catch (e, s) {
         if (abort.aborted) return;
 
         logger.warning('Error retrying checkpoint request', e, s);
