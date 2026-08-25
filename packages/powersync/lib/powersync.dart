@@ -11,6 +11,7 @@ export 'src/database/encryption_options.dart';
 export 'src/exceptions.dart';
 export 'src/log.dart';
 export 'src/schema.dart';
+export 'src/sync/checkpoint_request.dart' show CheckpointRequestException;
 export 'src/sync/options.dart'
     hide ResolvedSyncOptions, LegacyCheckpointMode, RequestsCheckpointMode;
 export 'src/sync/stream.dart' hide CoreActiveStreamSubscription;

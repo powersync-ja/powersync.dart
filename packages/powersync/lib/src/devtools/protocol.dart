@@ -94,5 +94,6 @@ SyncStatus deserializeSyncStatus(Map<String, Object?> serialized) {
             .toList(),
       _ => null,
     },
+    lastAppliedCheckpoint: null,
   );
 }

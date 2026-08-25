@@ -44,11 +44,28 @@ BasePowerSyncDatabase openPowerSyncDatabase(
   );
 }
 
+const _has64BitInts = !identical(0, 0.0);
+
+final _intConversionBuffer = JSArrayBuffer(8);
+final _intConversionView = JSDataView(_intConversionBuffer);
+
 Int64 parseInt64(String s) {
   if (Int64.has64BitIntegers) {
     return NativeInt64.parse(s);
   } else {
-    return JsBigInt64(_stringToBigInt(s.toJS));
+    return JsBigInt64.parse(s);
+  }
+}
+
+Int64 int64FromBigInt(JSBigInt value) {
+  if (_has64BitInts) {
+    _intConversionView.setBigInt64(0, value);
+    final high = _intConversionView.getUint32(0).toDartInt;
+    final low = _intConversionView.getUint32(4).toDartInt;
+
+    return NativeInt64((high << 32) | low);
+  } else {
+    return JsBigInt64(value);
   }
 }
 
@@ -56,6 +73,10 @@ final class JsBigInt64 implements Int64 {
   final JSBigInt value;
 
   JsBigInt64(this.value) : assert(!Int64.has64BitIntegers);
+
+  static JsBigInt64 parse(String s) {
+    return JsBigInt64(_stringToBigInt(s.toJS));
+  }
 
   @override
   bool operator >=(Int64 other) {
@@ -85,3 +106,11 @@ external JSNumber _bigIntToDouble(JSBigInt value);
 
 @JS('BigInt')
 external JSBigInt _stringToBigInt(JSString value);
+
+extension on JSDataView {
+  @JS()
+  external JSNumber getUint32(int byteOffset);
+
+  @JS()
+  external void setBigInt64(int byteoffset, JSBigInt value);
+}

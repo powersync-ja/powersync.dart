@@ -8,8 +8,10 @@ import 'package:powersync/src/database/active_instances.dart';
 import 'package:powersync/src/sync/options.dart';
 import 'package:powersync/src/sync/stream.dart';
 import 'package:powersync/src/sync/sync_status.dart';
+import 'package:sqlite_async/sqlite_async.dart';
 
 import '../database/powersync_database.dart';
+import 'checkpoint_request.dart';
 import 'instruction.dart';
 import 'mutable_sync_status.dart';
 import 'streaming_sync.dart';
@@ -22,6 +24,8 @@ typedef _RawStreamKey = (String, String);
 final class ConnectionManager {
   final PowerSyncDatabase db;
   final ActiveDatabaseGroup _activeGroup;
+
+  ResolvedSyncOptions _currentOptions = ResolvedSyncOptions.resolve(null);
 
   /// All streams (with parameters) for which a subscription has been requested
   /// explicitly.
@@ -46,7 +50,7 @@ final class ConnectionManager {
   ///
   /// The controller must only be accessed from within a critical section of the
   /// sync mutex.
-  AbortController? _abortActiveSync;
+  (AbortController, RemoteStreamingSyncHandle)? _abortActiveSync;
 
   ConnectionManager(this.db) : _activeGroup = db.group;
 
@@ -56,8 +60,19 @@ final class ConnectionManager {
     }
   }
 
+  void checkConnectedWithRequestsMode() {
+    final client = _abortActiveSync?.$2;
+    if (client == null) {
+      throw disconnected;
+    }
+
+    if (_currentOptions.checkpointMode is! RequestsCheckpointMode) {
+      throw disabled;
+    }
+  }
+
   Future<void> _abortCurrentSync() async {
-    if (_abortActiveSync case final disconnector?) {
+    if (_abortActiveSync case (final disconnector, _)?) {
       /// Checking `disconnecter.aborted` prevents race conditions
       /// where multiple calls to `disconnect` can attempt to abort
       /// the controller more than once before it has finished aborting.
@@ -83,15 +98,36 @@ final class ConnectionManager {
     });
   }
 
-  Future<void> firstStatusMatching(bool Function(SyncStatus) predicate) async {
-    if (predicate(currentStatus)) {
-      return;
-    }
-    await for (final result in statusStream) {
-      if (predicate(result)) {
-        break;
+  Future<void> firstStatusMatching(
+    bool Function(SyncStatus) predicate, {
+    Future<void>? abort,
+  }) {
+    final completer = Completer<void>();
+    final subscription = statusStream.listen(null);
+
+    void checkPredicate(SyncStatus status) {
+      try {
+        if (predicate(status)) {
+          completer.complete();
+          subscription.cancel();
+        }
+      } catch (e, s) {
+        completer.completeError(e, s);
+        subscription.cancel();
       }
     }
+
+    subscription.onData(checkPredicate);
+    checkPredicate(currentStatus);
+
+    abort?.whenComplete(() {
+      if (!completer.isCompleted) {
+        completer.completeError(AbortException('firstStatusMatching'));
+        subscription.cancel();
+      }
+    });
+
+    return completer.future;
   }
 
   List<SubscribedStream> get _subscribedStreams => [
@@ -116,9 +152,6 @@ final class ConnectionManager {
     late void Function() retryHandler;
 
     Future<void> connectWithSyncLock() async {
-      // Ensure there has not been a subsequent connect() call installing a new
-      // sync client.
-      assert(identical(_abortActiveSync, thisConnectAborter));
       assert(!thisConnectAborter.aborted);
 
       // This needs to be a single-subscription controller to ensure we won't
@@ -127,8 +160,9 @@ final class ConnectionManager {
       // need a new controller per internal connect attempt.
       final subscriptionsChanged = _subscriptionsChanged = StreamController();
 
+      _currentOptions = options;
       // ignore: invalid_use_of_protected_member
-      await db.connectInternal(
+      final handle = await db.connectInternal(
         connector: connector,
         options: options,
         abort: thisConnectAborter,
@@ -140,6 +174,7 @@ final class ConnectionManager {
         // while we hold the lock (and async tasks won't hold the sync lock).
         asyncWorkZone: zone,
       );
+      _abortActiveSync = (thisConnectAborter, handle);
 
       thisConnectAborter.onCompletion.whenComplete(retryHandler);
     }
@@ -158,7 +193,7 @@ final class ConnectionManager {
           assert(identical(_abortActiveSync, thisConnectAborter));
 
           // We need a new abort controller for this attempt
-          _abortActiveSync = thisConnectAborter = AbortController();
+          thisConnectAborter = AbortController();
 
           db.logger.warning('Sync client failed, retrying...');
           await connectWithSyncLock();
@@ -171,9 +206,6 @@ final class ConnectionManager {
       await _abortCurrentSync();
       assert(_abortActiveSync == null);
 
-      // Install the abort controller for this particular connect call, allowing
-      // it to be disconnected.
-      _abortActiveSync = thisConnectAborter;
       await connectWithSyncLock();
     });
   }
@@ -276,6 +308,16 @@ final class ConnectionManager {
 
   SyncStream syncStream(String name, Map<String, Object?>? parameters) {
     return _SyncStreamImplementation(this, name, parameters);
+  }
+
+  Future<CheckpointRequest> requestCheckpoint() async {
+    return _activeGroup.syncConnectMutex.lock(() async {
+      final client = _abortActiveSync?.$2;
+      checkConnectedWithRequestsMode();
+
+      final checkpoint = await client!.requestCheckpoint();
+      return CheckpointRequestImpl(checkpoint, this);
+    });
   }
 
   void close() {

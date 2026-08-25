@@ -27,7 +27,13 @@ import 'sync_status.dart';
 
 typedef SubscribedStream = ({String name, String parameters});
 
-abstract interface class StreamingSync {
+/// A superinterface for [StreamingSync] providing methods that can be called
+/// in remote contexts.
+abstract interface class RemoteStreamingSyncHandle {
+  Future<Int64> requestCheckpoint();
+}
+
+abstract interface class StreamingSync implements RemoteStreamingSyncHandle {
   Stream<SyncStatus> get statusStream;
 
   Future<void> streamingSync();
@@ -155,6 +161,17 @@ class StreamingSyncImplementation implements StreamingSync {
       _checkpointState.disconnect();
       abort.completeAbort();
     }
+  }
+
+  @override
+  Future<Int64> requestCheckpoint() async {
+    if (options.checkpointMode is! RequestsCheckpointMode) {
+      throw checkpoint.disabled;
+    }
+
+    final neverAbort = AbortController();
+    final checkpointId = await _requestNextCheckpointFromService(neverAbort);
+    return Int64.parse(checkpointId);
   }
 
   Future<String> _resolveClientId() async {

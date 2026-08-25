@@ -184,7 +184,7 @@ final class TestDatabase extends BasePowerSyncDatabase {
   });
 
   @override
-  Future<void> connectInternal({
+  Future<RemoteStreamingSyncHandle> connectInternal({
     required PowerSyncBackendConnector connector,
     required ResolvedSyncOptions options,
     required List<SubscribedStream> initiallyActiveStreams,
@@ -217,6 +217,7 @@ final class TestDatabase extends BasePowerSyncDatabase {
       await impl.abort();
       abort.completeAbort();
     }).ignore();
+    return impl;
   }
 
   @override

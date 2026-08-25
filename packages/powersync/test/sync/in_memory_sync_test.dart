@@ -4,9 +4,11 @@ import 'dart:convert';
 import 'package:async/async.dart';
 import 'package:logging/logging.dart';
 import 'package:powersync/powersync.dart';
+import 'package:powersync/src/sync/checkpoint_request.dart';
 import 'package:powersync/src/sync/options.dart';
 import 'package:shelf/shelf.dart';
 import 'package:shelf_router/shelf_router.dart';
+import 'package:sqlite_async/sqlite_async.dart';
 import 'package:test/test.dart';
 
 import '../server/sync_server/in_memory_sync_server.dart';
@@ -1215,6 +1217,96 @@ void _declareTests(String name, bool bson) {
         await expectLater(status, emits(isSyncStatus(downloading: true)));
 
         completeInitialRequest.complete();
+      });
+
+      group('requestCheckpoint', () {
+        test('fails when disconnected', () async {
+          expect(database.requestCheckpoint(), throwsA(disconnected));
+        });
+
+        test('fails when connected with legacy mode', () async {
+          await waitForConnection();
+          expect(database.requestCheckpoint(), throwsA(disabled));
+        });
+
+        test('waits until data is applied', () async {
+          await waitForConnection(options: options);
+
+          final requested = await database.requestCheckpoint();
+          syncService.addLine(checkpoint(lastOpId: 0, writeCheckpoint: '2'));
+          expect(requested.hasSynced, false);
+          syncService.addLine(checkpointComplete(lastOpId: '0'));
+
+          await requested.waitForSync();
+          expect(requested.hasSynced, isTrue);
+        });
+
+        test('throws on disconnect but can request again', () async {
+          await waitForConnection(options: options);
+          final request = await database.requestCheckpoint();
+
+          final failureExpectation = expectLater(
+            request.waitForSync(),
+            throwsA(disconnected),
+          );
+          await database.disconnect();
+          syncService.endCurrentListener();
+          await failureExpectation;
+
+          await waitForConnection(options: options);
+          syncService.addLine(checkpoint(lastOpId: 0, writeCheckpoint: '2'));
+          syncService.addLine(checkpointComplete(lastOpId: '0'));
+
+          await request.waitForSync();
+        });
+
+        test('fails when reconnecting with legacy mode', () async {
+          await waitForConnection(options: options);
+          final request = await database.requestCheckpoint();
+
+          final failureExpectation = expectLater(
+            request.waitForSync(),
+            throwsA(disconnected),
+          );
+          await database.disconnect();
+          syncService.endCurrentListener();
+          await failureExpectation;
+
+          await waitForConnection();
+          await expectLater(request.waitForSync(), throwsA(disabled));
+        });
+
+        test('fails on sync errors', () async {
+          await waitForConnection(options: options, expectNoWarnings: false);
+          final checkpoint = await database.requestCheckpoint();
+
+          final failureExpectation = expectLater(
+            checkpoint.waitForSync(),
+            throwsA(
+              isA<CheckpointRequestException>().having(
+                (e) => e.toString(),
+                'toString()',
+                contains('Sync error while waiting for checkpoint request'),
+              ),
+            ),
+          );
+          syncService.addLine({'checkpoint': 'invalid sync line'});
+          await failureExpectation;
+        });
+
+        test('can abort waiting for requests', () async {
+          await waitForConnection(options: options, expectNoWarnings: false);
+          final checkpoint = await database.requestCheckpoint();
+
+          final abort = Completer<void>();
+          final wasAborted = expectLater(
+            checkpoint.waitForSync(abortTrigger: abort.future),
+            throwsA(isA<AbortException>()),
+          );
+
+          abort.complete();
+          await wasAborted;
+        });
       });
     });
 

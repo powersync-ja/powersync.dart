@@ -5,6 +5,7 @@ import 'package:meta/meta.dart';
 
 import 'package:logging/logging.dart';
 import 'package:powersync/src/abort_controller.dart';
+import 'package:powersync/src/platform_specific/int64.dart';
 import 'package:powersync/src/sync/bucket_storage.dart';
 import 'package:powersync/src/connector.dart';
 import 'package:powersync/src/database/powersync_database.dart';
@@ -16,6 +17,7 @@ import 'package:powersync/src/sync/streaming_sync.dart';
 import 'package:powersync/src/sync/sync_status.dart';
 import 'package:sqlite_async/sqlite_async.dart';
 
+import '../../sync/checkpoint_request.dart';
 import 'sync_isolate_protocol.dart';
 
 /// A PowerSync managed database.
@@ -38,7 +40,7 @@ final class NativePowerSyncDatabase extends BasePowerSyncDatabase {
 
   @override
   @internal
-  Future<void> connectInternal({
+  Future<RemoteStreamingSyncHandle> connectInternal({
     required PowerSyncBackendConnector connector,
     required ResolvedSyncOptions options,
     required List<SubscribedStream> initiallyActiveStreams,
@@ -50,6 +52,7 @@ final class NativePowerSyncDatabase extends BasePowerSyncDatabase {
     StreamSubscription<void>? activeStreamsSubscription;
     final receiveMessages = ReceivePort();
     final receiveUnhandledErrors = ReceivePort();
+    final results = IsolateResultCollection();
     final receiveExit = ReceivePort();
     final mutexServer = MutexServer({
       'sync': group.syncMutex,
@@ -68,6 +71,7 @@ final class NativePowerSyncDatabase extends BasePowerSyncDatabase {
       }
 
       // Cleanup
+      results.close();
       activeStreamsSubscription?.cancel();
       receiveMessages.close();
       receiveUnhandledErrors.close();
@@ -186,7 +190,8 @@ final class NativePowerSyncDatabase extends BasePowerSyncDatabase {
 
     // Don't spawn isolate if this operation was cancelled already.
     if (abort.aborted) {
-      return waitForShutdown();
+      await waitForShutdown();
+      throw AbortException('connectInternal');
     }
 
     receiveExit.listen((message) {
@@ -218,6 +223,8 @@ final class NativePowerSyncDatabase extends BasePowerSyncDatabase {
         receivedIsolateExit.future,
       ]).whenComplete(close),
     );
+
+    return _IsolateSyncHandle(initPort!, results);
   }
 }
 
@@ -277,6 +284,13 @@ Future<void> _syncIsolate(_PowerSyncDatabaseIsolateArgs args) async {
         );
       case ClientToSyncIsolateMessageType.mutexGranted:
         mutexes.markGranted(payload as int);
+      case ClientToSyncIsolateMessageType.requestCheckpoint:
+        (payload as PortCompleter<Int64>).handle(() async {
+          final sync = openedStreamingSync;
+          if (sync == null) throw disconnected;
+
+          return await sync.requestCheckpoint();
+        });
     }
   });
   sPort.sendInit(rPort.sendPort);
@@ -358,4 +372,18 @@ Future<void> _syncIsolate(_PowerSyncDatabaseIsolateArgs args) async {
       Error.throwWithStackTrace(error, stack);
     },
   );
+}
+
+final class _IsolateSyncHandle implements RemoteStreamingSyncHandle {
+  final SyncIsolatePort _syncIsolate;
+  final IsolateResultCollection _results;
+
+  _IsolateSyncHandle(this._syncIsolate, this._results);
+
+  @override
+  Future<Int64> requestCheckpoint() {
+    final pending = _results.createPending<Int64>();
+    _syncIsolate.requestCheckpoint(pending.completer);
+    return pending.future;
+  }
 }

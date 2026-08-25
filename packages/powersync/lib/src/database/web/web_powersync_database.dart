@@ -32,7 +32,7 @@ final class WebPowerSyncDatabase extends BasePowerSyncDatabase {
 
   @override
   @internal
-  Future<void> connectInternal({
+  Future<RemoteStreamingSyncHandle> connectInternal({
     required PowerSyncBackendConnector connector,
     required AbortController abort,
     required List<SubscribedStream> initiallyActiveStreams,
@@ -98,6 +98,7 @@ final class WebPowerSyncDatabase extends BasePowerSyncDatabase {
       await sync.abort();
       abort.completeAbort();
     }).ignore();
+    return sync;
   }
 
   /// Takes a read lock, without starting a transaction.
