@@ -22,8 +22,6 @@ import 'sync_status.dart';
 /// Requests do not survive [PowerSyncDatabase.disconnectAndClear], instances
 /// created before a clear should be discarded and requested again.
 abstract final class CheckpointRequest {
-  CheckpointRequest._();
-
   /// Whether this checkpoint request has synced before.
   @experimental
   bool get hasSynced;
@@ -44,7 +42,7 @@ final class CheckpointRequestImpl extends CheckpointRequest {
   final Int64 _requestId;
   final ConnectionManager _connections;
 
-  CheckpointRequestImpl(this._requestId, this._connections) : super._();
+  CheckpointRequestImpl(this._requestId, this._connections);
 
   @override
   bool get hasSynced {
