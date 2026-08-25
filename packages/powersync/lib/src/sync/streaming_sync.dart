@@ -311,7 +311,7 @@ class StreamingSyncImplementation implements StreamingSync {
     return response;
   }
 
-  Future<http.StreamedResponse?> _postStreamRequest(
+  Future<http.StreamedResponse> _postStreamRequest(
     Object? data, {
     required Future<void> onAbort,
   }) async {
@@ -456,18 +456,14 @@ final class _ActiveRustStreamingIteration {
     return streamFromFutureAwaitInCancellation(
       sync._postStreamRequest(data, onAbort: onAbort),
     ).asyncExpand<SyncEvent>((response) async* {
-      if (response == null) {
-        return;
-      } else {
-        yield ConnectionEvent.established;
+      yield ConnectionEvent.established;
 
-        final contentType = response.headers['content-type'];
-        final isBson = contentType == 'application/vnd.powersync.bson-stream';
+      final contentType = response.headers['content-type'];
+      final isBson = contentType == 'application/vnd.powersync.bson-stream';
 
-        yield* (isBson ? response.stream.bsonDocuments : response.stream.lines)
-            .map(ReceivedLine.new);
-        yield ConnectionEvent.end;
-      }
+      yield* (isBson ? response.stream.bsonDocuments : response.stream.lines)
+          .map(ReceivedLine.new);
+      yield ConnectionEvent.end;
     });
   }
 

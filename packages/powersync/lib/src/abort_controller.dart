@@ -56,15 +56,17 @@ final class AbortController {
   /// more efficient than calling [Future.then] on [onAbort], as there's no way
   /// to remove that listener until the controller is aborted.
   Future<T> scoped<T>(Future<T> Function(Future<void> onAbort) block) {
+    final onAbort = Completer<void>();
+
     if (aborted) {
-      return block(Future.syncValue(null));
+      onAbort.complete();
     } else {
-      final onAbort = Completer<void>();
       _abortListeners.add(onAbort);
-      return Future.sync(() => block(onAbort.future)).whenComplete(() {
-        _abortListeners.remove(onAbort);
-        if (!onAbort.isCompleted) onAbort.complete();
-      });
     }
+
+    return Future.sync(() => block(onAbort.future)).whenComplete(() {
+      _abortListeners.remove(onAbort);
+      if (!onAbort.isCompleted) onAbort.complete();
+    });
   }
 }
