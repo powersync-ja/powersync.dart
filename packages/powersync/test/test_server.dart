@@ -19,7 +19,18 @@ final class TestServer {
   TestServer({this.tokenExpiresIn = 65});
 
   Future<void> init({MockSyncService? mockSyncService}) async {
+    // TODO: Unify this with MockSyncService
     app.post('/sync/stream', handleSyncStream);
+    app.post('/sync/checkpoint-request', (Request request) async {
+      final body = convert.jsonDecode(await request.readAsString());
+      final checkpoint = int.parse(body['checkpoint_request_id'] as String);
+
+      return Response.ok(
+        convert.jsonEncode({
+          'data': {'checkpoint_request_id': '$checkpoint'},
+        }),
+      );
+    });
     // Open on an arbitrary open port
     server = await shelf_io.serve(
       mockSyncService?.router.call ?? app.call,

@@ -21,6 +21,7 @@ import 'package:sqlite_async/web.dart';
 import 'package:web/web.dart' hide RequestMode;
 
 import '../database/powersync_database.dart';
+import '../platform_specific/web.dart';
 import '../sync/bucket_storage.dart';
 import 'http/client.dart';
 import 'sync_worker_protocol.dart';
@@ -117,6 +118,11 @@ class ConnectedClient {
               (payload as UpdateSubscriptions).toDart,
             );
             return (JSObject(), null);
+          case SyncWorkerMessageType.requestCheckpoint:
+            final sync = _runner!.sync!;
+            final checkpoint = await sync.requestCheckpoint();
+
+            return ((checkpoint as JsBigInt64).value, null);
           default:
             throw StateError('Unexpected message type $type');
         }
