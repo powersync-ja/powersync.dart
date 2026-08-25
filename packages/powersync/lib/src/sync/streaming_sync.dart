@@ -12,6 +12,7 @@ import 'package:powersync/src/sync/options.dart';
 import 'package:powersync/src/user_agent/user_agent.dart';
 import 'package:sqlite_async/sqlite_async.dart';
 
+import '../connector.dart';
 import '../crud.dart';
 import '../platform_specific/platform_specific.dart';
 import 'bucket_storage.dart';
@@ -45,13 +46,10 @@ class StreamingSyncImplementation implements StreamingSync {
   final Logger logger;
 
   final Stream<void> crudUpdateTriggerStream;
-
   // An internal controller which is used to trigger CRUD uploads internally
   // e.g. when reconnecting.
-  // This is only a broadcast controller since the `crudLoop` method is public
-  // and could potentially be called multiple times externally.
   final StreamController<Null> _internalCrudTriggerController =
-      StreamController<Null>.broadcast();
+      StreamController<Null>();
 
   final http.Client _client;
 
@@ -60,7 +58,6 @@ class StreamingSyncImplementation implements StreamingSync {
   AbortController? _abort;
 
   final Mutex syncMutex, crudMutex;
-  Completer<void>? _activeCrudUpload;
   final StreamController<SyncEvent> _nonLineSyncEvents =
       StreamController.broadcast();
 
@@ -97,37 +94,27 @@ class StreamingSyncImplementation implements StreamingSync {
   Future<void> abort() async {
     // If streamingSync() hasn't been called yet, _abort will be null.
     if (_abort case final abort?) {
-      final future = abort.abort();
-      _internalCrudTriggerController.close();
-
-      // If a sync iteration is active, the control flow to abort is:
-      //
-      //  1. We close the non-line sync event stream here.
-      //  2. This emits a done event.
-      //  3. `addBroadcastStream` will cancel all source subscriptions in
-      //      response to that, and then emit a done event too. If there is an
-      //      error while cancelling the stream, it's forwarded by emitting an
-      //      error before closing.
-      //  4. We break out of the sync loop (either due to an error or because
-      //     all resources have been closed correctly).
-      //  5. `streamingSync` completes the abort controller, which we await
-      //     here.
-      await _nonLineSyncEvents.close();
-
-      // Wait for the abort to complete, which also guarantees that no requests
-      // are pending.
-      await Future.wait([
-        future,
-        if (_activeCrudUpload case final activeUpload?) activeUpload.future,
-      ]);
+      await (
+        abort.abort(),
+        _internalCrudTriggerController.close(),
+        // If a sync iteration is active, the control flow to abort is:
+        //
+        //  1. We close the non-line sync event stream here.
+        //  2. This emits a done event.
+        //  3. `addBroadcastStream` will cancel all source subscriptions in
+        //      response to that, and then emit a done event too. If there is an
+        //      error while cancelling the stream, it's forwarded by emitting an
+        //      error before closing.
+        //  4. We break out of the sync loop (either due to an error or because
+        //     all resources have been closed correctly).
+        //  5. `streamingSync` completes the abort controller, which we await
+        //     here.
+        _nonLineSyncEvents.close(),
+      ).wait;
     }
 
     _client.close();
     _state.close();
-  }
-
-  bool get aborted {
-    return _abort?.aborted ?? false;
   }
 
   @override
@@ -142,57 +129,58 @@ class StreamingSyncImplementation implements StreamingSync {
   Future<void> streamingSync() async {
     assert(_abort == null);
     final abort = _abort = AbortController();
-    Future<void> crudLoop;
 
     try {
       clientId = await adapter.getClientId();
-      crudLoop = _crudLoop().onError((error, stackTrace) {
-        if (aborted && error is AbortException) return;
+
+      final crudLoop = _crudLoop(abort).onError((
+        Object error,
+        StackTrace stackTrace,
+      ) {
+        if (abort.isAbortException(error)) return;
 
         logger.warning('Error in crud upload loop', error, stackTrace);
       });
 
-      while (!aborted) {
-        var delayNextIteration = false;
-
-        try {
-          // Protect sync iterations with exclusivity (if a valid Mutex is provided)
-          final (:immediateRestart) = await syncMutex.lock(
-            () => _rustStreamingSyncIteration(abort),
-            abortTrigger: _delayRetry(),
-          );
-          delayNextIteration = !immediateRestart;
-        } catch (e, stacktrace) {
-          if (aborted && e is http.ClientException) {
-            // Explicit abort requested - ignore. Example error:
-            // ClientException: Connection closed while receiving data, uri=http://localhost:8080/sync/stream
-            return;
-          }
-          delayNextIteration = true;
-          final message = _syncErrorMessage(e);
-          logger.warning('Sync error: $message', e, stacktrace);
-
-          _state.updateStatus((s) => s.applyDownloadError(e));
-        }
-
-        // On error, wait a little before retrying
-        // When aborting, don't wait
-        if (!aborted && delayNextIteration) {
-          await _delayRetry();
-        }
-      }
-
-      // Wait for the crud loop to abort as well, this mainly guarantees that we
-      // don't leave any trailing async tasks behind.
-      await crudLoop;
+      await (crudLoop, _downloadLoop(abort)).wait;
     } finally {
       abort.completeAbort();
     }
   }
 
-  Future<void> _crudLoop() async {
-    await _uploadAllCrud();
+  Future<void> _downloadLoop(AbortController abort) async {
+    while (!abort.aborted) {
+      var delayNextIteration = false;
 
+      try {
+        // Protect sync iterations with exclusivity (if a valid Mutex is provided)
+        final (:immediateRestart) = await syncMutex.lock(
+          () => _rustStreamingSyncIteration(abort),
+          abortTrigger: _delayRetry(abort),
+        );
+        delayNextIteration = !immediateRestart;
+      } catch (e, stacktrace) {
+        if (abort.isAbortException(e)) {
+          // Explicit abort requested - ignore. Example error:
+          // ClientException: Connection closed while receiving data, uri=http://localhost:8080/sync/stream
+          return;
+        }
+        delayNextIteration = true;
+        final message = _syncErrorMessage(e);
+        logger.warning('Sync error: $message', e, stacktrace);
+
+        _state.updateStatus((s) => s.applyDownloadError(e));
+      }
+
+      // On error, wait a little before retrying
+      // When aborting, don't wait
+      if (!abort.aborted && delayNextIteration) {
+        await _delayRetry(abort);
+      }
+    }
+  }
+
+  Future<void> _crudLoop(AbortController abort) async {
     // Trigger a CRUD upload whenever the upstream trigger fires
     // as-well-as whenever the sync stream reconnects.
     // This has the potential (in rare cases) to affect the crudThrottleTime,
@@ -203,85 +191,85 @@ class StreamingSyncImplementation implements StreamingSync {
       crudUpdateTriggerStream,
       _internalCrudTriggerController.stream,
     ])) {
-      await _uploadAllCrud();
+      await crudMutex.lock(
+        () => _crudUploadIteration(abort),
+        abortTrigger: _delayRetry(abort),
+      );
     }
   }
 
-  Future<void> _uploadAllCrud() {
-    assert(_activeCrudUpload == null);
-    final completer = _activeCrudUpload = Completer();
-    return crudMutex
-        .lock(() async {
-          // Keep track of the first item in the CRUD queue for the last `uploadCrud` iteration.
-          CrudEntry? checkedCrudItem;
+  Future<void> _crudUploadIteration(AbortController abort) async {
+    // Keep track of the first item in the CRUD queue for the last `uploadCrud` iteration.
+    CrudEntry? checkedCrudItem;
 
-          while (true) {
-            try {
-              // It's possible that an abort or disconnect operation could
-              // be followed by a `close` operation. The close would cause these
-              // operations, which use the DB, to throw an exception. Breaking the loop
-              // here prevents unnecessary potential (caught) exceptions.
-              if (aborted) {
-                break;
-              }
-              // This is the first item in the FIFO CRUD queue.
-              CrudEntry? nextCrudItem = await adapter.nextCrudItem();
-              if (nextCrudItem != null) {
-                _state.updateStatus((s) => s.uploading = true);
-                if (nextCrudItem.clientId == checkedCrudItem?.clientId) {
-                  // This will force a higher log level than exceptions which are caught here.
-                  logger.warning(
-                    """Potentially previously uploaded CRUD entries are still present in the upload queue. 
+    while (!abort.aborted) {
+      var didCompleteUpload = false;
+
+      try {
+        // This is the first item in the FIFO CRUD queue.
+        CrudEntry? nextCrudItem = await adapter.nextCrudItem();
+        if (nextCrudItem != null) {
+          _state.updateStatus((s) => s.uploading = true);
+          if (nextCrudItem.clientId == checkedCrudItem?.clientId) {
+            // This will force a higher log level than exceptions which are caught here.
+            logger.warning(
+              """Potentially previously uploaded CRUD entries are still present in the upload queue. 
                 Make sure to handle uploads and complete CRUD transactions or batches by calling and awaiting their [.complete()] method.
                 The next upload iteration will be delayed.""",
-                  );
-                  throw Exception(
-                    'Delaying due to previously encountered CRUD item.',
-                  );
-                }
-
-                checkedCrudItem = nextCrudItem;
-                await connector.uploadCrud();
-                _state.updateStatus((s) => s.uploadError = null);
-              } else {
-                // Uploading is completed
-                await adapter.updateTargetCheckpointRequest(
-                  () => getWriteCheckpoint(),
-                );
-                break;
-              }
-            } catch (e, stacktrace) {
-              checkedCrudItem = null;
-              logger.warning('Data upload error', e, stacktrace);
-              _state.updateStatus((s) => s.applyUploadError(e));
-              await _delayRetry();
-
-              if (!_state.status.connected) {
-                // Exit the upload loop if the sync stream is no longer connected
-                break;
-              }
-              logger.warning(
-                "Caught exception when uploading. Upload will retry after a delay",
-                e,
-                stacktrace,
-              );
-            } finally {
-              _state.updateStatus((s) => s.uploading = false);
-            }
-          }
-        }, abortTrigger: _delayRetry())
-        .whenComplete(() {
-          if (!aborted) {
-            _nonLineSyncEvents.add(const UploadCompleted());
+            );
+            throw Exception(
+              'Delaying due to previously encountered CRUD item.',
+            );
           }
 
-          assert(identical(_activeCrudUpload, completer));
-          _activeCrudUpload = null;
-          completer.complete();
-        });
+          checkedCrudItem = nextCrudItem;
+          await connector.uploadCrud();
+          _state.updateStatus((s) => s.uploadError = null);
+        } else {
+          // Uploading is completed
+          didCompleteUpload = await adapter.updateTargetCheckpointRequest(
+            () => getWriteCheckpoint(abort),
+          );
+          break;
+        }
+      } catch (e, stacktrace) {
+        checkedCrudItem = null;
+        if (abort.isAbortException(e)) {
+          return;
+        }
+
+        logger.warning('Data upload error', e, stacktrace);
+        _state.updateStatus((s) => s.applyUploadError(e));
+        await _delayRetry(abort);
+
+        if (!_state.status.connected) {
+          // Exit the upload loop if the sync stream is no longer connected
+          break;
+        }
+        logger.warning(
+          "Caught exception when uploading. Upload will retry after a delay",
+          e,
+          stacktrace,
+        );
+      } finally {
+        _state.updateStatus((s) => s.uploading = false);
+
+        if (!abort.aborted && didCompleteUpload) {
+          _nonLineSyncEvents.add(const UploadCompleted());
+        }
+      }
+    }
   }
 
-  Future<String> getWriteCheckpoint() async {
+  void _applyCommonHeaders(
+    http.Request request,
+    PowerSyncCredentials credentials,
+  ) {
+    request.headers['Authorization'] = "Token ${credentials.token}";
+    request.headers.addAll(_userAgentHeaders);
+  }
+
+  Future<String> getWriteCheckpoint(AbortController abort) async {
     final credentials = await connector.getCredentialsCached();
     if (credentials == null) {
       throw CredentialsException("Not logged in");
@@ -290,13 +278,14 @@ class StreamingSyncImplementation implements StreamingSync {
       'write-checkpoint2.json?client_id=$clientId',
     );
 
-    Map<String, String> headers = {
-      'Content-Type': 'application/json',
-      'Authorization': "Token ${credentials.token}",
-      ..._userAgentHeaders,
-    };
+    final response = await abort.scoped((onAbort) async {
+      final request = http.AbortableRequest('GET', uri, abortTrigger: onAbort);
+      _applyCommonHeaders(request, credentials);
+      request.headers['Accept'] = 'application/json';
 
-    final response = await _client.get(uri, headers: headers);
+      return await http.Response.fromStream(await _client.send(request));
+    });
+
     if (response.statusCode == 401) {
       await connector.prefetchCredentials(invalidate: true);
     }
@@ -322,9 +311,9 @@ class StreamingSyncImplementation implements StreamingSync {
     return response;
   }
 
-  Future<http.StreamedResponse?> _postStreamRequest(
+  Future<http.StreamedResponse> _postStreamRequest(
     Object? data, {
-    Future<void>? onAbort,
+    required Future<void> onAbort,
   }) async {
     const ndJson = 'application/x-ndjson';
     const bson = 'application/vnd.powersync.bson-stream';
@@ -335,22 +324,14 @@ class StreamingSyncImplementation implements StreamingSync {
     }
     final uri = credentials.endpointUri('sync/stream');
 
-    final request = http.AbortableRequest(
-      'POST',
-      uri,
-      abortTrigger: onAbort ?? _abort!.onAbort,
-    );
+    final request = http.AbortableRequest('POST', uri, abortTrigger: onAbort);
+    _applyCommonHeaders(request, credentials);
     request.headers['Content-Type'] = 'application/json';
-    request.headers['Authorization'] = "Token ${credentials.token}";
     request.headers['Accept'] = '$bson;q=0.9,$ndJson;q=0.8';
-    request.headers.addAll(_userAgentHeaders);
 
     request.body = convert.jsonEncode(data);
 
     final res = await _client.send(request);
-    if (aborted) {
-      return null;
-    }
 
     if (res.statusCode == 401) {
       await connector.prefetchCredentials(invalidate: true);
@@ -362,26 +343,27 @@ class StreamingSyncImplementation implements StreamingSync {
     return res;
   }
 
-  /// Delays the standard `retryDelay` Duration, but exits early if
-  /// an abort has been requested.
-  Future<void> _delayRetry() {
-    // Don't use Future.delayed here! Its timer can't be cancelled, which keeps
-    // sync isolates alive for longer than necessary.
-    final completer = Completer<void>.sync();
-    Timer? timer;
+  /// Delays for [duration] or [_retryDelay], but exits early if an abort has
+  /// been requested.
+  Future<void> _delayRetry(AbortController abort, [Duration? duration]) {
+    return abort.scoped((onAbort) {
+      // Don't use Future.delayed here! Its timer can't be cancelled, which
+      // keeps sync isolates alive for longer than necessary.
+      final completer = Completer<void>.sync();
+      Timer? timer;
 
-    void complete() {
-      if (!completer.isCompleted) {
-        timer?.cancel();
-        timer = null;
-        completer.complete();
+      void complete() {
+        if (!completer.isCompleted) {
+          timer?.cancel();
+          timer = null;
+          completer.complete();
+        }
       }
-    }
 
-    timer = Timer(_retryDelay, complete);
-    _abort?.onAbort.whenComplete(complete);
-
-    return completer.future;
+      timer = Timer(duration ?? _retryDelay, complete);
+      onAbort.whenComplete(complete);
+      return completer.future;
+    });
   }
 }
 
@@ -416,9 +398,10 @@ final class _ActiveRustStreamingIteration {
   final AbortController _abortController;
 
   var _hadSyncLine = false;
-  StreamSubscription<void>? _completedUploads;
 
   _ActiveRustStreamingIteration(this.sync, this._abortController);
+
+  bool get _aborted => _abortController.aborted;
 
   List<Object?> _encodeSubscriptions(List<SubscribedStream> subscriptions) {
     return sync._activeSubscriptions
@@ -428,31 +411,32 @@ final class _ActiveRustStreamingIteration {
         .toList();
   }
 
-  Future<RustSyncIterationResult> syncIteration() async {
+  Future<RustSyncIterationResult> syncIteration() {
     const defaultResult = (immediateRestart: false);
-    Stream<SyncEvent>? events;
+    return _abortController.scoped((onAbort) async {
+      Stream<SyncEvent>? events;
 
-    for (final startInstruction in await _startCommand()) {
-      switch (startInstruction) {
-        case EstablishSyncStream(:final request):
-          events = addBroadcast(
-            _receiveLines(request),
-            sync._nonLineSyncEvents.stream,
-          );
-        case CloseSyncStream():
-          return defaultResult;
-        case final NonInterruptingInstruction other:
-          await _handleInstruction(other);
+      for (final startInstruction in await _startCommand()) {
+        switch (startInstruction) {
+          case EstablishSyncStream(:final request):
+            events = addBroadcast(
+              _receiveLines(request, onAbort),
+              sync._nonLineSyncEvents.stream,
+            );
+          case CloseSyncStream():
+            return defaultResult;
+          case final NonInterruptingInstruction other:
+            await _handleInstruction(other);
+        }
       }
-    }
-    if (events == null) return defaultResult;
+      if (events == null) return defaultResult;
 
-    try {
-      return await _handleLines(events);
-    } finally {
-      await _completedUploads?.cancel();
-      await _stop();
-    }
+      try {
+        return await _handleLines(events);
+      } finally {
+        await _stop();
+      }
+    });
   }
 
   Future<Iterable<Instruction>> _startCommand() async {
@@ -468,22 +452,18 @@ final class _ActiveRustStreamingIteration {
     );
   }
 
-  Stream<SyncEvent> _receiveLines(Object? data) {
+  Stream<SyncEvent> _receiveLines(Object? data, Future<void> onAbort) {
     return streamFromFutureAwaitInCancellation(
-      sync._postStreamRequest(data, onAbort: _abortController.onAbort),
+      sync._postStreamRequest(data, onAbort: onAbort),
     ).asyncExpand<SyncEvent>((response) async* {
-      if (response == null) {
-        return;
-      } else {
-        yield ConnectionEvent.established;
+      yield ConnectionEvent.established;
 
-        final contentType = response.headers['content-type'];
-        final isBson = contentType == 'application/vnd.powersync.bson-stream';
+      final contentType = response.headers['content-type'];
+      final isBson = contentType == 'application/vnd.powersync.bson-stream';
 
-        yield* (isBson ? response.stream.bsonDocuments : response.stream.lines)
-            .map(ReceivedLine.new);
-        yield ConnectionEvent.end;
-      }
+      yield* (isBson ? response.stream.bsonDocuments : response.stream.lines)
+          .map(ReceivedLine.new);
+      yield ConnectionEvent.end;
     });
   }
 
@@ -492,7 +472,7 @@ final class _ActiveRustStreamingIteration {
     try {
       loop:
       await for (final event in events) {
-        if (sync.aborted) {
+        if (_aborted) {
           break;
         }
         final Iterable<Instruction> instructions;
@@ -538,7 +518,7 @@ final class _ActiveRustStreamingIteration {
       // Unlike a regular cancellation, cancelling via the abort controller
       // emits an error. We did mean to just cancel the stream, so we can
       // safely ignore that.
-      if (sync.aborted) {
+      if (_aborted) {
         // ignore
       } else {
         rethrow;
@@ -598,7 +578,7 @@ final class _ActiveRustStreamingIteration {
         } else {
           sync.connector.prefetchCredentials().then(
             (_) {
-              if (!sync.aborted) {
+              if (!_aborted) {
                 sync._nonLineSyncEvents.add(const TokenRefreshComplete());
               }
             },
@@ -639,4 +619,12 @@ final class HandleChangedSubscriptions implements SyncEvent {
   final List<SubscribedStream> currentSubscriptions;
 
   HandleChangedSubscriptions(this.currentSubscriptions);
+}
+
+extension on AbortController {
+  bool isAbortException(Object e) {
+    if (!aborted) return false;
+
+    return e is http.ClientException || e is AbortException;
+  }
 }

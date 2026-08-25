@@ -2,16 +2,22 @@ import 'dart:async';
 
 /// Controller to abort asynchronous requests or long-running tasks - either
 /// before or after it started.
-class AbortController {
+final class AbortController {
   /// True if an abort has been requested.
-  bool aborted = false;
+  bool get aborted => _defaultAbortListener.isCompleted;
 
-  final Completer<void> _abortRequested = Completer();
+  final Completer<void> _defaultAbortListener = Completer();
+  final Set<Completer<void>> _abortListeners = {};
+
   final Completer<void> _abortCompleter = Completer();
+
+  AbortController() {
+    _abortListeners.add(_defaultAbortListener);
+  }
 
   /// Future that is resolved when an abort has been requested.
   Future<void> get onAbort {
-    return _abortRequested.future;
+    return _defaultAbortListener.future;
   }
 
   Future<void> get onCompletion {
@@ -20,9 +26,12 @@ class AbortController {
 
   /// Abort, and wait until aborting is complete.
   Future<void> abort() async {
-    aborted = true;
-    if (!_abortRequested.isCompleted) {
-      _abortRequested.complete();
+    if (!_defaultAbortListener.isCompleted) {
+      for (final listener in _abortListeners) {
+        listener.complete();
+      }
+
+      _abortListeners.clear();
     }
 
     await onCompletion;
@@ -39,5 +48,25 @@ class AbortController {
   /// Any calls to abort() will fail with this error.
   void abortError(Object error, [StackTrace? stackTrace]) {
     _abortCompleter.completeError(error, stackTrace);
+  }
+
+  /// Runs [block] with a future completing when this controller is aborted.
+  ///
+  /// The passed future is also completed when the block completes. This is
+  /// more efficient than calling [Future.then] on [onAbort], as there's no way
+  /// to remove that listener until the controller is aborted.
+  Future<T> scoped<T>(Future<T> Function(Future<void> onAbort) block) {
+    final onAbort = Completer<void>();
+
+    if (aborted) {
+      onAbort.complete();
+    } else {
+      _abortListeners.add(onAbort);
+    }
+
+    return Future.sync(() => block(onAbort.future)).whenComplete(() {
+      _abortListeners.remove(onAbort);
+      if (!onAbort.isCompleted) onAbort.complete();
+    });
   }
 }

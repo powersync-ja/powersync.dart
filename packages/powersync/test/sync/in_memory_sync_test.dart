@@ -978,6 +978,29 @@ void _declareTests(String name, SyncOptions options, bool bson) {
       expect(await query.next, 'from server');
     });
 
+    test('checkpoint request can be aborted', () async {
+      final requestStarted = Completer<void>();
+      syncService.writeCheckpoint = () {
+        requestStarted.complete();
+        return Completer<Never>().future;
+      };
+
+      await waitForConnection();
+
+      // This should eventually request a write checkpoint, which will never
+      // complete.
+      await database.execute(
+        'insert into customers (id, name) values (uuid(), ?)',
+        ['trigger upload'],
+      );
+      await requestStarted.future;
+
+      // We should still be able to disconnect.
+      await database.disconnect();
+      expect(database.currentStatus.uploading, isFalse);
+      expect(database.currentStatus.uploadError, isNull);
+    });
+
     group('abort', () {
       test('during connect', () async {
         final requestStarted = Completer<void>();
