@@ -11,7 +11,7 @@
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 import 'package:auto_route/auto_route.dart' as _i10;
 import 'package:camera/camera.dart' as _i12;
-import 'package:flutter/material.dart' as _i11;
+import 'package:material_ui/material_ui.dart' as _i11;
 import 'package:supabase_todolist_drift/navigation.dart' as _i5;
 import 'package:supabase_todolist_drift/screens/add_item_dialog.dart' as _i1;
 import 'package:supabase_todolist_drift/screens/add_list_dialog.dart' as _i2;

@@ -1,11 +1,14 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_hooks/flutter_hooks.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:powersync/powersync.dart';
 
+import '../app_config.dart';
 import '../powersync/powersync.dart';
 import '../screens/search.dart';
+import '../stores/refresh.dart';
 
 final appBar = AppBar(
   title: const Text('PowerSync Flutter Demo'),
@@ -28,6 +31,7 @@ final class StatusAppBar extends ConsumerWidget implements PreferredSizeWidget {
       leading: const AutoLeadingButton(),
       title: title,
       actions: <Widget>[
+        const _RefreshButton(),
         IconButton(
           onPressed: () {
             showSearch(context: context, delegate: FtsSearchDelegate());
@@ -140,5 +144,47 @@ class _AutoLeadingButtonState extends State<AutoLeadingButton> {
 
   void _handleRebuild() {
     setState(() {});
+  }
+}
+
+/// A refresh button implemented with [Sync Catch-Up](https://docs.powersync.com/client-sdks/advanced/checkpoint-requests).
+class _RefreshButton extends HookConsumerWidget {
+  const _RefreshButton();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (!AppConfig.enableCheckpointRequests) {
+      return const SizedBox.shrink();
+    }
+
+    final canRefreshNow = ref.watch(canRefresh);
+    final isRefreshing = ref.watch(refresh).isPending;
+    final controller = useAnimationController(
+      duration: const Duration(seconds: 1),
+    );
+
+    useEffect(() {
+      if (isRefreshing) {
+        controller.repeat();
+      } else {
+        controller.reset();
+      }
+      return null;
+    }, [isRefreshing]);
+
+    void triggerRefresh() {
+      syncNow(ref);
+    }
+
+    return Tooltip(
+      message: 'Sync now',
+      child: IconButton(
+        onPressed: canRefreshNow ? triggerRefresh : null,
+        icon: RotationTransition(
+          turns: controller,
+          child: const Icon(Icons.refresh),
+        ),
+      ),
+    );
   }
 }
