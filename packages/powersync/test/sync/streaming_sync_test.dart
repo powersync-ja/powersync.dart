@@ -280,6 +280,27 @@ void main() {
 
       expect(pdb.currentStatus.downloadError, exception);
     });
+
+    test('can use custom checkpoint requests', () async {
+      final hadRequest = Completer<void>();
+      final pdb = await testUtils.setupPowerSync(path: path);
+      final server = await createServer();
+      final connector = TestCustomCheckpointConnector(
+        () async =>
+            PowerSyncCredentials(endpoint: server.endpoint, token: 'token'),
+        postCheckpointRequest: (clientId, requestId) async {
+          expect(requestId, '1');
+          hadRequest.complete();
+          return requestId;
+        },
+      );
+
+      await pdb.connect(
+        connector: connector,
+        options: SyncOptions(checkpointMode: CheckpointMode.requests()),
+      );
+      await hadRequest.future;
+    });
   });
 }
 
