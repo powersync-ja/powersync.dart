@@ -10,12 +10,16 @@ abstract interface class Int64 {
   static Int64 parse(String s) => parseInt64(s);
 
   bool operator >=(Int64 other);
+
+  /// Whether the native Dart [int] type is backed by a real 64-bit integer
+  /// (that is, we're not compiling to JavaScript).
+  static bool has64BitIntegers = !identical(0, 0.0);
 }
 
 final class NativeInt64 implements Int64 {
   final int value;
 
-  NativeInt64(this.value);
+  NativeInt64(this.value) : assert(Int64.has64BitIntegers);
 
   static NativeInt64 parse(String s) => NativeInt64(int.parse(s));
 

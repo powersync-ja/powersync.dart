@@ -665,11 +665,11 @@ final class _ActiveRustStreamingIteration {
 
       sync._checkpointState.markCheckpointsReady();
     } catch (e, s) {
+      // If this was aborted, syncIteration() is about to reset the state
+      // anyway.
       if (!_aborted) {
         sync._nonLineSyncEvents.add(CheckpointSeedFailed(e, s));
 
-        // If this was aborted, syncIteration() is about to reset the state
-        // anyway.
         sync._checkpointState.markCheckpointsFailed(e, s);
       }
     } finally {

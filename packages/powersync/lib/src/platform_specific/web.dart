@@ -45,8 +45,7 @@ BasePowerSyncDatabase openPowerSyncDatabase(
 }
 
 Int64 parseInt64(String s) {
-  const has64BitInts = !identical(0, 0.0);
-  if (has64BitInts) {
+  if (Int64.has64BitIntegers) {
     return NativeInt64.parse(s);
   } else {
     return JsBigInt64(_stringToBigInt(s.toJS));
@@ -56,7 +55,7 @@ Int64 parseInt64(String s) {
 final class JsBigInt64 implements Int64 {
   final JSBigInt value;
 
-  JsBigInt64(this.value);
+  JsBigInt64(this.value) : assert(!Int64.has64BitIntegers);
 
   @override
   bool operator >=(Int64 other) {
