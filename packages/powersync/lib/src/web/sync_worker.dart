@@ -93,8 +93,8 @@ class ConnectedClient {
                   : null,
               checkpointMode: switch (request.checkpointModeRequestsDelay) {
                 null => const CheckpointMode.legacy(),
-                final delay => CheckpointMode.requests(
-                  retryDelay: Duration(microseconds: delay),
+                final delay => RequestsCheckpointMode.unverifiedDuration(
+                  Duration(microseconds: delay),
                 ),
               },
             );

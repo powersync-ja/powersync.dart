@@ -13,7 +13,7 @@ abstract interface class Int64 {
 
   /// Whether the native Dart [int] type is backed by a real 64-bit integer
   /// (that is, we're not compiling to JavaScript).
-  static bool has64BitIntegers = !identical(0, 0.0);
+  static const bool has64BitIntegers = !identical(0, 0.0);
 }
 
 final class NativeInt64 implements Int64 {

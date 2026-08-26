@@ -305,7 +305,7 @@ class StreamingSyncImplementation implements StreamingSync {
         (tx) => tx.nextCheckpointRequestId(),
       );
       return await _requestCheckpointFromService(
-        checkpointRequest: nextCheckpointRequestId!,
+        checkpointRequest: nextCheckpointRequestId,
         abortTrigger: abortTrigger,
       );
     });
@@ -667,7 +667,7 @@ final class _ActiveRustStreamingIteration {
     } catch (e, s) {
       // If this was aborted, syncIteration() is about to reset the state
       // anyway.
-      if (!_aborted) {
+      if (!abort.aborted) {
         sync._nonLineSyncEvents.add(CheckpointSeedFailed(e, s));
 
         sync._checkpointState.markCheckpointsFailed(e, s);

@@ -112,7 +112,7 @@ extension type SyncClientPort(SendPort port) {
   }
 
   void sendCustomCheckpointRequest(
-    PortCompleter<void> completer,
+    PortCompleter<String?> completer,
     String clientId,
     String requestId,
   ) {

@@ -150,7 +150,6 @@ final class RequestsCheckpointMode extends CheckpointMode {
     }
   }
 
-  @visibleForTesting
   const RequestsCheckpointMode.unverifiedDuration(this.retryDelay) : super._();
 
   @override

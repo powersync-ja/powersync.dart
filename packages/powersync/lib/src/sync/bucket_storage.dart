@@ -184,7 +184,9 @@ extension PowerSyncControl on SqliteReadContext {
 
   /// Increments [currentCheckpointRequestId], used after uploading local
   /// mutations to require a new checkpoint.
-  Future<String?> nextCheckpointRequestId() {
-    return _checkpointRequestId('next', null);
+  Future<String> nextCheckpointRequestId() async {
+    // next_checkpoint_request_id cannot return null, the core extension would
+    // report an error instead.
+    return (await _checkpointRequestId('next', null))!;
   }
 }

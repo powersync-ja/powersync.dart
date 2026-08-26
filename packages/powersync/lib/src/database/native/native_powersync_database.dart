@@ -116,7 +116,7 @@ final class NativePowerSyncDatabase extends BasePowerSyncDatabase {
         case SyncIsolateToClientMessageType.customCheckpointRequest:
           final (completer, clientId, requestId) =
               payload as (PortCompleter<String?>, String, String);
-          completer.handle(() async {
+          await completer.handle(() async {
             if (connector is CustomCheckpointRequestConnector) {
               return connector.postCheckpointRequest(clientId, requestId);
             } else {
