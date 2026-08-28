@@ -23,13 +23,3 @@ Additional packages in this repository are:
 
 To configure the monorepo for development, run `dart pub get` and `melos prepare` after cloning.
 
-#### Blog posts
-
-- [Flutter Tutorial: building an offline-first chat app with Supabase and PowerSync](https://www.powersync.com/blog/flutter-tutorial-building-an-offline-first-chat-app-with-supabase-and-powersync)
-
-#### Resources
-
-- [![PowerSync docs](https://img.shields.io/badge/documentation-powersync.com-green.svg?label=flutter%20docs)](https://docs.powersync.com/client-sdk-references/flutter)
-- [![Discord](https://img.shields.io/discord/1138230179878154300?style=social&logo=discord&logoColor=%235865f2&label=Join%20Discord%20server)](https://discord.gg/powersync)
-- [![Twitter follow](https://img.shields.io/twitter/follow/powersync?label=PowerSync&style=social)](https://twitter.com/intent/follow?screen_name=powersync_)
-- [![YouTube](https://img.shields.io/youtube/channel/subscribers/UCSDdZvrZuizmc2EMBuTs2Qg?style=social&label=YouTube%20%40powersync_)](https://twitter.com/intent/follow?screen_name=powersync_)
