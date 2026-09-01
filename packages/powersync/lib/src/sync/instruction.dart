@@ -1,3 +1,4 @@
+import '../platform_specific/int64.dart';
 import 'stream.dart';
 import 'sync_status.dart';
 
@@ -45,11 +46,37 @@ final class LogLine implements NonInterruptingInstruction {
 
 final class EstablishSyncStream implements Instruction {
   final Map<String, Object?> request;
+  final CheckpointRequestPayload? checkpointRequest;
 
-  EstablishSyncStream(this.request);
+  EstablishSyncStream(this.request, {this.checkpointRequest});
 
   factory EstablishSyncStream.fromJson(Map<String, Object?> json) {
-    return EstablishSyncStream(json['request'] as Map<String, Object?>);
+    return EstablishSyncStream(
+      json['request'] as Map<String, Object?>,
+      checkpointRequest: switch (json['checkpoint_request']) {
+        null => null,
+        final request => CheckpointRequestPayload.fromJson(
+          request as Map<String, Object?>,
+        ),
+      },
+    );
+  }
+}
+
+final class CheckpointRequestPayload {
+  final String clientId;
+  final String checkpointRequestId;
+
+  CheckpointRequestPayload({
+    required this.clientId,
+    required this.checkpointRequestId,
+  });
+
+  factory CheckpointRequestPayload.fromJson(Map<String, Object?> json) {
+    return CheckpointRequestPayload(
+      clientId: json['client_id'] as String,
+      checkpointRequestId: json['checkpoint_request_id'] as String,
+    );
   }
 }
 
@@ -71,6 +98,7 @@ final class CoreSyncStatus {
   final List<SyncPriorityStatus> priorityStatus;
   final DownloadProgress? downloading;
   final List<CoreActiveStreamSubscription>? streams;
+  final Int64? lastAppliedCheckpointRequestId;
 
   CoreSyncStatus({
     required this.connected,
@@ -78,6 +106,7 @@ final class CoreSyncStatus {
     required this.priorityStatus,
     required this.downloading,
     required this.streams,
+    required this.lastAppliedCheckpointRequestId,
   });
 
   factory CoreSyncStatus.fromJson(Map<String, Object?> json) {
@@ -99,6 +128,12 @@ final class CoreSyncStatus {
             ),
           )
           .toList(),
+      lastAppliedCheckpointRequestId:
+          switch (json['internal_last_applied_checkpoint_request_id']
+              as String?) {
+            null => null,
+            final requestId => Int64.parse(requestId),
+          },
     );
   }
 

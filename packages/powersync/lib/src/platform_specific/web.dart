@@ -1,3 +1,5 @@
+import 'dart:js_interop';
+
 import 'package:logging/logging.dart';
 import 'package:sqlite_async/sqlite_async.dart';
 // ignore: implementation_imports
@@ -8,6 +10,7 @@ import '../database/powersync_database.dart';
 import '../database/web/web_powersync_database.dart';
 import '../open_factory/web/web_open_factory.dart';
 import '../schema.dart';
+import 'int64.dart';
 
 /// Creates a [Mutex] that might be shared across isolates and tabs.
 ///
@@ -40,3 +43,45 @@ BasePowerSyncDatabase openPowerSyncDatabase(
     logger: logger,
   );
 }
+
+Int64 parseInt64(String s) {
+  if (Int64.has64BitIntegers) {
+    return NativeInt64.parse(s);
+  } else {
+    return JsBigInt64(_stringToBigInt(s.toJS));
+  }
+}
+
+final class JsBigInt64 implements Int64 {
+  final JSBigInt value;
+
+  JsBigInt64(this.value) : assert(!Int64.has64BitIntegers);
+
+  @override
+  bool operator >=(Int64 other) {
+    return other is JsBigInt64 &&
+        value.greaterThanOrEqualTo(other.value).toDart;
+  }
+
+  @override
+  String toString() {
+    return _bigIntToString(value).toDart;
+  }
+
+  @override
+  int get hashCode => _bigIntToDouble(value).toDartInt;
+
+  @override
+  bool operator ==(Object other) {
+    return other is JsBigInt64 && value.strictEquals(other.value).toDart;
+  }
+}
+
+@JS('String')
+external JSString _bigIntToString(JSBigInt value);
+
+@JS('Number')
+external JSNumber _bigIntToDouble(JSBigInt value);
+
+@JS('BigInt')
+external JSBigInt _stringToBigInt(JSString value);

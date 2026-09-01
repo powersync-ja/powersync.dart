@@ -113,6 +113,16 @@ final class NativePowerSyncDatabase extends BasePowerSyncDatabase {
           await (payload as PortCompleter).handle(() async {
             await connector.uploadData(this);
           });
+        case SyncIsolateToClientMessageType.customCheckpointRequest:
+          final (completer, clientId, requestId) =
+              payload as (PortCompleter<String?>, String, String);
+          await completer.handle(() async {
+            if (connector is CustomCheckpointRequestConnector) {
+              return connector.postCheckpointRequest(clientId, requestId);
+            } else {
+              return null;
+            }
+          });
         case SyncIsolateToClientMessageType.status:
           final original = payload as SyncStatus;
           final recoveredDownloadError = switch (original.downloadError) {
@@ -305,6 +315,15 @@ Future<void> _syncIsolate(_PowerSyncDatabaseIsolateArgs args) async {
     return r.future;
   }
 
+  Future<String?> postCheckpointRequest(
+    String clientId,
+    String requestId,
+  ) async {
+    final r = results.createPending<String?>();
+    sPort.sendCustomCheckpointRequest(r.completer, clientId, requestId);
+    return r.future;
+  }
+
   runZonedGuarded(
     () async {
       final storage = BucketStorage(database);
@@ -315,6 +334,7 @@ Future<void> _syncIsolate(_PowerSyncDatabaseIsolateArgs args) async {
           getCredentialsCached: getCredentialsCached,
           prefetchCredentials: prefetchCredentials,
           uploadCrud: uploadCrud,
+          postCheckpointRequests: postCheckpointRequest,
         ),
         crudUpdateTriggerStream: database.onChange([
           'ps_crud',

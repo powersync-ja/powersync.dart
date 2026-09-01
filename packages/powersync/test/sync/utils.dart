@@ -10,6 +10,7 @@ TypeMatcher<SyncStatus> isSyncStatus({
   Object? hasSynced,
   Object? downloadProgress,
   Object? syncStreams,
+  Object? downloadError,
 }) {
   var matcher = isA<SyncStatus>();
   if (downloading != null) {
@@ -33,6 +34,13 @@ TypeMatcher<SyncStatus> isSyncStatus({
   }
   if (syncStreams != null) {
     matcher = matcher.having((e) => e.syncStreams, 'syncStreams', syncStreams);
+  }
+  if (downloadError != null) {
+    matcher = matcher.having(
+      (e) => e.downloadError,
+      'downloadError',
+      downloadError,
+    );
   }
 
   return matcher;
@@ -114,7 +122,7 @@ Object checkpoint({
   return {
     'checkpoint': {
       'last_op_id': '$lastOpId',
-      'write_checkpoint': null,
+      'write_checkpoint': writeCheckpoint,
       'buckets': buckets,
       'streams': streams,
     },

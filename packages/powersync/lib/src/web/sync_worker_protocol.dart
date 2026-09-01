@@ -50,6 +50,12 @@ enum SyncWorkerMessageType {
   /// The response sends either a [SerializedCredentials] object or an empty
   /// object for uploads.
   uploadCrud,
+
+  /// Invoke [CustomCheckpointRequestConnector.postCheckpointRequest].
+  ///
+  /// For requests, the payload is a [CustomCheckpointRequest]. The response is
+  /// a nullable string.
+  customCheckpointRequest,
   invalidCredentialsCallback,
   credentialsCallback,
 
@@ -107,6 +113,7 @@ extension type StartSynchronization._(JSObject _) implements JSObject {
     UpdateSubscriptions? subscriptions,
     String? appMetadataEncoded,
     bool? customHttpClient,
+    int? checkpointModeRequestsDelay,
   });
 
   external String get databaseName;
@@ -120,6 +127,7 @@ extension type StartSynchronization._(JSObject _) implements JSObject {
   external String? get appMetadataEncoded;
   external String get lockName;
   external bool? get customHttpClient;
+  external int? checkpointModeRequestsDelay;
 }
 
 @anonymous
@@ -379,6 +387,19 @@ extension type SerializedSyncStatus._(JSObject _) implements JSObject {
   }
 }
 
+@anonymous
+extension type CustomCheckpointRequest._(JSObject _) implements JSObject {
+  external factory CustomCheckpointRequest({
+    required JSNumber req,
+    required String clientId,
+    required String requestId,
+  });
+
+  external JSNumber req;
+  external String get clientId;
+  external String get requestId;
+}
+
 final class WorkerCommunicationChannel {
   final Map<int, Completer<JSAny?>> _pendingRequests = {};
   final Completer<void> _closed = Completer();
@@ -448,6 +469,9 @@ final class WorkerCommunicationChannel {
             case SyncWorkerMessageType.invalidCredentialsCallback:
             case SyncWorkerMessageType.uploadCrud:
               requestId = (message.payload as JSNumber).toDartInt;
+            case SyncWorkerMessageType.customCheckpointRequest:
+              requestId =
+                  (message.payload as CustomCheckpointRequest).req.toDartInt;
             case SyncWorkerMessageType.sendHttpRequest:
               final request = message.payload as HttpRequest;
               return _respond(
@@ -598,6 +622,11 @@ final class WorkerCommunicationChannel {
           },
           lockName: await lockName,
           customHttpClient: customHttpClient,
+          checkpointModeRequestsDelay: switch (options.checkpointMode) {
+            RequestsCheckpointMode(:final retryDelay) =>
+              retryDelay.inMicroseconds,
+            _ => null,
+          },
         ),
       ),
     );
@@ -643,6 +672,26 @@ final class WorkerCommunicationChannel {
 
   Future<void> uploadCrud() async {
     await _numericRequest(SyncWorkerMessageType.uploadCrud);
+  }
+
+  Future<String?> customCheckpointRequest(
+    String clientId,
+    String requestId,
+  ) async {
+    final (id, completion) = _newRequest();
+    port.postMessage(
+      SyncWorkerMessage(
+        payload: CustomCheckpointRequest(
+          req: id.toJS,
+          clientId: clientId,
+          requestId: requestId,
+        ),
+        type: SyncWorkerMessageType.customCheckpointRequest.name,
+      ),
+    );
+
+    final response = await completion;
+    return (response as JSString?)?.toDart;
   }
 
   Future<HttpResponse> sendHttpRequest(HttpRequest request) async {

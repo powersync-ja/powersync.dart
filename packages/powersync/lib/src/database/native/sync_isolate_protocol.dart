@@ -30,6 +30,9 @@ enum SyncIsolateToClientMessageType {
   /// Upload the CRUD queue, payload is a [PortCompleter].
   uploadCrud,
 
+  /// Invoke [CustomCheckpointRequestConnector.postCheckpointRequest].
+  customCheckpointRequest,
+
   /// The sync status has changed, payload is a [SyncStatus].
   status,
 
@@ -106,6 +109,18 @@ extension type SyncClientPort(SendPort port) {
 
   void sendUploadCrud(PortCompleter<void> completer) {
     send(SyncIsolateToClientMessageType.uploadCrud, completer);
+  }
+
+  void sendCustomCheckpointRequest(
+    PortCompleter<String?> completer,
+    String clientId,
+    String requestId,
+  ) {
+    send(SyncIsolateToClientMessageType.customCheckpointRequest, (
+      completer,
+      clientId,
+      requestId,
+    ));
   }
 
   void sendLog(LogRecord record) {

@@ -22,6 +22,8 @@ void main() {
   late SyncWorker syncWorker;
   late PowerSyncDatabase db;
 
+  var dbId = 0;
+
   setUpAll(() async {
     utils = TestUtils();
   });
@@ -29,7 +31,10 @@ void main() {
   setUp(() async {
     syncWorker = SyncWorker();
 
-    db = await utils.setupPowerSync(logger: Logger.detached('test_logger'));
+    db = await utils.setupPowerSync(
+      path: 'sync-worker-test-${dbId++}',
+      logger: Logger.detached('test_logger'),
+    );
     await db.initialize();
   });
 
@@ -130,6 +135,59 @@ void main() {
     );
     await handle.streamingSync();
     await db.waitForFirstSync();
+  });
+
+  test('can use requests mode', () async {
+    final (client, server) = inMemoryServer();
+    final service = MockSyncService();
+    server.mount((r) => service.router(r));
+
+    final handle = createWorkerHandle(
+      connector: TestConnector(
+        () async => PowerSyncCredentials(
+          endpoint: 'http://test.powersync.example.org',
+          token: 'token',
+        ),
+      ),
+      options: SyncOptions(
+        httpClient: () => client,
+        checkpointMode: CheckpointMode.requests(),
+      ),
+    );
+    await handle.streamingSync();
+
+    service.waitForCheckpointRequest(
+      () => service.amountOfCheckpointRequests > 0,
+    );
+    await handle.abort();
+  });
+
+  test('can use custom checkpoint connector', () async {
+    final (client, server) = inMemoryServer();
+    final service = MockSyncService();
+    server.mount((r) => service.router(r));
+    final didRequestCheckpoint = Completer<void>();
+
+    final handle = createWorkerHandle(
+      connector: TestCustomCheckpointConnector(
+        () async => PowerSyncCredentials(
+          endpoint: 'http://test.powersync.example.org',
+          token: 'token',
+        ),
+        postCheckpointRequest: (clientId, checkpoint) async {
+          expect(checkpoint, '1');
+          didRequestCheckpoint.complete();
+          return checkpoint;
+        },
+      ),
+      options: SyncOptions(
+        httpClient: () => client,
+        checkpointMode: CheckpointMode.requests(),
+      ),
+    );
+    await handle.streamingSync();
+    await didRequestCheckpoint.future;
+    await handle.abort();
   });
 }
 

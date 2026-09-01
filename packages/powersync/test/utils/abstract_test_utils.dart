@@ -154,6 +154,21 @@ class TestConnector extends PowerSyncBackendConnector {
   }
 }
 
+final class TestCustomCheckpointConnector extends TestConnector
+    with CustomCheckpointRequestConnector {
+  final Future<String> Function(String, String) _postCheckpointRequest;
+
+  TestCustomCheckpointConnector(
+    super.fetchCredentialsCallback, {
+    required Future<String> Function(String, String) postCheckpointRequest,
+  }) : _postCheckpointRequest = postCheckpointRequest;
+
+  @override
+  Future<String> postCheckpointRequest(String clientId, String requestId) {
+    return _postCheckpointRequest(clientId, requestId);
+  }
+}
+
 /// A [PowerSyncDatabase] implemented by a single in-memory database connection
 /// and a mock-HTTP sync client.
 ///

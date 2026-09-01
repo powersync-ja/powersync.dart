@@ -25,6 +25,15 @@ extension type BucketStorage(SqliteConnection _internalDb) {
     return rows.first['client_id'] as String;
   }
 
+  Future<T> writeTransaction<T>(
+    Future<T> Function(SqliteWriteContext) run, {
+    required Future<void> onAbort,
+  }) {
+    return _internalDb.abortableWriteLock(abortTrigger: onAbort, (lock) {
+      return lock.writeTransaction(run);
+    });
+  }
+
   Future<bool> updateTargetCheckpointRequest(
     Future<String> Function() checkpointCallback,
   ) async {
@@ -136,6 +145,10 @@ extension PowerSyncControl on SqliteReadContext {
     return row.columnAt(0) as String?;
   }
 
+  Future<String?> _checkpointRequestId(String type, String? update) async {
+    return await _control('${type}_checkpoint_request_id', update);
+  }
+
   /// Reads the current target checkpoint request id, or updates it when an
   /// [update] is supplied.
   ///
@@ -147,7 +160,33 @@ extension PowerSyncControl on SqliteReadContext {
   /// [maxOpId] can be used as a sentinel value in case there are pending
   /// changes that have been uploaded, but for which no checkpoint request has
   /// been created yet.
-  Future<String?> targetCheckpointRequestId([String? update]) async {
-    return await _control('target_checkpoint_request_id', update);
+  Future<String?> targetCheckpointRequestId([String? update]) {
+    return _checkpointRequestId('target', update);
+  }
+
+  /// Reconciles a local checkpoint counter with a response from the service.
+  ///
+  /// Seeding checkpoint requests servces has two purposes:
+  ///
+  ///  1. The service is allowed to forget our checkpoint counter, so we remind
+  ///     it whenever we connect.
+  ///  2. Checkpoint requests are scoped to user and device ids, but our local
+  ///     counter is per-device. Seeding ensures we correctly generate
+  ///     incrementing checkpoint ids after switching accounts.
+  Future<void> seedCheckpointRequestId(String serviceResponse) {
+    return _checkpointRequestId('seed', serviceResponse);
+  }
+
+  /// The highest checkpoint request id that has been requested on this device.
+  Future<String?> currentCheckpointRequestId() {
+    return _checkpointRequestId('current', null);
+  }
+
+  /// Increments [currentCheckpointRequestId], used after uploading local
+  /// mutations to require a new checkpoint.
+  Future<String> nextCheckpointRequestId() async {
+    // next_checkpoint_request_id cannot return null, the core extension would
+    // report an error instead.
+    return (await _checkpointRequestId('next', null))!;
   }
 }

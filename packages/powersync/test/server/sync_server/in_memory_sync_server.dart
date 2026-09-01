@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:bson/bson.dart';
@@ -20,6 +21,13 @@ final class MockSyncService {
       'data': {'write_checkpoint': '10'},
     };
   };
+
+  var checkpointRequestsSupported = true;
+  var lastCheckpointRequest = 0;
+  var amountOfCheckpointRequests = 0;
+  Future<void> Function()? beforeCheckpointRequestResponse;
+
+  final _checkpointRequests = StreamController<void>.broadcast();
 
   MockSyncService({this.useBson = false}) {
     router
@@ -58,10 +66,39 @@ final class MockSyncService {
           json.encode(await writeCheckpoint()),
           headers: {'Content-Type': 'application/json'},
         );
+      })
+      ..post('/sync/checkpoint-request', (Request request) async {
+        if (!checkpointRequestsSupported) {
+          return Response.notFound('');
+        }
+
+        final body = jsonDecode(await request.readAsString());
+        final requestId = lastCheckpointRequest = max(
+          lastCheckpointRequest,
+          int.parse(body['checkpoint_request_id'] as String),
+        );
+
+        await beforeCheckpointRequestResponse?.call();
+        amountOfCheckpointRequests++;
+        _checkpointRequests.add(null);
+
+        return Response.ok(
+          jsonEncode({
+            'data': {'checkpoint_request_id': '$requestId'},
+          }),
+        );
       });
   }
 
   Future<Request> get waitForListener => _listener.future;
+
+  Future<void> waitForCheckpointRequest(bool Function() check) async {
+    if (check()) return;
+
+    await for (final _ in _checkpointRequests.stream) {
+      if (check()) return;
+    }
+  }
 
   // Queue events which will be sent to connected clients.
   void addRawEvent(Object data) {

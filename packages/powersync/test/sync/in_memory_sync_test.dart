@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:async/async.dart';
 import 'package:logging/logging.dart';
 import 'package:powersync/powersync.dart';
+import 'package:powersync/src/sync/options.dart';
 import 'package:shelf/shelf.dart';
 import 'package:shelf_router/shelf_router.dart';
 import 'package:test/test.dart';
@@ -17,22 +18,16 @@ import 'utils.dart';
 
 void main() {
   group('sync client', () {
-    _declareTests(
-      'json',
-      SyncOptions(retryDelay: Duration(milliseconds: 200)),
-      false,
-    );
+    _declareTests('json', false);
 
-    _declareTests(
-      'bson',
-      SyncOptions(retryDelay: Duration(milliseconds: 200)),
-      true,
-    );
+    _declareTests('bson', true);
   });
 }
 
-void _declareTests(String name, SyncOptions options, bool bson) {
+void _declareTests(String name, bool bson) {
   final ignoredLogger = Logger.detached('powersync.test')..level = Level.OFF;
+  const retryDelay = Duration(milliseconds: 200);
+  const defaultOptions = SyncOptions(retryDelay: retryDelay);
 
   group(name, () {
     late final testUtils = TestUtils();
@@ -40,25 +35,37 @@ void _declareTests(String name, SyncOptions options, bool bson) {
     late TestDatabase database;
     late MockSyncService syncService;
     late Logger logger;
+    late Server mockServer;
 
     var credentialsCallbackCount = 0;
     Future<void> Function(PowerSyncDatabase) uploadData = (db) async {};
 
-    Future<void> connect() async {
+    Future<PowerSyncCredentials> credentialsCallback() async {
+      credentialsCallbackCount++;
+      return PowerSyncCredentials(
+        endpoint: mockServer.url.toString(),
+        token: 'token$credentialsCallbackCount',
+        expiresAt: DateTime.now(),
+      );
+    }
+
+    Future<void> connect({
+      PowerSyncBackendConnector? connector,
+      SyncOptions? options,
+    }) async {
       final (client, server) = inMemoryServer();
       server.mount((req) => syncService.router(req));
+      mockServer = server;
 
       database.httpClient = client;
       await database.connect(
-        connector: TestConnector(() async {
-          credentialsCallbackCount++;
-          return PowerSyncCredentials(
-            endpoint: server.url.toString(),
-            token: 'token$credentialsCallbackCount',
-            expiresAt: DateTime.now(),
-          );
-        }, uploadData: (db) => uploadData(db)),
-        options: options,
+        connector:
+            connector ??
+            TestConnector(
+              credentialsCallback,
+              uploadData: (db) => uploadData(db),
+            ),
+        options: options ?? defaultOptions,
       );
     }
 
@@ -67,7 +74,7 @@ void _declareTests(String name, SyncOptions options, bool bson) {
       credentialsCallbackCount = 0;
       syncService = MockSyncService(useBson: bson);
 
-      (_, database) = await testUtils.openInMemoryDatabase();
+      (_, database) = await testUtils.openInMemoryDatabase(logger: logger);
       await database.initialize();
     });
 
@@ -77,6 +84,8 @@ void _declareTests(String name, SyncOptions options, bool bson) {
     });
 
     Future<StreamQueue<SyncStatus>> waitForConnection({
+      PowerSyncBackendConnector? connector,
+      SyncOptions? options,
       bool expectNoWarnings = true,
       bool addKeepLive = true,
     }) async {
@@ -87,7 +96,7 @@ void _declareTests(String name, SyncOptions options, bool bson) {
           }
         });
       }
-      await connect();
+      await connect(connector: connector, options: options);
       await syncService.waitForListener;
 
       expect(database.currentStatus.lastSyncedAt, isNull);
@@ -976,6 +985,237 @@ void _declareTests(String name, SyncOptions options, bool bson) {
         });
 
       expect(await query.next, 'from server');
+    });
+
+    group('checkpoint requests', () {
+      final options = SyncOptions(
+        checkpointMode: CheckpointMode.requests(),
+        retryDelay: retryDelay,
+      );
+
+      test(
+        'warns for custom connectors without requests being enabled',
+        () async {
+          final records = <LogRecord>[];
+          logger.onRecord.listen(records.add);
+
+          await waitForConnection(
+            connector: TestCustomCheckpointConnector(
+              credentialsCallback,
+              postCheckpointRequest: (_, _) async {
+                return 'stub';
+              },
+            ),
+            expectNoWarnings: false,
+          );
+
+          expect(
+            records,
+            contains(
+              isA<LogRecord>().having(
+                (e) => e.message,
+                'message',
+                contains(
+                  'CustomCheckpointRequestConnector was used with legacy checkpoints',
+                ),
+              ),
+            ),
+          );
+        },
+      );
+
+      test('requests checkpoints for updates', () async {
+        await waitForConnection(options: options);
+        await syncService.waitForCheckpointRequest(
+          () => syncService.lastCheckpointRequest == 1,
+        );
+        await pumpEventQueue();
+
+        uploadData = (db) async {
+          if (await db.getCrudBatch() case final batch?) {
+            await batch.complete();
+          }
+        };
+
+        await database.execute(
+          'INSERT INTO customers (id, name, email) VALUES (?, uuid(), uuid())',
+          ['id'],
+        );
+        final customers = StreamQueue(
+          database.watch('SELECT * FROM customers'),
+        );
+        await expectLater(customers, emits(hasLength(1)));
+
+        // The local write should eventually be uploaded.
+        await syncService.waitForCheckpointRequest(
+          () => syncService.lastCheckpointRequest == 2,
+        );
+
+        syncService
+          ..addLine(
+            checkpoint(
+              lastOpId: 1,
+              writeCheckpoint: '2',
+              buckets: [bucketDescription('a')],
+            ),
+          )
+          ..addLine({
+            'data': {
+              'bucket': 'a',
+              'data': [
+                {
+                  'checksum': 0,
+                  'op': 'REMOVE',
+                  'op_id': '1',
+                  'object_id': 'id',
+                  'object_type': 'customers',
+                },
+              ],
+            },
+          })
+          ..addLine(checkpointComplete(lastOpId: '1'));
+        await expectLater(customers, emits(isEmpty));
+      });
+
+      test(
+        'reports download error when requesting checkpoints fails',
+        () async {
+          syncService.checkpointRequestsSupported = false;
+          final status = StreamQueue(database.statusStream);
+          addTearDown(status.cancel);
+
+          await connect(options: options);
+          await expectLater(
+            database.statusStream,
+            emitsThrough(isSyncStatus(downloadError: isNotNull)),
+          );
+        },
+      );
+
+      test('reposts current checkpoint until applied', () async {
+        await waitForConnection(
+          options: SyncOptions(
+            retryDelay: retryDelay,
+            checkpointMode: RequestsCheckpointMode.unverifiedDuration(
+              Duration(milliseconds: 50),
+            ),
+          ),
+        );
+
+        // Because we didn't include the checkpoint in a sync response, it
+        // should keep getting requested.
+        await syncService.waitForCheckpointRequest(
+          () => syncService.amountOfCheckpointRequests == 10,
+        );
+
+        // Finally, include the checkpoint.
+        syncService.addLine(checkpoint(lastOpId: 0, writeCheckpoint: '1'));
+        syncService.addLine(checkpointComplete(lastOpId: '0'));
+        await database.waitForFirstSync();
+
+        final requestsBefore = syncService.amountOfCheckpointRequests;
+        await Future<void>.delayed(Duration(seconds: 1));
+        expect(
+          syncService.amountOfCheckpointRequests,
+          requestsBefore,
+          reason: 'Should not keep posting checkpoint requests',
+        );
+      });
+
+      test('download is retried on checkpoint request', () async {
+        final status = await waitForConnection(
+          options: SyncOptions(
+            retryDelay: Duration(seconds: 10),
+            checkpointMode: CheckpointMode.requests(),
+          ),
+          expectNoWarnings: false,
+        );
+        uploadData = (db) async {
+          if (await db.getCrudBatch() case final batch?) {
+            await batch.complete();
+          }
+        };
+
+        // Destroy the initial connection by sending a bogus line.
+        final sw = Stopwatch()..start();
+        syncService.addLine(
+          checkpoint(lastOpId: 1, writeCheckpoint: 'invalid line'),
+        );
+        await expectLater(
+          status,
+          emitsThrough(isSyncStatus(downloadError: isNotNull)),
+        );
+        syncService.endCurrentListener();
+
+        // Trigger an upload here. Because the upload needs a seeded sync
+        // iteration, we should reconnect immediately instead of after the
+        // configured 10s delay.
+        await database.execute(
+          'INSERT INTO customers (id, email, name) VALUES (uuid(), uuid(), uuid())',
+        );
+        await expectLater(status, emitsThrough(isSyncStatus(connected: true)));
+        final elapsed = sw.elapsed;
+
+        expect(elapsed, lessThan(Duration(seconds: 5)));
+      });
+
+      test('can use checkpoint method from connector', () async {
+        final didRequestCheckpoint = Completer<void>();
+        await waitForConnection(
+          connector: TestCustomCheckpointConnector(
+            credentialsCallback,
+            postCheckpointRequest: (clientId, requestId) async {
+              expect(requestId, '1');
+              didRequestCheckpoint.complete();
+              return requestId;
+            },
+          ),
+          options: options,
+        );
+
+        await didRequestCheckpoint.future;
+      });
+
+      test('reconciles checkpoint state on token expiry', () async {
+        syncService.lastCheckpointRequest = 100;
+        await waitForConnection(options: options);
+        await syncService.waitForCheckpointRequest(
+          () => syncService.amountOfCheckpointRequests == 1,
+        );
+        await pumpEventQueue();
+
+        // Simulate what would happen if we suddenly switched users after the
+        // old token expired. The client expects a checkpoint of 100, for
+        // another user the service wouldn't have that counter yet. The client
+        // must request a checkpoint with the existing id, allowing the service
+        // to recognize that this device + user combo needs higher checkpoint
+        // ids.
+        syncService.lastCheckpointRequest = 0;
+        syncService.addKeepAlive(0);
+        syncService.endCurrentListener();
+
+        await syncService.waitForCheckpointRequest(
+          () => syncService.amountOfCheckpointRequests == 2,
+        );
+        expect(syncService.lastCheckpointRequest, 100);
+      });
+
+      test('reads sync lines before checkpoint requests are ready', () async {
+        final hasInitialRequest = Completer<void>();
+        final completeInitialRequest = Completer<void>();
+        syncService.beforeCheckpointRequestResponse = () {
+          hasInitialRequest.complete();
+          return completeInitialRequest.future;
+        };
+
+        final status = await waitForConnection(options: options);
+        await hasInitialRequest.future;
+
+        syncService.addLine(checkpoint(lastOpId: 0));
+        await expectLater(status, emits(isSyncStatus(downloading: true)));
+
+        completeInitialRequest.complete();
+      });
     });
 
     test('checkpoint request can be aborted', () async {

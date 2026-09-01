@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:meta/meta.dart';
 
 import '../connector.dart';
@@ -22,11 +24,17 @@ abstract interface class InternalConnector {
   /// Requests the connector to upload a crud batch to the backend.
   Future<void> uploadCrud();
 
+  FutureOr<String?> postCheckpointRequest(
+    String clientId,
+    String checkpointRequestId,
+  );
+
   const factory InternalConnector({
     required Future<PowerSyncCredentials?> Function() getCredentialsCached,
     required Future<PowerSyncCredentials?> Function({required bool invalidate})
     prefetchCredentials,
     required Future<void> Function() uploadCrud,
+    required Future<String?> Function(String, String) postCheckpointRequests,
   }) = _CallbackConnector;
 
   factory InternalConnector.wrap(
@@ -60,6 +68,18 @@ final class _WrapConnector implements InternalConnector {
   Future<void> uploadCrud() {
     return connector.uploadData(database);
   }
+
+  @override
+  FutureOr<String?> postCheckpointRequest(
+    String clientId,
+    String checkpointRequestId,
+  ) {
+    if (connector case final CustomCheckpointRequestConnector custom) {
+      return custom.postCheckpointRequest(clientId, checkpointRequestId);
+    }
+
+    return null;
+  }
 }
 
 final class _CallbackConnector implements InternalConnector {
@@ -67,15 +87,18 @@ final class _CallbackConnector implements InternalConnector {
   final Future<PowerSyncCredentials?> Function({required bool invalidate})
   _prefetchCredentials;
   final Future<void> Function() _uploadCrud;
+  final Future<String?> Function(String, String)? _postCheckpointRequest;
 
   const _CallbackConnector({
     required Future<PowerSyncCredentials?> Function() getCredentialsCached,
     required Future<PowerSyncCredentials?> Function({required bool invalidate})
     prefetchCredentials,
     required Future<void> Function() uploadCrud,
+    required Future<String?> Function(String, String) postCheckpointRequests,
   }) : _getCredentialsCached = getCredentialsCached,
        _prefetchCredentials = prefetchCredentials,
-       _uploadCrud = uploadCrud;
+       _uploadCrud = uploadCrud,
+       _postCheckpointRequest = postCheckpointRequests;
 
   @override
   Future<PowerSyncCredentials?> getCredentialsCached() {
@@ -90,5 +113,17 @@ final class _CallbackConnector implements InternalConnector {
   @override
   Future<void> uploadCrud() {
     return _uploadCrud();
+  }
+
+  @override
+  FutureOr<String?> postCheckpointRequest(
+    String clientId,
+    String checkpointRequestId,
+  ) {
+    if (_postCheckpointRequest case final implementation?) {
+      return implementation(clientId, checkpointRequestId);
+    }
+
+    return null;
   }
 }

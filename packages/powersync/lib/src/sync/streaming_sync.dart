@@ -14,8 +14,11 @@ import 'package:sqlite_async/sqlite_async.dart';
 
 import '../connector.dart';
 import '../crud.dart';
+import '../platform_specific/int64.dart';
 import '../platform_specific/platform_specific.dart';
 import 'bucket_storage.dart';
+import 'checkpoint_request.dart' as checkpoint;
+import 'checkpoint_state.dart';
 import 'instruction.dart';
 import 'internal_connector.dart';
 import 'mutable_sync_status.dart';
@@ -54,6 +57,7 @@ class StreamingSyncImplementation implements StreamingSync {
   final http.Client _client;
 
   final SyncStatusStateStream _state = SyncStatusStateStream();
+  final CheckpointStateSignals _checkpointState = CheckpointStateSignals();
 
   AbortController? _abort;
 
@@ -62,7 +66,7 @@ class StreamingSyncImplementation implements StreamingSync {
       StreamController.broadcast();
 
   final Map<String, String> _userAgentHeaders;
-  String? clientId;
+  String? _clientId;
 
   StreamingSyncImplementation({
     required this.schemaJson,
@@ -131,7 +135,7 @@ class StreamingSyncImplementation implements StreamingSync {
     final abort = _abort = AbortController();
 
     try {
-      clientId = await adapter.getClientId();
+      await _resolveClientId();
 
       final crudLoop = _crudLoop(abort).onError((
         Object error,
@@ -142,10 +146,19 @@ class StreamingSyncImplementation implements StreamingSync {
         logger.warning('Error in crud upload loop', error, stackTrace);
       });
 
-      await (crudLoop, _downloadLoop(abort)).wait;
+      await (
+        crudLoop,
+        _downloadLoop(abort),
+        _repostUnacknowledgedCheckpointRequests(abort),
+      ).wait;
     } finally {
+      _checkpointState.disconnect();
       abort.completeAbort();
     }
+  }
+
+  Future<String> _resolveClientId() async {
+    return (_clientId ??= await adapter.getClientId());
   }
 
   Future<void> _downloadLoop(AbortController abort) async {
@@ -175,7 +188,15 @@ class StreamingSyncImplementation implements StreamingSync {
       // On error, wait a little before retrying
       // When aborting, don't wait
       if (!abort.aborted && delayNextIteration) {
-        await _delayRetry(abort);
+        await abort.scoped((onAbort) {
+          final (retryDelay, completeEarly) = _delayOr(_retryDelay);
+          onAbort.whenComplete(completeEarly);
+          _checkpointState.waitForCheckpointWaiter().whenComplete(
+            completeEarly,
+          );
+
+          return retryDelay;
+        });
       }
     }
   }
@@ -227,9 +248,13 @@ class StreamingSyncImplementation implements StreamingSync {
           _state.updateStatus((s) => s.uploadError = null);
         } else {
           // Uploading is completed
-          didCompleteUpload = await adapter.updateTargetCheckpointRequest(
-            () => getWriteCheckpoint(abort),
-          );
+          didCompleteUpload = await adapter.updateTargetCheckpointRequest(() {
+            if (options.checkpointMode is LegacyCheckpointMode) {
+              return _getLegacyWriteCheckpoint(abort);
+            } else {
+              return _requestNextCheckpointFromService(abort);
+            }
+          });
           break;
         }
       } catch (e, stacktrace) {
@@ -269,13 +294,79 @@ class StreamingSyncImplementation implements StreamingSync {
     request.headers.addAll(_userAgentHeaders);
   }
 
-  Future<String> getWriteCheckpoint(AbortController abort) async {
+  Future<String> _requestNextCheckpointFromService(AbortController abort) {
+    return abort.scoped((abortTrigger) async {
+      await _checkpointState.waitForCheckpointRequestsReady(
+        abort: abortTrigger,
+      );
+
+      final nextCheckpointRequestId = await adapter.writeTransaction(
+        onAbort: abortTrigger,
+        (tx) => tx.nextCheckpointRequestId(),
+      );
+      return await _requestCheckpointFromService(
+        checkpointRequest: nextCheckpointRequestId,
+        abortTrigger: abortTrigger,
+      );
+    });
+  }
+
+  Future<String> _requestCheckpointFromService({
+    required String checkpointRequest,
+    required Future<void> abortTrigger,
+    String? clientId,
+  }) async {
+    clientId ??= await _resolveClientId();
+
+    // First, check if we can use a custom checkpoint request implementation.
+    if (await connector.postCheckpointRequest(clientId, checkpointRequest)
+        case final customResponse?) {
+      return customResponse;
+    }
+
+    final credentials = await connector.getCredentialsCached();
+    if (credentials == null) {
+      throw CredentialsException("Not logged in");
+    }
+    final uri = credentials.endpointUri('sync/checkpoint-request');
+
+    final request = http.AbortableRequest(
+      'POST',
+      uri,
+      abortTrigger: abortTrigger,
+    );
+    request.body = convert.jsonEncode({
+      'client_id': clientId,
+      'checkpoint_request_id': checkpointRequest,
+    });
+    _applyCommonHeaders(request, credentials);
+    request.headers['Accept'] = 'application/json';
+    request.headers['Content-Type'] = 'application/json';
+    final response = await http.Response.fromStream(
+      await _client.send(request),
+    );
+
+    if (response.statusCode == 401) {
+      await connector.prefetchCredentials(invalidate: true);
+    }
+    if (response.statusCode == 404) {
+      throw checkpoint.instanceNotSupported;
+    }
+    if (response.statusCode != 200) {
+      throw SyncResponseException.fromResponse(response);
+    }
+
+    final body = convert.jsonDecode(response.body);
+    return body['data']['checkpoint_request_id'] as String;
+  }
+
+  Future<String> _getLegacyWriteCheckpoint(AbortController abort) async {
     final credentials = await connector.getCredentialsCached();
     if (credentials == null) {
       throw CredentialsException("Not logged in");
     }
     final uri = credentials.endpointUri(
-      'write-checkpoint2.json?client_id=$clientId',
+      'write-checkpoint2.json?client_id=${await _resolveClientId()}',
     );
 
     final response = await abort.scoped((onAbort) async {
@@ -343,28 +434,119 @@ class StreamingSyncImplementation implements StreamingSync {
     return res;
   }
 
+  /// Watches the current checkpoint request i to re-request it if we take too
+  /// long to receive it.
+  ///
+  /// This does not require navigator locks: It waits for checkpoints to be
+  /// seeded, which can only happen in the context of a download loop.
+  ///
+  /// Note that requesting checkpoints with ids the service has already seen is
+  /// a cheap no-op.
+  Future<void> _repostUnacknowledgedCheckpointRequests(
+    AbortController abort,
+  ) async {
+    final Duration retryDelay;
+    switch (options.checkpointMode) {
+      case RequestsCheckpointMode(retryDelay: final delay):
+        retryDelay = delay;
+      default:
+        return;
+    }
+
+    while (!abort.aborted) {
+      try {
+        await abort.scoped((abortSignal) {
+          return _repostCurrentCheckpointRequestAfterDelay(
+            retryDelay,
+            abortSignal,
+          );
+        });
+      } catch (e, s) {
+        if (abort.aborted) return;
+
+        logger.warning('Error retrying checkpoint request', e, s);
+        await _delayRetry(abort, retryDelay);
+      }
+    }
+  }
+
+  Future<void> _repostCurrentCheckpointRequestAfterDelay(
+    Duration retryDelay,
+    Future<void> abortSignal,
+  ) async {
+    Future<Int64?> currentCheckpointRequestId() {
+      return adapter.writeTransaction(onAbort: abortSignal, (tx) async {
+        final textRequestId = await tx.currentCheckpointRequestId();
+        return textRequestId == null ? null : Int64.parse(textRequestId);
+      });
+    }
+
+    await _checkpointState.waitForCheckpointRequestsReady(
+      abort: abortSignal,
+      wakeDownloadLoop: false,
+    );
+
+    final requestId = await currentCheckpointRequestId();
+    // Give the request some time to sync.
+    {
+      final (delay, complete) = _delayOr(retryDelay);
+      abortSignal.whenComplete(complete);
+      await delay;
+    }
+
+    // If a new request was made, reset the timer.
+    if (requestId == null || requestId != await currentCheckpointRequestId()) {
+      return;
+    }
+
+    // If the request was applied, we don't need to retry.
+    if (_state.status.lastAppliedCheckpointRequestId case final lastApplied?
+        when lastApplied >= requestId) {
+      return;
+    }
+
+    // Make sure we're online and ready before making the request.
+    await _checkpointState.waitForCheckpointRequestsReady(
+      abort: abortSignal,
+      wakeDownloadLoop: false,
+    );
+
+    // It's safe if this request races with a new one. The service will
+    // reject it.
+    logger.fine('Retry checkpoint request $requestId');
+    await _requestCheckpointFromService(
+      checkpointRequest: requestId.toString(),
+      abortTrigger: abortSignal,
+    );
+  }
+
   /// Delays for [duration] or [_retryDelay], but exits early if an abort has
   /// been requested.
   Future<void> _delayRetry(AbortController abort, [Duration? duration]) {
     return abort.scoped((onAbort) {
-      // Don't use Future.delayed here! Its timer can't be cancelled, which
-      // keeps sync isolates alive for longer than necessary.
-      final completer = Completer<void>.sync();
-      Timer? timer;
-
-      void complete() {
-        if (!completer.isCompleted) {
-          timer?.cancel();
-          timer = null;
-          completer.complete();
-        }
-      }
-
-      timer = Timer(duration ?? _retryDelay, complete);
+      final (future, complete) = _delayOr(duration ?? _retryDelay);
       onAbort.whenComplete(complete);
-      return completer.future;
+      return future;
     });
   }
+}
+
+/// Returns a future that completes after the [delay] or when the returned
+/// function is called.
+(Future<void>, void Function()) _delayOr(Duration delay) {
+  final completer = Completer<void>.sync();
+  Timer? timer;
+
+  void complete() {
+    if (!completer.isCompleted) {
+      timer?.cancel();
+      timer = null;
+      completer.complete();
+    }
+  }
+
+  timer = Timer(delay, complete);
+  return (completer.future, complete);
 }
 
 /// Attempt to give a basic summary of the error for cases where the full error
@@ -415,14 +597,21 @@ final class _ActiveRustStreamingIteration {
     const defaultResult = (immediateRestart: false);
     return _abortController.scoped((onAbort) async {
       Stream<SyncEvent>? events;
+      AbortController? checkpointSeed;
 
       for (final startInstruction in await _startCommand()) {
         switch (startInstruction) {
-          case EstablishSyncStream(:final request):
+          case EstablishSyncStream(:final request, :final checkpointRequest):
             events = addBroadcast(
               _receiveLines(request, onAbort),
               sync._nonLineSyncEvents.stream,
             );
+
+            if (checkpointRequest != null) {
+              final nested = checkpointSeed = AbortController();
+
+              _seedCheckpointRequests(checkpointRequest, nested);
+            }
           case CloseSyncStream():
             return defaultResult;
           case final NonInterruptingInstruction other:
@@ -434,6 +623,9 @@ final class _ActiveRustStreamingIteration {
       try {
         return await _handleLines(events);
       } finally {
+        await checkpointSeed?.abort();
+
+        sync._checkpointState.downloadIterationEnded();
         await _stop();
       }
     });
@@ -448,8 +640,41 @@ final class _ActiveRustStreamingIteration {
         'schema': convert.json.decode(sync.schemaJson),
         'include_defaults': sync.options.includeDefaultStreams,
         'active_streams': _encodeSubscriptions(sync._activeSubscriptions),
+        'checkpoint_mode': sync.options.checkpointMode is RequestsCheckpointMode
+            ? 'requests'
+            : 'legacy',
       }),
     );
+  }
+
+  void _seedCheckpointRequests(
+    CheckpointRequestPayload payload,
+    AbortController abort,
+  ) async {
+    try {
+      final seed = await sync._requestCheckpointFromService(
+        checkpointRequest: payload.checkpointRequestId,
+        abortTrigger: abort.onAbort,
+        clientId: payload.clientId,
+      );
+
+      await sync.adapter.writeTransaction(
+        (tx) => tx.seedCheckpointRequestId(seed),
+        onAbort: abort.onAbort,
+      );
+
+      sync._checkpointState.markCheckpointsReady();
+    } catch (e, s) {
+      // If this was aborted, syncIteration() is about to reset the state
+      // anyway.
+      if (!abort.aborted) {
+        sync._nonLineSyncEvents.add(CheckpointSeedFailed(e, s));
+
+        sync._checkpointState.markCheckpointsFailed(e, s);
+      }
+    } finally {
+      abort.completeAbort();
+    }
   }
 
   Stream<SyncEvent> _receiveLines(Object? data, Future<void> onAbort) {
@@ -497,6 +722,8 @@ final class _ActiveRustStreamingIteration {
               'update_subscriptions',
               convert.json.encode(_encodeSubscriptions(currentSubscriptions)),
             );
+          case CheckpointSeedFailed(:final error, :final trace):
+            Error.throwWithStackTrace(error, trace);
         }
 
         for (final instruction in instructions) {
@@ -619,6 +846,13 @@ final class HandleChangedSubscriptions implements SyncEvent {
   final List<SubscribedStream> currentSubscriptions;
 
   HandleChangedSubscriptions(this.currentSubscriptions);
+}
+
+final class CheckpointSeedFailed implements SyncEvent {
+  final Object error;
+  final StackTrace trace;
+
+  CheckpointSeedFailed(this.error, this.trace);
 }
 
 extension on AbortController {
