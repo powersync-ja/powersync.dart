@@ -44,8 +44,6 @@ BasePowerSyncDatabase openPowerSyncDatabase(
   );
 }
 
-const _has64BitInts = !identical(0, 0.0);
-
 final _intConversionBuffer = JSArrayBuffer(8);
 final _intConversionView = JSDataView(_intConversionBuffer);
 
@@ -58,7 +56,7 @@ Int64 parseInt64(String s) {
 }
 
 Int64 int64FromBigInt(JSBigInt value) {
-  if (_has64BitInts) {
+  if (Int64.has64BitIntegers) {
     _intConversionView.setBigInt64(0, value);
     final high = _intConversionView.getUint32(0).toDartInt;
     final low = _intConversionView.getUint32(4).toDartInt;

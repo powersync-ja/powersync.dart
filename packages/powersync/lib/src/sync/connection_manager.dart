@@ -8,12 +8,12 @@ import 'package:powersync/src/database/active_instances.dart';
 import 'package:powersync/src/sync/options.dart';
 import 'package:powersync/src/sync/stream.dart';
 import 'package:powersync/src/sync/sync_status.dart';
-import 'package:sqlite_async/sqlite_async.dart';
 
 import '../database/powersync_database.dart';
 import 'checkpoint_request.dart';
 import 'instruction.dart';
 import 'mutable_sync_status.dart';
+import 'stream_utils.dart';
 import 'streaming_sync.dart';
 
 /// A (stream name, JSON parameters) pair that uniquely identifies a stream
@@ -102,32 +102,12 @@ final class ConnectionManager {
     bool Function(SyncStatus) predicate, {
     Future<void>? abort,
   }) {
-    final completer = Completer<void>();
-    final subscription = statusStream.listen(null);
-
-    void checkPredicate(SyncStatus status) {
-      try {
-        if (predicate(status)) {
-          completer.complete();
-          subscription.cancel();
-        }
-      } catch (e, s) {
-        completer.completeError(e, s);
-        subscription.cancel();
-      }
-    }
-
-    subscription.onData(checkPredicate);
-    checkPredicate(currentStatus);
-
-    abort?.whenComplete(() {
-      if (!completer.isCompleted) {
-        completer.completeError(AbortException('firstStatusMatching'));
-        subscription.cancel();
-      }
-    });
-
-    return completer.future;
+    return statusStream.waitForFirstMatching(
+      predicate: predicate,
+      debugName: 'firstStatusMatching',
+      abort: abort,
+      current: currentStatus,
+    );
   }
 
   List<SubscribedStream> get _subscribedStreams => [
@@ -190,7 +170,7 @@ final class ConnectionManager {
         if (!thisConnectAborter.aborted) {
           // We only change _abortActiveSync after disconnecting, which resets
           // the abort controller.
-          assert(identical(_abortActiveSync, thisConnectAborter));
+          assert(identical(_abortActiveSync?.$1, thisConnectAborter));
 
           // We need a new abort controller for this attempt
           thisConnectAborter = AbortController();

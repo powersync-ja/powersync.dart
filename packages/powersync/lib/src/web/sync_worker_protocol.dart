@@ -396,7 +396,7 @@ extension type SerializedSyncStatus._(JSObject _) implements JSObject {
       },
       lastAppliedCheckpoint: switch (lastAppliedCheckpoint) {
         null => null,
-        final id => JsBigInt64(id),
+        final id => int64FromBigInt(id),
       },
     );
   }

@@ -122,6 +122,8 @@ class ConnectedClient {
             final sync = _runner!.sync!;
             final checkpoint = await sync.requestCheckpoint();
 
+            // Workers are always compiled to JS, so we can safely assume the
+            // value here is a JS bigint.
             return ((checkpoint as JsBigInt64).value, null);
           default:
             throw StateError('Unexpected message type $type');
