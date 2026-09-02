@@ -29,6 +29,8 @@ typedef SubscribedStream = ({String name, String parameters});
 
 /// A superinterface for [StreamingSync] providing methods that can be called
 /// in remote contexts.
+// TODO: Merge this into StreamingSync to reduce platform-specific code when
+// managing sync clients.
 abstract interface class RemoteStreamingSyncHandle {
   Future<Int64> requestCheckpoint();
 }
