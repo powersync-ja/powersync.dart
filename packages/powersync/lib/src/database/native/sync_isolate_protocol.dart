@@ -6,6 +6,7 @@ import 'package:sqlite_async/sqlite_async.dart';
 
 import '../../connector.dart';
 import '../../isolate_completer.dart';
+import '../../platform_specific/int64.dart';
 import '../../sync/streaming_sync.dart' show SubscribedStream;
 import '../../sync/sync_status.dart';
 
@@ -58,6 +59,10 @@ enum ClientToSyncIsolateMessageType {
   /// A completed [SyncIsolateToClientMessageType.mutexAcquire] call, payload is
   /// the request id being completed.
   mutexGranted,
+
+  /// Client requests a checkpoint from the sync client, payload is a
+  /// [PortCompleter].
+  requestCheckpoint,
 }
 
 /// Typed client-side view over a [SendPort] used to send messages to a sync
@@ -77,6 +82,10 @@ extension type SyncIsolatePort(SendPort port) {
 
   void sendMutexGranted(int requestId) {
     send(ClientToSyncIsolateMessageType.mutexGranted, requestId);
+  }
+
+  void requestCheckpoint(PortCompleter<Int64> completer) {
+    send(ClientToSyncIsolateMessageType.requestCheckpoint, completer);
   }
 }
 

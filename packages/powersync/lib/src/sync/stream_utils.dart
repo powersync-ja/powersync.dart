@@ -4,6 +4,7 @@ import 'dart:convert' as convert;
 import 'dart:math';
 import 'dart:typed_data';
 
+import 'package:sqlite_async/sqlite_async.dart';
 import 'package:typed_data/typed_buffers.dart';
 
 import '../exceptions.dart';
@@ -164,6 +165,43 @@ Stream<T> streamFromFutureAwaitInCancellation<T>(Future<T> future) {
   };
 
   return controller.stream;
+}
+
+extension WaitForFirst<T extends Object> on Stream<T> {
+  /// An abortable variant of [Stream.first].
+  Future<void> waitForFirstMatching({
+    required bool Function(T) predicate,
+    required String debugName,
+    Future<void>? abort,
+    T? current,
+  }) {
+    final completer = Completer<void>();
+    final subscription = listen(null);
+
+    void check(T current) {
+      try {
+        if (predicate(current)) {
+          completer.complete();
+          subscription.cancel();
+        }
+      } catch (e, s) {
+        completer.completeError(e, s);
+        subscription.cancel();
+      }
+    }
+
+    subscription.onData(check);
+    if (current != null) check(current);
+
+    abort?.whenComplete(() {
+      if (!completer.isCompleted) {
+        completer.completeError(AbortException(debugName));
+        subscription.cancel();
+      }
+    });
+
+    return completer.future;
+  }
 }
 
 /// An [EventSink] that takes raw bytes as inputs, buffers them internally by

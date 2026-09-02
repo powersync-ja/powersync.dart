@@ -8,6 +8,8 @@ import 'package:web/web.dart' hide Client;
 
 import '../connector.dart';
 import '../database/powersync_database.dart';
+import '../platform_specific/int64.dart';
+import '../platform_specific/web.dart';
 import '../sync/options.dart';
 import '../sync/streaming_sync.dart';
 import '../sync/sync_status.dart';
@@ -144,6 +146,12 @@ class SyncWorkerHandle implements StreamingSync {
   @override
   Future<void> abort() async {
     await _channel.abortSynchronization();
+  }
+
+  @override
+  Future<Int64> requestCheckpoint() async {
+    final checkpoint = await _channel.requestCheckpoint();
+    return int64FromBigInt(checkpoint);
   }
 
   @override

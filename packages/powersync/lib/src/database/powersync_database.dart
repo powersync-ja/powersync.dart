@@ -21,6 +21,7 @@ import '../powersync_update_notification.dart';
 import '../schema.dart';
 import '../schema_logic.dart' as schema_logic;
 import '../sync/bucket_storage.dart';
+import '../sync/checkpoint_request.dart';
 import '../sync/connection_manager.dart';
 import '../sync/options.dart';
 import '../sync/stream.dart';
@@ -337,7 +338,7 @@ abstract base class PowerSyncDatabase extends SqliteConnection {
   /// active, so the method should not call [disconnect] itself.
   @protected
   @internal
-  Future<void> connectInternal({
+  Future<RemoteStreamingSyncHandle> connectInternal({
     required PowerSyncBackendConnector connector,
     required ResolvedSyncOptions options,
     required List<SubscribedStream> initiallyActiveStreams,
@@ -629,6 +630,21 @@ SELECT * FROM crud_entries;
   /// Use [SyncStream.subscribe] to subscribe to the returned stream.
   SyncStream syncStream(String name, [Map<String, Object?>? parameters]) {
     return _connections.syncStream(name, parameters);
+  }
+
+  /// Requests a checkpoint from the PowerSync service.
+  ///
+  /// The returned request can be awaited (using [CheckpointRequest.waitForSync])
+  /// to confirm that the local database has applieed server-side changes up to
+  /// the checkpoint. This method requires an active or connecting sync client
+  /// connected with [CheckpointMode.requests] and PowerSync service version
+  /// 1.24.0 or later.
+  ///
+  /// It throws a [CheckpointRequestException] if requesting the checkpoint has
+  /// failed, e.g. because the database is not connected.
+  @experimental
+  Future<CheckpointRequest> requestCheckpoint() {
+    return _connections.requestCheckpoint();
   }
 }
 

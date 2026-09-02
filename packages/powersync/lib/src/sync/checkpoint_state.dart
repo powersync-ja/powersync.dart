@@ -1,9 +1,9 @@
 import 'dart:async';
 
 import 'package:async/async.dart';
-import 'package:sqlite_async/sqlite_async.dart' show AbortException;
 
 import 'checkpoint_request.dart';
+import 'stream_utils.dart';
 
 final class CheckpointStateSignals {
   _CheckpointState _currentState = const _Pending();
@@ -57,37 +57,27 @@ final class CheckpointStateSignals {
     required Future<void> abort,
     bool wakeDownloadLoop = true,
   }) {
-    final completer = Completer<void>();
-    final subscription = _stateController.stream.listen(null);
-
-    void handleState(_CheckpointState state) {
-      switch (state) {
-        case _Disconnected():
-          completer.completeError(disconnected);
-          subscription.cancel();
-        case _CheckpointSeeded(:final result):
-          completer.complete(result.asFuture);
-          subscription.cancel();
-        case _Pending():
-          if (wakeDownloadLoop && !_waitingForWaiter.isCompleted) {
-            _waitingForWaiter.complete();
-          }
-      }
-    }
-
-    subscription.onData(handleState);
-    handleState(_currentState);
-
-    abort.whenComplete(() {
-      if (!completer.isCompleted) {
-        completer.completeError(
-          AbortException('waitForCheckpointRequestsReady'),
-        );
-        subscription.cancel();
-      }
-    });
-
-    return completer.future;
+    return _stateController.stream.waitForFirstMatching(
+      predicate: (state) {
+        switch (state) {
+          case _Disconnected():
+            throw disconnected;
+          case _CheckpointSeeded(:final result):
+            if (result.asError case final error?) {
+              Error.throwWithStackTrace(error.error, error.stackTrace);
+            }
+            return true;
+          case _Pending():
+            if (wakeDownloadLoop && !_waitingForWaiter.isCompleted) {
+              _waitingForWaiter.complete();
+            }
+            return false;
+        }
+      },
+      debugName: 'waitForCheckpointRequestsReady',
+      abort: abort,
+      current: _currentState,
+    );
   }
 }
 

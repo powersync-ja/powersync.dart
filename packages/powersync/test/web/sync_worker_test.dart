@@ -156,9 +156,12 @@ void main() {
     );
     await handle.streamingSync();
 
-    service.waitForCheckpointRequest(
+    await service.waitForCheckpointRequest(
       () => service.amountOfCheckpointRequests > 0,
     );
+
+    final checkpoint = await handle.requestCheckpoint();
+    expect(checkpoint.toString(), '2');
     await handle.abort();
   });
 

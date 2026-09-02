@@ -4,6 +4,7 @@ library;
 import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
 
+import '../platform_specific/int64.dart';
 import 'stream.dart';
 
 final class SyncStatus {
@@ -56,6 +57,8 @@ final class SyncStatus {
 
   final List<CoreActiveStreamSubscription>? _internalSubscriptions;
 
+  final Int64? _lastAppliedCheckpoint;
+
   @internal
   const SyncStatus({
     required this.connected,
@@ -68,8 +71,10 @@ final class SyncStatus {
     required this.uploadError,
     required this.priorityStatusEntries,
     required List<CoreActiveStreamSubscription>? streamSubscriptions,
+    required Int64? lastAppliedCheckpoint,
   }) : hasSynced = lastSyncedAt != null,
-       _internalSubscriptions = streamSubscriptions;
+       _internalSubscriptions = streamSubscriptions,
+       _lastAppliedCheckpoint = lastAppliedCheckpoint;
 
   @internal
   const SyncStatus.uninitialized()
@@ -83,7 +88,8 @@ final class SyncStatus {
       downloadError = null,
       priorityStatusEntries = const [],
       _internalSubscriptions = null,
-      hasSynced = null;
+      hasSynced = null,
+      _lastAppliedCheckpoint = null;
 
   @override
   bool operator ==(Object other) {
@@ -104,7 +110,8 @@ final class SyncStatus {
           other._internalSubscriptions,
           _internalSubscriptions,
         ) &&
-        other.downloadProgress == downloadProgress);
+        other.downloadProgress == downloadProgress &&
+        other._lastAppliedCheckpoint == _lastAppliedCheckpoint);
   }
 
   // Deprecated because it can't set fields back to null
@@ -131,6 +138,7 @@ final class SyncStatus {
           priorityStatusEntries ?? this.priorityStatusEntries,
       downloadProgress: downloadProgress,
       streamSubscriptions: _internalSubscriptions,
+      lastAppliedCheckpoint: _lastAppliedCheckpoint,
     );
   }
 
@@ -267,6 +275,8 @@ extension InternalSyncStatusAccess on SyncStatus {
   List<CoreActiveStreamSubscription>? get internalSubscriptions =>
       _internalSubscriptions;
 
+  Int64? get lastAppliedCheckpoint => _lastAppliedCheckpoint;
+
   SyncStatus changeErrors({
     required Object? downloadError,
     required Object? uploadError,
@@ -282,7 +292,13 @@ extension InternalSyncStatusAccess on SyncStatus {
       uploadError: uploadError,
       priorityStatusEntries: priorityStatusEntries,
       streamSubscriptions: _internalSubscriptions,
+      lastAppliedCheckpoint: _lastAppliedCheckpoint,
     );
+  }
+
+  bool hasApplied(Int64 checkpointRequest) {
+    final lastApplied = _lastAppliedCheckpoint;
+    return lastApplied != null && lastApplied >= checkpointRequest;
   }
 }
 

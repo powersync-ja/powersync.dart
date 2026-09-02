@@ -301,6 +301,22 @@ void main() {
       );
       await hadRequest.future;
     });
+
+    test('can request checkpoints', () async {
+      final pdb = await testUtils.setupPowerSync(path: path);
+      final server = await createServer();
+      final connector = TestConnector(
+        () async =>
+            PowerSyncCredentials(endpoint: server.endpoint, token: 'token'),
+      );
+
+      await pdb.connect(
+        connector: connector,
+        options: SyncOptions(checkpointMode: CheckpointMode.requests()),
+      );
+
+      await pdb.requestCheckpoint();
+    });
   });
 }
 

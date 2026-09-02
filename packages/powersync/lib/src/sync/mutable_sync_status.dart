@@ -64,6 +64,7 @@ final class MutableSyncStatus {
       uploadError: uploadError,
       downloadError: downloadError,
       streamSubscriptions: streams,
+      lastAppliedCheckpoint: lastAppliedCheckpointRequestId,
     );
   }
 }

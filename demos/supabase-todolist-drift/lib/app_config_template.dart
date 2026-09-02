@@ -6,4 +6,8 @@ class AppConfig {
   static const String powersyncUrl = 'https://foo.powersync.journeyapps.com';
   static const String supabaseStorageBucket =
       ''; // Optional. Only required when syncing attachments and using Supabase Storage. See packages/powersync_attachments_helper.
+
+  // Whether to enable swipe-to-refresh through through checkpoint requests
+  // (https://docs.powersync.com/client-sdks/advanced/checkpoint-requests).
+  static const bool enableCheckpointRequests = false;
 }

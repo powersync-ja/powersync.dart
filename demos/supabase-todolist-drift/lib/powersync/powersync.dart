@@ -7,6 +7,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:stream_transform/stream_transform.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../app_config.dart';
 import '../supabase.dart';
 import 'connector.dart';
 import 'schema.dart';
@@ -22,10 +23,17 @@ Future<PowerSyncDatabase> powerSyncInstance(Ref ref) async {
   );
   await db.initialize();
 
+  final syncOptions = SyncOptions(
+    checkpointMode: AppConfig.enableCheckpointRequests
+        // ignore: experimental_member_use
+        ? CheckpointMode.requests()
+        : const CheckpointMode.legacy(),
+  );
+
   SupabaseConnector? currentConnector;
   if (ref.read(sessionProvider).value != null) {
     currentConnector = SupabaseConnector();
-    db.connect(connector: currentConnector);
+    db.connect(connector: currentConnector, options: syncOptions);
   }
 
   final instance = Supabase.instance.client.auth;
@@ -33,7 +41,7 @@ Future<PowerSyncDatabase> powerSyncInstance(Ref ref) async {
     final event = data.event;
     if (event == AuthChangeEvent.signedIn) {
       currentConnector = SupabaseConnector();
-      db.connect(connector: currentConnector!);
+      db.connect(connector: currentConnector!, options: syncOptions);
     } else if (event == AuthChangeEvent.signedOut) {
       currentConnector = null;
       await db.disconnect();

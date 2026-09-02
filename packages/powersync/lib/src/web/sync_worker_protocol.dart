@@ -56,6 +56,10 @@ enum SyncWorkerMessageType {
   /// For requests, the payload is a [CustomCheckpointRequest]. The response is
   /// a nullable string.
   customCheckpointRequest,
+
+  /// Request a checkpoint from the sync client.
+  requestCheckpoint,
+
   invalidCredentialsCallback,
   credentialsCallback,
 
@@ -294,6 +298,7 @@ extension type SerializedSyncStatus._(JSObject _) implements JSObject {
     required JSArray? priorityStatusEntries,
     required JSArray<SerializedBucketProgress>? syncProgress,
     required JSString streamSubscriptions,
+    required JSBigInt? lastAppliedCheckpoint,
   });
 
   factory SerializedSyncStatus.from(SyncStatus status) {
@@ -321,6 +326,11 @@ extension type SerializedSyncStatus._(JSObject _) implements JSObject {
         ),
       },
       streamSubscriptions: json.encode(status.internalSubscriptions).toJS,
+      lastAppliedCheckpoint: switch (status.lastAppliedCheckpoint) {
+        null => null,
+        JsBigInt64(:final value) => value,
+        final other => JsBigInt64.parse(other.toString()).value,
+      },
     );
   }
 
@@ -336,6 +346,7 @@ extension type SerializedSyncStatus._(JSObject _) implements JSObject {
   external JSArray? priorityStatusEntries;
   external JSArray<SerializedBucketProgress>? syncProgress;
   external JSString? streamSubscriptions;
+  external JSBigInt? lastAppliedCheckpoint;
 
   SyncStatus asSyncStatus() {
     final streamSubscriptions = this.streamSubscriptions?.toDart;
@@ -382,6 +393,10 @@ extension type SerializedSyncStatus._(JSObject _) implements JSObject {
                 ),
               )
               .toList(),
+      },
+      lastAppliedCheckpoint: switch (lastAppliedCheckpoint) {
+        null => null,
+        final id => int64FromBigInt(id),
       },
     );
   }
@@ -468,6 +483,7 @@ final class WorkerCommunicationChannel {
             case SyncWorkerMessageType.credentialsCallback:
             case SyncWorkerMessageType.invalidCredentialsCallback:
             case SyncWorkerMessageType.uploadCrud:
+            case SyncWorkerMessageType.requestCheckpoint:
               requestId = (message.payload as JSNumber).toDartInt;
             case SyncWorkerMessageType.customCheckpointRequest:
               requestId =
@@ -717,6 +733,13 @@ final class WorkerCommunicationChannel {
     );
 
     return (await completion) as JSArrayBuffer?;
+  }
+
+  Future<JSBigInt> requestCheckpoint() async {
+    final response = await _numericRequest(
+      SyncWorkerMessageType.requestCheckpoint,
+    );
+    return response as JSBigInt;
   }
 
   Future<void> close() async {
