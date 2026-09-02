@@ -1,4 +1,4 @@
-## 2.4.0 (unreleased)
+## 2.4.0
 
 - Add `SyncOptions.checkpointMode`, which can be used to replace a legacy implementation for write checkpoints
   with a newer and more efficient endpoint.
