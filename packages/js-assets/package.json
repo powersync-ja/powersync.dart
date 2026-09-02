@@ -1,6 +1,6 @@
 {
   "name": "@powersync/dart-wasm-bundles",
-  "version": "2.3.3",
+  "version": "2.4.0",
   "description": "Pre-compiled PowerSync Dart SDK assets.",
   "type": "module",
   "publishConfig": {
