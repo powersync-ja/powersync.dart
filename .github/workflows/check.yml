@@ -25,6 +25,16 @@ jobs:
         with:
           persona: pedantic
 
+  agent_skills:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository)
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Verify vendored agent skill matches its recorded release
+        run: tool/sync_skills.sh --check
+
   setup:
     if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository)
     uses: ./.github/workflows/prepare_wasm.yml
