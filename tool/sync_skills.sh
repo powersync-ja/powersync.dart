@@ -5,12 +5,15 @@
 # this package.
 #
 # Usage:
-#   tool/sync_skills.sh            # sync from the latest agent-skills release
-#   tool/sync_skills.sh v1.4.0     # sync from a specific release tag
-#   tool/sync_skills.sh --check    # re-sync the recorded release into a temp
-#                                  # dir and fail if the vendored files differ
+#   tool/sync_skills.sh                # sync from the latest agent-skills release
+#   tool/sync_skills.sh v1.4.0         # sync from a specific release tag
+#   tool/sync_skills.sh --wait v1.4.0  # same, but wait up to 10 minutes for the
+#                                      # release assets, which agent-skills uploads
+#                                      # a little after publishing the release
+#   tool/sync_skills.sh --check        # re-sync the recorded release into a temp
+#                                      # dir and fail if the vendored files differ
 #
-# Set GH_TOKEN to avoid GitHub API rate limits (done automatically in CI).
+# Set GH_TOKEN to avoid GitHub API rate limits when looking up the latest release.
 set -euo pipefail
 
 SOURCE_REPO="powersync-ja/agent-skills"
@@ -23,12 +26,17 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SKILLS_DIR="$ROOT/packages/powersync/skills"
 
 check=false
+wait_seconds=0
 tag=""
-case "${1:-}" in
-  --check) check=true ;;
-  "") ;;
-  *) tag="$1" ;;
-esac
+for arg in "$@"; do
+  case "$arg" in
+    --check) check=true ;;
+    --wait) wait_seconds=600 ;;
+    --wait=*) wait_seconds="${arg#--wait=}" ;;
+    -*) echo "Unknown option: $arg" >&2; exit 2 ;;
+    *) tag="$arg" ;;
+  esac
+done
 
 recorded_tag() {
   sed -n 's#^Source release: .*/releases/tag/\(v[^ )]*\).*#\1#p' "$SKILLS_DIR/README.md"
@@ -59,10 +67,24 @@ fi
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 
+# agent-skills publishes the release first and uploads the assets from a separate
+# job, so they can be missing for a few minutes. With --wait, keep retrying.
+download() {
+  local url="$1" out="$2" deadline=$((SECONDS + wait_seconds))
+  until curl -fsSL -o "$out" "$url"; do
+    if (( SECONDS >= deadline )); then
+      echo "Could not download $url (assets may still be uploading; try --wait)" >&2
+      exit 1
+    fi
+    echo "Waiting for $url ..."
+    sleep 15
+  done
+}
+
 base="https://github.com/$SOURCE_REPO/releases/download/$tag"
 echo "Fetching $SOURCE_SKILL skill from $SOURCE_REPO $tag"
-curl -fsSL -o "$tmp/index.json" "$base/index.json"
-curl -fsSL -o "$tmp/skill.tar.gz" "$base/$SOURCE_SKILL.tar.gz"
+download "$base/index.json" "$tmp/index.json"
+download "$base/$SOURCE_SKILL.tar.gz" "$tmp/skill.tar.gz"
 
 # index.json lists each skill with the sha256 digest of its archive.
 expected="$(awk -v name="$SOURCE_SKILL" '
@@ -101,13 +123,13 @@ cat > "$out/README.md" <<README
 
 This directory is vendored from [powersync-ja/agent-skills](https://github.com/$SOURCE_REPO)
 and is installed into users' projects by [\`package:skills\`](https://pub.dev/packages/skills)
-(\`dart run skills@ get\`). The upstream \`$SOURCE_SKILL\` skill is renamed to
+(\`dart run skills@ get\`). The \`$SOURCE_SKILL\` skill from that repository is renamed to
 \`$SKILL_NAME\` because \`package:skills\` only installs skills prefixed with the
 package name.
 
-Do not edit these files here. Contribute to the upstream repository instead, then
-run \`tool/sync_skills.sh\` to pull the new release. CI also opens a PR when a
-new release is available.
+Do not edit these files here. Contribute to powersync-ja/agent-skills instead. A
+Claude routine runs \`tool/sync_skills.sh\` and opens a PR here whenever agent-skills
+publishes a release, and CI checks that these files match the recorded release.
 
 Source release: https://github.com/$SOURCE_REPO/releases/tag/$tag
 Archive digest: sha256:$expected
