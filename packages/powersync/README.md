@@ -18,6 +18,18 @@ Install the [latest version](https://pub.dev/packages/powersync/versions) of the
 dart pub add powersync
 ```
 
+# AI agent skills
+
+This package ships an [agent skill](https://agentskills.io) that teaches AI coding agents (Claude Code, Cursor, Copilot, Codex and others) how to build with PowerSync. Install it into your project with [`package:skills`](https://pub.dev/packages/skills):
+
+```bash
+dart run skills@ get
+```
+
+The `skills@` syntax requires Dart 3.12 or later. On older SDKs, run `dart pub global activate skills` once and then `dart pub global run skills get`.
+
+The same skill is also available via `npx skills add powersync-ja/agent-skills` and as a Claude Code plugin, see [powersync-ja/agent-skills](https://github.com/powersync-ja/agent-skills). If you already installed it in one of those ways, skip `skills get` to avoid a duplicate copy.
+
 # Getting Started
 
 Our [full SDK reference](https://docs.powersync.com/client-sdk-references/flutter) contains everything you need to know to get started implementing PowerSync in your project. 
