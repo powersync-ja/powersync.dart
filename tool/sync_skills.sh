@@ -5,13 +5,10 @@
 # this package.
 #
 # Usage:
-#   tool/sync_skills.sh                # sync from the latest agent-skills release
-#   tool/sync_skills.sh v1.4.0         # sync from a specific release tag
-#   tool/sync_skills.sh --wait v1.4.0  # same, but wait up to 10 minutes for the
-#                                      # release assets, which agent-skills uploads
-#                                      # a little after publishing the release
-#   tool/sync_skills.sh --check        # re-sync the recorded release into a temp
-#                                      # dir and fail if the vendored files differ
+#   tool/sync_skills.sh            # sync from the latest agent-skills release
+#   tool/sync_skills.sh v1.4.0     # sync from a specific release tag
+#   tool/sync_skills.sh --check    # re-sync the recorded release into a temp
+#                                  # dir and fail if the vendored files differ
 #
 # Set GH_TOKEN to avoid GitHub API rate limits when looking up the latest release.
 set -euo pipefail
@@ -26,13 +23,10 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SKILLS_DIR="$ROOT/packages/powersync/skills"
 
 check=false
-wait_seconds=0
 tag=""
 for arg in "$@"; do
   case "$arg" in
     --check) check=true ;;
-    --wait) wait_seconds=600 ;;
-    --wait=*) wait_seconds="${arg#--wait=}" ;;
     -*) echo "Unknown option: $arg" >&2; exit 2 ;;
     *) tag="$arg" ;;
   esac
@@ -67,24 +61,16 @@ fi
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 
-# agent-skills publishes the release first and uploads the assets from a separate
-# job, so they can be missing for a few minutes. With --wait, keep retrying.
-download() {
-  local url="$1" out="$2" deadline=$((SECONDS + wait_seconds))
-  until curl -fsSL -o "$out" "$url"; do
-    if (( SECONDS >= deadline )); then
-      echo "Could not download $url (assets may still be uploading; try --wait)" >&2
-      exit 1
-    fi
-    echo "Waiting for $url ..."
-    sleep 15
-  done
-}
-
 base="https://github.com/$SOURCE_REPO/releases/download/$tag"
 echo "Fetching $SOURCE_SKILL skill from $SOURCE_REPO $tag"
-download "$base/index.json" "$tmp/index.json"
-download "$base/$SOURCE_SKILL.tar.gz" "$tmp/skill.tar.gz"
+# agent-skills uploads the release assets from a job that runs after the release
+# is published, so they are missing for a minute or so after a new release.
+if ! curl -fsSL -o "$tmp/index.json" "$base/index.json" ||
+   ! curl -fsSL -o "$tmp/skill.tar.gz" "$base/$SOURCE_SKILL.tar.gz"; then
+  echo "Could not download the $tag release assets. If $tag was just published," >&2
+  echo "the upload job may still be running; try again in a minute." >&2
+  exit 1
+fi
 
 # index.json lists each skill with the sha256 digest of its archive.
 expected="$(awk -v name="$SOURCE_SKILL" '
