@@ -71,5 +71,25 @@ void main() {
       final changes = await changesFuture;
       expect(changes.first, equals(UpdateNotification({'customers'})));
     });
+
+    test('soft clear', () async {
+      final db = await testUtils.setupPowerSync(path: path, schema: testSchema);
+      await db.execute(
+        'INSERT INTO customers (id, name, email) VALUES(uuid(), ?, ?)',
+        ['Testing', 'testing@powersync.com'],
+      );
+      await db.execute(
+        'INSERT INTO ps_buckets (name, last_applied_op) VALUES (?, ?)',
+        ['bkt', 10],
+      );
+
+      // Doing a soft-clear should delete data but keep the bucket around.
+      await db.disconnectAndClear(soft: true);
+      expect(await db.get('SELECT name FROM ps_buckets'), {'name': 'bkt'});
+
+      // Doing a default clear also deletes buckets.
+      await db.disconnectAndClear();
+      expect(await db.getAll('SELECT name FROM ps_buckets'), isEmpty);
+    });
   });
 }

@@ -1,3 +1,8 @@
+## 2.5.0-wip
+
+- Add `soft` parameter to `disconnectAndClear`, which can be used to keep an internal copy around for a
+  faster sync when connecting again.
+
 ## 2.4.0
 
 - Add `SyncOptions.checkpointMode`, which can be used to replace a legacy implementation for write checkpoints
