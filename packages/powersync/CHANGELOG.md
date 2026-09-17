@@ -1,4 +1,4 @@
-## 2.4.1 (unreleased)
+## 2.5.0 (unreleased)
 
 - Bundle the PowerSync agent skill from [powersync-ja/agent-skills](https://github.com/powersync-ja/agent-skills)
   so it can be installed with `dart run skills@ get` (Dart 3.12+, or `dart pub global run skills get` on
