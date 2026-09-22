@@ -59,9 +59,15 @@ jobs:
           flutter-version: "3.x"
           channel: "stable"
       - run: dart pub get
+      - run: corepack enable
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26
+          cache: pnpm
+          cache-dependency-path: packages/diagnostics-integration/pnpm-lock.yaml
       - run: tool/build.sh
         name: Build and copy devtools extension
-        working-directory: packages/powersync_devtools_extension
+        working-directory: packages/diagnostics-integration
       
       - name: Publish to pub.dev
         run: dart pub publish -f

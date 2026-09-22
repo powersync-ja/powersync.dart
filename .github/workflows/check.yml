@@ -47,18 +47,20 @@ jobs:
           touch demos/supabase-trello/.env
       - name: Lint
         run: dart analyze --fatal-infos --fatal-warnings
-      - name: Build DevTools extension
-        run: ./tool/build.sh
-        working-directory: packages/powersync_devtools_extension
-      - name: Publish dry-run
-        run: melos publish --dry-run --yes
-
       - run: corepack enable
       - uses: actions/setup-node@v7
         with:
           node-version: 26
           cache: pnpm
-          cache-dependency-path: packages/js-assets/pnpm-lock.yaml
+          cache-dependency-path: |
+            packages/diagnostics-integration/pnpm-lock.yaml
+            packages/js-assets/pnpm-lock.yaml
+      - name: Build DevTools extension
+        run: ./tool/build.sh
+        working-directory: packages/diagnostics-integration
+      - name: Publish dry-run
+        run: melos publish --dry-run --yes
+
       - working-directory: packages/js-assets
         run: |
           pnpm build
