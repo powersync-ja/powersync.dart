@@ -1,0 +1,6 @@
+allowBuilds:
+  vue-demi: false
+
+overrides:
+  "@powersync/diagnostics-core": "file:/Users/simon/src/powersync-js/packages/diagnostics-core/powersync-diagnostics-core-0.1.0.tgz"
+  "@powersync/diagnostics-ui": "file:/Users/simon/src/powersync-js/packages/diagnostics-ui/powersync-diagnostics-ui-0.1.0.tgz"
