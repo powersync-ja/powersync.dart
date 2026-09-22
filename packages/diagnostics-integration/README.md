@@ -4,6 +4,14 @@ A [DevTools extension](https://pub.dev/packages/devtools_extensions) for PowerSy
 
 ## Getting Started
 
+The devtools UI of this extension is shared with the PowerSync JavaScript SDKs.
+To build the UI as a JavaScript library for Dart to adopt, use
+
+```shell
+pnpm install
+pnpm build
+```
+
 To work on the extension, you can launch this project in a simulated environment. On the command line,
 launch `flutter run -d chrome --dart-define=use_simulated_environment=true`.
 If you want to launch from VS Code, this configuration might be convenient:
@@ -14,7 +22,7 @@ If you want to launch from VS Code, this configuration might be convenient:
         "type": "dart",
         "request": "launch",
         "program": "lib/main.dart",
-        "cwd": "packages/powersync_devtools_extension",
+        "cwd": "packages/diagnostics-integration",
         "args": [
             "--dart-define=use_simulated_environment=true"
         ]

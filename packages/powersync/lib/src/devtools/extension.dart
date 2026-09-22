@@ -4,6 +4,7 @@ import 'dart:developer';
 
 import 'package:path/path.dart' as p;
 
+import '../sync/sync_status.dart';
 import '../version.dart';
 import 'devtools.dart';
 import 'protocol.dart';
@@ -77,6 +78,48 @@ final class PowerSyncDevToolsExtension {
         };
       case 'unsubscribe':
         _clientSubscriptions.remove(int.parse(parameters['id']!))?.cancel();
+        return null;
+      case 'disconnect':
+        await tracked.database.disconnect();
+        return null;
+      case 'clear-data':
+        await tracked.database.disconnectAndClear();
+        return null;
+      case 'request-checkpoint':
+        await tracked.database.requestCheckpoint();
+        return null;
+      case 'sync-subscribe':
+        final name = parameters['name']!;
+        final rawParams = parameters['params'];
+        final params = rawParams == null ? null : json.decode(rawParams);
+        final ttl = switch (parameters['ttl']) {
+          null => null,
+          final value => Duration(seconds: int.parse(value)),
+        };
+        final priority = switch (parameters['priority']) {
+          null => null,
+          final value => StreamPriority(int.parse(value)),
+        };
+
+        final subscription = await tracked.database
+            .syncStream(name, params as Map<String, Object?>)
+            .subscribe(ttl: ttl, priority: priority);
+        final key = DiagnosticsStreamSubscription(
+          name: name,
+          serializedParameters: rawParams,
+        );
+
+        tracked.subscriptions.remove(key)?.unsubscribe();
+        tracked.subscriptions[key] = subscription;
+        return null;
+      case 'sync-unsubscribe':
+        final name = parameters['name']!;
+        final rawParams = parameters['params'];
+        final key = DiagnosticsStreamSubscription(
+          name: name,
+          serializedParameters: rawParams,
+        );
+        tracked.subscriptions.remove(key)?.unsubscribe();
         return null;
       default:
         throw UnsupportedError('Unsupported command: $command');

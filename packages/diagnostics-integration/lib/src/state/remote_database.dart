@@ -73,7 +73,9 @@ final class RemoteDatabase extends SqliteConnection {
       subscriptionId = response['id'] as int;
 
       void addStatus(Map<String, Object?> serialized) {
-        _statusController.add(deserializeSyncStatus(serialized));
+        final deserialized = deserializeSyncStatus(serialized);
+        currentStatus = deserialized;
+        _statusController.add(deserialized);
       }
 
       addStatus(response['current'] as Map<String, Object?>);
@@ -111,7 +113,7 @@ final class RemoteDatabase extends SqliteConnection {
 
     final json = response.json!;
     if (json.containsKey('error')) {
-      throw json['error'];
+      throw json['error'] as Object;
     }
 
     return json['ok'];
@@ -229,7 +231,7 @@ final class _WriteContext implements SqliteWriteContext {
     final columnNames = response['columnNames'] as List;
 
     return ResultSet(columnNames.cast(), null, [
-      for (final row in (response['rows'] as List).cast<List>())
+      for (final row in (response['rows'] as List).cast<List<Object?>>())
         [for (final value in row) decodeSqlValue(value)],
     ]);
   }
