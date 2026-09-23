@@ -2,6 +2,8 @@
 
 - Add `soft` parameter to `disconnectAndClear`, which can be used to keep an internal copy around for a
   faster sync when connecting again.
+- Bundle [PowerSync agent skills](github.com/powersync-ja/agent-skills) with this package, install them with
+  `dart run skills@ get`.
 
 ## 2.4.0
 
