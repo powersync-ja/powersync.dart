@@ -15,6 +15,11 @@ void main() async {
     final downloadUrl = await _findLatestAsset(client);
     print('Downloading skills from $downloadUrl');
 
+    final outputDir = Directory(p.join('skills', 'powersync-sdk')).absolute;
+    if (await outputDir.exists()) {
+      await outputDir.delete(recursive: true);
+    }
+
     // Note: No authorization header here, the asset is public and the request
     // gets redirected to a different host.
     final response = await client.send(Request('GET', downloadUrl));
@@ -25,11 +30,15 @@ void main() async {
       final TarEntry(:header, :contents) = reader.current;
       if (header.typeFlag != .reg) continue;
 
-      // Ignoring the obvious path traversal bug here, we're extracting a
-      // trusted source.
-      final target = File(
-        p.joinAll(['skills', 'powersync-sdk', ...p.url.split(header.name)]),
-      );
+      final targetPath = p.joinAll([
+        outputDir.path,
+        ...p.url.split(header.name),
+      ]);
+      if (!p.isWithin(outputDir.path, targetPath)) {
+        throw StateError('Invalid path ${header.name}');
+      }
+
+      final target = File(targetPath);
       final parent = target.parent;
       if (!await parent.exists()) {
         await parent.create(recursive: true);
