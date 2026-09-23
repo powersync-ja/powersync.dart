@@ -62,7 +62,13 @@ jobs:
       - run: tool/build.sh
         name: Build and copy devtools extension
         working-directory: packages/powersync_devtools_extension
-      
+
+      - name: Vendor skills
+        run: dart run tool/vendor_skills.dart
+        working-directory: packages/powersync
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
       - name: Publish to pub.dev
         run: dart pub publish -f
         working-directory: packages/powersync
