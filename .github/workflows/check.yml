@@ -38,6 +38,11 @@ jobs:
         with:
           persist-credentials: false
       - uses: ./.github/actions/prepare
+      - name: Vendor skills
+        run: dart run tool/vendor_skills.dart
+        working-directory: packages/powersync
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
       - name: Check formatting
         run:  dart format --set-exit-if-changed -o none .
       - name: Prepare templates for analysis
