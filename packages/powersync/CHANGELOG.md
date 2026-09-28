@@ -4,6 +4,8 @@
   faster sync when connecting again.
 - Bundle [PowerSync agent skills](github.com/powersync-ja/agent-skills) with this package, install them with
   `dart run skills@ get`.
+- Web: Upload writes made in a tab that isn't hosting the sync worker's database connection when databases
+  are opened per tab (e.g. OPFS in Chrome) ([#481](https://github.com/powersync-ja/powersync.dart/issues/481)).
 
 ## 2.4.0
 

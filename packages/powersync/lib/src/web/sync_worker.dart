@@ -18,6 +18,8 @@ import 'package:powersync/src/sync/internal_connector.dart';
 import 'package:powersync/src/sync/options.dart';
 import 'package:powersync/src/sync/streaming_sync.dart';
 import 'package:sqlite_async/web.dart';
+// ignore: implementation_imports
+import 'package:sqlite_async/src/web/database/broadcast_updates.dart';
 import 'package:web/web.dart' hide RequestMode;
 
 import '../database/powersync_database.dart';
@@ -324,9 +326,13 @@ class SyncRunner {
     Stream<UpdateNotification> crudStream = powerSyncUpdateNotifications(
       Stream.empty(),
     );
-    final filteredStream = database.updates.transform(
-      UpdateNotification.filterTablesTransformer(tables),
-    );
+    // With a connection per tab (OPFS), another tab's writes reach this one
+    // only through sqlite_async's broadcast channel; in a shared worker none
+    // are sent.
+    final filteredStream = StreamGroup.merge([
+      database.updates,
+      BroadcastUpdates(identifier).updates,
+    ]).transform(UpdateNotification.filterTablesTransformer(tables));
     crudStream = UpdateNotification.throttleStream(
       filteredStream,
       options.crudThrottleTime,
