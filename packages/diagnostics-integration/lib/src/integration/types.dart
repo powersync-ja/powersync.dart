@@ -46,17 +46,15 @@ extension type QueryParams(JSObject _) implements JSObject {
 /// A serialized SQL result set.
 extension type QueryResult._(JSObject _) implements JSObject {
   external factory QueryResult({
-    /// Column names, in order.
+    /// Column names, in order
     required JSArray<JSString> columns,
 
-    /// One object per row, keyed by column name.
-    required JSArray<JSObject> rows,
-    required int rowCount,
+    /// One array per row, values in `columns` order
+    required JSArray<JSArray> rows,
   });
 
   external JSArray<JSString> get columns;
   external JSArray<JSObject> get rows;
-  external int get rowCount;
 }
 
 // --- sync status ---
@@ -66,14 +64,10 @@ extension type ProgressState._(JSObject _) implements JSObject {
   external factory ProgressState({
     required int downloadedOperations,
     required int totalOperations,
-
-    /// `0` to `1`.
-    required double downloadedFraction,
   });
 
   external int get downloadedOperations;
   external int get totalOperations;
-  external double get downloadedFraction;
 }
 
 /// Sync state for a single bucket priority level.

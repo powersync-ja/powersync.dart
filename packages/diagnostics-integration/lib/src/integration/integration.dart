@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:js_interop';
 
 import 'package:collection/collection.dart';
-import 'package:powersync/powersync.dart';
 import 'package:riverpod/riverpod.dart';
 
 import '../state/databases.dart';
@@ -34,8 +33,10 @@ final class DartSdkIntegration(final Ref _ref) {
 
     return QueryResult(
       columns: rs.columnNames.map((e) => e.toJS).toList().toJS,
-      rows: [for (final row in rs) row.jsify() as JSObject].toJS,
-      rowCount: rs.length,
+      rows: <JSArray>[
+        for (final row in rs)
+          [for (final value in row.values) value.jsify()].toJS,
+      ].toJS,
     );
   }
 
@@ -62,24 +63,6 @@ final class DartSdkIntegration(final Ref _ref) {
       sqliteCoreVersion: coreVersion.columnAt(0) as String,
       sdk: 'Dart',
     );
-  }
-
-  Future<SyncState> _currentSyncStatus() async {
-    final completer = Completer<SyncStatus>();
-    ProviderSubscription<SyncStatus?>? subscription;
-    subscription = _ref.listen(syncStatus, (_, status) {
-      if (status != null) {
-        completer.complete(status);
-        subscription?.close();
-      }
-    }, fireImmediately: true);
-
-    return (await completer.future).toDiagnosticsSyncState();
-  }
-
-  Future<UploadQueueState> _uploadQueueStats() async {
-    final pending = await _ref.read(pendingCrudItems.future);
-    return UploadQueueState(count: pending, size: null);
   }
 
   Future<void> _action(ActionRequest request) async {
@@ -148,12 +131,6 @@ final class DartSdkIntegration(final Ref _ref) {
 
   @JSExport()
   JSPromise<ProtocolInfo> getInfo() => _getInfo().toJS;
-
-  @JSExport()
-  JSPromise<SyncState> currentSyncStatus() => _currentSyncStatus().toJS;
-
-  @JSExport()
-  JSPromise<UploadQueueState> getUploadQueueStats() => _uploadQueueStats().toJS;
 
   @JSExport()
   JSPromise<Unsubscribe> observeEvents(

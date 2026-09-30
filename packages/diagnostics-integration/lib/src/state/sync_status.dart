@@ -116,7 +116,6 @@ extension on ProgressWithOperations {
     return ProgressState(
       downloadedOperations: downloadedOperations,
       totalOperations: totalOperations,
-      downloadedFraction: downloadedFraction,
     );
   }
 }
