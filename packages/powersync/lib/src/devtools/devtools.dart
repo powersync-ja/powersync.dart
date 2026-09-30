@@ -3,9 +3,8 @@ library;
 
 import 'dart:developer' as dev;
 import 'package:meta/meta.dart';
+import 'package:powersync/powersync.dart';
 
-import '../connector.dart';
-import '../database/powersync_database.dart';
 import 'extension.dart';
 
 // We want to avoid including this code for release-mode builds, since it's only
@@ -24,6 +23,10 @@ final class ExposedPowerSyncDatabase {
   final PowerSyncDatabase database;
   final int id;
 
+  /// Sync Stream subscriptions requested through the DevTools extension.
+  final Map<DiagnosticsStreamSubscription, SyncStreamSubscription>
+  subscriptions = {};
+
   PowerSyncCredentials? lastCredentials;
 
   ExposedPowerSyncDatabase(this.database) : id = _nextId++ {
@@ -41,6 +44,26 @@ final class ExposedPowerSyncDatabase {
 
   static void postChangeEvent() {
     postEvent('databases-changed', {});
+  }
+}
+
+final class DiagnosticsStreamSubscription {
+  final String name;
+  final String? serializedParameters;
+
+  DiagnosticsStreamSubscription({
+    required this.name,
+    required this.serializedParameters,
+  });
+
+  @override
+  int get hashCode => Object.hash(name, serializedParameters);
+
+  @override
+  bool operator ==(Object other) {
+    return other is DiagnosticsStreamSubscription &&
+        other.name == name &&
+        other.serializedParameters == serializedParameters;
   }
 }
 
