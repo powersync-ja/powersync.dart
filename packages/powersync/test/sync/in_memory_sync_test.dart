@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:async/async.dart';
+import 'package:http/http.dart' as http;
 import 'package:logging/logging.dart';
 import 'package:powersync/powersync.dart';
 import 'package:powersync/src/sync/checkpoint_request.dart';
@@ -51,15 +52,19 @@ void _declareTests(String name, bool bson) {
       );
     }
 
-    Future<void> connect({
-      PowerSyncBackendConnector? connector,
-      SyncOptions? options,
-    }) async {
+    void configureServer() {
       final (client, server) = inMemoryServer();
       server.mount((req) => syncService.router(req));
       mockServer = server;
 
       database.httpClient = client;
+    }
+
+    Future<void> connect({
+      ConnectRequest? connector,
+      SyncOptions? options,
+    }) async {
+      configureServer();
       await database.connect(
         connector:
             connector ??
@@ -86,8 +91,9 @@ void _declareTests(String name, bool bson) {
     });
 
     Future<StreamQueue<SyncStatus>> waitForConnection({
-      PowerSyncBackendConnector? connector,
+      ConnectRequest? connector,
       SyncOptions? options,
+      bool connectHere = true,
       bool expectNoWarnings = true,
       bool addKeepLive = true,
     }) async {
@@ -98,7 +104,10 @@ void _declareTests(String name, bool bson) {
           }
         });
       }
-      await connect(connector: connector, options: options);
+
+      if (connectHere) {
+        await connect(connector: connector, options: options);
+      }
       await syncService.waitForListener;
 
       expect(database.currentStatus.lastSyncedAt, isNull);
@@ -1468,6 +1477,72 @@ void _declareTests(String name, bool bson) {
         await database.close();
       },
     );
+    test('download-only', () async {
+      configureServer();
+      await database.connect(
+        connector: .downloadOnly(
+          endpoint: mockServer.url.toString(),
+          authenticator: TestConnector(credentialsCallback),
+        ),
+      );
+      await waitForConnection(connectHere: false);
+
+      // Create local mutation, which is never uploaded
+      await database.execute(
+        'insert into customers (id, name) values (uuid(), ?)',
+        ['customer'],
+      );
+
+      // Upgrade to a full connection, which should upload.
+      final didUpload = Completer<void>();
+      syncService.endCurrentListener();
+      await database.connect(
+        connector: ConnectRequest(
+          endpoint: mockServer.url.toString(),
+          authenticator: TestConnector(credentialsCallback),
+          uploader: MutationUploader((db) async {
+            if (await db.getNextCrudTransaction() case final tx?) {
+              didUpload.complete();
+              await tx.complete();
+            }
+          }),
+        ),
+      );
+      await didUpload.future;
+    });
+
+    test('upload-only', () async {
+      final didUpload = Completer<void>();
+      // Connecting in upload-only mode should make no SDK-initiated HTTP
+      // requests.
+      database.httpClient = _DisallowHttpClient();
+      await database.connect(
+        connector: .uploadOnly(
+          MutationUploader((db) async {
+            if (await db.getNextCrudTransaction() case final tx?) {
+              didUpload.complete();
+              await tx.complete();
+            }
+          }),
+        ),
+      );
+      await database.execute(
+        'insert into customers (id, name) values (uuid(), ?)',
+        ['customer'],
+      );
+      await didUpload.future;
+
+      // Reconnect in download-only mode. This should request a write checkpoint
+      // because the upload-only mode can't.
+      configureServer();
+      await database.connect(
+        connector: .downloadOnly(
+          endpoint: mockServer.url.toString(),
+          authenticator: TestConnector(credentialsCallback),
+        ),
+      );
+      await waitForConnection(connectHere: false);
+    });
 
     group('abort', () {
       test('during connect', () async {
@@ -1541,5 +1616,12 @@ final class _BlockedMutex implements Mutex {
   }) async {
     await abortTrigger;
     throw AbortException('lock');
+  }
+}
+
+final class _DisallowHttpClient extends http.BaseClient {
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) {
+    throw UnsupportedError('http');
   }
 }

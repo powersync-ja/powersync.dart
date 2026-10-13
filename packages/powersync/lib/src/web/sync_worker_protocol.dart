@@ -15,6 +15,7 @@ import '../log.dart';
 import '../platform_specific/web.dart';
 import '../sync/instruction.dart';
 import '../sync/status_update.dart';
+import '../sync/internal_connector.dart';
 import '../sync/streaming_sync.dart';
 import 'http/protocol.dart';
 import 'http/server.dart';
@@ -122,6 +123,8 @@ extension type StartSynchronization._(JSObject _) implements JSObject {
     bool? customHttpClient,
     int? checkpointModeRequestsDelay,
     bool? diagnostics,
+    required bool hasAuthenticator,
+    required bool hasUploader,
   });
 
   external String get databaseName;
@@ -136,6 +139,8 @@ extension type StartSynchronization._(JSObject _) implements JSObject {
   external bool? get customHttpClient;
   external int? checkpointModeRequestsDelay;
   external bool? diagnostics;
+  external bool? get hasAuthenticator;
+  external bool? get hasUploader;
 }
 
 @anonymous
@@ -498,6 +503,7 @@ final class WorkerCommunicationChannel {
 
   Future<void> startSynchronization(
     String databaseName,
+    InternalConnector connector,
     ResolvedSyncOptions options,
     Schema schema,
     List<SubscribedStream> streams,
@@ -530,6 +536,8 @@ final class WorkerCommunicationChannel {
             _ => null,
           },
           diagnostics: options.source.enableDiagnostics,
+          hasAuthenticator: connector.authenticator != null,
+          hasUploader: connector.uploader != null,
         ),
       ),
     );
@@ -660,6 +668,39 @@ final class WorkerCommunicationChannel {
     final crypto = (globalContext['crypto'] as Crypto);
     return 'powersync-worker-keepalive-${crypto.randomUUID()}';
   }
+}
+
+final class RemoteAuthenticator implements InternalAuthenticator {
+  final WorkerCommunicationChannel channel;
+
+  RemoteAuthenticator(this.channel);
+
+  @override
+  bool get mightPostCheckpointRequests => true;
+
+  @override
+  Future<PowerSyncCredentials?> getCredentialsCached() =>
+      channel.credentialsCallback();
+
+  @override
+  FutureOr<String?> postCheckpointRequest(
+    String clientId,
+    String checkpointRequestId,
+  ) => channel.customCheckpointRequest(clientId, checkpointRequestId);
+
+  @override
+  Future<PowerSyncCredentials?> prefetchCredentials({
+    bool invalidate = false,
+  }) => channel.invalidCredentialsCallback();
+}
+
+final class RemoteUploader implements InternalMutationUploader {
+  final WorkerCommunicationChannel channel;
+
+  RemoteUploader(this.channel);
+
+  @override
+  Future<void> upload() => channel.uploadCrud();
 }
 
 final class ChannelClosedException implements Exception {
