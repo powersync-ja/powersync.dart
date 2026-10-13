@@ -3,7 +3,6 @@ import 'dart:convert';
 
 import 'package:meta/meta.dart';
 import 'package:powersync/src/abort_controller.dart';
-import 'package:powersync/src/connector.dart';
 import 'package:powersync/src/database/active_instances.dart';
 import 'package:powersync/src/sync/options.dart';
 import 'package:powersync/src/sync/stream.dart';
@@ -12,6 +11,7 @@ import 'package:powersync/src/sync/sync_status.dart';
 import '../database/powersync_database.dart';
 import 'checkpoint_request.dart';
 import 'instruction.dart';
+import 'internal_connector.dart';
 import 'mutable_sync_status.dart';
 import 'stream_utils.dart';
 import 'streaming_sync.dart';
@@ -116,7 +116,7 @@ final class ConnectionManager {
   ];
 
   Future<void> connect({
-    required PowerSyncBackendConnector connector,
+    required InternalConnector connector,
     required ResolvedSyncOptions options,
   }) async {
     if (db.schema.rawTables.isNotEmpty &&

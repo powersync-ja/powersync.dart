@@ -185,7 +185,7 @@ final class TestDatabase extends BasePowerSyncDatabase {
 
   @override
   Future<RemoteStreamingSyncHandle> connectInternal({
-    required PowerSyncBackendConnector connector,
+    required InternalConnector connector,
     required ResolvedSyncOptions options,
     required List<SubscribedStream> initiallyActiveStreams,
     required Stream<List<SubscribedStream>> activeStreams,
@@ -200,7 +200,7 @@ final class TestDatabase extends BasePowerSyncDatabase {
       adapter: BucketStorage(this),
       schemaJson: jsonEncode(this.schema),
       options: options,
-      connector: InternalConnector.wrap(connector, this),
+      connector: connector,
       logger: logger,
       crudUpdateTriggerStream: database.onChange([
         'ps_crud',

@@ -41,7 +41,7 @@ final class NativePowerSyncDatabase extends BasePowerSyncDatabase {
   @override
   @internal
   Future<RemoteStreamingSyncHandle> connectInternal({
-    required PowerSyncBackendConnector connector,
+    required InternalConnector connector,
     required ResolvedSyncOptions options,
     required List<SubscribedStream> initiallyActiveStreams,
     required Stream<List<SubscribedStream>> activeStreams,
@@ -91,7 +91,7 @@ final class NativePowerSyncDatabase extends BasePowerSyncDatabase {
       switch (type) {
         case SyncIsolateToClientMessageType.getCredentialsCached:
           await (payload as PortCompleter).handle(() async {
-            final token = await connector.getCredentialsCached();
+            final token = await connector.authenticator!.getCredentialsCached();
             logger.fine('Credentials: $token');
             return token;
           });
@@ -101,10 +101,9 @@ final class NativePowerSyncDatabase extends BasePowerSyncDatabase {
               payload as (PortCompleter<PowerSyncCredentials?>, bool);
 
           await completer.handle(() async {
-            if (invalidate) {
-              connector.invalidateCredentials();
-            }
-            return await connector.prefetchCredentials();
+            return await connector.authenticator!.prefetchCredentials(
+              invalidate: invalidate,
+            );
           });
         case SyncIsolateToClientMessageType.init:
           final port = initPort = SyncIsolatePort(payload as SendPort);
@@ -115,17 +114,16 @@ final class NativePowerSyncDatabase extends BasePowerSyncDatabase {
           });
         case SyncIsolateToClientMessageType.uploadCrud:
           await (payload as PortCompleter).handle(() async {
-            await connector.uploadData(this);
+            await connector.uploader!.upload();
           });
         case SyncIsolateToClientMessageType.customCheckpointRequest:
           final (completer, clientId, requestId) =
               payload as (PortCompleter<String?>, String, String);
           await completer.handle(() async {
-            if (connector is CustomCheckpointRequestConnector) {
-              return connector.postCheckpointRequest(clientId, requestId);
-            } else {
-              return null;
-            }
+            return await connector.authenticator!.postCheckpointRequest(
+              clientId,
+              requestId,
+            );
           });
         case SyncIsolateToClientMessageType.status:
           final original = payload as SyncStatus;
@@ -208,6 +206,8 @@ final class NativePowerSyncDatabase extends BasePowerSyncDatabase {
         database.openFactory.path,
         options,
         jsonEncode(schema),
+        connector.authenticator != null,
+        connector.uploader != null,
       ),
       debugName: 'Sync ${database.openFactory.path}',
       onError: receiveUnhandledErrors.sendPort,
@@ -233,12 +233,16 @@ class _PowerSyncDatabaseIsolateArgs {
   final String databaseName;
   final ResolvedSyncOptions options;
   final String schemaJson;
+  final bool hasAuthenticator;
+  final bool hasUploader;
 
   _PowerSyncDatabaseIsolateArgs(
     this.sPort,
     this.databaseName,
     this.options,
     this.schemaJson,
+    this.hasAuthenticator,
+    this.hasUploader,
   );
 }
 
@@ -309,35 +313,6 @@ Future<void> _syncIsolate(_PowerSyncDatabaseIsolateArgs args) async {
     sPort.sendLog(copy);
   });
 
-  Future<PowerSyncCredentials?> getCredentialsCached() async {
-    final r = results.createPending<PowerSyncCredentials?>();
-    sPort.sendGetCredentialsCached(r.completer);
-    return r.future;
-  }
-
-  Future<PowerSyncCredentials?> prefetchCredentials({
-    required bool invalidate,
-  }) async {
-    final r = results.createPending<PowerSyncCredentials?>();
-    sPort.sendPrefetchCredentials(r.completer, invalidate);
-    return r.future;
-  }
-
-  Future<void> uploadCrud() async {
-    final r = results.createPending<void>();
-    sPort.sendUploadCrud(r.completer);
-    return r.future;
-  }
-
-  Future<String?> postCheckpointRequest(
-    String clientId,
-    String requestId,
-  ) async {
-    final r = results.createPending<String?>();
-    sPort.sendCustomCheckpointRequest(r.completer, clientId, requestId);
-    return r.future;
-  }
-
   runZonedGuarded(
     () async {
       final storage = BucketStorage(database);
@@ -345,10 +320,10 @@ Future<void> _syncIsolate(_PowerSyncDatabaseIsolateArgs args) async {
         adapter: storage,
         schemaJson: args.schemaJson,
         connector: InternalConnector(
-          getCredentialsCached: getCredentialsCached,
-          prefetchCredentials: prefetchCredentials,
-          uploadCrud: uploadCrud,
-          postCheckpointRequests: postCheckpointRequest,
+          args.hasAuthenticator
+              ? _ClientPortAuthenticator(results, sPort)
+              : null,
+          args.hasUploader ? _ClientPortUploader(results, sPort) : null,
         ),
         crudUpdateTriggerStream: database.onChange([
           'ps_crud',
@@ -385,5 +360,50 @@ final class _IsolateSyncHandle implements RemoteStreamingSyncHandle {
     final pending = _results.createPending<Int64>();
     _syncIsolate.requestCheckpoint(pending.completer);
     return pending.future;
+  }
+}
+
+final class _ClientPortAuthenticator implements InternalAuthenticator {
+  final IsolateResultCollection _results;
+  final SyncClientPort _port;
+
+  _ClientPortAuthenticator(this._results, this._port);
+
+  @override
+  bool get mightPostCheckpointRequests => true;
+
+  @override
+  Future<PowerSyncCredentials?> getCredentialsCached() {
+    final r = _results.createPending<PowerSyncCredentials?>();
+    _port.sendGetCredentialsCached(r.completer);
+    return r.future;
+  }
+
+  @override
+  FutureOr<String?> postCheckpointRequest(String clientId, String requestId) {
+    final r = _results.createPending<String?>();
+    _port.sendCustomCheckpointRequest(r.completer, clientId, requestId);
+    return r.future;
+  }
+
+  @override
+  Future<PowerSyncCredentials?> prefetchCredentials({bool invalidate = false}) {
+    final r = _results.createPending<PowerSyncCredentials?>();
+    _port.sendPrefetchCredentials(r.completer, invalidate);
+    return r.future;
+  }
+}
+
+final class _ClientPortUploader implements InternalMutationUploader {
+  final IsolateResultCollection _results;
+  final SyncClientPort _port;
+
+  _ClientPortUploader(this._results, this._port);
+
+  @override
+  Future<void> upload() {
+    final r = _results.createPending<void>();
+    _port.sendUploadCrud(r.completer);
+    return r.future;
   }
 }

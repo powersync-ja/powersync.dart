@@ -106,9 +106,10 @@ class StreamingSyncImplementation implements StreamingSync {
   Future<void> abort() async {
     // If streamingSync() hasn't been called yet, _abort will be null.
     if (_abort case final abort?) {
+      _internalCrudTriggerController.close();
+
       await (
         abort.abort(),
-        _internalCrudTriggerController.close(),
         // If a sync iteration is active, the control flow to abort is:
         //
         //  1. We close the non-line sync event stream here.
@@ -145,20 +146,27 @@ class StreamingSyncImplementation implements StreamingSync {
     try {
       await _resolveClientId();
 
-      final crudLoop = _crudLoop(abort).onError((
-        Object error,
-        StackTrace stackTrace,
-      ) {
-        if (abort.isAbortException(error)) return;
+      final authenticator = connector.authenticator;
+      final uploader = connector.uploader;
 
-        logger.warning('Error in crud upload loop', error, stackTrace);
-      });
+      final crudLoop = uploader != null
+          ? _crudLoop(abort, uploader).onError((
+              Object error,
+              StackTrace stackTrace,
+            ) {
+              if (abort.isAbortException(error)) return;
 
-      await (
-        crudLoop,
-        _downloadLoop(abort),
-        _repostUnacknowledgedCheckpointRequests(abort),
-      ).wait;
+              logger.warning('Error in crud upload loop', error, stackTrace);
+            })
+          : null;
+
+      await [
+        ?crudLoop,
+        if (authenticator != null) ...[
+          _downloadLoop(abort, authenticator),
+          _repostUnacknowledgedCheckpointRequests(authenticator, abort),
+        ],
+      ].wait;
     } finally {
       _checkpointState.disconnect();
       abort.completeAbort();
@@ -171,8 +179,17 @@ class StreamingSyncImplementation implements StreamingSync {
       throw checkpoint.disabled;
     }
 
+    final authenticator = connector.authenticator;
+    if (authenticator == null) {
+      // Only connected for uploads, can't request checkpoints from service.
+      throw checkpoint.disconnected;
+    }
+
     final neverAbort = AbortController();
-    final checkpointId = await _requestNextCheckpointFromService(neverAbort);
+    final checkpointId = await _requestNextCheckpointFromService(
+      authenticator,
+      neverAbort,
+    );
     return Int64.parse(checkpointId);
   }
 
@@ -180,14 +197,17 @@ class StreamingSyncImplementation implements StreamingSync {
     return (_clientId ??= await adapter.getClientId());
   }
 
-  Future<void> _downloadLoop(AbortController abort) async {
+  Future<void> _downloadLoop(
+    AbortController abort,
+    InternalAuthenticator authenticator,
+  ) async {
     while (!abort.aborted) {
       var delayNextIteration = false;
 
       try {
         // Protect sync iterations with exclusivity (if a valid Mutex is provided)
         final (:immediateRestart) = await syncMutex.lock(
-          () => _rustStreamingSyncIteration(abort),
+          () => _rustStreamingSyncIteration(abort, authenticator),
           abortTrigger: _delayRetry(abort),
         );
         delayNextIteration = !immediateRestart;
@@ -220,7 +240,10 @@ class StreamingSyncImplementation implements StreamingSync {
     }
   }
 
-  Future<void> _crudLoop(AbortController abort) async {
+  Future<void> _crudLoop(
+    AbortController abort,
+    InternalMutationUploader uploader,
+  ) async {
     // Trigger a CRUD upload whenever the upstream trigger fires
     // as-well-as whenever the sync stream reconnects.
     // This has the potential (in rare cases) to affect the crudThrottleTime,
@@ -232,13 +255,16 @@ class StreamingSyncImplementation implements StreamingSync {
       _internalCrudTriggerController.stream,
     ])) {
       await crudMutex.lock(
-        () => _crudUploadIteration(abort),
+        () => _crudUploadIteration(abort, uploader),
         abortTrigger: _delayRetry(abort),
       );
     }
   }
 
-  Future<void> _crudUploadIteration(AbortController abort) async {
+  Future<void> _crudUploadIteration(
+    AbortController abort,
+    InternalMutationUploader uploader,
+  ) async {
     // Keep track of the first item in the CRUD queue for the last `uploadCrud` iteration.
     CrudEntry? checkedCrudItem;
 
@@ -263,17 +289,20 @@ class StreamingSyncImplementation implements StreamingSync {
           }
 
           checkedCrudItem = nextCrudItem;
-          await connector.uploadCrud();
+          await uploader.upload();
           _state.updateStatus((s) => s.uploadError = null);
         } else {
-          // Uploading is completed
-          didCompleteUpload = await adapter.updateTargetCheckpointRequest(() {
-            if (options.checkpointMode is LegacyCheckpointMode) {
-              return _getLegacyWriteCheckpoint(abort);
-            } else {
-              return _requestNextCheckpointFromService(abort);
-            }
-          });
+          // Uploading is completed. If we're also connected for downloads,
+          // request a checkpoint.
+          if (connector.authenticator case final authenticator?) {
+            didCompleteUpload = await adapter.updateTargetCheckpointRequest(() {
+              if (options.checkpointMode is LegacyCheckpointMode) {
+                return _getLegacyWriteCheckpoint(authenticator, abort);
+              } else {
+                return _requestNextCheckpointFromService(authenticator, abort);
+              }
+            });
+          }
           break;
         }
       } catch (e, stacktrace) {
@@ -313,7 +342,10 @@ class StreamingSyncImplementation implements StreamingSync {
     request.headers.addAll(_userAgentHeaders);
   }
 
-  Future<String> _requestNextCheckpointFromService(AbortController abort) {
+  Future<String> _requestNextCheckpointFromService(
+    InternalAuthenticator authenticator,
+    AbortController abort,
+  ) {
     return abort.scoped((abortTrigger) async {
       await _checkpointState.waitForCheckpointRequestsReady(
         abort: abortTrigger,
@@ -324,6 +356,7 @@ class StreamingSyncImplementation implements StreamingSync {
         (tx) => tx.nextCheckpointRequestId(),
       );
       return await _requestCheckpointFromService(
+        authenticator: authenticator,
         checkpointRequest: nextCheckpointRequestId,
         abortTrigger: abortTrigger,
       );
@@ -332,18 +365,21 @@ class StreamingSyncImplementation implements StreamingSync {
 
   Future<String> _requestCheckpointFromService({
     required String checkpointRequest,
+    required InternalAuthenticator authenticator,
     required Future<void> abortTrigger,
     String? clientId,
   }) async {
     clientId ??= await _resolveClientId();
 
     // First, check if we can use a custom checkpoint request implementation.
-    if (await connector.postCheckpointRequest(clientId, checkpointRequest)
-        case final customResponse?) {
-      return customResponse;
+    if (authenticator.mightPostCheckpointRequests) {
+      if (await authenticator.postCheckpointRequest(clientId, checkpointRequest)
+          case final customResponse?) {
+        return customResponse;
+      }
     }
 
-    final credentials = await connector.getCredentialsCached();
+    final credentials = await authenticator.getCredentialsCached();
     if (credentials == null) {
       throw CredentialsException("Not logged in");
     }
@@ -366,7 +402,7 @@ class StreamingSyncImplementation implements StreamingSync {
     );
 
     if (response.statusCode == 401) {
-      await connector.prefetchCredentials(invalidate: true);
+      await authenticator.prefetchCredentials(invalidate: true);
     }
     if (response.statusCode == 404) {
       throw checkpoint.instanceNotSupported;
@@ -379,8 +415,11 @@ class StreamingSyncImplementation implements StreamingSync {
     return body['data']['checkpoint_request_id'] as String;
   }
 
-  Future<String> _getLegacyWriteCheckpoint(AbortController abort) async {
-    final credentials = await connector.getCredentialsCached();
+  Future<String> _getLegacyWriteCheckpoint(
+    InternalAuthenticator authenticator,
+    AbortController abort,
+  ) async {
+    final credentials = await authenticator.getCredentialsCached();
     if (credentials == null) {
       throw CredentialsException("Not logged in");
     }
@@ -397,7 +436,7 @@ class StreamingSyncImplementation implements StreamingSync {
     });
 
     if (response.statusCode == 401) {
-      await connector.prefetchCredentials(invalidate: true);
+      await authenticator.prefetchCredentials(invalidate: true);
     }
     if (response.statusCode != 200) {
       throw SyncResponseException.fromResponse(response);
@@ -409,11 +448,13 @@ class StreamingSyncImplementation implements StreamingSync {
 
   Future<RustSyncIterationResult> _rustStreamingSyncIteration(
     AbortController abortController,
+    InternalAuthenticator authenticator,
   ) async {
     logger.info('Starting Rust sync iteration');
     final response = await _ActiveRustStreamingIteration(
       this,
       abortController,
+      authenticator,
     ).syncIteration();
     logger.info(
       'Ending Rust sync iteration. Immediate restart: ${response.immediateRestart}',
@@ -423,12 +464,13 @@ class StreamingSyncImplementation implements StreamingSync {
 
   Future<http.StreamedResponse> _postStreamRequest(
     Object? data, {
+    required InternalAuthenticator authenticator,
     required Future<void> onAbort,
   }) async {
     const ndJson = 'application/x-ndjson';
     const bson = 'application/vnd.powersync.bson-stream';
 
-    final credentials = await connector.getCredentialsCached();
+    final credentials = await authenticator.getCredentialsCached();
     if (credentials == null) {
       throw CredentialsException('Not logged in');
     }
@@ -444,7 +486,7 @@ class StreamingSyncImplementation implements StreamingSync {
     final res = await _client.send(request);
 
     if (res.statusCode == 401) {
-      await connector.prefetchCredentials(invalidate: true);
+      await authenticator.prefetchCredentials(invalidate: true);
     }
     if (res.statusCode != 200) {
       throw await SyncResponseException.fromStreamedResponse(res);
@@ -462,6 +504,7 @@ class StreamingSyncImplementation implements StreamingSync {
   /// Note that requesting checkpoints with ids the service has already seen is
   /// a cheap no-op.
   Future<void> _repostUnacknowledgedCheckpointRequests(
+    InternalAuthenticator authenticator,
     AbortController abort,
   ) async {
     final Duration retryDelay;
@@ -476,6 +519,7 @@ class StreamingSyncImplementation implements StreamingSync {
       try {
         await abort.scoped((abortSignal) {
           return _repostCurrentCheckpointRequestAfterDelay(
+            authenticator,
             retryDelay,
             abortSignal,
           );
@@ -490,6 +534,7 @@ class StreamingSyncImplementation implements StreamingSync {
   }
 
   Future<void> _repostCurrentCheckpointRequestAfterDelay(
+    InternalAuthenticator authenticator,
     Duration retryDelay,
     Future<void> abortSignal,
   ) async {
@@ -534,6 +579,7 @@ class StreamingSyncImplementation implements StreamingSync {
     // reject it.
     logger.fine('Retry checkpoint request $requestId');
     await _requestCheckpointFromService(
+      authenticator: authenticator,
       checkpointRequest: requestId.toString(),
       abortTrigger: abortSignal,
     );
@@ -597,10 +643,15 @@ typedef BucketDescription = ({String name, int priority});
 final class _ActiveRustStreamingIteration {
   final StreamingSyncImplementation sync;
   final AbortController _abortController;
+  final InternalAuthenticator _authenticator;
 
   var _hadSyncLine = false;
 
-  _ActiveRustStreamingIteration(this.sync, this._abortController);
+  _ActiveRustStreamingIteration(
+    this.sync,
+    this._abortController,
+    this._authenticator,
+  );
 
   bool get _aborted => _abortController.aborted;
 
@@ -672,6 +723,7 @@ final class _ActiveRustStreamingIteration {
   ) async {
     try {
       final seed = await sync._requestCheckpointFromService(
+        authenticator: _authenticator,
         checkpointRequest: payload.checkpointRequestId,
         abortTrigger: abort.onAbort,
         clientId: payload.clientId,
@@ -698,7 +750,11 @@ final class _ActiveRustStreamingIteration {
 
   Stream<SyncEvent> _receiveLines(Object? data, Future<void> onAbort) {
     return streamFromFutureAwaitInCancellation(
-      sync._postStreamRequest(data, onAbort: onAbort),
+      sync._postStreamRequest(
+        data,
+        onAbort: onAbort,
+        authenticator: _authenticator,
+      ),
     ).asyncExpand<SyncEvent>((response) async* {
       yield ConnectionEvent.established;
 
@@ -820,9 +876,9 @@ final class _ActiveRustStreamingIteration {
         sync._state.updateStatus((m) => m.applyFromCore(status));
       case FetchCredentials(:final didExpire):
         if (didExpire) {
-          await sync.connector.prefetchCredentials(invalidate: true);
+          await _authenticator.prefetchCredentials(invalidate: true);
         } else {
-          sync.connector.prefetchCredentials().then(
+          _authenticator.prefetchCredentials().then(
             (_) {
               if (!_aborted) {
                 sync._nonLineSyncEvents.add(const TokenRefreshComplete());
