@@ -149,19 +149,21 @@ class StreamingSyncImplementation implements StreamingSync {
       final authenticator = connector.authenticator;
       final uploader = connector.uploader;
 
-      final crudLoop = uploader != null
-          ? _crudLoop(abort, uploader).onError((
-              Object error,
-              StackTrace stackTrace,
-            ) {
-              if (abort.isAbortException(error)) return;
+      Future<void>? uploadTask;
 
-              logger.warning('Error in crud upload loop', error, stackTrace);
-            })
-          : null;
+      if (uploader != null) {
+        uploadTask = _crudLoop(abort, uploader);
+      } else if (authenticator != null) {
+        uploadTask = _requestTargetCheckpointOnce(authenticator, abort);
+      }
 
       await [
-        ?crudLoop,
+        if (uploadTask != null)
+          uploadTask.onError((Object error, StackTrace stackTrace) {
+            if (abort.isAbortException(error)) return;
+
+            logger.warning('Error in crud upload loop', error, stackTrace);
+          }),
         if (authenticator != null) ...[
           _downloadLoop(abort, authenticator),
           _repostUnacknowledgedCheckpointRequests(authenticator, abort),
@@ -295,13 +297,10 @@ class StreamingSyncImplementation implements StreamingSync {
           // Uploading is completed. If we're also connected for downloads,
           // request a checkpoint.
           if (connector.authenticator case final authenticator?) {
-            didCompleteUpload = await adapter.updateTargetCheckpointRequest(() {
-              if (options.checkpointMode is LegacyCheckpointMode) {
-                return _getLegacyWriteCheckpoint(authenticator, abort);
-              } else {
-                return _requestNextCheckpointFromService(authenticator, abort);
-              }
-            });
+            didCompleteUpload = await _updateTargetCheckpointRequest(
+              authenticator,
+              abort,
+            );
           }
           break;
         }
@@ -332,6 +331,51 @@ class StreamingSyncImplementation implements StreamingSync {
         }
       }
     }
+  }
+
+  /// Requests a checkpoint from the service if needed.
+  ///
+  /// When connecting in download-only mode, a previous upload might have
+  /// handled `ps_crud` rows without requesting a checkpoint (as that requires
+  /// an authenticator). This then completes the last step of a crud upload loop
+  /// by requesting a checkpoint.
+  Future<void> _requestTargetCheckpointOnce(
+    InternalAuthenticator authenticator,
+    AbortController abort,
+  ) async {
+    while (!abort.aborted) {
+      try {
+        await _updateTargetCheckpointRequest(authenticator, abort);
+        return;
+      } catch (e, s) {
+        if (abort.isAbortException(e)) {
+          return;
+        }
+
+        logger.warning('Error requesting checkpoint after crud upload', e, s);
+        _state.updateStatus((s) => s.applyUploadError(e));
+        await _delayRetry(abort);
+      }
+    }
+
+    _state.updateStatus(
+      (s) => s
+        ..uploading = false
+        ..uploadError = null,
+    );
+  }
+
+  Future<bool> _updateTargetCheckpointRequest(
+    InternalAuthenticator authenticator,
+    AbortController abort,
+  ) {
+    return adapter.updateTargetCheckpointRequest(() {
+      if (options.checkpointMode is LegacyCheckpointMode) {
+        return _getLegacyWriteCheckpoint(authenticator, abort);
+      } else {
+        return _requestNextCheckpointFromService(authenticator, abort);
+      }
+    });
   }
 
   void _applyCommonHeaders(
