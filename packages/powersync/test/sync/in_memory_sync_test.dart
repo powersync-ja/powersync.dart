@@ -1535,6 +1535,13 @@ void _declareTests(String name, bool bson) {
       // Reconnect in download-only mode. This should request a write checkpoint
       // because the upload-only mode can't.
       configureServer();
+      final didRequestCheckpoint = Completer<void>();
+      syncService.writeCheckpoint = () async {
+        didRequestCheckpoint.complete();
+        return {
+          'data': {'write_checkpoint': '10'},
+        };
+      };
       await database.connect(
         connector: .downloadOnly(
           endpoint: mockServer.url.toString(),
@@ -1542,6 +1549,7 @@ void _declareTests(String name, bool bson) {
         ),
       );
       await waitForConnection(connectHere: false);
+      await didRequestCheckpoint.future;
     });
 
     group('abort', () {
