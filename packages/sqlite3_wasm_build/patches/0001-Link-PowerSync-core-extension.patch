@@ -9,18 +9,18 @@ Subject: [PATCH] Link PowerSync core extension
  2 files changed, 17 insertions(+), 1 deletion(-)
 
 diff --git a/sqlite3_wasm_build/src/CMakeLists.txt b/sqlite3_wasm_build/src/CMakeLists.txt
-index 50a1c7e..010a3d2 100644
+index be7240b..6efaab5 100644
 --- a/sqlite3_wasm_build/src/CMakeLists.txt
 +++ b/sqlite3_wasm_build/src/CMakeLists.txt
 @@ -6,6 +6,7 @@ project(${PROJECT_NAME} LANGUAGES C)
- set(triple wasm32-unknown-wasi)
+ set(triple wasm32-wasip1)
  set(wasi_sysroot "/usr/share/wasi-sysroot" CACHE PATH "Path to wasi sysroot")
  set(clang "clang" CACHE FILEPATH "Path to wasm-capable clang executable")
 +set(POWERSYNC_VERSION "0.4.12" CACHE STRING "PowerSync core version to use")
  
  file(GLOB headers ${CMAKE_CURRENT_SOURCE_DIR}/*.h)
  
-@@ -27,6 +28,9 @@ FetchContent_Declare(
+@@ -28,6 +29,9 @@ FetchContent_Declare(
  FetchContent_MakeAvailable(sqlite3)
  FetchContent_MakeAvailable(sqlite3mc)
  
@@ -30,7 +30,7 @@ index 50a1c7e..010a3d2 100644
  # Generate symbols we need to export from the sqlite3.wasm build
  add_custom_command(
      OUTPUT required_symbols.txt
-@@ -66,6 +70,8 @@ macro(base_sqlite3_target name debug crypto)
+@@ -67,6 +71,8 @@ macro(base_sqlite3_target name debug crypto)
      list(APPEND sources "${sqlite3_SOURCE_DIR}/sqlite3.c")
    endif()
  
@@ -63,5 +63,5 @@ index 7a11859..b48960a 100644
  int sqlite3_os_end(void) { return SQLITE_OK; }
  
 -- 
-2.50.1 (Apple Git-155)
+2.54.0 (Apple Git-157)
 
