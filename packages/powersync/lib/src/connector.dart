@@ -5,6 +5,137 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:meta/meta.dart';
 import 'database/powersync_database.dart';
+import 'sync/internal_connector.dart';
+
+/// Authenticates the PowerSync SDK against a PowerSync service, allowing it to
+/// download changes.
+abstract interface class Authenticator {
+  /// Resolves a JWT t use when connecting to a PowerSync service.
+  ///
+  /// The SDK does not cache this value and will call this method multiple times
+  /// while a database is connected. Implementations should consider caching
+  /// credentials, and can use [invalidateCredentials] as a signal for cache
+  /// eviction.
+  Future<String> resolveCredentials();
+
+  /// A notification from the SDK that the current credentials have expired.
+  void invalidateCredentials();
+}
+
+/// Uploads local mutations (from `INSERT`, `UPDATE` and `DELETE` statements
+/// against the local database) to your source database.
+///
+/// While simple cases might use a protocol like PostgREST to write directly
+/// into the database, a custom backend is ocmmonly used to validate uploaded
+/// mutations.
+abstract interface class MutationUploader {
+  const factory MutationUploader(
+    Future<void> Function(PowerSyncDatabase) upload,
+  ) = _FunctionMutationUploader;
+
+  /// Uploads local mutations recorded on the database.
+  ///
+  /// Implementations can use [PowerSyncDatabase.getCrudTransactions] to inspect
+  /// local mutations on the database.
+  Future<void> upload(PowerSyncDatabase database);
+}
+
+/// A request to connect a PowerSync database for downloads, uploads or both.
+///
+/// [PowerSyncBackendConnector] extends this class and will always connect a
+/// database for both uploads and downloads.
+///
+/// Instead of extending [PowerSyncBackendConnector], implementing
+/// [Authenticator] and [MutationUploader] is simpler and allows connecting a
+/// database only for downloads or only for downloads.
+///
+/// The unnamed [ConnectRequest.new] constructor expects the endpoint of the
+/// PowerSync Service to connect to upfront, and uses an [Authenticator] for
+/// fetching tokens. Unlike with [PowerSyncBackendConnector], it's the
+/// responsibility of the authenticator to cache tokens. The [MutationUploader]
+/// is responsible for uploading local SQLite writes to a backend.
+///
+/// The named [ConnectRequest.downloadOnly] and [ConnectRequest.uploadOnly]
+/// connect the database only for downloads and uploads, respectively. Note that
+/// each connect request replaces all prior ones. In particular, first
+/// connecting with [ConnectRequest.downloadOnly] and then again with
+/// [ConnectRequest.uploadOnly] leaves the database in upload-only mode instead
+/// of connecting both.
+/// On the web, all tabs need to agree on the connection mode to use: Having one
+/// tab connect with [ConnectRequest.downloadOnly] and another tab using
+/// [ConnectRequest.uploadOnly] is not allowed.
+@Deprecated.subclass(
+  'Do not subclass this directly. Instead, extend PowerSyncBackendConnector or '
+  'use a named constructor.',
+)
+abstract class ConnectRequest {
+  const ConnectRequest._();
+
+  const factory ConnectRequest({
+    required String endpoint,
+    required Authenticator authenticator,
+    required MutationUploader uploader,
+  }) = _ConnectRequest;
+
+  ///
+  const factory ConnectRequest.downloadOnly({
+    required String endpoint,
+    required Authenticator authenticator,
+  }) = _ConnectRequest.downloadOnly;
+
+  const factory ConnectRequest.uploadOnly(MutationUploader uploader) =
+      _ConnectRequest.uploadOnly;
+
+  InternalConnector _toInternal(PowerSyncDatabase db);
+}
+
+@internal
+extension ConnectorToInternal on ConnectRequest {
+  InternalConnector toInternal(PowerSyncDatabase db) => _toInternal(db);
+}
+
+final class _ConnectRequest extends ConnectRequest {
+  final String? _endpoint;
+  final Authenticator? _authenticator;
+  final MutationUploader? _mutationUploader;
+
+  const _ConnectRequest({
+    required String endpoint,
+    required Authenticator authenticator,
+    required MutationUploader uploader,
+  }) : _endpoint = endpoint,
+       _authenticator = authenticator,
+       _mutationUploader = uploader,
+       super._();
+
+  const _ConnectRequest.downloadOnly({
+    required String endpoint,
+    required Authenticator authenticator,
+  }) : _endpoint = endpoint,
+       _authenticator = authenticator,
+       _mutationUploader = null,
+       super._();
+
+  const _ConnectRequest.uploadOnly(MutationUploader uploader)
+    : _endpoint = null,
+      _authenticator = null,
+      _mutationUploader = uploader,
+      super._();
+
+  @override
+  InternalConnector _toInternal(PowerSyncDatabase db) {
+    final endpoint = _endpoint;
+    final authenticator = _authenticator;
+    final uploader = _mutationUploader;
+
+    return InternalConnector(
+      (endpoint != null && authenticator != null)
+          ? SplitAuthenticator(endpoint, authenticator)
+          : null,
+      uploader != null ? DatabaseBoundUploader(uploader, db) : null,
+    );
+  }
+}
 
 /// Implement this to connect an app backend.
 ///
@@ -13,9 +144,12 @@ import 'database/powersync_database.dart';
 /// 2. Applying local changes against the backend application server.
 ///
 /// For production, use a custom implementation.
-abstract class PowerSyncBackendConnector {
+abstract class PowerSyncBackendConnector extends ConnectRequest
+    implements Authenticator, MutationUploader {
   PowerSyncCredentials? _cachedCredentials;
   Future<PowerSyncCredentials?>? _fetchRequest;
+
+  PowerSyncBackendConnector() : super._();
 
   /// Get credentials current cached, or fetch new credentials if none are
   /// available.
@@ -28,10 +162,21 @@ abstract class PowerSyncBackendConnector {
     return prefetchCredentials();
   }
 
+  @override
+  Future<String> resolveCredentials() async {
+    final credentials = await getCredentialsCached();
+    if (credentials == null) {
+      throw StateError('Not logged in');
+    }
+
+    return credentials.token;
+  }
+
   /// Immediately invalidate credentials.
   ///
   /// This may be called when the current credentials have expired.
-  void invalidateCredentials() async {
+  @override
+  void invalidateCredentials() {
     _cachedCredentials = null;
   }
 
@@ -71,6 +216,19 @@ abstract class PowerSyncBackendConnector {
   ///
   /// Any thrown errors will result in a retry after the configured wait period (default: 5 seconds).
   Future<void> uploadData(PowerSyncDatabase database);
+
+  @override
+  Future<void> upload(PowerSyncDatabase database) {
+    return uploadData(database);
+  }
+
+  @override
+  InternalConnector _toInternal(PowerSyncDatabase db) {
+    return InternalConnector(
+      LegacyAuthenticator(this),
+      DatabaseBoundUploader(this, db),
+    );
+  }
 }
 
 /// A [PowerSyncBackendConnector] capable of requesting checkpoints.
@@ -87,8 +245,7 @@ abstract class PowerSyncBackendConnector {
 /// To use this connector, using [CheckpointMode.requests] is required. Note
 /// that this requires PowerSync service version 1.24.0 or later.
 @experimental
-abstract mixin class CustomCheckpointRequestConnector
-    implements PowerSyncBackendConnector {
+abstract mixin class CustomCheckpointRequestConnector implements Authenticator {
   /// Posts a client-generated checkpoint request to the backend and returns the
   /// effective checkpoint request state.
   ///
@@ -96,6 +253,17 @@ abstract mixin class CustomCheckpointRequestConnector
   /// an incrementing 64-bit integer (encoded as a string to avoid precision
   /// issues with JavaScript targets).
   Future<String> postCheckpointRequest(String clientId, String requestId);
+}
+
+final class _FunctionMutationUploader implements MutationUploader {
+  final Future<void> Function(PowerSyncDatabase) _upload;
+
+  const _FunctionMutationUploader(this._upload);
+
+  @override
+  Future<void> upload(PowerSyncDatabase database) {
+    return _upload(database);
+  }
 }
 
 /// Temporary credentials to connect to the PowerSync service.

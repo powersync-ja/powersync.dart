@@ -10,9 +10,11 @@ import 'package:async/async.dart';
 import 'package:logging/logging.dart';
 import 'package:powersync/powersync.dart';
 import 'package:powersync/src/abort_controller.dart';
+import 'package:powersync/src/connector.dart';
 import 'package:powersync/src/database/native/native_powersync_database.dart';
 import 'package:powersync/src/sync/options.dart';
 import 'package:sqlite_async/sqlite_async.dart';
+import 'package:shelf/shelf.dart';
 import 'package:test/test.dart';
 
 import '../server/sync_server/in_memory_sync_server.dart';
@@ -378,7 +380,7 @@ void main() {
             endpoint: server.endpoint,
             token: 'token',
           );
-        }),
+        }).toInternal(db),
         options: ResolvedSyncOptions(SyncOptions(enableDiagnostics: true)),
         initiallyActiveStreams: [],
         activeStreams: Stream.empty(),
@@ -419,6 +421,56 @@ void main() {
       await db.waitForFirstSync();
       await abort.abort();
       await didEmit;
+    });
+
+    test('download-only smoke test', () async {
+      final pdb = await testUtils.setupPowerSync(path: path);
+      final server = await createServer();
+      final connector = TestConnector(
+        () async =>
+            PowerSyncCredentials(endpoint: server.endpoint, token: 'token'),
+      );
+
+      await pdb.connect(
+        connector: .downloadOnly(
+          endpoint: server.endpoint,
+          authenticator: connector,
+        ),
+      );
+      await expectLater(
+        pdb.statusStream,
+        emitsThrough(
+          isA<SyncStatus>().having((e) => e.connected, 'connected', isTrue),
+        ),
+      );
+    });
+
+    test('upload-only smoke test', () async {
+      final server = TestServer();
+      var receivedRequests = 0;
+      await server.initCustom((request) async {
+        receivedRequests++;
+        return Response(400);
+      });
+
+      final pdb = await testUtils.setupPowerSync(path: path);
+      final didUplod = Completer<void>();
+      await pdb.connect(
+        connector: .uploadOnly(
+          MutationUploader((db) async {
+            if (await db.getNextCrudTransaction() case final tx?) {
+              didUplod.complete();
+              await tx.complete();
+            }
+          }),
+        ),
+      );
+
+      await pdb.execute('insert into customers (id, name) values (uuid(), ?)', [
+        'customer',
+      ]);
+      await didUplod.future;
+      expect(receivedRequests, isZero);
     });
   });
 }

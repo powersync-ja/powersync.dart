@@ -1,9 +1,10 @@
 /// PowerSync Dart and Flutter SDK.
 ///
 /// Use [PowerSyncDatabase] to open a database.
+/// @docImport 'src/database/powersync_database.dart';
 library;
 
-export 'src/connector.dart';
+export 'src/connector.dart' hide ConnectorToInternal;
 export 'src/crud.dart';
 export 'src/database/powersync_database.dart'
     hide BasePowerSyncDatabase, powerSyncUpdateNotifications;

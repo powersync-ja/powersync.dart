@@ -5,10 +5,14 @@ import 'package:meta/meta.dart';
 import '../connector.dart';
 import '../database/powersync_database.dart';
 
-/// A view over a backend connector that does not require a reference to the
-/// PowerSync database.
 @internal
-abstract interface class InternalConnector {
+abstract interface class InternalAuthenticator {
+  /// Whether [postCheckpointRequest] might be implemented.
+  ///
+  /// When this is false, [postCheckpointRequest] is guaranteed to return
+  /// `null`.
+  bool get mightPostCheckpointRequests;
+
   /// Fetch or return cached credentials.
   Future<PowerSyncCredentials?> getCredentialsCached();
 
@@ -21,35 +25,35 @@ abstract interface class InternalConnector {
   /// the same credentials.
   Future<PowerSyncCredentials?> prefetchCredentials({bool invalidate = false});
 
-  /// Requests the connector to upload a crud batch to the backend.
-  Future<void> uploadCrud();
-
   FutureOr<String?> postCheckpointRequest(
     String clientId,
     String checkpointRequestId,
   );
-
-  const factory InternalConnector({
-    required Future<PowerSyncCredentials?> Function() getCredentialsCached,
-    required Future<PowerSyncCredentials?> Function({required bool invalidate})
-    prefetchCredentials,
-    required Future<void> Function() uploadCrud,
-    required Future<String?> Function(String, String) postCheckpointRequests,
-  }) = _CallbackConnector;
-
-  factory InternalConnector.wrap(
-    PowerSyncBackendConnector connector,
-    PowerSyncDatabase db,
-  ) {
-    return _WrapConnector(connector, db);
-  }
 }
 
-final class _WrapConnector implements InternalConnector {
-  final PowerSyncBackendConnector connector;
-  final PowerSyncDatabase database;
+@internal
+abstract interface class InternalMutationUploader {
+  Future<void> upload();
+}
 
-  _WrapConnector(this.connector, this.database);
+/// A view over a backend connector that does not require a reference to the
+/// PowerSync database.
+final class InternalConnector {
+  final InternalAuthenticator? authenticator;
+  final InternalMutationUploader? uploader;
+
+  InternalConnector(this.authenticator, this.uploader);
+}
+
+final class LegacyAuthenticator implements InternalAuthenticator {
+  final PowerSyncBackendConnector connector;
+
+  LegacyAuthenticator(this.connector);
+
+  @override
+  bool get mightPostCheckpointRequests {
+    return connector is CustomCheckpointRequestConnector;
+  }
 
   @override
   Future<PowerSyncCredentials?> getCredentialsCached() async {
@@ -65,11 +69,6 @@ final class _WrapConnector implements InternalConnector {
   }
 
   @override
-  Future<void> uploadCrud() {
-    return connector.uploadData(database);
-  }
-
-  @override
   FutureOr<String?> postCheckpointRequest(
     String clientId,
     String checkpointRequestId,
@@ -82,37 +81,20 @@ final class _WrapConnector implements InternalConnector {
   }
 }
 
-final class _CallbackConnector implements InternalConnector {
-  final Future<PowerSyncCredentials?> Function() _getCredentialsCached;
-  final Future<PowerSyncCredentials?> Function({required bool invalidate})
-  _prefetchCredentials;
-  final Future<void> Function() _uploadCrud;
-  final Future<String?> Function(String, String)? _postCheckpointRequest;
+final class SplitAuthenticator implements InternalAuthenticator {
+  final String _endpoint;
+  final Authenticator _authenticator;
 
-  const _CallbackConnector({
-    required Future<PowerSyncCredentials?> Function() getCredentialsCached,
-    required Future<PowerSyncCredentials?> Function({required bool invalidate})
-    prefetchCredentials,
-    required Future<void> Function() uploadCrud,
-    required Future<String?> Function(String, String) postCheckpointRequests,
-  }) : _getCredentialsCached = getCredentialsCached,
-       _prefetchCredentials = prefetchCredentials,
-       _uploadCrud = uploadCrud,
-       _postCheckpointRequest = postCheckpointRequests;
+  SplitAuthenticator(this._endpoint, this._authenticator);
+
+  @override
+  bool get mightPostCheckpointRequests {
+    return _authenticator is CustomCheckpointRequestConnector;
+  }
 
   @override
   Future<PowerSyncCredentials?> getCredentialsCached() {
-    return _getCredentialsCached();
-  }
-
-  @override
-  Future<PowerSyncCredentials?> prefetchCredentials({bool invalidate = false}) {
-    return _prefetchCredentials(invalidate: invalidate);
-  }
-
-  @override
-  Future<void> uploadCrud() {
-    return _uploadCrud();
+    return _resolveCredentials(false);
   }
 
   @override
@@ -120,10 +102,36 @@ final class _CallbackConnector implements InternalConnector {
     String clientId,
     String checkpointRequestId,
   ) {
-    if (_postCheckpointRequest case final implementation?) {
-      return implementation(clientId, checkpointRequestId);
+    if (_authenticator case final CustomCheckpointRequestConnector connector) {
+      return connector.postCheckpointRequest(clientId, checkpointRequestId);
     }
 
     return null;
   }
+
+  @override
+  Future<PowerSyncCredentials?> prefetchCredentials({bool invalidate = false}) {
+    return _resolveCredentials(invalidate);
+  }
+
+  Future<PowerSyncCredentials> _resolveCredentials(bool invalidateFirst) async {
+    if (invalidateFirst) {
+      _authenticator.invalidateCredentials();
+    }
+
+    return PowerSyncCredentials(
+      endpoint: _endpoint,
+      token: await _authenticator.resolveCredentials(),
+    );
+  }
+}
+
+final class DatabaseBoundUploader implements InternalMutationUploader {
+  final MutationUploader _uploader;
+  final PowerSyncDatabase _database;
+
+  DatabaseBoundUploader(this._uploader, this._database);
+
+  @override
+  Future<void> upload() => _uploader.upload(_database);
 }
