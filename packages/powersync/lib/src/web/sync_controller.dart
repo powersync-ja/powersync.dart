@@ -6,10 +6,10 @@ import 'package:powersync/src/web/worker_utils.dart';
 import 'package:sqlite_async/web.dart';
 import 'package:web/web.dart' hide Client;
 
-import '../connector.dart';
 import '../database/powersync_database.dart';
 import '../platform_specific/int64.dart';
 import '../platform_specific/web.dart';
+import '../sync/internal_connector.dart';
 import '../sync/options.dart';
 import '../sync/streaming_sync.dart';
 import '../sync/sync_status.dart';
@@ -17,7 +17,7 @@ import 'sync_worker_protocol.dart';
 
 class SyncWorkerHandle implements StreamingSync {
   final PowerSyncDatabase database;
-  final PowerSyncBackendConnector connector;
+  final InternalConnector connector;
   final SyncOptions options;
   late final WorkerCommunicationChannel _channel;
   List<SubscribedStream> subscriptions;
@@ -55,10 +55,11 @@ class SyncWorkerHandle implements StreamingSync {
               [endpoint.connectPort].toJS,
             );
           case SyncWorkerMessageType.uploadCrud:
-            await connector.uploadData(database);
+            await connector.uploader!.upload();
             return (JSObject(), null);
           case SyncWorkerMessageType.invalidCredentialsCallback:
-            final credentials = await connector.prefetchCredentials();
+            final credentials = await connector.authenticator!
+                .prefetchCredentials();
             return (
               credentials != null
                   ? SerializedCredentials.from(credentials)
@@ -66,7 +67,8 @@ class SyncWorkerHandle implements StreamingSync {
               null,
             );
           case SyncWorkerMessageType.credentialsCallback:
-            final credentials = await connector.getCredentialsCached();
+            final credentials = await connector.authenticator!
+                .getCredentialsCached();
             return (
               credentials != null
                   ? SerializedCredentials.from(credentials)
@@ -74,17 +76,11 @@ class SyncWorkerHandle implements StreamingSync {
               null,
             );
           case SyncWorkerMessageType.customCheckpointRequest:
-            if (connector case final CustomCheckpointRequestConnector custom) {
-              final request = payload as CustomCheckpointRequest;
-              final resolved = await custom.postCheckpointRequest(
-                request.clientId,
-                request.requestId,
-              );
+            final request = payload as CustomCheckpointRequest;
+            final resolved = await connector.authenticator!
+                .postCheckpointRequest(request.clientId, request.requestId);
 
-              return (resolved.toJS, null);
-            } else {
-              return (null, null);
-            }
+            return (resolved?.toJS, null);
           default:
             throw StateError('Unexpected message type $type');
         }
@@ -101,7 +97,7 @@ class SyncWorkerHandle implements StreamingSync {
 
   static Future<SyncWorkerHandle> start({
     required PowerSyncDatabase database,
-    required PowerSyncBackendConnector connector,
+    required InternalConnector connector,
     required Uri workerUri,
     required SyncOptions options,
     required List<SubscribedStream> subscriptions,
@@ -161,6 +157,7 @@ class SyncWorkerHandle implements StreamingSync {
   Future<void> streamingSync() async {
     await _channel.startSynchronization(
       database.database.openFactory.path,
+      connector,
       ResolvedSyncOptions(options),
       database.schema,
       subscriptions,

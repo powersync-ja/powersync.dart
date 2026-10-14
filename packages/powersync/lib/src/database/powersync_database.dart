@@ -23,6 +23,7 @@ import '../schema_logic.dart' as schema_logic;
 import '../sync/bucket_storage.dart';
 import '../sync/checkpoint_request.dart';
 import '../sync/connection_manager.dart';
+import '../sync/internal_connector.dart';
 import '../sync/options.dart';
 import '../sync/stream.dart';
 import '../sync/streaming_sync.dart';
@@ -295,9 +296,12 @@ abstract base class PowerSyncDatabase extends SqliteConnection {
   /// [SyncOptions.params]. [SyncOptions] can also be used to tune the behavior
   /// of the sync client, see that class for more information.
   ///
+  /// For [connector], use either a [PowerSyncBackendConnector] or one of the
+  /// constructors on [ConnectRequest].
+  ///
   /// Status changes are reported on [statusStream].
   Future<void> connect({
-    required PowerSyncBackendConnector connector,
+    required ConnectRequest connector,
     SyncOptions? options,
     @Deprecated('Use SyncOptions.crudThrottleTime instead')
     Duration? crudThrottleTime,
@@ -316,8 +320,11 @@ abstract base class PowerSyncDatabase extends SqliteConnection {
       params: params,
     );
 
+    var internalConnector = connector.toInternal(this);
+
     if (resolvedOptions.checkpointMode is! RequestsCheckpointMode &&
-        connector is CustomCheckpointRequestConnector) {
+        (internalConnector.authenticator?.mightPostCheckpointRequests ??
+            false)) {
       logger.warning(
         'A CustomCheckpointRequestConnector was used with legacy checkpoints, '
         'postCheckpointRequest will not get called',
@@ -325,9 +332,17 @@ abstract base class PowerSyncDatabase extends SqliteConnection {
     }
 
     if (devtools.enable) {
-      connector = ExposeCredentialsConnector(connector, this);
+      if (internalConnector.authenticator case final originalAuthenticator?) {
+        internalConnector = InternalConnector(
+          ExposeCredentialsConnector(originalAuthenticator, this),
+          internalConnector.uploader,
+        );
+      }
     }
-    await _connections.connect(connector: connector, options: resolvedOptions);
+    await _connections.connect(
+      connector: internalConnector,
+      options: resolvedOptions,
+    );
   }
 
   /// Internal method to establish a sync client connection.
@@ -339,7 +354,7 @@ abstract base class PowerSyncDatabase extends SqliteConnection {
   @protected
   @internal
   Future<RemoteStreamingSyncHandle> connectInternal({
-    required PowerSyncBackendConnector connector,
+    required InternalConnector connector,
     required ResolvedSyncOptions options,
     required List<SubscribedStream> initiallyActiveStreams,
     required Stream<List<SubscribedStream>> activeStreams,
