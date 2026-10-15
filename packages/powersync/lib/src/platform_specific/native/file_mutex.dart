@@ -53,7 +53,7 @@ final class FileMutex implements Mutex {
       } finally {
         await _releaseFileLock(file);
       }
-    });
+    }, abortTrigger: abortTrigger);
   }
 
   /// Closes the file descriptor or handle used by this mutex.
@@ -61,6 +61,7 @@ final class FileMutex implements Mutex {
     return _internal.lock(() async {
       if (_file case final file?) {
         await file.close();
+        _file = null;
       }
     });
   }
