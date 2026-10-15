@@ -186,6 +186,13 @@ final class PowerSyncDevToolsExtension {
                       'token': credentials.token,
                     },
                   },
+                  'options': switch (db.lastConnectOptions) {
+                    null => null,
+                    final options => {
+                      'params': options.params,
+                      'metadata': options.appMetadata,
+                    },
+                  },
                 },
             ],
           }),

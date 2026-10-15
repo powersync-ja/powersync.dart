@@ -209,8 +209,8 @@ extension type ProtocolInfo._(JSObject _) implements JSObject {
     /// The PowerSync service endpoint.
     required String? endpoint,
 
-    /// Derive from the token subject when the SDK does not expose it.
-    required String? userId,
+    /// The raw JWT the connector last supplied, when the SDK exposes it.
+    required String? token,
 
     /// The PowerSync client id.
     required String? clientId,

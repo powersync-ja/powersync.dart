@@ -52,13 +52,14 @@ final class DartSdkIntegration(final Ref _ref) {
     final clientId = await db.get('SELECT powersync_client_id()');
     final credentials = _ref.read(lastCredentials);
     final status = _ref.read(syncStatus);
+    final params = _ref.read(currentDatabaseReference)?.connectionParameters;
 
     return ProtocolInfo(
       endpoint: credentials?.original.endpoint,
-      userId: credentials?.userId,
+      token: credentials?.original.token,
       clientId: clientId.columnAt(0) as String,
       connectionMethod: 'http',
-      params: null, // TODO: Expose these
+      params: params?.jsify() as JSObject?,
       connected: status != null && (status.connected || status.connecting),
       sqliteCoreVersion: coreVersion.columnAt(0) as String,
       sdk: 'Dart',

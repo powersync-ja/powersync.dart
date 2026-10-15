@@ -6,6 +6,7 @@ import 'package:meta/meta.dart';
 import 'package:powersync/powersync.dart';
 
 import '../database/powersync_database.dart';
+import '../sync/options.dart';
 import 'extension.dart';
 import 'logs.dart';
 
@@ -31,6 +32,7 @@ final class ExposedPowerSyncDatabase {
   subscriptions = {};
 
   PowerSyncCredentials? lastCredentials;
+  ResolvedSyncOptions? lastConnectOptions;
 
   ExposedPowerSyncDatabase(this.database) : id = _nextId++ {
     byDatabase[database] = this;

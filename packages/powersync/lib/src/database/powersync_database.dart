@@ -331,6 +331,11 @@ abstract base class PowerSyncDatabase extends SqliteConnection {
 
     if (devtools.enable) {
       connector = ExposeCredentialsConnector(connector, this);
+      if (devtools.ExposedPowerSyncDatabase.byDatabase[this]
+          case final exposed?) {
+        exposed.lastConnectOptions = resolvedOptions;
+        devtools.ExposedPowerSyncDatabase.postChangeEvent();
+      }
     }
     await _connections.connect(connector: connector, options: resolvedOptions);
   }
