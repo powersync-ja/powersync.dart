@@ -8,7 +8,7 @@ import 'package:sqlite_async/sqlite_async.dart';
 /// within a single process. It is designed to be used as a global singleton
 /// active for the entire lifecycle of a process.
 ///
-/// Note that file locking has platform-specific behavior, which impact this
+/// Note that file locking has platform-specific behavior, which impacts this
 /// mutex implementation. On POSIX systems for example, this uses advisory
 /// locks, which are _per process_. So multiple isolates using a file mutex in
 /// the same process would be able to access the critical section concurrently.

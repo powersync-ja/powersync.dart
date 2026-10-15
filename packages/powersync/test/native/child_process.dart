@@ -4,7 +4,7 @@ import 'dart:io';
 
 import 'package:powersync/native.dart';
 
-/// A child process for `file_locks_test.dart`. Takes lock commands via stdin
+/// A child process for `file_mutex_test.dart`. Takes lock commands via stdin
 /// and reports progress on stdout.
 void main() async {
   print(json.encode('ready'));
