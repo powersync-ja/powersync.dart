@@ -36,6 +36,7 @@ final class NativePowerSyncDatabase extends BasePowerSyncDatabase {
     required super.schema,
     required super.database,
     required super.logger,
+    required super.platform,
   });
 
   @override

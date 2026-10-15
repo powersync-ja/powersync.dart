@@ -1,7 +1,7 @@
 import 'package:meta/meta.dart';
 import 'package:sqlite_async/sqlite_async.dart';
 
-import '../platform_specific/platform_specific.dart';
+import '../platform.dart';
 
 /// A collection of PowerSync database instances that are using the same
 /// underlying SQLite database.
@@ -25,9 +25,9 @@ final class ActiveDatabaseGroup {
 
   final String identifier;
 
-  ActiveDatabaseGroup._(this.identifier)
-    : syncMutex = potentiallySharedMutex('$identifier-sync'),
-      crudMutex = potentiallySharedMutex('$identifier-crud');
+  ActiveDatabaseGroup._(this.identifier, PowerSyncPlatform platform)
+    : syncMutex = platform.namedMutex('$identifier-sync'),
+      crudMutex = platform.namedMutex('$identifier-crud');
 
   Future<void> close() async {
     if (--refCount == 0) {
@@ -38,10 +38,13 @@ final class ActiveDatabaseGroup {
 
   static final Map<String, ActiveDatabaseGroup> _activeGroups = {};
 
-  static ActiveDatabaseGroup referenceDatabase(String identifier) {
+  static ActiveDatabaseGroup referenceDatabase(
+    String identifier,
+    PowerSyncPlatform platform,
+  ) {
     final group = _activeGroups.putIfAbsent(
       identifier,
-      () => ActiveDatabaseGroup._(identifier),
+      () => ActiveDatabaseGroup._(identifier, platform),
     );
     group.refCount++;
     return group;

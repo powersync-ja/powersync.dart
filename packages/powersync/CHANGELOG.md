@@ -4,6 +4,8 @@
   faster sync when connecting again.
 - Bundle [PowerSync agent skills](github.com/powersync-ja/agent-skills) with this package, install them with
   `dart run skills@ get`.
+- Add `PowerSyncPlatform`, which can be used to customize this package creates mutexes.
+- Add `FileMutex` to `package:powersync/native.dart`, which is a mutex implementation based on file locks.
 
 ## 2.4.0
 

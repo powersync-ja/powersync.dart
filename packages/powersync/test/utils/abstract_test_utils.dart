@@ -93,11 +93,13 @@ abstract class AbstractTestUtils {
     Logger? logger,
     EncryptionOptions? encryption,
     bool initialize = true,
+    PowerSyncPlatform platform = const PowerSyncPlatform(),
   }) async {
     final db = PowerSyncDatabase.withFactory(
       await testFactory(path: path, encryption: encryption),
       schema: schema ?? defaultSchema,
       logger: logger ?? _makeTestLogger(name: _testName),
+      platform: platform,
     );
     if (initialize) {
       await db.initialize();
@@ -123,6 +125,7 @@ abstract class AbstractTestUtils {
     CommonDatabase raw, {
     Logger? logger,
     Schema? customSchema,
+    PowerSyncPlatform platform = const PowerSyncPlatform(),
   }) {
     return TestDatabase(
       database: SqliteDatabase.singleConnection(
@@ -130,6 +133,7 @@ abstract class AbstractTestUtils {
       ),
       logger: logger ?? Logger.detached('PowerSync.test'),
       schema: customSchema ?? schema,
+      platform: platform,
     );
   }
 }
@@ -181,6 +185,7 @@ final class TestDatabase extends BasePowerSyncDatabase {
     required super.database,
     required super.logger,
     required super.schema,
+    super.platform = const PowerSyncPlatform(),
   });
 
   @override

@@ -8,7 +8,8 @@ import 'package:sqlite_async/src/web/web_mutex.dart';
 import '../database/encryption_options.dart';
 import '../database/powersync_database.dart';
 import '../database/web/web_powersync_database.dart';
-import '../open_factory/web/web_open_factory.dart';
+import '../platform.dart';
+import 'web/web_open_factory.dart';
 import '../schema.dart';
 import '../version.dart';
 import 'int64.dart';
@@ -37,11 +38,13 @@ BasePowerSyncDatabase openPowerSyncDatabase(
   Schema schema,
   SqliteDatabase database,
   Logger logger,
+  PowerSyncPlatform platform,
 ) {
   return WebPowerSyncDatabase(
     schema: schema,
     database: database,
     logger: logger,
+    platform: platform,
   );
 }
 

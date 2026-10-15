@@ -3,6 +3,7 @@ import 'package:sqlite_async/sqlite_async.dart';
 
 import '../database/encryption_options.dart';
 import '../database/powersync_database.dart';
+import '../platform.dart';
 import '../schema.dart';
 import 'int64.dart';
 
@@ -32,6 +33,7 @@ BasePowerSyncDatabase openPowerSyncDatabase(
   Schema schema,
   SqliteDatabase database,
   Logger logger,
+  PowerSyncPlatform platform,
 ) {
   _unsupportedPlatform();
 }

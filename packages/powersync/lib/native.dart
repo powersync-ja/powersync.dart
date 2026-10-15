@@ -2,4 +2,5 @@
 /// platforms.
 library;
 
-export 'src/open_factory/native/native_open_factory.dart';
+export 'src/platform_specific/native/native_open_factory.dart';
+export 'src/platform_specific/native/file_mutex.dart';

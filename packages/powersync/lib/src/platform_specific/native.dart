@@ -6,7 +6,8 @@ import 'package:sqlite_async/sqlite_async.dart';
 import '../database/encryption_options.dart';
 import '../database/native/native_powersync_database.dart';
 import '../database/powersync_database.dart';
-import '../open_factory/native/native_open_factory.dart';
+import '../platform.dart';
+import 'native/native_open_factory.dart';
 import '../schema.dart';
 import '../version.dart';
 import 'int64.dart';
@@ -33,11 +34,13 @@ BasePowerSyncDatabase openPowerSyncDatabase(
   Schema schema,
   SqliteDatabase database,
   Logger logger,
+  PowerSyncPlatform platform,
 ) {
   return NativePowerSyncDatabase(
     schema: schema,
     database: database,
     logger: logger,
+    platform: platform,
   );
 }
 
