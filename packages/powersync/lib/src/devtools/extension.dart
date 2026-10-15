@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:developer';
 
 import 'package:path/path.dart' as p;
+import 'package:powersync/src/devtools/logs.dart';
 
 import '../sync/sync_status.dart';
 import '../version.dart';
@@ -76,6 +77,19 @@ final class PowerSyncDevToolsExtension {
           'id': id,
           'current': serializeSyncStatus(tracked.database.currentStatus),
         };
+      case 'logs-listen':
+        final logs = tracked.logs;
+        final id = _subscriptionId++;
+        final old = logs.copyBuffer();
+
+        _clientSubscriptions[id] = logs.newSource.onRecord.listen((status) {
+          postEvent('new-logs', {
+            'subscription': id,
+            'logs': [serializeLog(status)],
+          });
+        });
+
+        return {'id': id, 'previous': old};
       case 'unsubscribe':
         _clientSubscriptions.remove(int.parse(parameters['id']!))?.cancel();
         return null;

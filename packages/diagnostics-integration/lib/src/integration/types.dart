@@ -16,20 +16,28 @@ extension type DiagnosticsEvent._(JSObject _) implements JSObject {
     required JSAny payload,
   });
 
-  factory DiagnosticsEvent.uploadQueue(UploadQueueState payload) {
-    return DiagnosticsEvent(type: 'uploadQueue'.toJS, payload: payload);
+  factory DiagnosticsEvent.status(SyncState status) {
+    return DiagnosticsEvent(type: 'status'.toJS, payload: status);
+  }
+
+  factory DiagnosticsEvent.streams(JSArray<StreamState> streams) {
+    return DiagnosticsEvent(type: 'streams'.toJS, payload: streams);
   }
 
   factory DiagnosticsEvent.buckets(JSArray<BucketState> buckets) {
     return DiagnosticsEvent(type: 'buckets'.toJS, payload: buckets);
   }
 
-  factory DiagnosticsEvent.status(SyncState status) {
-    return DiagnosticsEvent(type: 'status'.toJS, payload: status);
+  factory DiagnosticsEvent.uploadQueue(UploadQueueState payload) {
+    return DiagnosticsEvent(type: 'uploadQueue'.toJS, payload: payload);
   }
 
-  factory DiagnosticsEvent.streams(JSArray<StreamState> streams) {
-    return DiagnosticsEvent(type: 'v'.toJS, payload: streams);
+  factory DiagnosticsEvent.newLogs(JSAny logs) {
+    return DiagnosticsEvent(type: 'newLogs'.toJS, payload: logs);
+  }
+
+  factory DiagnosticsEvent.core(CoreDiagnosticsEvent payload) {
+    return DiagnosticsEvent(type: 'core'.toJS, payload: payload);
   }
 }
 
@@ -191,24 +199,6 @@ extension type UploadQueueState._(JSObject _) implements JSObject {
 
   external int get count;
   external int? get size;
-}
-
-/// A captured client log line.
-extension type LogRecord._(JSObject _) implements JSObject {
-  external factory LogRecord({
-    /// Epoch milliseconds.
-    required int timestamp,
-
-    /// One of `trace`, `debug`, `info`, `warn`, `error`.
-    required String level,
-    required String message,
-    JSArray? args,
-  });
-
-  external int get timestamp;
-  external String get level;
-  external String get message;
-  external JSArray? get args;
 }
 
 // --- connection info ---

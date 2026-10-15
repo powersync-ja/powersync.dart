@@ -109,9 +109,7 @@ abstract base class PowerSyncDatabase extends SqliteConnection {
   @protected
   Future<void> get isInitialized;
 
-  PowerSyncDatabase._() {
-    devtools.handleCreated(this);
-  }
+  PowerSyncDatabase._();
 
   /// Open a [PowerSyncDatabase].
   ///
@@ -683,7 +681,7 @@ abstract base class BasePowerSyncDatabase extends PowerSyncDatabase {
   late Future<void> isInitialized;
 
   @override
-  final Logger logger;
+  Logger logger;
 
   final PowerSyncPlatform platform;
 
@@ -693,6 +691,7 @@ abstract base class BasePowerSyncDatabase extends PowerSyncDatabase {
     required this.logger,
     required this.platform,
   }) : super._() {
+    devtools.handleCreated(this);
     isInitialized = baseInit();
   }
 

@@ -120,9 +120,9 @@ final class DecodedCredentials {
   factory DecodedCredentials(PowerSyncCredentials original) {
     try {
       final [_, payload, _] = original.token.split('.');
-      final decodedPayload =
-          (json.fuse(utf8)).decode(base64.decode(payload))
-              as Map<String, Object?>;
+      final decodedPayload = (json.fuse(
+        utf8,
+      )).decode(base64.decode(payload)) as Map<String, Object?>;
       final userId = decodedPayload['sub'].toString();
 
       return DecodedCredentials._(original, decodedPayload, userId);
@@ -149,4 +149,9 @@ final lastCredentials = Provider<DecodedCredentials?>((ref) {
   }
 
   return null;
+});
+
+final powersyncLogs = StreamProvider<List<Object?>>((ref) {
+  final selected = ref.watch(selectedDatabase);
+  return selected?.serializedLogs ?? Stream.empty();
 });

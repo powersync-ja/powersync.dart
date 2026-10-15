@@ -171,10 +171,24 @@ final class DartSdkIntegration(final Ref _ref) {
       }
     }, fireImmediately: true);
 
+    StreamSubscription<List<Object>>? logsSubscription;
+
+    final changedDatabase = _ref.listen(selectedDatabase, (old, state) {
+      if (state != null && (old != state || logsSubscription == null)) {
+        logsSubscription?.cancel();
+        logsSubscription = state.serializedLogs.listen((newLogLines) {
+          final jsified = newLogLines.jsify()!;
+          handler.callAsFunction(null, DiagnosticsEvent.newLogs(jsified));
+        });
+      }
+    }, fireImmediately: true);
+
     void unsubscribe() {
       uploadQueue.close();
       status.close();
       buckets.close();
+      changedDatabase.close();
+      logsSubscription?.cancel();
     }
 
     return Future.syncValue(unsubscribe.toJS).toJS;

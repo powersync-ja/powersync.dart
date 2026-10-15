@@ -26,12 +26,17 @@ final class RemoteDatabase extends SqliteConnection {
       StreamController.broadcast();
   final StreamController<UpdateNotification> _updates =
       StreamController.broadcast();
+  final StreamController<List<Object>> _serializedLogs =
+      StreamController.broadcast();
 
   Stream<SyncStatus> get syncStatus => _statusController.stream;
+
+  Stream<List<Object>> get serializedLogs => _serializedLogs.stream;
 
   RemoteDatabase(this.ref, this.vmService) {
     _forwardTableUpdates();
     _forwardStatusUpdates();
+    _forwardLogs();
   }
 
   void _forwardTableUpdates() {
@@ -94,6 +99,40 @@ final class RemoteDatabase extends SqliteConnection {
           });
     };
     _statusController.onCancel = () {
+      subscription?.cancel();
+      if (subscriptionId != null) {
+        request('unsubscribe', payload: {'id': subscriptionId.toString()});
+      }
+    };
+  }
+
+  void _forwardLogs() {
+    int? subscriptionId;
+    StreamSubscription<void>? subscription;
+
+    _serializedLogs.onListen = () async {
+      final response = (await request('logs-listen')) as Map<String, Object?>;
+      subscriptionId = response['id'] as int;
+
+      void addLogs(List<Object?> serialized) {
+        _serializedLogs.add(serialized.cast<Object>());
+      }
+
+      addLogs(response['previous'] as List<Object?>);
+
+      subscription?.cancel();
+      subscription = vmService.onExtensionEvent
+          .where(
+            (e) =>
+                e.extensionKind == 'powersync:new-logs' &&
+                e.extensionData?.data['subscription'] == subscriptionId,
+          )
+          .listen((event) {
+            final logs = event.extensionData!.data['logs'] as List<Object?>;
+            addLogs(logs);
+          });
+    };
+    _serializedLogs.onCancel = () {
       subscription?.cancel();
       if (subscriptionId != null) {
         request('unsubscribe', payload: {'id': subscriptionId.toString()});
