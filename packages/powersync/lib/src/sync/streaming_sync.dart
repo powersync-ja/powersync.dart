@@ -9,7 +9,6 @@ import 'package:powersync/src/abort_controller.dart';
 import 'package:powersync/src/exceptions.dart';
 import 'package:powersync/src/log_internal.dart';
 import 'package:powersync/src/sync/options.dart';
-import 'package:powersync/src/user_agent/user_agent.dart';
 import 'package:sqlite_async/sqlite_async.dart';
 
 import '../connector.dart';

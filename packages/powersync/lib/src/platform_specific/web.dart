@@ -10,6 +10,7 @@ import '../database/powersync_database.dart';
 import '../database/web/web_powersync_database.dart';
 import '../open_factory/web/web_open_factory.dart';
 import '../schema.dart';
+import '../version.dart';
 import 'int64.dart';
 
 /// Creates a [Mutex] that might be shared across isolates and tabs.
@@ -65,6 +66,17 @@ Int64 int64FromBigInt(JSBigInt value) {
   } else {
     return JsBigInt64(value);
   }
+}
+
+String powerSyncUserAgent() {
+  return 'powersync-dart-core/$libraryVersion Dart (flutter-web)';
+}
+
+Map<String, String> userAgentHeaders() {
+  var ua = powerSyncUserAgent();
+  // Chrome doesn't allow overriding the user agent.
+  // Instead, we send an additional x-user-agent header.
+  return {'X-User-Agent': ua};
 }
 
 final class JsBigInt64 implements Int64 {

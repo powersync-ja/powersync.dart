@@ -35,3 +35,11 @@ BasePowerSyncDatabase openPowerSyncDatabase(
 ) {
   _unsupportedPlatform();
 }
+
+String powerSyncUserAgent() {
+  return '';
+}
+
+Map<String, String> userAgentHeaders() {
+  return {};
+}
