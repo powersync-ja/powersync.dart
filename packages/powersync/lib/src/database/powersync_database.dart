@@ -1,5 +1,5 @@
-/// @docImport '../open_factory/native/native_open_factory.dart';
-/// @docImport '../open_factory/web/web_open_factory.dart';
+/// @docImport '../platform_specific/native/native_open_factory.dart';
+/// @docImport '../platform_specific/web/web_open_factory.dart';
 library;
 
 import 'dart:async';
@@ -16,6 +16,7 @@ import '../crud.dart';
 import '../devtools/devtools.dart' as devtools;
 import '../devtools/expose_credentials_connector.dart';
 import '../log.dart';
+import '../platform.dart';
 import '../platform_specific/platform_specific.dart';
 import '../powersync_update_notification.dart';
 import '../schema.dart';
@@ -135,11 +136,13 @@ abstract base class PowerSyncDatabase extends SqliteConnection {
     Logger? logger,
     SqliteOptions sqliteOptions = powerSyncDefaultSqliteOptions,
     EncryptionOptions? encryption,
+    PowerSyncPlatform platform = const PowerSyncPlatform(),
   }) {
     return PowerSyncDatabase.withFactory(
       openFactory(path: path, options: sqliteOptions, encryption: encryption),
       schema: schema,
       logger: logger,
+      platform: platform,
     );
   }
 
@@ -159,11 +162,13 @@ abstract base class PowerSyncDatabase extends SqliteConnection {
     @Deprecated('This argument is not used, set it on the factory instead')
     int maxReaders = SqliteOptions.defaultMaxReaders,
     Logger? logger,
+    PowerSyncPlatform platform = const PowerSyncPlatform(),
   }) {
     return PowerSyncDatabase.withDatabase(
       database: SqliteDatabase.withFactory(openFactory),
       schema: schema,
       logger: logger,
+      platform: platform,
     );
   }
 
@@ -177,11 +182,13 @@ abstract base class PowerSyncDatabase extends SqliteConnection {
     required SqliteDatabase database,
     Logger? logger,
     @Deprecated("Use [logger] instead") Logger? loggers,
+    PowerSyncPlatform platform = const PowerSyncPlatform(),
   }) {
     return openPowerSyncDatabase(
       schema,
       database,
       loggers ?? logger ?? autoLogger,
+      platform,
     );
   }
 
@@ -678,10 +685,13 @@ abstract base class BasePowerSyncDatabase extends PowerSyncDatabase {
   @override
   final Logger logger;
 
+  final PowerSyncPlatform platform;
+
   BasePowerSyncDatabase({
     required this.schema,
     required this.database,
     required this.logger,
+    required this.platform,
   }) : super._() {
     isInitialized = baseInit();
   }
@@ -695,7 +705,7 @@ abstract base class BasePowerSyncDatabase extends PowerSyncDatabase {
       // The in-memory database used in some tests doesn't have an open factory.
     }
 
-    _activeGroup = ActiveDatabaseGroup.referenceDatabase(identifier);
+    _activeGroup = ActiveDatabaseGroup.referenceDatabase(identifier, platform);
     if (_activeGroup.refCount > 1) {
       logger.warning(
         'Multiple instances for the same database have been detected. '

@@ -8,6 +8,7 @@ import 'dart:math';
 import 'package:async/async.dart';
 import 'package:logging/logging.dart';
 import 'package:powersync/powersync.dart';
+import 'package:sqlite_async/sqlite_async.dart';
 import 'package:test/test.dart';
 
 import '../server/sync_server/in_memory_sync_server.dart';
@@ -317,6 +318,48 @@ void main() {
 
       await pdb.requestCheckpoint();
     });
+
+    test('can use custom platform', () async {
+      final platform = _CountingPlatform();
+      final pdb = await testUtils.setupPowerSync(
+        path: path,
+        platform: platform,
+      );
+
+      final server = await createServer();
+      final connector = TestConnector(
+        () async =>
+            PowerSyncCredentials(endpoint: server.endpoint, token: 'token'),
+      );
+
+      await pdb.connect(
+        connector: connector,
+        options: SyncOptions(checkpointMode: CheckpointMode.requests()),
+      );
+
+      await expectLater(
+        pdb.statusStream,
+        emitsThrough(
+          isA<SyncStatus>().having((e) => e.connected, 'connected', true),
+        ),
+      );
+      await pdb.disconnect();
+
+      Matcher wasLockedAtLeastOnce() {
+        return isA<_CountingMutex>().having(
+          (e) => e.timesLocked,
+          'timesLocked',
+          isPositive,
+        );
+      }
+
+      expect(platform.mutexes, {
+        'test-db/streaming_sync_test_can_use_custom_platform.db-sync':
+            wasLockedAtLeastOnce(),
+        'test-db/streaming_sync_test_can_use_custom_platform.db-crud':
+            wasLockedAtLeastOnce(),
+      });
+    });
   });
 }
 
@@ -326,4 +369,29 @@ class _UnsendableException implements Exception {
 
   @override
   String toString() => 'fetchCredentials failed';
+}
+
+final class _CountingPlatform extends PowerSyncPlatform {
+  final Map<String, _CountingMutex> mutexes = {};
+
+  @override
+  Mutex namedMutex(String identifier) {
+    return mutexes.putIfAbsent(identifier, _CountingMutex.new);
+  }
+}
+
+final class _CountingMutex implements Mutex {
+  final Mutex inner = Mutex.simple();
+  var timesLocked = 0;
+
+  @override
+  Future<T> lock<T>(
+    Future<T> Function() callback, {
+    Future<void>? abortTrigger,
+  }) {
+    return inner.lock(() {
+      timesLocked++;
+      return Future.sync(callback);
+    });
+  }
 }

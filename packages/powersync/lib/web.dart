@@ -3,4 +3,4 @@ library;
 
 export 'src/web/worker_utils.dart' show PowerSyncAdditionalOpenOptions;
 
-export 'src/open_factory/web/web_open_factory.dart';
+export 'src/platform_specific/web/web_open_factory.dart';

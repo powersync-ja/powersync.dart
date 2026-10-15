@@ -37,7 +37,7 @@ void main(List<String> args) async {
     output.assets.code.add(
       CodeAsset(
         package: 'powersync',
-        name: 'src/open_factory/native/sqlite3_powersync_init.dart',
+        name: 'src/platform_specific/native/sqlite3_powersync_init.dart',
         linkMode: DynamicLoadingBundled(),
         file: coreExtension.uri,
       ),
