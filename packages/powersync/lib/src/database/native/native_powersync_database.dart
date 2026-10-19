@@ -14,10 +14,10 @@ import 'package:powersync/src/log_internal.dart';
 import 'package:powersync/src/sync/internal_connector.dart';
 import 'package:powersync/src/sync/options.dart';
 import 'package:powersync/src/sync/streaming_sync.dart';
-import 'package:powersync/src/sync/sync_status.dart';
 import 'package:sqlite_async/sqlite_async.dart';
 
 import '../../sync/checkpoint_request.dart';
+import '../../sync/status_update.dart';
 import 'sync_isolate_protocol.dart';
 
 /// A PowerSync managed database.
@@ -128,28 +128,16 @@ final class NativePowerSyncDatabase extends BasePowerSyncDatabase {
               return null;
             }
           });
-        case SyncIsolateToClientMessageType.status:
-          final original = payload as SyncStatus;
-          final recoveredDownloadError = switch (original.downloadError) {
-            final SerializedError e => e.recoverError(),
-            _ => null,
-          };
-          final recoveredUploadError = switch (original.uploadError) {
-            final SerializedError e => e.recoverError(),
-            _ => null,
-          };
-
-          if (recoveredUploadError != null || recoveredDownloadError != null) {
-            setStatus(
-              payload.changeErrors(
-                uploadError: recoveredUploadError ?? payload.uploadError,
-                downloadError: recoveredDownloadError ?? payload.downloadError,
-              ),
-            );
-          } else {
-            setStatus(payload);
+        case SyncIsolateToClientMessageType.statusUpdate:
+          final update = payload as SyncStatusUpdate;
+          if (update.downloadError case final SerializedError e) {
+            update.downloadError = e.recoverError();
+          }
+          if (update.uploadError case final SerializedError e) {
+            update.uploadError = e.recoverError();
           }
 
+          setStatus(update.applyTo(currentStatus));
         case SyncIsolateToClientMessageType.log:
           LogRecord record = payload as LogRecord;
           logger.log(
@@ -360,8 +348,8 @@ Future<void> _syncIsolate(_PowerSyncDatabaseIsolateArgs args) async {
       );
 
       sync.streamingSync();
-      sync.statusStream.listen((event) {
-        sPort.sendStatus(event);
+      sync.statusUpdates.listen((event) {
+        sPort.sendStatusUpdate(event);
       });
     },
     (error, stack) async {

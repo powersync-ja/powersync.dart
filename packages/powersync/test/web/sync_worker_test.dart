@@ -54,7 +54,9 @@ void main() {
       worker: null,
       subscriptions: subscriptions,
     );
-    handle.statusStream.forEach(db.setStatus);
+    handle.statusUpdates.forEach(
+      (update) => db.setStatus(update.applyTo(db.currentStatus)),
+    );
     return handle;
   }
 

@@ -87,8 +87,8 @@ final class WebPowerSyncDatabase extends BasePowerSyncDatabase {
       );
     }
 
-    sync.statusStream.listen((event) {
-      setStatus(event);
+    sync.statusUpdates.listen((event) {
+      setStatus(event.applyTo(currentStatus));
     });
     sync.streamingSync();
 

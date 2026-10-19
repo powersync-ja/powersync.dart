@@ -212,7 +212,9 @@ final class TestDatabase extends BasePowerSyncDatabase {
       ], throttle: const Duration(milliseconds: 10)),
       activeSubscriptions: initiallyActiveStreams,
     );
-    impl.statusStream.listen(setStatus);
+    impl.statusUpdates.listen((update) {
+      setStatus(update.applyTo(currentStatus));
+    });
 
     asyncWorkZone.run(impl.streamingSync);
     final subscriptions = activeStreams.listen(impl.updateSubscriptions);

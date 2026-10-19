@@ -93,6 +93,8 @@ final class UpdateSyncStatus implements NonInterruptingInstruction {
 }
 
 final class CoreSyncStatus {
+  final Map<String, Object?> originalJson;
+
   final bool connected;
   final bool connecting;
   final List<SyncPriorityStatus> priorityStatus;
@@ -101,6 +103,7 @@ final class CoreSyncStatus {
   final Int64? lastAppliedCheckpointRequestId;
 
   CoreSyncStatus({
+    required this.originalJson,
     required this.connected,
     required this.connecting,
     required this.priorityStatus,
@@ -111,6 +114,7 @@ final class CoreSyncStatus {
 
   factory CoreSyncStatus.fromJson(Map<String, Object?> json) {
     return CoreSyncStatus(
+      originalJson: json,
       connected: json['connected'] as bool,
       connecting: json['connecting'] as bool,
       priorityStatus: [

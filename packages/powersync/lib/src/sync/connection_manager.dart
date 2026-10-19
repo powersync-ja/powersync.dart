@@ -12,7 +12,7 @@ import 'package:powersync/src/sync/sync_status.dart';
 import '../database/powersync_database.dart';
 import 'checkpoint_request.dart';
 import 'instruction.dart';
-import 'mutable_sync_status.dart';
+import 'status_update.dart';
 import 'stream_utils.dart';
 import 'streaming_sync.dart';
 
@@ -282,7 +282,7 @@ final class ConnectionManager {
     );
 
     manuallyChangeSyncStatus(
-      (MutableSyncStatus()..applyFromCore(status)).immutableSnapshot(),
+      SyncStatusUpdate(core: status).applyTo(SyncStatus.uninitialized()),
     );
   }
 
