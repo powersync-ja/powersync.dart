@@ -357,19 +357,28 @@ class SyncRunner {
     );
     sync!.statusUpdates.listen((event) {
       _logger.fine('Broadcasting status update: $event');
+      final serialized = SerializedSyncStatusUpdate();
+
       if (event.core case final core?) {
-        _collectedStatusUpdates.core = json.encode(core.originalJson).toJS;
+        serialized.core = _collectedStatusUpdates.core = json
+            .encode(core.originalJson)
+            .toJS;
       }
       if (event.uploading case final uploading?) {
-        _collectedStatusUpdates.uploading = uploading.toJS;
+        serialized.uploading = _collectedStatusUpdates.uploading =
+            uploading.toJS;
       }
-      _collectedStatusUpdates.downloadError =
-          SerializedSyncStatusUpdate.serializeError(event.downloadError);
-      _collectedStatusUpdates.uploadError =
-          SerializedSyncStatusUpdate.serializeError(event.uploadError);
+      if (event.downloadError != null) {
+        serialized.downloadError = _collectedStatusUpdates.downloadError =
+            SerializedSyncStatusUpdate.serializeError(event.downloadError);
+      }
+      if (event.uploadError != null) {
+        serialized.uploadError = _collectedStatusUpdates.uploadError =
+            SerializedSyncStatusUpdate.serializeError(event.uploadError);
+      }
 
       for (final client in connections.keys) {
-        client.sendSyncUpdate(_collectedStatusUpdates);
+        client.sendSyncUpdate(serialized);
       }
     });
     sync!.streamingSync();

@@ -137,6 +137,9 @@ extension type SyncClientPort(SendPort port) {
   }
 
   void sendStatusUpdate(SyncStatusUpdate event) {
+    // We only need the json value on the web
+    event.core?.originalJson = null;
+
     send(SyncIsolateToClientMessageType.statusUpdate, event);
   }
 

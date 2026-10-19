@@ -16,7 +16,7 @@ final class SyncStatusUpdate {
   /// To clear the download error, this is set to [resetSentinel].
   Object? downloadError;
 
-  /// When non-null, a changed download error.
+  /// When non-null, a changed upload error.
   ///
   /// To clear the upload error, this is set to [resetSentinel].
   Object? uploadError;
@@ -33,8 +33,9 @@ final class SyncStatusUpdate {
     final namedEntries = [
       if (core case final core?) ('core', core),
       if (uploading case final uploading?) ('uploading', uploading),
-      if (downloadError != resetSentinel) ('downloadError', downloadError),
-      if (uploadError != resetSentinel) ('uploadError', uploadError),
+      if (downloadError != null)
+        ('downloadError', _applyError(null, downloadError)),
+      if (uploadError != null) ('uploadError', _applyError(null, uploadError)),
     ];
 
     return 'SyncStatusUpdate(${namedEntries.map((pair) => '${pair.$1}: ${pair.$2}').join(', ')})';
@@ -80,7 +81,7 @@ final class SyncStatusUpdate {
   static const resetSentinel = #reset;
 
   static Object? _applyError(Object? previousError, Object? newError) {
-    if (identical(newError, resetSentinel)) {
+    if (resetSentinel == newError) {
       return null;
     } else {
       return newError ?? previousError;

@@ -42,6 +42,7 @@ void main() {
     required PowerSyncBackendConnector connector,
     SyncOptions options = const SyncOptions(),
     List<SubscribedStream> subscriptions = const [],
+    bool applyStatusToDatabase = true,
   }) {
     final rawChannel = MessageChannel();
     syncWorker.trackPort(rawChannel.port1);
@@ -54,9 +55,11 @@ void main() {
       worker: null,
       subscriptions: subscriptions,
     );
-    handle.statusUpdates.forEach(
-      (update) => db.setStatus(update.applyTo(db.currentStatus)),
-    );
+    if (applyStatusToDatabase) {
+      handle.statusUpdates.forEach(
+        (update) => db.setStatus(update.applyTo(db.currentStatus)),
+      );
+    }
     return handle;
   }
 
@@ -116,6 +119,43 @@ void main() {
     final syncRunner = syncWorker.requestedSyncTasks.values.single;
     expect(syncRunner.sync, isNull);
     expect(syncRunner.connections, isEmpty);
+  });
+
+  test('reports errors to clients connecting later', () async {
+    // Use a long retry delay so that the download error is only reported once.
+    const options = SyncOptions(retryDelay: Duration(minutes: 1));
+    final first = createWorkerHandle(
+      connector: _ThrowingBackendConnector(),
+      options: options,
+    );
+    await first.streamingSync();
+    await db.statusStream.firstWhere((s) => s.downloadError != null);
+
+    // Trigger an upload, emitting status updates that don't change the
+    // download error.
+    await db.execute(
+      "INSERT INTO customers (id, name) VALUES (uuid(), 'name')",
+    );
+    await db.statusStream.firstWhere((s) => s.uploading);
+
+    // A connecting client should receive the existing download error.
+    final second = createWorkerHandle(
+      connector: _ThrowingBackendConnector(),
+      options: options,
+      applyStatusToDatabase: false,
+    );
+    final initialUpdate = second.statusUpdates.first;
+    await second.streamingSync();
+
+    final status = (await initialUpdate).applyTo(
+      const SyncStatus.uninitialized(),
+    );
+    expect(
+      status.downloadError.toString(),
+      contains('Expected error from fetchCredentials'),
+    );
+
+    await first.abort();
   });
 
   test('can use custom http client', () async {

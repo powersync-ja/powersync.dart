@@ -93,7 +93,9 @@ final class UpdateSyncStatus implements NonInterruptingInstruction {
 }
 
 final class CoreSyncStatus {
-  final Map<String, Object?> originalJson;
+  /// The original JSON values from which this instance is derived. Used to send
+  /// this instance over web message ports.
+  Map<String, Object?>? originalJson;
 
   final bool connected;
   final bool connecting;

@@ -292,6 +292,10 @@ class StreamingSyncImplementation implements StreamingSync {
         _emitStatusUpdate(SyncStatusUpdate(uploadError: e));
         await _delayRetry(abort);
 
+        if (_lastCoreSyncStatus?.connected != true) {
+          // Exit the upload loop if the sync stream is no longer connected
+          break;
+        }
         logger.warning(
           "Caught exception when uploading. Upload will retry after a delay",
           e,
@@ -620,28 +624,28 @@ final class _ActiveRustStreamingIteration {
       Stream<SyncEvent>? events;
       AbortController? checkpointSeed;
 
-      for (final startInstruction in await _startCommand()) {
-        switch (startInstruction) {
-          case EstablishSyncStream(:final request, :final checkpointRequest):
-            events = addBroadcast(
-              _receiveLines(request, onAbort),
-              sync._nonLineSyncEvents.stream,
-            );
-
-            if (checkpointRequest != null) {
-              final nested = checkpointSeed = AbortController();
-
-              _seedCheckpointRequests(checkpointRequest, nested);
-            }
-          case CloseSyncStream():
-            return defaultResult;
-          case final NonInterruptingInstruction other:
-            await _handleInstruction(other);
-        }
-      }
-      if (events == null) return defaultResult;
-
       try {
+        for (final startInstruction in await _startCommand()) {
+          switch (startInstruction) {
+            case EstablishSyncStream(:final request, :final checkpointRequest):
+              events = addBroadcast(
+                _receiveLines(request, onAbort),
+                sync._nonLineSyncEvents.stream,
+              );
+
+              if (checkpointRequest != null) {
+                final nested = checkpointSeed = AbortController();
+
+                _seedCheckpointRequests(checkpointRequest, nested);
+              }
+            case CloseSyncStream():
+              return defaultResult;
+            case final NonInterruptingInstruction other:
+              await _handleInstruction(other);
+          }
+        }
+        if (events == null) return defaultResult;
+
         return await _handleLines(events);
       } finally {
         await checkpointSeed?.abort();
