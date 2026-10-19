@@ -1333,6 +1333,60 @@ void _declareTests(String name, bool bson) {
       expect(database.currentStatus.uploadError, isNull);
     });
 
+    test(
+      'does not report outdated status when sync mutex is unavailable',
+      () async {
+        await database.close();
+
+        final raw = await testUtils.openRawInMemoryDatabase();
+        // Mark the database as synced.
+        raw
+          ..execute('begin')
+          ..execute('SELECT powersync_init()')
+          ..execute(
+            'INSERT INTO ps_sync_state (priority, last_synced_at) VALUES (?, ?)',
+            [
+              StreamPriority.fullSyncPriority,
+              DateTime.now().microsecondsSinceEpoch,
+            ],
+          )
+          ..execute('commit');
+        database = testUtils.wrapRaw(
+          raw,
+          platform: _UnavailableSyncMutexPlatform(),
+        );
+        await database.initialize();
+        expect(database.currentStatus.hasSynced, isTrue);
+
+        expect(
+          database.statusStream,
+          neverEmits(
+            isA<SyncStatus>().having((e) => e.hasSynced, 'hasSynced', isFalse),
+          ),
+        );
+        final firstUpload = Completer<void>();
+        await connect(
+          connector: TestConnector(
+            credentialsCallback,
+            uploadData: (db) async {
+              if (await db.getNextCrudTransaction() case final tx?) {
+                await tx.complete();
+                firstUpload.complete();
+              }
+            },
+          ),
+        );
+        await database.execute(
+          'INSERT INTO customers (id, name, email) VALUES (uuid(), ?, ?)',
+          ['trigger upload', 'local@example.org'],
+        );
+        await firstUpload.future;
+
+        await database.disconnect();
+        await database.close();
+      },
+    );
+
     group('abort', () {
       test('during connect', () async {
         final requestStarted = Completer<void>();
@@ -1384,4 +1438,26 @@ void _declareTests(String name, bool bson) {
       await database.disconnect();
     });
   });
+}
+
+final class _UnavailableSyncMutexPlatform extends PowerSyncPlatform {
+  @override
+  Mutex namedMutex(String identifier) {
+    if (identifier.endsWith('-sync')) {
+      return _BlockedMutex();
+    } else {
+      return super.namedMutex(identifier);
+    }
+  }
+}
+
+final class _BlockedMutex implements Mutex {
+  @override
+  Future<T> lock<T>(
+    Future<T> Function() callback, {
+    Future<void>? abortTrigger,
+  }) async {
+    await abortTrigger;
+    throw AbortException('lock');
+  }
 }

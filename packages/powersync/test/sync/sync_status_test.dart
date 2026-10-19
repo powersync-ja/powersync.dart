@@ -1,8 +1,13 @@
 import 'package:powersync/powersync.dart';
-import 'package:powersync/src/sync/mutable_sync_status.dart';
+import 'package:powersync/src/sync/instruction.dart';
+import 'package:powersync/src/sync/status_update.dart';
 import 'package:test/test.dart';
 
 void main() {
+  SyncStatus resolve(SyncStatusUpdate update) {
+    return update.applyTo(const SyncStatus.uninitialized());
+  }
+
   group('SyncStatus.toString', () {
     test('default', () {
       expect(
@@ -13,49 +18,72 @@ void main() {
 
     test('connection status', () {
       expect(
-        (MutableSyncStatus()..connected = true).immutableSnapshot().toString(),
+        resolve(
+          SyncStatusUpdate(
+            core: CoreSyncStatus(
+              originalJson: {},
+              connected: true,
+              connecting: false,
+              priorityStatus: [],
+              downloading: null,
+              streams: [],
+              lastAppliedCheckpointRequestId: null,
+            ),
+          ),
+        ).toString(),
         contains('SyncStatus<connected: true'),
       );
       expect(
-        (MutableSyncStatus()..connecting = true).immutableSnapshot().toString(),
+        resolve(
+          SyncStatusUpdate(
+            core: CoreSyncStatus(
+              originalJson: {},
+              connected: false,
+              connecting: true,
+              priorityStatus: [],
+              downloading: null,
+              streams: [],
+              lastAppliedCheckpointRequestId: null,
+            ),
+          ),
+        ).toString(),
         contains('SyncStatus<connected: connecting'),
       );
       expect(
-        (MutableSyncStatus()).immutableSnapshot().toString(),
+        resolve(SyncStatusUpdate()).toString(),
         contains('SyncStatus<connected: offline (not connecting)'),
       );
     });
 
     group('errors', () {
       test('upload error', () {
-        final status = (MutableSyncStatus()..uploadError = 'test')
-            .immutableSnapshot();
-
+        final status = resolve(SyncStatusUpdate(uploadError: 'test'));
         expect(status.toString(), contains('uploadError: test'));
       });
 
       test('download error', () {
-        final status = (MutableSyncStatus()..downloadError = 'test')
-            .immutableSnapshot();
-
+        final status = resolve(SyncStatusUpdate(downloadError: 'test'));
         expect(status.toString(), contains('downloadError: test'));
       });
 
       test('both upload and download error', () {
-        final status =
-            (MutableSyncStatus()
-                  ..uploadError = 'a'
-                  ..downloadError = 'b')
-                .immutableSnapshot();
+        final status = resolve(
+          SyncStatusUpdate(uploadError: 'a', downloadError: 'b'),
+        );
 
         expect(status.toString(), contains('downloadError: b uploadError: a'));
       });
 
       test('no error', () {
-        expect(
-          MutableSyncStatus().immutableSnapshot().toString(),
-          contains('error: null'),
+        final withError = resolve(
+          SyncStatusUpdate(uploadError: 'a', downloadError: 'b'),
         );
+        final status = SyncStatusUpdate(
+          uploadError: SyncStatusUpdate.resetSentinel,
+          downloadError: SyncStatusUpdate.resetSentinel,
+        );
+
+        expect(status.applyTo(withError).toString(), contains('error: null'));
       });
     });
   });

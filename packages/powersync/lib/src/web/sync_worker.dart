@@ -158,7 +158,7 @@ class ConnectedClient {
     _runner = null;
   }
 
-  void sendSyncStatus(SerializedSyncStatus status) {
+  void sendSyncUpdate(SerializedSyncStatusUpdate status) {
     channel.notify(SyncWorkerMessageType.notifySyncStatus, status);
   }
 }
@@ -173,7 +173,8 @@ class SyncRunner {
   final StreamController<_RunnerEvent> _mainEvents = StreamController();
 
   StreamingSyncImplementation? sync;
-  SyncStatus? _lastSyncStatus;
+  final SerializedSyncStatusUpdate _collectedStatusUpdates =
+      SerializedSyncStatusUpdate();
   ConnectedClient? databaseHost;
   final connections = <ConnectedClient, List<SubscribedStream>>{};
   List<SubscribedStream> currentStreams = [];
@@ -208,9 +209,7 @@ class SyncRunner {
               }
 
               // Inform the client about the current sync status.
-              if (_lastSyncStatus case final status?) {
-                client.sendSyncStatus(SerializedSyncStatus.from(status));
-              }
+              client.sendSyncUpdate(_collectedStatusUpdates);
             case _RemoveConnection(:final client):
               connections.remove(client);
               if (connections.isEmpty) {
@@ -356,13 +355,30 @@ class SyncRunner {
       activeSubscriptions: currentStreams,
       logger: _logger,
     );
-    sync!.statusStream.listen((event) {
-      _logger.fine('Broadcasting sync event: $event');
-      _lastSyncStatus = event;
-      final status = SerializedSyncStatus.from(event);
+    sync!.statusUpdates.listen((event) {
+      _logger.fine('Broadcasting status update: $event');
+      final serialized = SerializedSyncStatusUpdate();
+
+      if (event.core case final core?) {
+        serialized.core = _collectedStatusUpdates.core = json
+            .encode(core.originalJson)
+            .toJS;
+      }
+      if (event.uploading case final uploading?) {
+        serialized.uploading = _collectedStatusUpdates.uploading =
+            uploading.toJS;
+      }
+      if (event.downloadError != null) {
+        serialized.downloadError = _collectedStatusUpdates.downloadError =
+            SerializedSyncStatusUpdate.serializeError(event.downloadError);
+      }
+      if (event.uploadError != null) {
+        serialized.uploadError = _collectedStatusUpdates.uploadError =
+            SerializedSyncStatusUpdate.serializeError(event.uploadError);
+      }
 
       for (final client in connections.keys) {
-        client.sendSyncStatus(status);
+        client.sendSyncUpdate(serialized);
       }
     });
     sync!.streamingSync();

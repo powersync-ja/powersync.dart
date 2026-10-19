@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:js_interop';
 
 import 'package:meta/meta.dart';
+import 'package:powersync/src/sync/status_update.dart';
 import 'package:powersync/src/web/worker_utils.dart';
 import 'package:sqlite_async/web.dart';
 import 'package:web/web.dart' hide Client;
@@ -12,7 +13,6 @@ import '../platform_specific/int64.dart';
 import '../platform_specific/web.dart';
 import '../sync/options.dart';
 import '../sync/streaming_sync.dart';
-import '../sync/sync_status.dart';
 import 'sync_worker_protocol.dart';
 
 class SyncWorkerHandle implements StreamingSync {
@@ -22,7 +22,8 @@ class SyncWorkerHandle implements StreamingSync {
   late final WorkerCommunicationChannel _channel;
   List<SubscribedStream> subscriptions;
 
-  final StreamController<SyncStatus> _status = StreamController.broadcast();
+  final StreamController<SyncStatusUpdate> _status =
+      StreamController.broadcast();
 
   @visibleForTesting
   SyncWorkerHandle({
@@ -94,7 +95,7 @@ class SyncWorkerHandle implements StreamingSync {
     _channel.events.listen((data) {
       final (type, payload) = data;
       if (type == SyncWorkerMessageType.notifySyncStatus) {
-        _status.add((payload as SerializedSyncStatus).asSyncStatus());
+        _status.add((payload as SerializedSyncStatusUpdate).toDart());
       }
     });
   }
@@ -155,7 +156,7 @@ class SyncWorkerHandle implements StreamingSync {
   }
 
   @override
-  Stream<SyncStatus> get statusStream => _status.stream;
+  Stream<SyncStatusUpdate> get statusUpdates => _status.stream;
 
   @override
   Future<void> streamingSync() async {

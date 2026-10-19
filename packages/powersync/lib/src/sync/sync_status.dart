@@ -277,25 +277,6 @@ extension InternalSyncStatusAccess on SyncStatus {
 
   Int64? get lastAppliedCheckpoint => _lastAppliedCheckpoint;
 
-  SyncStatus changeErrors({
-    required Object? downloadError,
-    required Object? uploadError,
-  }) {
-    return SyncStatus(
-      connected: connected,
-      connecting: connecting,
-      lastSyncedAt: lastSyncedAt,
-      downloadProgress: downloadProgress,
-      downloading: downloading,
-      uploading: uploading,
-      downloadError: downloadError,
-      uploadError: uploadError,
-      priorityStatusEntries: priorityStatusEntries,
-      streamSubscriptions: _internalSubscriptions,
-      lastAppliedCheckpoint: _lastAppliedCheckpoint,
-    );
-  }
-
   bool hasApplied(Int64 checkpointRequest) {
     final lastApplied = _lastAppliedCheckpoint;
     return lastApplied != null && lastApplied >= checkpointRequest;

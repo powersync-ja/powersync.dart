@@ -1,4 +1,4 @@
-## 2.5.0-wip
+## 2.5.0
 
 - Add `soft` parameter to `disconnectAndClear`, which can be used to keep an internal copy around for a
   faster sync when connecting again.
@@ -6,6 +6,7 @@
   `dart run skills@ get`.
 - Add `PowerSyncPlatform`, which can be used to customize this package creates mutexes.
 - Add `FileMutex` to `package:powersync/native.dart`, which is a mutex implementation based on file locks.
+- Protocol changes to the shared sync worker, remember to re-run `dart run powersync:setup_web` after upgrading.
 
 ## 2.4.0
 

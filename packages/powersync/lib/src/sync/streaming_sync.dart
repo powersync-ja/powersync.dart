@@ -20,9 +20,8 @@ import 'checkpoint_request.dart' as checkpoint;
 import 'checkpoint_state.dart';
 import 'instruction.dart';
 import 'internal_connector.dart';
-import 'mutable_sync_status.dart';
+import 'status_update.dart';
 import 'stream_utils.dart';
-import 'sync_status.dart';
 
 typedef SubscribedStream = ({String name, String parameters});
 
@@ -35,7 +34,7 @@ abstract interface class RemoteStreamingSyncHandle {
 }
 
 abstract interface class StreamingSync implements RemoteStreamingSyncHandle {
-  Stream<SyncStatus> get statusStream;
+  Stream<SyncStatusUpdate> get statusUpdates;
 
   Future<void> streamingSync();
 
@@ -63,7 +62,9 @@ class StreamingSyncImplementation implements StreamingSync {
 
   final http.Client _client;
 
-  final SyncStatusStateStream _state = SyncStatusStateStream();
+  CoreSyncStatus? _lastCoreSyncStatus;
+  final StreamController<SyncStatusUpdate> _statusUpdates =
+      StreamController.broadcast();
   final CheckpointStateSignals _checkpointState = CheckpointStateSignals();
 
   AbortController? _abort;
@@ -99,7 +100,11 @@ class StreamingSyncImplementation implements StreamingSync {
   Duration get _retryDelay => options.retryDelay;
 
   @override
-  Stream<SyncStatus> get statusStream => _state.statusStream;
+  Stream<SyncStatusUpdate> get statusUpdates => _statusUpdates.stream;
+
+  void _emitStatusUpdate(SyncStatusUpdate update) {
+    _statusUpdates.add(update);
+  }
 
   @override
   Future<void> abort() async {
@@ -125,7 +130,7 @@ class StreamingSyncImplementation implements StreamingSync {
     }
 
     _client.close();
-    _state.close();
+    _statusUpdates.close();
   }
 
   @override
@@ -200,7 +205,7 @@ class StreamingSyncImplementation implements StreamingSync {
         final message = _syncErrorMessage(e);
         logger.warning('Sync error: $message', e, stacktrace);
 
-        _state.updateStatus((s) => s.applyDownloadError(e));
+        _emitStatusUpdate(SyncStatusUpdate(downloadError: e));
       }
 
       // On error, wait a little before retrying
@@ -248,7 +253,7 @@ class StreamingSyncImplementation implements StreamingSync {
         // This is the first item in the FIFO CRUD queue.
         CrudEntry? nextCrudItem = await adapter.nextCrudItem();
         if (nextCrudItem != null) {
-          _state.updateStatus((s) => s.uploading = true);
+          _emitStatusUpdate(SyncStatusUpdate(uploading: true));
           if (nextCrudItem.clientId == checkedCrudItem?.clientId) {
             // This will force a higher log level than exceptions which are caught here.
             logger.warning(
@@ -263,7 +268,9 @@ class StreamingSyncImplementation implements StreamingSync {
 
           checkedCrudItem = nextCrudItem;
           await connector.uploadCrud();
-          _state.updateStatus((s) => s.uploadError = null);
+          _emitStatusUpdate(
+            SyncStatusUpdate(uploadError: SyncStatusUpdate.resetSentinel),
+          );
         } else {
           // Uploading is completed
           didCompleteUpload = await adapter.updateTargetCheckpointRequest(() {
@@ -282,10 +289,10 @@ class StreamingSyncImplementation implements StreamingSync {
         }
 
         logger.warning('Data upload error', e, stacktrace);
-        _state.updateStatus((s) => s.applyUploadError(e));
+        _emitStatusUpdate(SyncStatusUpdate(uploadError: e));
         await _delayRetry(abort);
 
-        if (!_state.status.connected) {
+        if (_lastCoreSyncStatus?.connected != true) {
           // Exit the upload loop if the sync stream is no longer connected
           break;
         }
@@ -295,7 +302,7 @@ class StreamingSyncImplementation implements StreamingSync {
           stacktrace,
         );
       } finally {
-        _state.updateStatus((s) => s.uploading = false);
+        _emitStatusUpdate(SyncStatusUpdate(uploading: false));
 
         if (!abort.aborted && didCompleteUpload) {
           _nonLineSyncEvents.add(const UploadCompleted());
@@ -518,8 +525,8 @@ class StreamingSyncImplementation implements StreamingSync {
     }
 
     // If the request was applied, we don't need to retry.
-    if (_state.status.lastAppliedCheckpointRequestId case final lastApplied?
-        when lastApplied >= requestId) {
+    if (_lastCoreSyncStatus?.lastAppliedCheckpointRequestId
+        case final lastApplied? when lastApplied >= requestId) {
       return;
     }
 
@@ -617,28 +624,28 @@ final class _ActiveRustStreamingIteration {
       Stream<SyncEvent>? events;
       AbortController? checkpointSeed;
 
-      for (final startInstruction in await _startCommand()) {
-        switch (startInstruction) {
-          case EstablishSyncStream(:final request, :final checkpointRequest):
-            events = addBroadcast(
-              _receiveLines(request, onAbort),
-              sync._nonLineSyncEvents.stream,
-            );
-
-            if (checkpointRequest != null) {
-              final nested = checkpointSeed = AbortController();
-
-              _seedCheckpointRequests(checkpointRequest, nested);
-            }
-          case CloseSyncStream():
-            return defaultResult;
-          case final NonInterruptingInstruction other:
-            await _handleInstruction(other);
-        }
-      }
-      if (events == null) return defaultResult;
-
       try {
+        for (final startInstruction in await _startCommand()) {
+          switch (startInstruction) {
+            case EstablishSyncStream(:final request, :final checkpointRequest):
+              events = addBroadcast(
+                _receiveLines(request, onAbort),
+                sync._nonLineSyncEvents.stream,
+              );
+
+              if (checkpointRequest != null) {
+                final nested = checkpointSeed = AbortController();
+
+                _seedCheckpointRequests(checkpointRequest, nested);
+              }
+            case CloseSyncStream():
+              return defaultResult;
+            case final NonInterruptingInstruction other:
+              await _handleInstruction(other);
+          }
+        }
+        if (events == null) return defaultResult;
+
         return await _handleLines(events);
       } finally {
         await checkpointSeed?.abort();
@@ -816,7 +823,8 @@ final class _ActiveRustStreamingIteration {
           _ => Level.WARNING,
         }, line);
       case UpdateSyncStatus(:final status):
-        sync._state.updateStatus((m) => m.applyFromCore(status));
+        sync._lastCoreSyncStatus = status;
+        sync._emitStatusUpdate(SyncStatusUpdate(core: status));
       case FetchCredentials(:final didExpire):
         if (didExpire) {
           await sync.connector.prefetchCredentials(invalidate: true);
@@ -833,7 +841,9 @@ final class _ActiveRustStreamingIteration {
           );
         }
       case DidCompleteSync():
-        sync._state.updateStatus((m) => m.downloadError = null);
+        sync._emitStatusUpdate(
+          SyncStatusUpdate(downloadError: SyncStatusUpdate.resetSentinel),
+        );
       case UnknownSyncInstruction(:final source):
         sync.logger.warning('Unknown instruction: $source');
     }

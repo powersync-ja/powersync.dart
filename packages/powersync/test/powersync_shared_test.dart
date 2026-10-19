@@ -1,6 +1,7 @@
 import 'package:logging/logging.dart';
 import 'package:powersync/powersync.dart';
-import 'package:powersync/src/sync/mutable_sync_status.dart';
+import 'package:powersync/src/sync/instruction.dart';
+import 'package:powersync/src/sync/status_update.dart';
 import 'package:sqlite_async/sqlite_async.dart';
 import 'package:test/test.dart';
 import 'package:uuid/parsing.dart';
@@ -165,11 +166,23 @@ void main() {
         ]),
       );
 
-      final status =
-          (MutableSyncStatus()
-                ..connected = true
-                ..lastSyncedAt = DateTime.now())
-              .immutableSnapshot();
+      final status = SyncStatusUpdate(
+        core: CoreSyncStatus(
+          originalJson: {},
+          connected: true,
+          connecting: false,
+          priorityStatus: [
+            (
+              priority: .fullSyncPriority,
+              hasSynced: true,
+              lastSyncedAt: DateTime.now(),
+            ),
+          ],
+          downloading: null,
+          streams: [],
+          lastAppliedCheckpointRequestId: null,
+        ),
+      ).applyTo(const SyncStatus.uninitialized());
       db.setStatus(status);
       db.setStatus(status); // Should not re-emit!
 

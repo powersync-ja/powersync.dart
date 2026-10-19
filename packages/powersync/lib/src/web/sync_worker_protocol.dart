@@ -8,14 +8,14 @@ import 'package:logging/logging.dart';
 import 'package:meta/meta.dart';
 import 'package:powersync/src/schema.dart';
 import 'package:powersync/src/sync/options.dart';
-import 'package:powersync/src/sync/stream.dart';
 import 'package:web/web.dart' hide HttpRequest, Client;
 
 import '../connector.dart';
 import '../log.dart';
 import '../platform_specific/web.dart';
+import '../sync/instruction.dart';
+import '../sync/status_update.dart';
 import '../sync/streaming_sync.dart';
-import '../sync/sync_status.dart';
 import 'http/protocol.dart';
 import 'http/server.dart';
 
@@ -239,166 +239,48 @@ extension type SerializedCredentials._(JSObject _) implements JSObject {
 }
 
 @anonymous
-extension type SerializedBucketProgress._(JSObject _) implements JSObject {
-  external factory SerializedBucketProgress({
-    required String name,
-    required int priority,
-    required int atLast,
-    required int sinceLast,
-    required int targetCount,
+extension type SerializedSyncStatusUpdate._(JSObject _) implements JSObject {
+  external factory SerializedSyncStatusUpdate({
+    JSAny? core,
+    JSBoolean? uploading,
+    JSAny? downloadError,
+    JSAny? uploadError,
   });
 
-  external String name;
-  external int priority;
-  external int atLast;
-  external int sinceLast;
-  external int targetCount;
+  external JSString? core;
+  external JSBoolean? uploading;
+  external JSAny? downloadError;
+  external JSAny? uploadError;
 
-  static JSArray<SerializedBucketProgress> serialize(
-    Map<String, BucketProgress> buckets,
-  ) {
-    return <SerializedBucketProgress>[
-      for (final MapEntry(:key, :value) in buckets.entries)
-        SerializedBucketProgress(
-          name: key,
-          priority: value.priority.priorityNumber,
-          atLast: value.atLast,
-          sinceLast: value.sinceLast,
-          targetCount: value.targetCount,
-        ),
-    ].toJS;
+  SyncStatusUpdate toDart() {
+    CoreSyncStatus? core;
+    if (this.core case final serialized?) {
+      core = CoreSyncStatus.fromJson(
+        json.decode(serialized.toDart) as Map<String, Object?>,
+      );
+    }
+
+    return SyncStatusUpdate(
+      core: core,
+      uploading: uploading?.toDart,
+      downloadError: _deserializeError(downloadError),
+      uploadError: _deserializeError(uploadError),
+    );
   }
 
-  static Map<String, BucketProgress> deserialize(
-    JSArray<SerializedBucketProgress> array,
-  ) {
-    return {
-      for (final entry in array.toDart)
-        entry.name: (
-          priority: StreamPriority(entry.priority),
-          atLast: entry.atLast,
-          sinceLast: entry.sinceLast,
-          targetCount: entry.targetCount,
-        ),
+  static JSAny? serializeError(Object? error) {
+    return switch (error) {
+      null => null,
+      SyncStatusUpdate.resetSentinel => (-1).toJS,
+      final error => error.toString().toJS,
     };
   }
-}
 
-@anonymous
-extension type SerializedSyncStatus._(JSObject _) implements JSObject {
-  external factory SerializedSyncStatus({
-    required bool connected,
-    required bool connecting,
-    required bool downloading,
-    required bool uploading,
-    required int? lastSyncedAt,
-    required bool? hasSyned,
-    required String? uploadError,
-    required String? downloadError,
-    required JSArray? priorityStatusEntries,
-    required JSArray<SerializedBucketProgress>? syncProgress,
-    required JSString streamSubscriptions,
-    required JSBigInt? lastAppliedCheckpoint,
-  });
+  static Object? _deserializeError(JSAny? error) {
+    if (error == null) return null;
 
-  factory SerializedSyncStatus.from(SyncStatus status) {
-    return SerializedSyncStatus(
-      connected: status.connected,
-      connecting: status.connecting,
-      downloading: status.downloading,
-      uploading: status.uploading,
-      lastSyncedAt: status.lastSyncedAt?.microsecondsSinceEpoch,
-      hasSyned: status.hasSynced,
-      uploadError: status.uploadError?.toString(),
-      downloadError: status.downloadError?.toString(),
-      priorityStatusEntries: <JSArray?>[
-        for (final entry in status.priorityStatusEntries)
-          [
-            entry.priority.priorityNumber.toJS,
-            entry.lastSyncedAt?.microsecondsSinceEpoch.toJS,
-            entry.hasSynced?.toJS,
-          ].toJS,
-      ].toJS,
-      syncProgress: switch (status.downloadProgress) {
-        null => null,
-        var other => SerializedBucketProgress.serialize(
-          InternalSyncDownloadProgress.ofPublic(other).buckets,
-        ),
-      },
-      streamSubscriptions: json.encode(status.internalSubscriptions).toJS,
-      lastAppliedCheckpoint: switch (status.lastAppliedCheckpoint) {
-        null => null,
-        JsBigInt64(:final value) => value,
-        final other => JsBigInt64.parse(other.toString()).value,
-      },
-    );
-  }
-
-  external bool get connected;
-  external bool get connecting;
-  external bool get downloading;
-  external bool get uploading;
-  external int? lastSyncedAt;
-  @Deprecated('Only included for backwards compatibility')
-  external bool? hasSynced;
-  external String? uploadError;
-  external String? downloadError;
-  external JSArray? priorityStatusEntries;
-  external JSArray<SerializedBucketProgress>? syncProgress;
-  external JSString? streamSubscriptions;
-  external JSBigInt? lastAppliedCheckpoint;
-
-  SyncStatus asSyncStatus() {
-    final streamSubscriptions = this.streamSubscriptions?.toDart;
-
-    return SyncStatus(
-      connected: connected,
-      connecting: connecting,
-      downloading: downloading,
-      uploading: uploading,
-      lastSyncedAt: lastSyncedAt == null
-          ? null
-          : DateTime.fromMicrosecondsSinceEpoch(lastSyncedAt!),
-      uploadError: uploadError,
-      downloadError: downloadError,
-      priorityStatusEntries: <SyncPriorityStatus>[
-        if (priorityStatusEntries case final jsEntries?)
-          ...jsEntries.toDart.map((e) {
-            final [rawPriority, rawSynced, rawHasSynced, ...] =
-                (e as JSArray).toDart;
-            final syncedMillis = (rawSynced as JSNumber?)?.toDartInt;
-
-            return (
-              priority: StreamPriority((rawPriority as JSNumber).toDartInt),
-              lastSyncedAt: syncedMillis != null
-                  ? DateTime.fromMicrosecondsSinceEpoch(syncedMillis)
-                  : null,
-              hasSynced: (rawHasSynced as JSBoolean?)?.toDart,
-            );
-          }),
-      ],
-      downloadProgress: switch (syncProgress) {
-        null => null,
-        final serializedProgress => InternalSyncDownloadProgress(
-          SerializedBucketProgress.deserialize(serializedProgress),
-        ).asSyncDownloadProgress,
-      },
-      streamSubscriptions: switch (streamSubscriptions) {
-        null => null,
-        final serialized =>
-          (json.decode(serialized) as List?)
-              ?.map(
-                (e) => CoreActiveStreamSubscription.fromJson(
-                  e as Map<String, Object?>,
-                ),
-              )
-              .toList(),
-      },
-      lastAppliedCheckpoint: switch (lastAppliedCheckpoint) {
-        null => null,
-        final id => int64FromBigInt(id),
-      },
-    );
+    if (error.typeofEquals('number')) return SyncStatusUpdate.resetSentinel;
+    return (error as JSString).toDart;
   }
 }
 

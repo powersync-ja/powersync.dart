@@ -7,8 +7,8 @@ import 'package:sqlite_async/sqlite_async.dart';
 import '../../connector.dart';
 import '../../isolate_completer.dart';
 import '../../platform_specific/int64.dart';
+import '../../sync/status_update.dart';
 import '../../sync/streaming_sync.dart' show SubscribedStream;
-import '../../sync/sync_status.dart';
 
 // A (type, payload) pair sent between main app and sync isolate
 typedef SyncIsolateToClientMessage = (SyncIsolateToClientMessageType, Object?);
@@ -34,8 +34,8 @@ enum SyncIsolateToClientMessageType {
   /// Invoke [CustomCheckpointRequestConnector.postCheckpointRequest].
   customCheckpointRequest,
 
-  /// The sync status has changed, payload is a [SyncStatus].
-  status,
+  /// The sync status has changed, payload is a [SyncStatusUpdate].
+  statusUpdate,
 
   /// Incoming log message, payload is a [LogRecord].
   log,
@@ -136,8 +136,11 @@ extension type SyncClientPort(SendPort port) {
     send(SyncIsolateToClientMessageType.log, record);
   }
 
-  void sendStatus(SyncStatus event) {
-    send(SyncIsolateToClientMessageType.status, event);
+  void sendStatusUpdate(SyncStatusUpdate event) {
+    // We only need the json value on the web
+    event.core?.originalJson = null;
+
+    send(SyncIsolateToClientMessageType.statusUpdate, event);
   }
 
   void sendAcquireMutex(String name, int request) {
