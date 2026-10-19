@@ -1,3 +1,7 @@
+## 2.5.1 (unreleased)
+
+- Update PowerSync SQLite core extension to 0.5.4 ([release notes](https://github.com/powersync-ja/powersync-sqlite-core/releases/tag/v0.5.4)).
+
 ## 2.5.0
 
 - Add `soft` parameter to `disconnectAndClear`, which can be used to keep an internal copy around for a

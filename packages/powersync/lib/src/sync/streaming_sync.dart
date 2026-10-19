@@ -844,6 +844,10 @@ final class _ActiveRustStreamingIteration {
         sync._emitStatusUpdate(
           SyncStatusUpdate(downloadError: SyncStatusUpdate.resetSentinel),
         );
+      case CheckpointDelayedDueToLocalData():
+        // Ignored for now, this will become an error for download-only
+        // connections.
+        break;
       case UnknownSyncInstruction(:final source):
         sync.logger.warning('Unknown instruction: $source');
     }
