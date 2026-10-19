@@ -24,6 +24,7 @@ class SyncWorkerHandle implements StreamingSync {
 
   final StreamController<SyncStatusUpdate> _status =
       StreamController.broadcast();
+  final StreamController<String> _diagnostics = StreamController();
 
   @visibleForTesting
   SyncWorkerHandle({
@@ -96,6 +97,8 @@ class SyncWorkerHandle implements StreamingSync {
       final (type, payload) = data;
       if (type == SyncWorkerMessageType.notifySyncStatus) {
         _status.add((payload as SerializedSyncStatusUpdate).toDart());
+      } else if (type == SyncWorkerMessageType.handleDiagnostics) {
+        _diagnostics.add((payload as JSString).toDart);
       }
     });
   }
@@ -133,6 +136,9 @@ class SyncWorkerHandle implements StreamingSync {
 
     return handle;
   }
+
+  @override
+  Stream<String> get diagnostics => _diagnostics.stream;
 
   Future<void> close() async {
     await abort();

@@ -79,10 +79,7 @@ class ConnectedClient {
                 final encodedParams =>
                   jsonDecode(encodedParams) as Map<String, Object?>,
               },
-              syncImplementation: switch (request.implementationName) {
-                null => SyncClientImplementation.defaultClient,
-                final name => SyncClientImplementation.values.byName(name),
-              },
+              syncImplementation: SyncClientImplementation.rust,
               appMetadata: switch (request.appMetadataEncoded) {
                 null => null,
                 final encodedAppMetadata => Map<String, String>.from(
@@ -98,6 +95,7 @@ class ConnectedClient {
                   Duration(microseconds: delay),
                 ),
               },
+              enableDiagnostics: request.diagnostics ?? false,
             );
 
             _runner = _worker._referenceSyncTask(
@@ -160,6 +158,13 @@ class ConnectedClient {
 
   void sendSyncUpdate(SerializedSyncStatusUpdate status) {
     channel.notify(SyncWorkerMessageType.notifySyncStatus, status);
+  }
+
+  void sendDiagnosticsEvent(String serializedEvent) {
+    channel.notify(
+      SyncWorkerMessageType.handleDiagnostics,
+      serializedEvent.toJS,
+    );
   }
 }
 
@@ -333,7 +338,7 @@ class SyncRunner {
     );
 
     currentStreams = connections.values.flattenedToSet.toList();
-    sync = StreamingSyncImplementation(
+    final createdSync = sync = StreamingSyncImplementation(
       adapter: BucketStorage(database),
       schemaJson: schemaJson,
       connector: InternalConnector(
@@ -355,7 +360,7 @@ class SyncRunner {
       activeSubscriptions: currentStreams,
       logger: _logger,
     );
-    sync!.statusUpdates.listen((event) {
+    createdSync.statusUpdates.listen((event) {
       _logger.fine('Broadcasting status update: $event');
       final serialized = SerializedSyncStatusUpdate();
 
@@ -381,7 +386,13 @@ class SyncRunner {
         client.sendSyncUpdate(serialized);
       }
     });
-    sync!.streamingSync();
+    createdSync.diagnostics.listen((event) {
+      _logger.fine('Broadcasting diagnostic event: $event');
+      for (final client in connections.keys) {
+        client.sendDiagnosticsEvent(event);
+      }
+    });
+    createdSync.streamingSync();
   }
 
   void registerClient(

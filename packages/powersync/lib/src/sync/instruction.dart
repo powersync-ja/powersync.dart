@@ -24,6 +24,9 @@ sealed class Instruction {
       {'DidCompleteSync': _} => const DidCompleteSync(),
       {'CheckpointDelayedDueToLocalData': _} =>
         const CheckpointDelayedDueToLocalData(),
+      {'HandleDiagnostics': final diagnostics} => HandleDiagnostics(
+        diagnostics as Map<String, Object?>,
+      ),
       _ => UnknownSyncInstruction(json),
     };
   }
@@ -221,6 +224,15 @@ final class DidCompleteSync implements NonInterruptingInstruction {
 final class CheckpointDelayedDueToLocalData
     implements NonInterruptingInstruction {
   const CheckpointDelayedDueToLocalData();
+}
+
+final class HandleDiagnostics implements NonInterruptingInstruction {
+  /// The encoded diagnostics event.
+  ///
+  /// This event is forwarded to DevTools without being interpreted by the SDK.
+  final Map<String, Object?> serializedEvent;
+
+  HandleDiagnostics(this.serializedEvent);
 }
 
 final class UnknownSyncInstruction implements NonInterruptingInstruction {

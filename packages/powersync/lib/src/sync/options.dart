@@ -2,6 +2,8 @@ import 'package:collection/collection.dart';
 import 'package:http/http.dart';
 import 'package:meta/meta.dart';
 
+import '../devtools/devtools.dart' as devtools;
+
 /// The signature of a function creating a http [Client] to use by the PowerSync
 /// SDK.
 ///
@@ -67,6 +69,15 @@ final class SyncOptions {
   /// later is used.
   final CheckpointMode? checkpointMode;
 
+  /// Whether to enable extended diagnostics that show up in the
+  /// [DevTools extension].
+  ///
+  /// This is enabled by default outside of release-mode builds, and typically
+  /// shouldn't be changed.
+  ///
+  /// [DevTools extension]: https://docs.powersync.com/tools/dart-devtools-extension
+  final bool enableDiagnostics;
+
   const SyncOptions({
     this.crudThrottleTime,
     this.retryDelay,
@@ -76,6 +87,7 @@ final class SyncOptions {
     this.appMetadata,
     this.httpClient,
     this.checkpointMode,
+    this.enableDiagnostics = devtools.enable,
   });
 
   SyncOptions _copyWith({
@@ -93,6 +105,7 @@ final class SyncOptions {
       appMetadata: appMetadata ?? this.appMetadata,
       httpClient: httpClient,
       checkpointMode: checkpointMode,
+      enableDiagnostics: enableDiagnostics,
     );
   }
 }
@@ -226,6 +239,7 @@ extension type ResolvedSyncOptions(SyncOptions source) {
       appMetadata: other.appMetadata ?? appMetadata,
       httpClient: other.httpClient ?? source.httpClient,
       checkpointMode: other.checkpointMode ?? checkpointMode,
+      enableDiagnostics: other.enableDiagnostics,
     );
 
     final didChange =
@@ -235,7 +249,8 @@ extension type ResolvedSyncOptions(SyncOptions source) {
         newOptions.syncImplementation != source.syncImplementation ||
         newOptions.includeDefaultStreams != includeDefaultStreams ||
         !_mapEquality.equals(newOptions.appMetadata, appMetadata) ||
-        newOptions.checkpointMode != checkpointMode;
+        newOptions.checkpointMode != checkpointMode ||
+        newOptions.enableDiagnostics != source.enableDiagnostics;
     return (ResolvedSyncOptions(newOptions), didChange);
   }
 

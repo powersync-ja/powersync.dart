@@ -1,6 +1,7 @@
 @internal
 library;
 
+import 'dart:async';
 import 'dart:developer' as dev;
 import 'package:meta/meta.dart';
 import 'package:powersync/powersync.dart';
@@ -30,6 +31,8 @@ final class ExposedPowerSyncDatabase {
   /// Sync Stream subscriptions requested through the DevTools extension.
   final Map<DiagnosticsStreamSubscription, SyncStreamSubscription>
   subscriptions = {};
+
+  final StreamController<String> diagnostics = StreamController.broadcast();
 
   PowerSyncCredentials? lastCredentials;
   ResolvedSyncOptions? lastConnectOptions;

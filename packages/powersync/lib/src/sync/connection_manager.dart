@@ -10,6 +10,7 @@ import 'package:powersync/src/sync/stream.dart';
 import 'package:powersync/src/sync/sync_status.dart';
 
 import '../database/powersync_database.dart';
+import '../devtools/devtools.dart' as devtools;
 import 'checkpoint_request.dart';
 import 'instruction.dart';
 import 'status_update.dart';
@@ -157,6 +158,13 @@ final class ConnectionManager {
       _abortActiveSync = (thisConnectAborter, handle);
 
       thisConnectAborter.onCompletion.whenComplete(retryHandler);
+
+      if (devtools.enable) {
+        if (devtools.ExposedPowerSyncDatabase.byDatabase[db]
+            case final exposed?) {
+          handle.diagnostics.listen(exposed.diagnostics.add);
+        }
+      }
     }
 
     // If the sync encounters a failure without being aborted, retry
