@@ -358,7 +358,7 @@ class SyncRunner {
     sync!.statusUpdates.listen((event) {
       _logger.fine('Broadcasting status update: $event');
       if (event.core case final core?) {
-        _collectedStatusUpdates.core = core.originalJson.jsify();
+        _collectedStatusUpdates.core = json.encode(core.originalJson).toJS;
       }
       if (event.uploading case final uploading?) {
         _collectedStatusUpdates.uploading = uploading.toJS;

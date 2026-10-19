@@ -16,7 +16,6 @@ import '../platform_specific/web.dart';
 import '../sync/instruction.dart';
 import '../sync/status_update.dart';
 import '../sync/streaming_sync.dart';
-import '../sync/sync_status.dart';
 import 'http/protocol.dart';
 import 'http/server.dart';
 
@@ -240,52 +239,6 @@ extension type SerializedCredentials._(JSObject _) implements JSObject {
 }
 
 @anonymous
-extension type SerializedBucketProgress._(JSObject _) implements JSObject {
-  external factory SerializedBucketProgress({
-    required String name,
-    required int priority,
-    required int atLast,
-    required int sinceLast,
-    required int targetCount,
-  });
-
-  external String name;
-  external int priority;
-  external int atLast;
-  external int sinceLast;
-  external int targetCount;
-
-  static JSArray<SerializedBucketProgress> serialize(
-    Map<String, BucketProgress> buckets,
-  ) {
-    return <SerializedBucketProgress>[
-      for (final MapEntry(:key, :value) in buckets.entries)
-        SerializedBucketProgress(
-          name: key,
-          priority: value.priority.priorityNumber,
-          atLast: value.atLast,
-          sinceLast: value.sinceLast,
-          targetCount: value.targetCount,
-        ),
-    ].toJS;
-  }
-
-  static Map<String, BucketProgress> deserialize(
-    JSArray<SerializedBucketProgress> array,
-  ) {
-    return {
-      for (final entry in array.toDart)
-        entry.name: (
-          priority: StreamPriority(entry.priority),
-          atLast: entry.atLast,
-          sinceLast: entry.sinceLast,
-          targetCount: entry.targetCount,
-        ),
-    };
-  }
-}
-
-@anonymous
 extension type SerializedSyncStatusUpdate._(JSObject _) implements JSObject {
   external factory SerializedSyncStatusUpdate({
     JSAny? core,
@@ -294,7 +247,7 @@ extension type SerializedSyncStatusUpdate._(JSObject _) implements JSObject {
     JSAny? uploadError,
   });
 
-  external JSAny? core;
+  external JSString? core;
   external JSBoolean? uploading;
   external JSAny? downloadError;
   external JSAny? uploadError;
@@ -303,7 +256,7 @@ extension type SerializedSyncStatusUpdate._(JSObject _) implements JSObject {
     CoreSyncStatus? core;
     if (this.core case final serialized?) {
       core = CoreSyncStatus.fromJson(
-        serialized.dartify()! as Map<String, Object?>,
+        json.decode(serialized.toDart) as Map<String, Object?>,
       );
     }
 
