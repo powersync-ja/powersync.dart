@@ -74,7 +74,7 @@ final class DartSdkIntegration(final Ref _ref) {
 
     switch (ActionName.values.byName(request.action)) {
       case ActionName.reconnect:
-        throw UnimplementedError();
+        await db.request('reconnect');
       case ActionName.disconnect:
         await db.request('disconnect');
       case ActionName.clearData:

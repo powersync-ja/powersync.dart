@@ -53,6 +53,9 @@ final class ConnectionManager {
   /// sync mutex.
   (AbortController, RemoteStreamingSyncHandle)? _abortActiveSync;
 
+  PowerSyncBackendConnector? _lastConnector;
+  ResolvedSyncOptions? _lastOptions;
+
   ConnectionManager(this.db) : _activeGroup = db.group;
 
   void checkNotConnected() {
@@ -120,12 +123,8 @@ final class ConnectionManager {
     required PowerSyncBackendConnector connector,
     required ResolvedSyncOptions options,
   }) async {
-    if (db.schema.rawTables.isNotEmpty &&
-        options.source.syncImplementation != SyncClientImplementation.rust) {
-      throw UnsupportedError(
-        'Raw tables are only supported by the Rust client.',
-      );
-    }
+    _lastConnector = connector;
+    _lastOptions = options;
 
     var thisConnectAborter = AbortController();
     final zone = Zone.current;
@@ -196,6 +195,14 @@ final class ConnectionManager {
 
       await connectWithSyncLock();
     });
+  }
+
+  Future<void> reconnect() async {
+    final connector = _lastConnector;
+    final options = _lastOptions;
+    if (connector != null && options != null) {
+      await connect(connector: connector, options: options);
+    }
   }
 
   void manuallyChangeSyncStatus(SyncStatus status) {

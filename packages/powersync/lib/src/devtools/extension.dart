@@ -49,6 +49,9 @@ final class PowerSyncDevToolsExtension {
         };
       case 'schema':
         return tracked.database.schema.toJson();
+      case 'reconnect':
+        await tracked.database.reconnect();
+        return {};
       case 'table-updates-listen':
         final stream = tracked.database.onChange(
           null,

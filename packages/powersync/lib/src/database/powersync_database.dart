@@ -727,6 +727,13 @@ abstract base class BasePowerSyncDatabase extends PowerSyncDatabase {
     await updateSchema(schema);
     await _connections.resolveOfflineSyncStatus();
   }
+
+  /// Disconnects, then connects again with the last known options.
+  ///
+  /// This is only used for the DevTools integration.
+  Future<void> reconnect() {
+    return _connections.reconnect();
+  }
 }
 
 @internal
