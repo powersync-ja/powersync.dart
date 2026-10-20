@@ -6,7 +6,6 @@ updates:
       interval: monthly
     cooldown:
       default-days: 7
-  # Dependabot uses the npm ecosystem for pnpm projects (detected via pnpm-lock.yaml).
   - package-ecosystem: "npm"
     directories:
       - "/packages/diagnostics-integration"

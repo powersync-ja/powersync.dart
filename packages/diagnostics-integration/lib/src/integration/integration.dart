@@ -16,6 +16,9 @@ external JSString _jsonEncode(JSAny a);
 @JS('JSON.parse')
 external JSAny? _jsonParseJs(JSString source);
 
+/// Implements an [SDK integration] based on the Dart DevTools protocol.
+///
+/// [SDK integration]: https://github.com/powersync-ja/powersync-js/blob/7d5255f678ed843196c88f76eba8a2ace4b5098a/tools/diagnostics-core/src/integration.ts#L56
 final class DartSdkIntegration(final Ref _ref) {
   RemoteDatabase _requireDatabase() {
     final db = _ref.read(selectedDatabase);

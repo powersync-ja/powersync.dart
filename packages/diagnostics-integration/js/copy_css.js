@@ -1,3 +1,4 @@
+// Copies styles from the diagnostics ui bundle to web/js-dist, which are referenced by index.html
 import { copyFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
