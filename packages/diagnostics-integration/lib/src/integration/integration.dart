@@ -13,6 +13,9 @@ import 'types.dart';
 @JS('JSON.stringify')
 external JSString _jsonEncode(JSAny a);
 
+@JS('JSON.parse')
+external JSAny? _jsonParseJs(JSString source);
+
 final class DartSdkIntegration(final Ref _ref) {
   RemoteDatabase _requireDatabase() {
     final db = _ref.read(selectedDatabase);
@@ -173,13 +176,20 @@ final class DartSdkIntegration(final Ref _ref) {
     }, fireImmediately: true);
 
     StreamSubscription<List<Object>>? logsSubscription;
+    StreamSubscription<String>? diagnosticsSusbcription;
 
     final changedDatabase = _ref.listen(selectedDatabase, (old, state) {
       if (state != null && (old != state || logsSubscription == null)) {
         logsSubscription?.cancel();
+        diagnosticsSusbcription?.cancel();
+
         logsSubscription = state.serializedLogs.listen((newLogLines) {
           final jsified = newLogLines.jsify()!;
           handler.callAsFunction(null, DiagnosticsEvent.newLogs(jsified));
+        });
+        diagnosticsSusbcription = state.diagnostics.listen((event) {
+          final encoded = _jsonParseJs(event.toJS);
+          handler.callAsFunction(null, DiagnosticsEvent.core(encoded!));
         });
       }
     }, fireImmediately: true);
@@ -190,6 +200,7 @@ final class DartSdkIntegration(final Ref _ref) {
       buckets.close();
       changedDatabase.close();
       logsSubscription?.cancel();
+      diagnosticsSusbcription?.cancel();
     }
 
     return Future.syncValue(unsubscribe.toJS).toJS;

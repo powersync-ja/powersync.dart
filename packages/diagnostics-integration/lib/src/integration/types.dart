@@ -36,7 +36,7 @@ extension type DiagnosticsEvent._(JSObject _) implements JSObject {
     return DiagnosticsEvent(type: 'newLogs'.toJS, payload: logs);
   }
 
-  factory DiagnosticsEvent.core(CoreDiagnosticsEvent payload) {
+  factory DiagnosticsEvent.core(JSAny payload) {
     return DiagnosticsEvent(type: 'core'.toJS, payload: payload);
   }
 }
@@ -271,31 +271,6 @@ extension type BucketStateChangePayload._(JSObject _) implements JSObject {
 
   external JSArray<BucketStateChangeEntry> get changes;
   external bool? get incremental;
-}
-
-/// The slice of the SQLite core's diagnostics event stream the tool consumes: per-bucket target
-/// totals (`target_count`) and inferred schema changes. Emitted by the core when the client connects
-/// with diagnostics enabled.
-///
-/// A tagged union represented as an object with exactly one of [bucketStateChange] or
-/// [schemaChange] set, matching the JSON the core emits.
-extension type CoreDiagnosticsEvent._raw(JSObject _) implements JSObject {
-  external factory CoreDiagnosticsEvent._({
-    @JS('BucketStateChange') BucketStateChangePayload? bucketStateChange,
-    @JS('SchemaChange') JSAny? schemaChange,
-  });
-
-  factory CoreDiagnosticsEvent.bucketStateChange(
-    BucketStateChangePayload value,
-  ) => CoreDiagnosticsEvent._(bucketStateChange: value);
-
-  factory CoreDiagnosticsEvent.schemaChange(JSAny value) =>
-      CoreDiagnosticsEvent._(schemaChange: value);
-
-  @JS('BucketStateChange')
-  external BucketStateChangePayload? get bucketStateChange;
-  @JS('SchemaChange')
-  external JSAny? get schemaChange;
 }
 
 // --- actions ---

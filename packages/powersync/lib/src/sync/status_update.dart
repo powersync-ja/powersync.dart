@@ -31,7 +31,7 @@ final class SyncStatusUpdate {
   @override
   String toString() {
     final namedEntries = [
-      if (core case final core?) ('core', core),
+      if (core case final core?) ('core', core.originalJson),
       if (uploading case final uploading?) ('uploading', uploading),
       if (downloadError != null)
         ('downloadError', _applyError(null, downloadError)),

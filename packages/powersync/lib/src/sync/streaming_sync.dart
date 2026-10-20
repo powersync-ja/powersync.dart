@@ -32,6 +32,9 @@ typedef SubscribedStream = ({String name, String parameters});
 abstract interface class RemoteStreamingSyncHandle {
   Future<Int64> requestCheckpoint();
 
+  /// Forwarded serialized diagnostic events from the core extension.
+  ///
+  /// These are ony emitted when [SyncOptions.enableDiagnostics] is enabled.
   Stream<String> get diagnostics;
 }
 

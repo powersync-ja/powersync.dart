@@ -101,6 +101,11 @@ class SyncWorkerHandle implements StreamingSync {
         _diagnostics.add((payload as JSString).toDart);
       }
     });
+
+    _channel.closed.whenComplete(() {
+      _status.close();
+      _diagnostics.close();
+    });
   }
 
   static Future<SyncWorkerHandle> start({

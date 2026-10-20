@@ -90,6 +90,13 @@ final class PowerSyncDevToolsExtension {
         });
 
         return {'id': id, 'previous': old};
+      case 'diagnostics-listen':
+        final id = _subscriptionId++;
+
+        _clientSubscriptions[id] = tracked.diagnostics.stream.listen((event) {
+          postEvent('diagnostic-event', {'subscription': id, 'event': event});
+        });
+        return {'id': id};
       case 'unsubscribe':
         _clientSubscriptions.remove(int.parse(parameters['id']!))?.cancel();
         return null;

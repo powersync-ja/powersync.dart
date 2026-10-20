@@ -3,11 +3,15 @@ library;
 
 // TODO setup hybrid server
 import 'dart:async';
+import 'dart:convert';
 import 'dart:math';
 
 import 'package:async/async.dart';
 import 'package:logging/logging.dart';
 import 'package:powersync/powersync.dart';
+import 'package:powersync/src/abort_controller.dart';
+import 'package:powersync/src/database/native/native_powersync_database.dart';
+import 'package:powersync/src/sync/options.dart';
 import 'package:sqlite_async/sqlite_async.dart';
 import 'package:test/test.dart';
 
@@ -15,6 +19,7 @@ import '../server/sync_server/in_memory_sync_server.dart';
 import '../test_server.dart';
 import '../utils/abstract_test_utils.dart';
 import '../utils/test_utils_impl.dart';
+import 'utils.dart';
 
 final testUtils = TestUtils();
 
@@ -359,6 +364,61 @@ void main() {
         'test-db/streaming_sync_test_can_use_custom_platform.db-crud':
             wasLockedAtLeastOnce(),
       });
+    });
+
+    test('forwards diagnostics events', () async {
+      final service = MockSyncService();
+      final server = await createServer(mockSyncService: service);
+
+      final db = await testUtils.setupPowerSync(path: path);
+      final abort = AbortController();
+      final sync = await (db as NativePowerSyncDatabase).connectInternal(
+        connector: TestConnector(() async {
+          return PowerSyncCredentials(
+            endpoint: server.endpoint,
+            token: 'token',
+          );
+        }),
+        options: ResolvedSyncOptions(SyncOptions(enableDiagnostics: true)),
+        initiallyActiveStreams: [],
+        activeStreams: Stream.empty(),
+        abort: abort,
+        asyncWorkZone: Zone.current,
+      );
+
+      final didEmit = expectLater(
+        sync.diagnostics.map(json.decode),
+        emits({
+          'BucketStateChange': {
+            // We don't care about the exact diagnostic event, just that one is
+            // emitted.
+            'changes': [anything],
+            'incremental': false,
+          },
+        }),
+      );
+      service
+        ..addLine(checkpoint(lastOpId: 1, buckets: [bucketDescription('a')]))
+        ..addLine({
+          'data': {
+            'bucket': 'a',
+            'data': [
+              {
+                'checksum': 0,
+                'data': json.encode({'name': 'custom list'}),
+                'op': 'PUT',
+                'op_id': '1',
+                'object_id': 'my_list',
+                'object_type': 'lists',
+              },
+            ],
+          },
+        })
+        ..addLine(checkpointComplete(lastOpId: '1'));
+
+      await db.waitForFirstSync();
+      await abort.abort();
+      await didEmit;
     });
   });
 }

@@ -14,7 +14,7 @@ export function appFactory(
 ): App {
   return createApp({
     setup() {
-      provideDiagnostics(integration, { theme });
+      provideDiagnostics(integration, { theme, sdks: ["dart"] });
       return () => h("div", { style: "height: 100vh" }, [h(DiagnosticsPanel)]);
     },
   });

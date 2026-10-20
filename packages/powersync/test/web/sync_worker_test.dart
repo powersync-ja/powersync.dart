@@ -2,6 +2,7 @@
 library;
 
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:logging/logging.dart';
 import 'package:powersync/powersync.dart';
@@ -233,6 +234,58 @@ void main() {
     await handle.streamingSync();
     await didRequestCheckpoint.future;
     await handle.abort();
+  });
+
+  test('forwards diagnostics events', () async {
+    final (client, server) = inMemoryServer();
+    final service = MockSyncService();
+    server.mount((r) => service.router(r));
+
+    final handle = createWorkerHandle(
+      connector: TestConnector(
+        () async => PowerSyncCredentials(
+          endpoint: 'http://test.powersync.example.org',
+          token: 'token',
+        ),
+      ),
+      options: SyncOptions(httpClient: () => client, enableDiagnostics: true),
+    );
+
+    await handle.streamingSync();
+    await service.waitForListener;
+    final didEmit = expectLater(
+      handle.diagnostics.map(json.decode),
+      emits({
+        'BucketStateChange': {
+          // We don't care about the exact diagnostic event, just that one is
+          // emitted.
+          'changes': [anything],
+          'incremental': false,
+        },
+      }),
+    );
+    service
+      ..addLine(checkpoint(lastOpId: 1, buckets: [bucketDescription('a')]))
+      ..addLine({
+        'data': {
+          'bucket': 'a',
+          'data': [
+            {
+              'checksum': 0,
+              'data': json.encode({'name': 'custom list'}),
+              'op': 'PUT',
+              'op_id': '1',
+              'object_id': 'my_list',
+              'object_type': 'lists',
+            },
+          ],
+        },
+      })
+      ..addLine(checkpointComplete(lastOpId: '1'));
+
+    await db.waitForFirstSync();
+    await handle.close();
+    await didEmit;
   });
 }
 
