@@ -647,6 +647,14 @@ final class _ActiveRustStreamingIteration {
         if (events == null) return defaultResult;
 
         return await _handleLines(events);
+      } on Object catch (e) {
+        if (!_abortController.isAbortException(e)) {
+          // The _stop() call will emit an instruction to mark the status as
+          // disconnected. We want to show the error first.
+          sync._emitStatusUpdate(SyncStatusUpdate(downloadError: e));
+        }
+
+        rethrow;
       } finally {
         await checkpointSeed?.abort();
 
@@ -844,6 +852,10 @@ final class _ActiveRustStreamingIteration {
         sync._emitStatusUpdate(
           SyncStatusUpdate(downloadError: SyncStatusUpdate.resetSentinel),
         );
+      case CheckpointDelayedDueToLocalData():
+        // Ignored for now, this will become an error for download-only
+        // connections.
+        break;
       case UnknownSyncInstruction(:final source):
         sync.logger.warning('Unknown instruction: $source');
     }

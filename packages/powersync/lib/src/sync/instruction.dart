@@ -22,6 +22,8 @@ sealed class Instruction {
       {'CloseSyncStream': final closeOptions as Map<String, Object?>} =>
         CloseSyncStream(closeOptions['hide_disconnect'] as bool),
       {'DidCompleteSync': _} => const DidCompleteSync(),
+      {'CheckpointDelayedDueToLocalData': _} =>
+        const CheckpointDelayedDueToLocalData(),
       _ => UnknownSyncInstruction(json),
     };
   }
@@ -214,6 +216,11 @@ final class CloseSyncStream implements Instruction {
 
 final class DidCompleteSync implements NonInterruptingInstruction {
   const DidCompleteSync();
+}
+
+final class CheckpointDelayedDueToLocalData
+    implements NonInterruptingInstruction {
+  const CheckpointDelayedDueToLocalData();
 }
 
 final class UnknownSyncInstruction implements NonInterruptingInstruction {
