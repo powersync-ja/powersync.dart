@@ -4,6 +4,7 @@
 - The DevTools extension is now based on the shared [PowerSync DevTools](https://releases.powersync.com/announcements/powersync-devtools-inspect-your-app-s-live-database). This improves the SQL inspector, reports per-bucket progress, allows subscribing to Sync Streams and has a cleaner UI.
 - Fix `disconnect()`, `disconnectAndClear()` and `close()` hanging while a `requestCheckpoint()` call waits for an
   unresponsive service. Pending checkpoint requests now fail with a `CheckpointRequestException` on disconnect.
+- Support [direct tables](https://docs.powersync.com/client-sdks/advanced/performance-optimization#direct-tables).
 
 ## 2.5.0
 
