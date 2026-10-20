@@ -5,8 +5,8 @@
     "build": "vite build --minify false && node js/copy_css.js"
   },
   "dependencies": {
-    "@powersync/diagnostics-core": "0.1.0",
-    "@powersync/diagnostics-ui": "0.1.0",
+    "@powersync/diagnostics-core": "0.0.2",
+    "@powersync/diagnostics-ui": "0.0.2",
     "@types/node": "^26.6.2",
     "vite": "^8.3.0",
     "vue": "^3.5.43"

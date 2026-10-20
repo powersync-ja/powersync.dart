@@ -162,20 +162,16 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
-overrides:
-  '@powersync/diagnostics-core': file:/Users/simon/src/powersync-js/tools/diagnostics-core/powersync-diagnostics-core-0.0.1.tgz
-  '@powersync/diagnostics-ui': file:/Users/simon/src/powersync-js/tools/diagnostics-ui/powersync-diagnostics-ui-0.0.1.tgz
-
 importers:
 
   .:
     dependencies:
       '@powersync/diagnostics-core':
-        specifier: file:/Users/simon/src/powersync-js/tools/diagnostics-core/powersync-diagnostics-core-0.0.1.tgz
-        version: file:../../../powersync-js/tools/diagnostics-core/powersync-diagnostics-core-0.0.1.tgz
+        specifier: 0.0.2
+        version: 0.0.2
       '@powersync/diagnostics-ui':
-        specifier: file:/Users/simon/src/powersync-js/tools/diagnostics-ui/powersync-diagnostics-ui-0.0.1.tgz
-        version: file:../../../powersync-js/tools/diagnostics-ui/powersync-diagnostics-ui-0.0.1.tgz(vue@3.5.44)
+        specifier: 0.0.2
+        version: 0.0.2(vue@3.5.44)
       '@types/node':
         specifier: ^26.6.2
         version: 26.6.5
@@ -245,13 +241,11 @@ packages:
   '@oxc-project/types@0.154.0':
     resolution: {integrity: sha512-KYOUGQFlLWR+s4QMV2Q9ko38TZm7EdO87Qm7rvZLqk/webse/cDjtyxKhg/47l0byCbs/k46LT8qc4PKjAikzA==}
 
-  '@powersync/diagnostics-core@file:../../../powersync-js/tools/diagnostics-core/powersync-diagnostics-core-0.0.1.tgz':
-    resolution: {integrity: sha512-nKHdXnnXwVSzdxJDRMU+N8aVqWEe/mDWBpPatV43IHyRrZ7ubhJY0xSNwrM0yokXOpfGfXdBua1tJgKz2VVvYQ==, tarball: file:../../../powersync-js/tools/diagnostics-core/powersync-diagnostics-core-0.0.1.tgz}
-    version: 0.0.1
+  '@powersync/diagnostics-core@0.0.2':
+    resolution: {integrity: sha512-wNte31ki99v0ST/gt/4BYThRVe2u/lcNdaybxIcuck6TNzneTBIIxPBwpITd3eR6ctFOplgwqCMtOI2pfrC5rw==}
 
-  '@powersync/diagnostics-ui@file:../../../powersync-js/tools/diagnostics-ui/powersync-diagnostics-ui-0.0.1.tgz':
-    resolution: {integrity: sha512-4syZaz4iGG+pc0wfH56TyGPDKd/CYpznhSRGhNbibkH4jiAKE03nrm8j1jwNvCkWzcsROl1r5eRIuS3xSOxF8w==, tarball: file:../../../powersync-js/tools/diagnostics-ui/powersync-diagnostics-ui-0.0.1.tgz}
-    version: 0.0.1
+  '@powersync/diagnostics-ui@0.0.2':
+    resolution: {integrity: sha512-a55iMhNXK8T0y2tvJO11KYIHjgpHnAI/X5soimHsh/6EvLQ6T5rg15EfEQwKpClxNKiCzD08eLhsPH8KUPBjJQ==}
     peerDependencies:
       vue: ^3.5.42
 
@@ -817,14 +811,14 @@ snapshots:
 
   '@oxc-project/types@0.154.0': {}
 
-  '@powersync/diagnostics-core@file:../../../powersync-js/tools/diagnostics-core/powersync-diagnostics-core-0.0.1.tgz':
+  '@powersync/diagnostics-core@0.0.2':
     dependencies:
       comlink: 4.4.2
 
-  '@powersync/diagnostics-ui@file:../../../powersync-js/tools/diagnostics-ui/powersync-diagnostics-ui-0.0.1.tgz(vue@3.5.44)':
+  '@powersync/diagnostics-ui@0.0.2(vue@3.5.44)':
     dependencies:
       '@nanostores/vue': 1.1.0(nanostores@1.5.5)(vue@3.5.44)
-      '@powersync/diagnostics-core': file:../../../powersync-js/tools/diagnostics-core/powersync-diagnostics-core-0.0.1.tgz
+      '@powersync/diagnostics-core': 0.0.2
       '@tanstack/vue-virtual': 3.13.45(vue@3.5.44)
       clsx: 2.1.1
       fuse.js: 7.5.0
