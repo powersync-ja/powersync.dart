@@ -1,6 +1,7 @@
-## 2.5.1 (unreleased)
+## 2.6.0 (unreleased)
 
 - Update PowerSync SQLite core extension to 0.5.4 ([release notes](https://github.com/powersync-ja/powersync-sqlite-core/releases/tag/v0.5.4)).
+- The DevTools extension is now based on the shared [PowerSync DevTools](https://releases.powersync.com/announcements/powersync-devtools-inspect-your-app-s-live-database). This improves the SQL inspector, reports per-bucket progress, allows subscribing to Sync Streams and has a cleaner UI.
 
 ## 2.5.0
 

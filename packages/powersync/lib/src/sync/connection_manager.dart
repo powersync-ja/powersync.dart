@@ -10,6 +10,7 @@ import 'package:powersync/src/sync/stream.dart';
 import 'package:powersync/src/sync/sync_status.dart';
 
 import '../database/powersync_database.dart';
+import '../devtools/devtools.dart' as devtools;
 import 'checkpoint_request.dart';
 import 'instruction.dart';
 import 'status_update.dart';
@@ -51,6 +52,9 @@ final class ConnectionManager {
   /// The controller must only be accessed from within a critical section of the
   /// sync mutex.
   (AbortController, RemoteStreamingSyncHandle)? _abortActiveSync;
+
+  PowerSyncBackendConnector? _lastConnector;
+  ResolvedSyncOptions? _lastOptions;
 
   ConnectionManager(this.db) : _activeGroup = db.group;
 
@@ -119,12 +123,8 @@ final class ConnectionManager {
     required PowerSyncBackendConnector connector,
     required ResolvedSyncOptions options,
   }) async {
-    if (db.schema.rawTables.isNotEmpty &&
-        options.source.syncImplementation != SyncClientImplementation.rust) {
-      throw UnsupportedError(
-        'Raw tables are only supported by the Rust client.',
-      );
-    }
+    _lastConnector = connector;
+    _lastOptions = options;
 
     var thisConnectAborter = AbortController();
     final zone = Zone.current;
@@ -157,6 +157,13 @@ final class ConnectionManager {
       _abortActiveSync = (thisConnectAborter, handle);
 
       thisConnectAborter.onCompletion.whenComplete(retryHandler);
+
+      if (devtools.enable) {
+        if (devtools.ExposedPowerSyncDatabase.byDatabase[db]
+            case final exposed?) {
+          handle.diagnostics.listen(exposed.diagnostics.add);
+        }
+      }
     }
 
     // If the sync encounters a failure without being aborted, retry
@@ -188,6 +195,14 @@ final class ConnectionManager {
 
       await connectWithSyncLock();
     });
+  }
+
+  Future<void> reconnect() async {
+    final connector = _lastConnector;
+    final options = _lastOptions;
+    if (connector != null && options != null) {
+      await connect(connector: connector, options: options);
+    }
   }
 
   void manuallyChangeSyncStatus(SyncStatus status) {

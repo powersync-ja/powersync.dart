@@ -67,6 +67,10 @@ enum SyncWorkerMessageType {
   /// of [SerializedSyncStatus].
   notifySyncStatus,
 
+  /// Notifies clients of a diagnostics event from the core extension. The
+  /// payload is a JSON string of the event.
+  handleDiagnostics,
+
   /// Notifies clients about a log event emitted by the worker (typically only
   /// used when workers were compiled in debug mode).
   /// The payload is a [JSString].
@@ -110,7 +114,6 @@ extension type StartSynchronization._(JSObject _) implements JSObject {
     required int crudThrottleTimeMs,
     required int requestId,
     required int retryDelayMs,
-    required String implementationName,
     required String schemaJson,
     required String lockName,
     String? syncParamsEncoded,
@@ -118,13 +121,13 @@ extension type StartSynchronization._(JSObject _) implements JSObject {
     String? appMetadataEncoded,
     bool? customHttpClient,
     int? checkpointModeRequestsDelay,
+    bool? diagnostics,
   });
 
   external String get databaseName;
   external int get requestId;
   external int get crudThrottleTimeMs;
   external int? get retryDelayMs;
-  external String? get implementationName;
   external String get schemaJson;
   external String? get syncParamsEncoded;
   external UpdateSubscriptions? get subscriptions;
@@ -132,6 +135,7 @@ extension type StartSynchronization._(JSObject _) implements JSObject {
   external String get lockName;
   external bool? get customHttpClient;
   external int? checkpointModeRequestsDelay;
+  external bool? diagnostics;
 }
 
 @anonymous
@@ -408,6 +412,7 @@ final class WorkerCommunicationChannel {
               _pendingRequests.remove(payload.requestId)!.completeError(error);
               return;
             case SyncWorkerMessageType.notifySyncStatus:
+            case SyncWorkerMessageType.handleDiagnostics:
               _events.add((type, message.payload));
               return;
             case SyncWorkerMessageType.logEvent:
@@ -507,7 +512,6 @@ final class WorkerCommunicationChannel {
           crudThrottleTimeMs: options.crudThrottleTime.inMilliseconds,
           retryDelayMs: options.retryDelay.inMilliseconds,
           requestId: id,
-          implementationName: options.source.syncImplementation.name,
           schemaJson: jsonEncode(schema),
           syncParamsEncoded: switch (options.source.params) {
             null => null,
@@ -525,6 +529,7 @@ final class WorkerCommunicationChannel {
               retryDelay.inMicroseconds,
             _ => null,
           },
+          diagnostics: options.source.enableDiagnostics,
         ),
       ),
     );

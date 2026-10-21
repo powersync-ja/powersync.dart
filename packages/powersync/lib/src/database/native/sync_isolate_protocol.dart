@@ -37,6 +37,10 @@ enum SyncIsolateToClientMessageType {
   /// The sync status has changed, payload is a [SyncStatusUpdate].
   statusUpdate,
 
+  /// Forwards a diagnostic event from the core extension, payload is a
+  /// serialized [String] containing the original event.
+  diagnostics,
+
   /// Incoming log message, payload is a [LogRecord].
   log,
 
@@ -141,6 +145,10 @@ extension type SyncClientPort(SendPort port) {
     event.core?.originalJson = null;
 
     send(SyncIsolateToClientMessageType.statusUpdate, event);
+  }
+
+  void sendDiagnostics(String diagnostics) {
+    send(SyncIsolateToClientMessageType.diagnostics, diagnostics);
   }
 
   void sendAcquireMutex(String name, int request) {

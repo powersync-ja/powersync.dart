@@ -109,9 +109,7 @@ abstract base class PowerSyncDatabase extends SqliteConnection {
   @protected
   Future<void> get isInitialized;
 
-  PowerSyncDatabase._() {
-    devtools.handleCreated(this);
-  }
+  PowerSyncDatabase._();
 
   /// Open a [PowerSyncDatabase].
   ///
@@ -333,6 +331,11 @@ abstract base class PowerSyncDatabase extends SqliteConnection {
 
     if (devtools.enable) {
       connector = ExposeCredentialsConnector(connector, this);
+      if (devtools.ExposedPowerSyncDatabase.byDatabase[this]
+          case final exposed?) {
+        exposed.lastConnectOptions = resolvedOptions;
+        devtools.ExposedPowerSyncDatabase.postChangeEvent();
+      }
     }
     await _connections.connect(connector: connector, options: resolvedOptions);
   }
@@ -683,7 +686,7 @@ abstract base class BasePowerSyncDatabase extends PowerSyncDatabase {
   late Future<void> isInitialized;
 
   @override
-  final Logger logger;
+  Logger logger;
 
   final PowerSyncPlatform platform;
 
@@ -693,6 +696,7 @@ abstract base class BasePowerSyncDatabase extends PowerSyncDatabase {
     required this.logger,
     required this.platform,
   }) : super._() {
+    devtools.handleCreated(this);
     isInitialized = baseInit();
   }
 
@@ -722,6 +726,13 @@ abstract base class BasePowerSyncDatabase extends PowerSyncDatabase {
     );
     await updateSchema(schema);
     await _connections.resolveOfflineSyncStatus();
+  }
+
+  /// Disconnects, then connects again with the last known options.
+  ///
+  /// This is only used for the DevTools integration.
+  Future<void> reconnect() {
+    return _connections.reconnect();
   }
 }
 

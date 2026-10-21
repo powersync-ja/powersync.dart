@@ -59,6 +59,7 @@ final class NativePowerSyncDatabase extends BasePowerSyncDatabase {
       'sync': group.syncMutex,
       'crud': group.crudMutex,
     });
+    final diagnostics = StreamController<String>();
 
     SyncIsolatePort? initPort;
     final hasInitPort = Completer<void>();
@@ -77,6 +78,7 @@ final class NativePowerSyncDatabase extends BasePowerSyncDatabase {
       receiveMessages.close();
       receiveUnhandledErrors.close();
       receiveExit.close();
+      diagnostics.close();
       mutexServer.handleChildIsolateExit();
 
       abort.completeAbort();
@@ -138,6 +140,8 @@ final class NativePowerSyncDatabase extends BasePowerSyncDatabase {
           }
 
           setStatus(update.applyTo(currentStatus));
+        case SyncIsolateToClientMessageType.diagnostics:
+          diagnostics.add(payload as String);
         case SyncIsolateToClientMessageType.log:
           LogRecord record = payload as LogRecord;
           logger.log(
@@ -213,7 +217,7 @@ final class NativePowerSyncDatabase extends BasePowerSyncDatabase {
       ]).whenComplete(close),
     );
 
-    return _IsolateSyncHandle(initPort!, results);
+    return _IsolateSyncHandle(initPort!, results, diagnostics.stream);
   }
 }
 
@@ -351,6 +355,9 @@ Future<void> _syncIsolate(_PowerSyncDatabaseIsolateArgs args) async {
       sync.statusUpdates.listen((event) {
         sPort.sendStatusUpdate(event);
       });
+      sync.diagnostics.listen((event) {
+        sPort.sendDiagnostics(event);
+      });
     },
     (error, stack) async {
       // Properly dispose the database if an uncaught error occurs.
@@ -367,7 +374,10 @@ final class _IsolateSyncHandle implements RemoteStreamingSyncHandle {
   final SyncIsolatePort _syncIsolate;
   final IsolateResultCollection _results;
 
-  _IsolateSyncHandle(this._syncIsolate, this._results);
+  @override
+  final Stream<String> diagnostics;
+
+  _IsolateSyncHandle(this._syncIsolate, this._results, this.diagnostics);
 
   @override
   Future<Int64> requestCheckpoint() {

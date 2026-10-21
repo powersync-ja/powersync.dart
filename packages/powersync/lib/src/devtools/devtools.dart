@@ -1,12 +1,15 @@
 @internal
 library;
 
+import 'dart:async';
 import 'dart:developer' as dev;
 import 'package:meta/meta.dart';
+import 'package:powersync/powersync.dart';
 
-import '../connector.dart';
 import '../database/powersync_database.dart';
+import '../sync/options.dart';
 import 'extension.dart';
+import 'logs.dart';
 
 // We want to avoid including this code for release-mode builds, since it's only
 // relevant for development tooling. This matches the definition of Flutter's
@@ -21,14 +24,25 @@ void postEvent(String type, Map<String, Object?> data) {
 /// A PowerSync database made accessible to DevTools over a `dart:developer` IPC
 /// protocol.
 final class ExposedPowerSyncDatabase {
-  final PowerSyncDatabase database;
+  final BasePowerSyncDatabase database;
+  final LogStore logs = LogStore();
   final int id;
 
+  /// Sync Stream subscriptions requested through the DevTools extension.
+  final Map<DiagnosticsStreamSubscription, SyncStreamSubscription>
+  subscriptions = {};
+
+  final StreamController<String> diagnostics = StreamController.broadcast();
+
   PowerSyncCredentials? lastCredentials;
+  ResolvedSyncOptions? lastConnectOptions;
 
   ExposedPowerSyncDatabase(this.database) : id = _nextId++ {
     byDatabase[database] = this;
     byId[id] = this;
+
+    logs.observe(database.logger);
+    database.logger = logs.newSource;
   }
 
   static int _nextId = 0;
@@ -44,7 +58,27 @@ final class ExposedPowerSyncDatabase {
   }
 }
 
-void handleCreated(PowerSyncDatabase database) {
+final class DiagnosticsStreamSubscription {
+  final String name;
+  final String? serializedParameters;
+
+  DiagnosticsStreamSubscription({
+    required this.name,
+    required this.serializedParameters,
+  });
+
+  @override
+  int get hashCode => Object.hash(name, serializedParameters);
+
+  @override
+  bool operator ==(Object other) {
+    return other is DiagnosticsStreamSubscription &&
+        other.name == name &&
+        other.serializedParameters == serializedParameters;
+  }
+}
+
+void handleCreated(BasePowerSyncDatabase database) {
   if (enable) {
     ExposedPowerSyncDatabase(database);
     PowerSyncDevToolsExtension.registerIfNeeded();

@@ -3,7 +3,9 @@ import 'dart:convert';
 import 'dart:developer';
 
 import 'package:path/path.dart' as p;
+import 'package:powersync/src/devtools/logs.dart';
 
+import '../sync/sync_status.dart';
 import '../version.dart';
 import 'devtools.dart';
 import 'protocol.dart';
@@ -47,6 +49,9 @@ final class PowerSyncDevToolsExtension {
         };
       case 'schema':
         return tracked.database.schema.toJson();
+      case 'reconnect':
+        await tracked.database.reconnect();
+        return {};
       case 'table-updates-listen':
         final stream = tracked.database.onChange(
           null,
@@ -75,8 +80,70 @@ final class PowerSyncDevToolsExtension {
           'id': id,
           'current': serializeSyncStatus(tracked.database.currentStatus),
         };
+      case 'logs-listen':
+        final logs = tracked.logs;
+        final id = _subscriptionId++;
+        final old = logs.copyBuffer();
+
+        _clientSubscriptions[id] = logs.newSource.onRecord.listen((status) {
+          postEvent('new-logs', {
+            'subscription': id,
+            'logs': [serializeLog(status)],
+          });
+        });
+
+        return {'id': id, 'previous': old};
+      case 'diagnostics-listen':
+        final id = _subscriptionId++;
+
+        _clientSubscriptions[id] = tracked.diagnostics.stream.listen((event) {
+          postEvent('diagnostic-event', {'subscription': id, 'event': event});
+        });
+        return {'id': id};
       case 'unsubscribe':
         _clientSubscriptions.remove(int.parse(parameters['id']!))?.cancel();
+        return null;
+      case 'disconnect':
+        await tracked.database.disconnect();
+        return null;
+      case 'clear-data':
+        await tracked.database.disconnectAndClear();
+        return null;
+      case 'request-checkpoint':
+        await tracked.database.requestCheckpoint();
+        return null;
+      case 'sync-subscribe':
+        final name = parameters['name']!;
+        final rawParams = parameters['params'];
+        final params = rawParams == null ? null : json.decode(rawParams);
+        final ttl = switch (parameters['ttl']) {
+          null => null,
+          final value => Duration(seconds: int.parse(value)),
+        };
+        final priority = switch (parameters['priority']) {
+          null => null,
+          final value => StreamPriority(int.parse(value)),
+        };
+
+        final subscription = await tracked.database
+            .syncStream(name, params as Map<String, Object?>)
+            .subscribe(ttl: ttl, priority: priority);
+        final key = DiagnosticsStreamSubscription(
+          name: name,
+          serializedParameters: rawParams,
+        );
+
+        tracked.subscriptions.remove(key)?.unsubscribe();
+        tracked.subscriptions[key] = subscription;
+        return null;
+      case 'sync-unsubscribe':
+        final name = parameters['name']!;
+        final rawParams = parameters['params'];
+        final key = DiagnosticsStreamSubscription(
+          name: name,
+          serializedParameters: rawParams,
+        );
+        tracked.subscriptions.remove(key)?.unsubscribe();
         return null;
       default:
         throw UnsupportedError('Unsupported command: $command');
@@ -127,6 +194,13 @@ final class PowerSyncDevToolsExtension {
                     final credentials => {
                       'endpoint': credentials.endpoint,
                       'token': credentials.token,
+                    },
+                  },
+                  'options': switch (db.lastConnectOptions) {
+                    null => null,
+                    final options => {
+                      'params': options.params,
+                      'metadata': options.appMetadata,
                     },
                   },
                 },

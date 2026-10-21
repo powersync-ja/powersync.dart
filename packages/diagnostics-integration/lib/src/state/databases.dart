@@ -26,6 +26,9 @@ final class DatabaseReference {
   /// into the diagnostics client.
   final PowerSyncCredentials? lastCredentials;
 
+  /// Parameters passed to `connect()`.
+  final Map<String, Object?>? connectionParameters;
+
   /// The isolate on which the database object has been opened.
   final IsolateRef isolate;
 
@@ -34,6 +37,7 @@ final class DatabaseReference {
     required this.name,
     required this.path,
     this.lastCredentials,
+    this.connectionParameters,
     required this.isolate,
   });
 }
@@ -65,8 +69,11 @@ final databaseList = FutureProvider.autoDispose<List<DatabaseReference>>((
   );
 
   final databases = list.json!['databases'] as List;
-  return [
-    for (final serialized in databases.cast<Map<String, Object?>>())
+  final mappedDatabase = <DatabaseReference>[];
+  for (final serialized in databases.cast<Map<String, Object?>>()) {
+    final connectOptions = serialized['options'] as Map<String, Object?>?;
+
+    mappedDatabase.add(
       DatabaseReference(
         id: serialized['id'] as int,
         name: serialized['name'] as String,
@@ -78,9 +85,14 @@ final databaseList = FutureProvider.autoDispose<List<DatabaseReference>>((
             token: credentials['token'] as String,
           ),
         },
+        connectionParameters:
+            connectOptions?['params'] as Map<String, Object?>?,
         isolate: isolate,
       ),
-  ];
+    );
+  }
+
+  return mappedDatabase;
 });
 
 final selectedDatabase =
@@ -120,9 +132,9 @@ final class DecodedCredentials {
   factory DecodedCredentials(PowerSyncCredentials original) {
     try {
       final [_, payload, _] = original.token.split('.');
-      final decodedPayload =
-          (json.fuse(utf8)).decode(base64.decode(payload))
-              as Map<String, Object?>;
+      final decodedPayload = (json.fuse(
+        utf8,
+      )).decode(base64.decode(payload)) as Map<String, Object?>;
       final userId = decodedPayload['sub'].toString();
 
       return DecodedCredentials._(original, decodedPayload, userId);
@@ -133,20 +145,29 @@ final class DecodedCredentials {
   }
 }
 
-/// The last recorded credentials for [selectedDatabase].
-final lastCredentials = Provider<DecodedCredentials?>((ref) {
+final currentDatabaseReference = Provider<DatabaseReference?>((ref) {
   final allDatabases = ref.watch(databaseList);
   final selected = ref.watch(selectedDatabase);
   if (selected == null) return null;
 
   for (final db in allDatabases.value ?? const <DatabaseReference>[]) {
     if (db.id == selected.ref.id) {
-      return switch (db.lastCredentials) {
-        null => null,
-        final credentials => DecodedCredentials(credentials),
-      };
+      return db;
     }
   }
 
   return null;
+});
+
+/// The last recorded credentials for [selectedDatabase].
+final lastCredentials = Provider<DecodedCredentials?>((ref) {
+  return switch (ref.watch(currentDatabaseReference)?.lastCredentials) {
+    null => null,
+    final credentials => DecodedCredentials(credentials),
+  };
+});
+
+final powersyncLogs = StreamProvider<List<Object?>>((ref) {
+  final selected = ref.watch(selectedDatabase);
+  return selected?.serializedLogs ?? Stream.empty();
 });

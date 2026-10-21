@@ -1,0 +1,23 @@
+name: diagnostics
+publish_to: none
+resolution: workspace
+
+environment: 
+  sdk: ^3.13.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  devtools_extensions: ^0.5.0
+  devtools_app_shared: ^0.5.0
+  riverpod: ^3.2.1
+  flutter_riverpod: ^3.3.1
+  sqlite_async: ^0.14.5
+  vm_service: ^15.3.0
+  web: ^1.1.1
+  powersync: ^2.4.0
+  sqlite3: ^3.6.0
+  collection: ^1.19.1
+
+flutter:
+  uses-material-design: true

@@ -31,6 +31,11 @@ typedef SubscribedStream = ({String name, String parameters});
 // managing sync clients.
 abstract interface class RemoteStreamingSyncHandle {
   Future<Int64> requestCheckpoint();
+
+  /// Forwarded serialized diagnostic events from the core extension.
+  ///
+  /// These are ony emitted when [SyncOptions.enableDiagnostics] is enabled.
+  Stream<String> get diagnostics;
 }
 
 abstract interface class StreamingSync implements RemoteStreamingSyncHandle {
@@ -59,6 +64,7 @@ class StreamingSyncImplementation implements StreamingSync {
   // e.g. when reconnecting.
   final StreamController<Null> _internalCrudTriggerController =
       StreamController<Null>();
+  final StreamController<String> _diagnostics = StreamController.broadcast();
 
   final http.Client _client;
 
@@ -105,6 +111,9 @@ class StreamingSyncImplementation implements StreamingSync {
   void _emitStatusUpdate(SyncStatusUpdate update) {
     _statusUpdates.add(update);
   }
+
+  @override
+  Stream<String> get diagnostics => _diagnostics.stream;
 
   @override
   Future<void> abort() async {
@@ -676,6 +685,8 @@ final class _ActiveRustStreamingIteration {
         'checkpoint_mode': sync.options.checkpointMode is RequestsCheckpointMode
             ? 'requests'
             : 'legacy',
+        if (sync.options.source.enableDiagnostics)
+          'diagnostics': <String, Object?>{},
       }),
     );
   }
@@ -856,6 +867,8 @@ final class _ActiveRustStreamingIteration {
         // Ignored for now, this will become an error for download-only
         // connections.
         break;
+      case HandleDiagnostics(:final serializedEvent):
+        sync._diagnostics.add(convert.json.encode(serializedEvent));
       case UnknownSyncInstruction(:final source):
         sync.logger.warning('Unknown instruction: $source');
     }
