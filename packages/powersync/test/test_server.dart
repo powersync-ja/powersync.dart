@@ -31,12 +31,12 @@ final class TestServer {
         }),
       );
     });
+    await initCustom(mockSyncService?.router.call ?? app.call);
+  }
+
+  Future<void> initCustom(Handler handler) async {
     // Open on an arbitrary open port
-    server = await shelf_io.serve(
-      mockSyncService?.router.call ?? app.call,
-      'localhost',
-      0,
-    );
+    server = await shelf_io.serve(handler, 'localhost', 0);
   }
 
   String get endpoint {

@@ -6,6 +6,8 @@ import 'dart:convert';
 
 import 'package:logging/logging.dart';
 import 'package:powersync/powersync.dart';
+import 'package:powersync/src/connector.dart';
+import 'package:powersync/src/sync/internal_connector.dart';
 import 'package:powersync/src/sync/streaming_sync.dart';
 import 'package:powersync/src/web/sync_controller.dart';
 import 'package:powersync/src/web/sync_worker.dart';
@@ -40,7 +42,7 @@ void main() {
   });
 
   SyncWorkerHandle createWorkerHandle({
-    required PowerSyncBackendConnector connector,
+    required InternalConnector connector,
     SyncOptions options = const SyncOptions(),
     List<SubscribedStream> subscriptions = const [],
     bool applyStatusToDatabase = true,
@@ -65,7 +67,16 @@ void main() {
   }
 
   test('aborts sync when database is closed', () async {
-    final handle = createWorkerHandle(connector: _ThrowingBackendConnector());
+    final handle = createWorkerHandle(
+      connector: InternalConnector(
+        _CallbackAuthenticator(
+          getCredentials: () async {
+            throw UnsupportedError('Expected error from fetchCredentials');
+          },
+        ),
+        null,
+      ),
+    );
     final hasError = expectLater(
       db.statusStream,
       emitsThrough(
@@ -99,18 +110,25 @@ void main() {
     late SyncWorkerHandle handle;
     final didRequestCredentials = Completer<void>();
     handle = createWorkerHandle(
-      connector: _ThrowingBackendConnector(() {
-        // When the fetchCredentials request is sent, there should be a sync
-        // process.
-        final syncRunner = syncWorker.requestedSyncTasks.values.single;
-        expect(syncRunner.sync, isNotNull);
-        expect(syncRunner.connections, hasLength(1));
+      connector: InternalConnector(
+        _CallbackAuthenticator(
+          getCredentials: () async {
+            // When the fetchCredentials request is sent, there should be a sync
+            // process.
+            final syncRunner = syncWorker.requestedSyncTasks.values.single;
+            expect(syncRunner.sync, isNotNull);
+            expect(syncRunner.connections, hasLength(1));
 
-        // Close the handle while the fetchCredentials request is active, meaning
-        // the sync worker will never receive a response.
-        handle.closeChannel();
-        didRequestCredentials.complete();
-      }),
+            // Close the handle while the fetchCredentials request is active,
+            // meaning the sync worker will never receive a response.
+            handle.closeChannel();
+            didRequestCredentials.complete();
+
+            throw UnsupportedError('Expected error from fetchCredentials');
+          },
+        ),
+        null,
+      ),
     );
 
     await handle.streamingSync();
@@ -126,7 +144,7 @@ void main() {
     // Use a long retry delay so that the download error is only reported once.
     const options = SyncOptions(retryDelay: Duration(minutes: 1));
     final first = createWorkerHandle(
-      connector: _ThrowingBackendConnector(),
+      connector: _ThrowingBackendConnector().toInternal(db),
       options: options,
     );
     await first.streamingSync();
@@ -141,7 +159,7 @@ void main() {
 
     // A connecting client should receive the existing download error.
     final second = createWorkerHandle(
-      connector: _ThrowingBackendConnector(),
+      connector: _ThrowingBackendConnector().toInternal(db),
       options: options,
       applyStatusToDatabase: false,
     );
@@ -173,7 +191,7 @@ void main() {
           endpoint: 'http://test.powersync.example.org',
           token: 'token',
         ),
-      ),
+      ).toInternal(db),
       options: SyncOptions(httpClient: () => client),
     );
     await handle.streamingSync();
@@ -191,7 +209,7 @@ void main() {
           endpoint: 'http://test.powersync.example.org',
           token: 'token',
         ),
-      ),
+      ).toInternal(db),
       options: SyncOptions(
         httpClient: () => client,
         checkpointMode: CheckpointMode.requests(),
@@ -215,16 +233,19 @@ void main() {
     final didRequestCheckpoint = Completer<void>();
 
     final handle = createWorkerHandle(
-      connector: TestCustomCheckpointConnector(
-        () async => PowerSyncCredentials(
-          endpoint: 'http://test.powersync.example.org',
-          token: 'token',
+      connector: InternalConnector(
+        _CallbackAuthenticator(
+          getCredentials: () async => PowerSyncCredentials(
+            endpoint: 'http://test.powersync.example.org',
+            token: 'token',
+          ),
+          postCheckpoints: (clientId, checkpoint) async {
+            expect(checkpoint, '1');
+            didRequestCheckpoint.complete();
+            return checkpoint;
+          },
         ),
-        postCheckpointRequest: (clientId, checkpoint) async {
-          expect(checkpoint, '1');
-          didRequestCheckpoint.complete();
-          return checkpoint;
-        },
+        null,
       ),
       options: SyncOptions(
         httpClient: () => client,
@@ -247,7 +268,7 @@ void main() {
           endpoint: 'http://test.powersync.example.org',
           token: 'token',
         ),
-      ),
+      ).toInternal(db),
       options: SyncOptions(httpClient: () => client, enableDiagnostics: true),
     );
 
@@ -287,16 +308,79 @@ void main() {
     await handle.close();
     await didEmit;
   });
+
+  test('refuses connections of different modes', () async {
+    final a = createWorkerHandle(
+      connector: InternalConnector(
+        _CallbackAuthenticator(
+          getCredentials: () async => PowerSyncCredentials(
+            endpoint: 'http://test.powersync.example.org',
+            token: 'token',
+          ),
+        ),
+        null,
+      ),
+    );
+    await a.streamingSync();
+
+    final b = createWorkerHandle(
+      connector: InternalConnector(null, _MockUploader(() async {})),
+    );
+    expect(
+      b.streamingSync(),
+      throwsA(
+        isA<Object>().having(
+          (e) => e.toString(),
+          'toString()',
+          contains('Different tabs connecting in different modes'),
+        ),
+      ),
+    );
+  });
+}
+
+final class _CallbackAuthenticator implements InternalAuthenticator {
+  final Future<PowerSyncCredentials?> Function()? getCredentials;
+  final Future<String> Function(String, String)? postCheckpoints;
+
+  _CallbackAuthenticator({required this.getCredentials, this.postCheckpoints});
+
+  @override
+  bool get mightPostCheckpointRequests => postCheckpoints != null;
+
+  @override
+  Future<PowerSyncCredentials?> getCredentialsCached() async {
+    return await getCredentials?.call();
+  }
+
+  @override
+  FutureOr<String?> postCheckpointRequest(
+    String clientId,
+    String checkpointRequestId,
+  ) {
+    return postCheckpoints?.call(clientId, checkpointRequestId);
+  }
+
+  @override
+  Future<PowerSyncCredentials?> prefetchCredentials({bool invalidate = false}) {
+    return getCredentialsCached();
+  }
+}
+
+final class _MockUploader implements InternalMutationUploader {
+  final Future<void> Function() _upload;
+
+  _MockUploader(this._upload);
+
+  @override
+  Future<void> upload() => _upload();
 }
 
 final class _ThrowingBackendConnector extends PowerSyncBackendConnector {
-  void Function()? onFetchCredentials;
-
-  _ThrowingBackendConnector([this.onFetchCredentials]);
+  _ThrowingBackendConnector();
 
   @override
   Future<PowerSyncCredentials?> fetchCredentials() async {
-    onFetchCredentials?.call();
     throw UnsupportedError('Expected error from fetchCredentials');
   }
 

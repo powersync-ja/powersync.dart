@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'package:meta/meta.dart';
 import 'package:powersync/src/abort_controller.dart';
 import 'package:powersync/src/sync/bucket_storage.dart';
-import 'package:powersync/src/connector.dart';
 import 'package:powersync/src/database/powersync_database.dart';
 import 'package:powersync/src/sync/internal_connector.dart';
 import 'package:powersync/src/sync/streaming_sync.dart';
@@ -34,7 +33,7 @@ final class WebPowerSyncDatabase extends BasePowerSyncDatabase {
   @override
   @internal
   Future<RemoteStreamingSyncHandle> connectInternal({
-    required PowerSyncBackendConnector connector,
+    required InternalConnector connector,
     required AbortController abort,
     required List<SubscribedStream> initiallyActiveStreams,
     required Stream<List<SubscribedStream>> activeStreams,
@@ -77,7 +76,7 @@ final class WebPowerSyncDatabase extends BasePowerSyncDatabase {
       sync = StreamingSyncImplementation(
         adapter: storage,
         schemaJson: jsonEncode(schema),
-        connector: InternalConnector.wrap(connector, this),
+        connector: connector,
         crudUpdateTriggerStream: crudStream,
         options: options,
         activeSubscriptions: initiallyActiveStreams,
