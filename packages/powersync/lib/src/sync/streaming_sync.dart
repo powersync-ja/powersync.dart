@@ -342,8 +342,10 @@ class StreamingSyncImplementation implements StreamingSync {
         _emitStatusUpdate(SyncStatusUpdate(uploadError: e));
         await _delayRetry(abort);
 
-        if (_lastCoreSyncStatus?.connected != true) {
-          // Exit the upload loop if the sync stream is no longer connected
+        if (connector.authenticator != null &&
+            _lastCoreSyncStatus?.connected != true) {
+          // Exit the upload loop if the sync stream is no longer connected.
+          // We'll retry on _triggerCrudUploadOnFirstLine.
           break;
         }
         logger.warning(
@@ -373,7 +375,14 @@ class StreamingSyncImplementation implements StreamingSync {
   ) async {
     while (!abort.aborted) {
       try {
-        await _updateTargetCheckpointRequest(authenticator, abort);
+        final didRequestCheckpoint = await _updateTargetCheckpointRequest(
+          authenticator,
+          abort,
+        );
+        if (didRequestCheckpoint) {
+          _nonLineSyncEvents.add(const UploadCompleted());
+        }
+
         _emitStatusUpdate(
           SyncStatusUpdate(uploadError: SyncStatusUpdate.resetSentinel),
         );
@@ -664,6 +673,14 @@ class StreamingSyncImplementation implements StreamingSync {
       onAbort.whenComplete(complete);
       return future;
     });
+  }
+
+  Future<bool> _willUpload() async {
+    if (connector.uploader != null) return true;
+
+    // If we're connected in download-only mode, we can still request
+    // checkpoints. But if there's a local write, that won't be uploaded.
+    return !await adapter.hasCrud();
   }
 }
 
@@ -976,9 +993,18 @@ final class _ActiveRustStreamingIteration {
           SyncStatusUpdate(downloadError: SyncStatusUpdate.resetSentinel),
         );
       case CheckpointDelayedDueToLocalData():
-        // Ignored for now, this will become an error for download-only
-        // connections.
-        break;
+        // With an uploader, the delay will resolve after the next upload. In
+        // download-only mode, local mutations can't be uploaded so we report
+        // an error.
+        if (!await sync._willUpload()) {
+          const message =
+              'Applying checkpoint is blocked on local mutations, but no '
+              'uploader is set. The sync client cannot proceed.';
+          sync.logger.warning(message);
+          sync._emitStatusUpdate(
+            SyncStatusUpdate(downloadError: StateError(message)),
+          );
+        }
       case HandleDiagnostics(:final serializedEvent):
         sync._diagnostics.add(convert.json.encode(serializedEvent));
       case UnknownSyncInstruction(:final source):
