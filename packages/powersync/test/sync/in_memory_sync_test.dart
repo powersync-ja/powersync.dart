@@ -1395,6 +1395,7 @@ void _declareTests(String name, bool bson) {
         await database.close();
       },
     );
+
     test('download-only', () async {
       configureServer();
       await database.connect(
@@ -1402,13 +1403,36 @@ void _declareTests(String name, bool bson) {
           endpoint: mockServer.url.toString(),
           authenticator: TestConnector(credentialsCallback),
         ),
+        options: defaultOptions,
       );
-      await waitForConnection(connectHere: false);
+      final status = await waitForConnection(
+        connectHere: false,
+        // We expect an error log for the blocked checkpoint.
+        expectNoWarnings: false,
+      );
 
       // Create local mutation, which is never uploaded
       await database.execute(
         'insert into customers (id, name) values (uuid(), ?)',
         ['customer'],
+      );
+
+      // A new checkpoint can't be applied in this state, and should report an
+      // error.
+      syncService
+        ..addLine(checkpoint(lastOpId: 0))
+        ..addLine(checkpointComplete(lastOpId: '0'));
+      await expectLater(
+        status,
+        emitsThrough(
+          isSyncStatus(
+            downloadError: isA<Object>().having(
+              (e) => e.toString(),
+              'toString()',
+              contains('blocked on local mutations, but no uploader is set'),
+            ),
+          ),
+        ),
       );
 
       // Upgrade to a full connection, which should upload.
@@ -1425,6 +1449,7 @@ void _declareTests(String name, bool bson) {
             }
           }),
         ),
+        options: defaultOptions,
       );
       await didUpload.future;
     });
@@ -1434,40 +1459,102 @@ void _declareTests(String name, bool bson) {
       // Connecting in upload-only mode should make no SDK-initiated HTTP
       // requests.
       database.httpClient = _DisallowHttpClient();
+      var isFirstUpload = true;
+      await database.execute('insert into customers (id, name) values (?, ?)', [
+        'test1',
+        'local mutation',
+      ]);
       await database.connect(
         connector: .uploadOnly(
           MutationUploader((db) async {
             if (await db.getNextCrudTransaction() case final tx?) {
-              didUpload.complete();
+              if (isFirstUpload) {
+                // Verify that uploads are retried in upload-only mode too.
+                isFirstUpload = false;
+                throw StateError('expected upload error');
+              }
+
               await tx.complete();
+              didUpload.complete();
             }
           }),
         ),
-      );
-      await database.execute(
-        'insert into customers (id, name) values (uuid(), ?)',
-        ['customer'],
+        options: defaultOptions,
       );
       await didUpload.future;
 
-      // Reconnect in download-only mode. This should request a write checkpoint
+      // Reconnect in download-only mode. This should request a checkpoint
       // because the upload-only mode can't.
       configureServer();
-      final didRequestCheckpoint = Completer<void>();
-      syncService.writeCheckpoint = () async {
-        didRequestCheckpoint.complete();
-        return {
-          'data': {'write_checkpoint': '10'},
-        };
-      };
+      final targetCheckpointRequest = Completer<String>();
+      final releaseCheckpointRequest = Completer<void>();
+      var isSeedRequest = true;
+
       await database.connect(
         connector: .downloadOnly(
           endpoint: mockServer.url.toString(),
-          authenticator: TestConnector(credentialsCallback),
+          authenticator: _CustomCheckpointAuthenticator((
+            clientId,
+            requestId,
+          ) async {
+            if (isSeedRequest) {
+              isSeedRequest = false;
+            } else {
+              targetCheckpointRequest.complete(requestId);
+              await releaseCheckpointRequest.future;
+            }
+            return requestId;
+          }),
+        ),
+        options: SyncOptions(
+          retryDelay: retryDelay,
+          checkpointMode: CheckpointMode.requests(),
         ),
       );
       await waitForConnection(connectHere: false);
-      await didRequestCheckpoint.future;
+
+      final customers = StreamQueue(
+        database
+            .watch('SELECT name FROM customers ORDER BY name')
+            .map((rs) => rs.map((row) => row['name'] as String).toList()),
+      );
+      addTearDown(customers.cancel);
+      expect(await customers.next, ['local mutation']);
+
+      final requestId = await targetCheckpointRequest.future;
+      syncService
+        ..addLine(
+          checkpoint(
+            lastOpId: 1,
+            writeCheckpoint: requestId,
+            buckets: [bucketDescription('a')],
+          ),
+        )
+        ..addLine({
+          'data': {
+            'bucket': 'a',
+            'data': [
+              {
+                'checksum': 0,
+                'op': 'PUT',
+                'op_id': '1',
+                'object_id': 'test1',
+                'object_type': 'customers',
+                'data': '{"name": "from server"}',
+              },
+            ],
+          },
+        })
+        ..addLine(checkpointComplete(lastOpId: '1'));
+
+      // The checkpoint can't be applied before the local target is updated.
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+      expect(await database.getAll('SELECT name FROM customers'), [
+        {'name': 'local mutation'},
+      ]);
+
+      releaseCheckpointRequest.complete();
+      await expectLater(customers, emitsThrough(['from server']));
     });
 
     group('abort', () {
@@ -1542,6 +1629,24 @@ final class _BlockedMutex implements Mutex {
   }) async {
     await abortTrigger;
     throw AbortException('lock');
+  }
+}
+
+final class _CustomCheckpointAuthenticator
+    with CustomCheckpointRequestConnector {
+  final Future<String> Function(String, String) _postCheckpointRequest;
+
+  _CustomCheckpointAuthenticator(this._postCheckpointRequest);
+
+  @override
+  Future<String> resolveCredentials() async => 'test token';
+
+  @override
+  void invalidateCredentials() {}
+
+  @override
+  Future<String> postCheckpointRequest(String clientId, String requestId) {
+    return _postCheckpointRequest(clientId, requestId);
   }
 }
 
