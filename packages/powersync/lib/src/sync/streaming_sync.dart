@@ -184,9 +184,22 @@ class StreamingSyncImplementation implements StreamingSync {
       throw checkpoint.disabled;
     }
 
-    final neverAbort = AbortController();
-    final checkpointId = await _requestNextCheckpointFromService(neverAbort);
-    return Int64.parse(checkpointId);
+    // Tie the request to the active sync iteration, so that disconnecting
+    // aborts it instead of waiting for the service to respond.
+    final abort = _abort;
+    if (abort == null || abort.aborted) {
+      throw checkpoint.disconnected;
+    }
+
+    try {
+      final checkpointId = await _requestNextCheckpointFromService(abort);
+      return Int64.parse(checkpointId);
+    } catch (e) {
+      if (abort.isAbortException(e)) {
+        throw checkpoint.disconnected;
+      }
+      rethrow;
+    }
   }
 
   Future<String> _resolveClientId() async {

@@ -2,6 +2,8 @@
 
 - Update PowerSync SQLite core extension to 0.5.4 ([release notes](https://github.com/powersync-ja/powersync-sqlite-core/releases/tag/v0.5.4)).
 - The DevTools extension is now based on the shared [PowerSync DevTools](https://releases.powersync.com/announcements/powersync-devtools-inspect-your-app-s-live-database). This improves the SQL inspector, reports per-bucket progress, allows subscribing to Sync Streams and has a cleaner UI.
+- Fix `disconnect()`, `disconnectAndClear()` and `close()` hanging while a `requestCheckpoint()` call waits for an
+  unresponsive service. Pending checkpoint requests now fail with a `CheckpointRequestException` on disconnect.
 
 ## 2.5.0
 

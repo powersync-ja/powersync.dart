@@ -1307,6 +1307,34 @@ void _declareTests(String name, bool bson) {
           abort.complete();
           await wasAborted;
         });
+
+        test('disconnect aborts pending requests', () async {
+          await waitForConnection(options: options);
+          await syncService.waitForCheckpointRequest(
+            () => syncService.lastCheckpointRequest == 1,
+          );
+
+          final requestReceived = Completer<void>();
+          final stalledResponse = Completer<void>();
+          syncService.beforeCheckpointRequestResponse = () {
+            if (!requestReceived.isCompleted) requestReceived.complete();
+            // Simulate a service that accepts the request but doesn't respond.
+            return stalledResponse.future;
+          };
+
+          final failureExpectation = expectLater(
+            database.requestCheckpoint(),
+            throwsA(disconnected),
+          );
+          await requestReceived.future;
+
+          try {
+            await database.disconnect().timeout(const Duration(seconds: 5));
+          } finally {
+            stalledResponse.complete();
+          }
+          await failureExpectation;
+        });
       });
     });
 
