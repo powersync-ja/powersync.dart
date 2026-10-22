@@ -306,13 +306,15 @@ final class ConnectionManager {
   }
 
   Future<CheckpointRequest> requestCheckpoint() async {
-    return _activeGroup.syncConnectMutex.lock(() async {
-      final client = _abortActiveSync?.$2;
+    // Only hold the lock to read the active client. Awaiting the request while
+    // holding it would block disconnect() until the service responds.
+    final client = await _activeGroup.syncConnectMutex.lock(() async {
       checkConnectedWithRequestsMode();
-
-      final checkpoint = await client!.requestCheckpoint();
-      return CheckpointRequestImpl(checkpoint, this);
+      return _abortActiveSync!.$2;
     });
+
+    final checkpoint = await client.requestCheckpoint();
+    return CheckpointRequestImpl(checkpoint, this);
   }
 
   void close() {
