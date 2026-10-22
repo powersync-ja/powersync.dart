@@ -1,6 +1,8 @@
 /// @docImport 'database/powersync_database.dart';
 library;
 
+import 'package:meta/meta.dart';
+
 import 'crud.dart';
 import 'schema_logic.dart';
 
@@ -138,6 +140,8 @@ base class Table extends TableOptions {
   /// Override the name for the view
   final String? _viewNameOverride;
 
+  final bool _isDirect;
+
   /// powersync-sqlite-core limits the number of columns
   /// per table to 1999, due to internal SQLite limits.
   ///
@@ -168,6 +172,7 @@ base class Table extends TableOptions {
     super.trackMetadata,
     super.trackPreviousValues,
   }) : _viewNameOverride = viewName,
+       _isDirect = false,
        super(insertOnly: false);
 
   /// Create a table that only exists locally.
@@ -179,6 +184,7 @@ base class Table extends TableOptions {
     this.indexes = const [],
     String? viewName,
   }) : _viewNameOverride = viewName,
+       _isDirect = false,
        super(localOnly: true);
 
   /// Create a table that only supports inserts.
@@ -198,7 +204,31 @@ base class Table extends TableOptions {
     super.trackPreviousValues,
   }) : indexes = const [],
        _viewNameOverride = viewName,
+       _isDirect = false,
        super(localOnly: false, insertOnly: true);
+
+  /// Creates a direct table, storing data directly instead of through an
+  /// intermediate view around a JSON table.
+  ///
+  /// Direct tables are also managed by the PowerSync SDK, which is responsible
+  /// for creating, altering and dropping them.
+  ///
+  /// You can query raw tables like JSON-based tables, and mutations are
+  /// consistently tracked as pending uploads.
+  ///
+  /// For more information on direct tables, see [the documentation](https://docs.powersync.com/client-sdks/advanced/performance-optimization#direct-tables).
+  @experimental
+  const Table.direct(
+    this.name,
+    this.columns, {
+    this.indexes = const [],
+    super.trackMetadata,
+    super.trackPreviousValues,
+    super.localOnly,
+    super.insertOnly,
+    super.ignoreEmptyUpdates,
+  }) : _isDirect = true,
+       _viewNameOverride = null;
 
   Column operator [](String columnName) {
     return columns.firstWhere((element) => element.name == columnName);
@@ -281,6 +311,7 @@ base class Table extends TableOptions {
     'view_name': _viewNameOverride,
     'columns': columns,
     'indexes': indexes.map((e) => e.toJson(this)).toList(growable: false),
+    if (_isDirect) 'direct': true,
     ..._optionsToJson(),
   };
 }

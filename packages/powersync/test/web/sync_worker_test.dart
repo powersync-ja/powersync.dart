@@ -4,6 +4,7 @@ library;
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:async/async.dart';
 import 'package:logging/logging.dart';
 import 'package:powersync/powersync.dart';
 import 'package:powersync/src/sync/streaming_sync.dart';
@@ -129,15 +130,23 @@ void main() {
       connector: _ThrowingBackendConnector(),
       options: options,
     );
+    final statusChanges = StreamQueue(db.statusStream);
     await first.streamingSync();
-    await db.statusStream.firstWhere((s) => s.downloadError != null);
+
+    await expectLater(
+      statusChanges,
+      emitsThrough(isSyncStatus(downloadError: isNotNull)),
+    );
 
     // Trigger an upload, emitting status updates that don't change the
     // download error.
     await db.execute(
       "INSERT INTO customers (id, name) VALUES (uuid(), 'name')",
     );
-    await db.statusStream.firstWhere((s) => s.uploading);
+    await expectLater(
+      statusChanges,
+      emitsThrough(isSyncStatus(uploading: true)),
+    );
 
     // A connecting client should receive the existing download error.
     final second = createWorkerHandle(
@@ -156,6 +165,7 @@ void main() {
       contains('Expected error from fetchCredentials'),
     );
 
+    await statusChanges.cancel();
     await first.abort();
   });
 

@@ -348,6 +348,60 @@ void _declareTests(String name, bool bson) {
       await expectLater(query, emits(isEmpty));
     });
 
+    test('direct tables', () async {
+      await database.close();
+      (_, database) = await testUtils.openInMemoryDatabase(
+        schema: Schema([
+          .direct('users', [.text('name')]),
+        ]),
+      );
+
+      await database.initialize();
+      expect(
+        await database.get('pragma table_list(users)'),
+        containsPair('type', 'table'),
+      );
+
+      await waitForConnection();
+      syncService
+        ..addLine(
+          checkpoint(lastOpId: 1, buckets: [bucketDescription('bucket')]),
+        )
+        ..addLine({
+          'data': {
+            'bucket': 'bucket',
+            'data': [
+              {
+                'checksum': 0,
+                'data': json.encode({'name': 'synced user'}),
+                'op': 'PUT',
+                'op_id': '1',
+                'object_id': 'user_id',
+                'object_type': 'users',
+              },
+            ],
+          },
+        })
+        ..addLine(checkpointComplete());
+      await database.waitForFirstSync();
+
+      expect(await database.get('SELECT * FROM users'), {
+        'id': 'user_id',
+        'name': 'synced user',
+      });
+      await database.disconnect();
+
+      await database.execute('UPDATE users SET name = ?', ['local user']);
+      expect(await database.get('SELECT * FROM users'), {
+        'id': 'user_id',
+        'name': 'local user',
+      });
+      final CrudTransaction(crud: [entry]) = (await database
+          .getNextCrudTransaction())!;
+      expect(entry.table, 'users');
+      expect(entry.opData, {'name': 'local user'});
+    });
+
     test('marks as connected even without sync line', () async {
       await waitForConnection(addKeepLive: false);
       expect(database.currentStatus.connected, isTrue);
