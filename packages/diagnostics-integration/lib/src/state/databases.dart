@@ -66,6 +66,7 @@ final databaseList = FutureProvider.autoDispose<List<DatabaseReference>>((
   final list = await service.callServiceExtension(
     'ext.powersync.list',
     isolateId: isolate.id,
+    args: {'includeToken': 'true'},
   );
 
   final databases = list.json!['databases'] as List;
