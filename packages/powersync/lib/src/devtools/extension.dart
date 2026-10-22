@@ -181,6 +181,11 @@ final class PowerSyncDevToolsExtension {
       });
 
       registerExtension('ext.powersync.list', (method, parameters) async {
+        // Tokens are only included when explicitly requested, so that clients
+        // only interested in listing databases (e.g. coding agents) don't
+        // receive them.
+        final includeToken = parameters['includeToken'] == 'true';
+
         return ServiceExtensionResponse.result(
           json.encode({
             'databases': [
@@ -193,7 +198,7 @@ final class PowerSyncDevToolsExtension {
                     null => null,
                     final credentials => {
                       'endpoint': credentials.endpoint,
-                      'token': credentials.token,
+                      if (includeToken) 'token': credentials.token,
                     },
                   },
                   'options': switch (db.lastConnectOptions) {

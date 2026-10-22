@@ -82,6 +82,7 @@ final class DartSdkIntegration(final Ref _ref) {
         await db.request('disconnect');
       case ActionName.clearData:
         await db.request('clear-data');
+        await db.request('reconnect');
       case ActionName.requestCheckpoint:
         await db.request('request-checkpoint');
       case ActionName.subscribeStream:
