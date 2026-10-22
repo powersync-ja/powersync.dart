@@ -140,7 +140,6 @@ base class Table extends TableOptions {
   /// Override the name for the view
   final String? _viewNameOverride;
 
-  @experimental
   final bool _isDirect;
 
   /// powersync-sqlite-core limits the number of columns
@@ -218,6 +217,7 @@ base class Table extends TableOptions {
   /// consistently tracked as pending uploads.
   ///
   /// For more information on direct tables, see [the documentation](https://docs.powersync.com/client-sdks/advanced/performance-optimization#direct-tables).
+  @experimental
   const Table.direct(
     this.name,
     this.columns, {
