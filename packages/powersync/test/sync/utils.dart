@@ -11,6 +11,7 @@ TypeMatcher<SyncStatus> isSyncStatus({
   Object? downloadProgress,
   Object? syncStreams,
   Object? downloadError,
+  Object? uploading,
 }) {
   var matcher = isA<SyncStatus>();
   if (downloading != null) {
@@ -41,6 +42,10 @@ TypeMatcher<SyncStatus> isSyncStatus({
       'downloadError',
       downloadError,
     );
+  }
+
+  if (uploading != null) {
+    matcher = matcher.having((e) => e.uploading, 'uploading', uploading);
   }
 
   return matcher;
