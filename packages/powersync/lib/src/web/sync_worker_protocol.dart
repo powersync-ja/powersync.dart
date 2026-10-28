@@ -11,6 +11,7 @@ import 'package:logging/logging.dart';
 import 'package:meta/meta.dart';
 import 'package:powersync/src/schema.dart';
 import 'package:powersync/src/sync/options.dart';
+import 'package:sqlite_async/sqlite_async.dart';
 import 'package:web/web.dart' hide HttpRequest, Client;
 
 import '../connector.dart';
@@ -219,7 +220,12 @@ extension type ErrorResponse._(JSObject _) implements JSObject {
   external JSString get errorMessage;
 
   static const recognizedTypeNone = 0;
+
+  /// A [RequestAbortedException] from `package:http`.
   static const recognizedTypeRequestAbortedException = 1;
+
+  /// An [AbortException] from `package:sqlite_async`.
+  static const recognizedTypeAbortException = 2;
 }
 
 @anonymous
@@ -429,6 +435,9 @@ final class WorkerCommunicationChannel {
                   ErrorResponse.recognizedTypeNone) {
                 ErrorResponse.recognizedTypeRequestAbortedException =>
                   RequestAbortedException(),
+                ErrorResponse.recognizedTypeAbortException => AbortException(
+                  'aborted over web channel',
+                ),
                 _ => payload.errorMessage.toDart,
               };
 
@@ -489,6 +498,7 @@ final class WorkerCommunicationChannel {
             recognizedType: switch (e) {
               RequestAbortedException() =>
                 ErrorResponse.recognizedTypeRequestAbortedException,
+              AbortException() => ErrorResponse.recognizedTypeAbortException,
               _ => ErrorResponse.recognizedTypeNone,
             },
             errorMessage: e.toString().toJS,
