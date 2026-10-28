@@ -43,6 +43,31 @@ final class InternalConnector {
   final InternalMutationUploader? uploader;
 
   InternalConnector(this.authenticator, this.uploader);
+
+  factory InternalConnector.fromConnectRequest(
+    ConnectRequest request,
+    PowerSyncDatabase db,
+  ) {
+    if (request is PowerSyncBackendConnector) {
+      return InternalConnector(
+        LegacyAuthenticator(request),
+        DatabaseBoundUploader(request, db),
+      );
+    } else if (request case InternalConnectRequest(
+      :final endpoint,
+      :final authenticator,
+      :final uploader,
+    )) {
+      return InternalConnector(
+        (endpoint != null && authenticator != null)
+            ? SplitAuthenticator(endpoint, authenticator)
+            : null,
+        uploader != null ? DatabaseBoundUploader(uploader, db) : null,
+      );
+    } else {
+      throw ArgumentError('Illegal external ConnectRequest implementation');
+    }
+  }
 }
 
 final class LegacyAuthenticator implements InternalAuthenticator {

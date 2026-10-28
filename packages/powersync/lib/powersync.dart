@@ -4,7 +4,7 @@
 /// @docImport 'src/database/powersync_database.dart';
 library;
 
-export 'src/connector.dart' hide ConnectorToInternal;
+export 'src/connector.dart' hide ConnectorToInternal, InternalConnectRequest;
 export 'src/crud.dart';
 export 'src/database/powersync_database.dart'
     hide BasePowerSyncDatabase, powerSyncUpdateNotifications;

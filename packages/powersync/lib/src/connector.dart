@@ -75,66 +75,46 @@ abstract class ConnectRequest {
     required String endpoint,
     required Authenticator authenticator,
     required MutationUploader uploader,
-  }) = _ConnectRequest;
+  }) = InternalConnectRequest;
 
   ///
   const factory ConnectRequest.downloadOnly({
     required String endpoint,
     required Authenticator authenticator,
-  }) = _ConnectRequest.downloadOnly;
+  }) = InternalConnectRequest.downloadOnly;
 
   const factory ConnectRequest.uploadOnly(MutationUploader uploader) =
-      _ConnectRequest.uploadOnly;
-
-  InternalConnector _toInternal(PowerSyncDatabase db);
+      InternalConnectRequest.uploadOnly;
 }
 
 @internal
 extension ConnectorToInternal on ConnectRequest {
-  InternalConnector toInternal(PowerSyncDatabase db) => _toInternal(db);
+  InternalConnector toInternal(PowerSyncDatabase db) =>
+      InternalConnector.fromConnectRequest(this, db);
 }
 
-final class _ConnectRequest extends ConnectRequest {
-  final String? _endpoint;
-  final Authenticator? _authenticator;
-  final MutationUploader? _mutationUploader;
+@internal
+final class InternalConnectRequest extends ConnectRequest {
+  final String? endpoint;
+  final Authenticator? authenticator;
+  final MutationUploader? uploader;
 
-  const _ConnectRequest({
-    required String endpoint,
-    required Authenticator authenticator,
-    required MutationUploader uploader,
-  }) : _endpoint = endpoint,
-       _authenticator = authenticator,
-       _mutationUploader = uploader,
+  const InternalConnectRequest({
+    required String this.endpoint,
+    required Authenticator this.authenticator,
+    required MutationUploader this.uploader,
+  }) : super._();
+
+  const InternalConnectRequest.downloadOnly({
+    required String this.endpoint,
+    required Authenticator this.authenticator,
+  }) : uploader = null,
        super._();
 
-  const _ConnectRequest.downloadOnly({
-    required String endpoint,
-    required Authenticator authenticator,
-  }) : _endpoint = endpoint,
-       _authenticator = authenticator,
-       _mutationUploader = null,
-       super._();
-
-  const _ConnectRequest.uploadOnly(MutationUploader uploader)
-    : _endpoint = null,
-      _authenticator = null,
-      _mutationUploader = uploader,
+  const InternalConnectRequest.uploadOnly(MutationUploader this.uploader)
+    : endpoint = null,
+      authenticator = null,
       super._();
-
-  @override
-  InternalConnector _toInternal(PowerSyncDatabase db) {
-    final endpoint = _endpoint;
-    final authenticator = _authenticator;
-    final uploader = _mutationUploader;
-
-    return InternalConnector(
-      (endpoint != null && authenticator != null)
-          ? SplitAuthenticator(endpoint, authenticator)
-          : null,
-      uploader != null ? DatabaseBoundUploader(uploader, db) : null,
-    );
-  }
 }
 
 /// Implement this to connect an app backend.
@@ -220,14 +200,6 @@ abstract class PowerSyncBackendConnector extends ConnectRequest
   @override
   Future<void> upload(PowerSyncDatabase database) {
     return uploadData(database);
-  }
-
-  @override
-  InternalConnector _toInternal(PowerSyncDatabase db) {
-    return InternalConnector(
-      LegacyAuthenticator(this),
-      DatabaseBoundUploader(this, db),
-    );
   }
 }
 

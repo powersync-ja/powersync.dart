@@ -402,9 +402,11 @@ class SyncRunner {
   ) {
     // All connections in a sync runner must all use the same sync mode
     // (download only / upload only / both).
-    if (connections.keys.firstOrNull case final existingClient?) {
-      final hasAuthenticator = client.authenticator != null;
-      final hasUploader = client.uploader != null;
+    final hasAuthenticator = client.authenticator != null;
+    final hasUploader = client.uploader != null;
+
+    for (final existingClient in connections.keys) {
+      if (existingClient == client) continue;
 
       final shouldHaveAuthenticator = existingClient.authenticator != null;
       final shouldHaveUploader = existingClient.uploader != null;
