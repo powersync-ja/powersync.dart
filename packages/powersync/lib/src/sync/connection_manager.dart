@@ -3,7 +3,6 @@ import 'dart:convert';
 
 import 'package:meta/meta.dart';
 import 'package:powersync/src/abort_controller.dart';
-import 'package:powersync/src/connector.dart';
 import 'package:powersync/src/database/active_instances.dart';
 import 'package:powersync/src/sync/options.dart';
 import 'package:powersync/src/sync/stream.dart';
@@ -14,6 +13,7 @@ import '../devtools/devtools.dart' as devtools;
 import 'checkpoint_request.dart';
 import 'instruction.dart';
 import 'status_update.dart';
+import 'internal_connector.dart';
 import 'stream_utils.dart';
 import 'streaming_sync.dart';
 
@@ -53,7 +53,7 @@ final class ConnectionManager {
   /// sync mutex.
   (AbortController, RemoteStreamingSyncHandle)? _abortActiveSync;
 
-  PowerSyncBackendConnector? _lastConnector;
+  InternalConnector? _lastConnector;
   ResolvedSyncOptions? _lastOptions;
 
   ConnectionManager(this.db) : _activeGroup = db.group;
@@ -120,7 +120,7 @@ final class ConnectionManager {
   ];
 
   Future<void> connect({
-    required PowerSyncBackendConnector connector,
+    required InternalConnector connector,
     required ResolvedSyncOptions options,
   }) async {
     _lastConnector = connector;

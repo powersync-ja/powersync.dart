@@ -57,6 +57,9 @@ class ConnectedClient {
   SyncRunner? _runner;
   StreamSubscription<LogRecord>? _logSubscription;
 
+  InternalAuthenticator? authenticator;
+  InternalMutationUploader? uploader;
+
   ConnectedClient(MessagePort port, this._worker) {
     channel = WorkerCommunicationChannel(
       port: port,
@@ -97,6 +100,14 @@ class ConnectedClient {
               },
               enableDiagnostics: request.diagnostics ?? false,
             );
+
+            final hasAuthenticator = request.hasAuthenticator ?? true;
+            final hasUploader = request.hasUploader ?? true;
+
+            authenticator = hasAuthenticator
+                ? RemoteAuthenticator(channel)
+                : null;
+            uploader = hasUploader ? RemoteUploader(channel) : null;
 
             _runner = _worker._referenceSyncTask(
               request.databaseName,
@@ -341,19 +352,7 @@ class SyncRunner {
     final createdSync = sync = StreamingSyncImplementation(
       adapter: BucketStorage(database),
       schemaJson: schemaJson,
-      connector: InternalConnector(
-        getCredentialsCached: client.channel.credentialsCallback,
-        prefetchCredentials: ({required bool invalidate}) async {
-          return await client.channel.invalidCredentialsCallback();
-        },
-        uploadCrud: client.channel.uploadCrud,
-        postCheckpointRequests: (clientId, requestId) async {
-          return await client.channel.customCheckpointRequest(
-            clientId,
-            requestId,
-          );
-        },
-      ),
+      connector: InternalConnector(client.authenticator, client.uploader),
       crudUpdateTriggerStream: crudStream,
       options: options,
       identifier: identifier,
@@ -401,6 +400,26 @@ class SyncRunner {
     String schemaJson,
     List<SubscribedStream> subscriptions,
   ) {
+    // All connections in a sync runner must all use the same sync mode
+    // (download only / upload only / both).
+    final hasAuthenticator = client.authenticator != null;
+    final hasUploader = client.uploader != null;
+
+    for (final existingClient in connections.keys) {
+      if (existingClient == client) continue;
+
+      final shouldHaveAuthenticator = existingClient.authenticator != null;
+      final shouldHaveUploader = existingClient.uploader != null;
+
+      if ((hasAuthenticator != shouldHaveAuthenticator) ||
+          (hasUploader != shouldHaveUploader)) {
+        throw StateError(
+          'Different tabs connecting in different modes (download-only / '
+          'upload-only / full) is not supported',
+        );
+      }
+    }
+
     _mainEvents.add(_AddConnection(client, options, schemaJson, subscriptions));
   }
 

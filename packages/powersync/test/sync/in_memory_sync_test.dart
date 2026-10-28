@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:async/async.dart';
+import 'package:http/http.dart' as http;
 import 'package:logging/logging.dart';
 import 'package:powersync/powersync.dart';
 import 'package:powersync/src/sync/checkpoint_request.dart';
@@ -51,15 +52,19 @@ void _declareTests(String name, bool bson) {
       );
     }
 
-    Future<void> connect({
-      PowerSyncBackendConnector? connector,
-      SyncOptions? options,
-    }) async {
+    void configureServer() {
       final (client, server) = inMemoryServer();
       server.mount((req) => syncService.router(req));
       mockServer = server;
 
       database.httpClient = client;
+    }
+
+    Future<void> connect({
+      ConnectRequest? connector,
+      SyncOptions? options,
+    }) async {
+      configureServer();
       await database.connect(
         connector:
             connector ??
@@ -86,8 +91,9 @@ void _declareTests(String name, bool bson) {
     });
 
     Future<StreamQueue<SyncStatus>> waitForConnection({
-      PowerSyncBackendConnector? connector,
+      ConnectRequest? connector,
       SyncOptions? options,
+      bool connectHere = true,
       bool expectNoWarnings = true,
       bool addKeepLive = true,
     }) async {
@@ -98,7 +104,10 @@ void _declareTests(String name, bool bson) {
           }
         });
       }
-      await connect(connector: connector, options: options);
+
+      if (connectHere) {
+        await connect(connector: connector, options: options);
+      }
       await syncService.waitForListener;
 
       expect(database.currentStatus.lastSyncedAt, isNull);
@@ -1469,6 +1478,167 @@ void _declareTests(String name, bool bson) {
       },
     );
 
+    test('download-only', () async {
+      configureServer();
+      await database.connect(
+        connector: .downloadOnly(
+          endpoint: mockServer.url.toString(),
+          authenticator: TestConnector(credentialsCallback),
+        ),
+        options: defaultOptions,
+      );
+      final status = await waitForConnection(
+        connectHere: false,
+        // We expect an error log for the blocked checkpoint.
+        expectNoWarnings: false,
+      );
+
+      // Create local mutation, which is never uploaded
+      await database.execute(
+        'insert into customers (id, name) values (uuid(), ?)',
+        ['customer'],
+      );
+
+      // A new checkpoint can't be applied in this state, and should report an
+      // error.
+      syncService
+        ..addLine(checkpoint(lastOpId: 0))
+        ..addLine(checkpointComplete(lastOpId: '0'));
+      await expectLater(
+        status,
+        emitsThrough(
+          isSyncStatus(
+            downloadError: isA<Object>().having(
+              (e) => e.toString(),
+              'toString()',
+              contains('blocked on local mutations, but no uploader is set'),
+            ),
+          ),
+        ),
+      );
+
+      // Upgrade to a full connection, which should upload.
+      final didUpload = Completer<void>();
+      syncService.endCurrentListener();
+      await database.connect(
+        connector: ConnectRequest(
+          endpoint: mockServer.url.toString(),
+          authenticator: TestConnector(credentialsCallback),
+          uploader: MutationUploader((db) async {
+            if (await db.getNextCrudTransaction() case final tx?) {
+              didUpload.complete();
+              await tx.complete();
+            }
+          }),
+        ),
+        options: defaultOptions,
+      );
+      await didUpload.future;
+    });
+
+    test('upload-only', () async {
+      final didUpload = Completer<void>();
+      // Connecting in upload-only mode should make no SDK-initiated HTTP
+      // requests.
+      database.httpClient = _DisallowHttpClient();
+      var isFirstUpload = true;
+      await database.execute('insert into customers (id, name) values (?, ?)', [
+        'test1',
+        'local mutation',
+      ]);
+      await database.connect(
+        connector: .uploadOnly(
+          MutationUploader((db) async {
+            if (await db.getNextCrudTransaction() case final tx?) {
+              if (isFirstUpload) {
+                // Verify that uploads are retried in upload-only mode too.
+                isFirstUpload = false;
+                throw StateError('expected upload error');
+              }
+
+              await tx.complete();
+              didUpload.complete();
+            }
+          }),
+        ),
+        options: defaultOptions,
+      );
+      await didUpload.future;
+
+      // Reconnect in download-only mode. This should request a checkpoint
+      // because the upload-only mode can't.
+      configureServer();
+      final targetCheckpointRequest = Completer<String>();
+      final releaseCheckpointRequest = Completer<void>();
+      var isSeedRequest = true;
+
+      await database.connect(
+        connector: .downloadOnly(
+          endpoint: mockServer.url.toString(),
+          authenticator: _CustomCheckpointAuthenticator((
+            clientId,
+            requestId,
+          ) async {
+            if (isSeedRequest) {
+              isSeedRequest = false;
+            } else {
+              targetCheckpointRequest.complete(requestId);
+              await releaseCheckpointRequest.future;
+            }
+            return requestId;
+          }),
+        ),
+        options: SyncOptions(
+          retryDelay: retryDelay,
+          checkpointMode: CheckpointMode.requests(),
+        ),
+      );
+      await waitForConnection(connectHere: false);
+
+      final customers = StreamQueue(
+        database
+            .watch('SELECT name FROM customers ORDER BY name')
+            .map((rs) => rs.map((row) => row['name'] as String).toList()),
+      );
+      addTearDown(customers.cancel);
+      expect(await customers.next, ['local mutation']);
+
+      final requestId = await targetCheckpointRequest.future;
+      syncService
+        ..addLine(
+          checkpoint(
+            lastOpId: 1,
+            writeCheckpoint: requestId,
+            buckets: [bucketDescription('a')],
+          ),
+        )
+        ..addLine({
+          'data': {
+            'bucket': 'a',
+            'data': [
+              {
+                'checksum': 0,
+                'op': 'PUT',
+                'op_id': '1',
+                'object_id': 'test1',
+                'object_type': 'customers',
+                'data': '{"name": "from server"}',
+              },
+            ],
+          },
+        })
+        ..addLine(checkpointComplete(lastOpId: '1'));
+
+      // The checkpoint can't be applied before the local target is updated.
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+      expect(await database.getAll('SELECT name FROM customers'), [
+        {'name': 'local mutation'},
+      ]);
+
+      releaseCheckpointRequest.complete();
+      await expectLater(customers, emitsThrough(['from server']));
+    });
+
     group('abort', () {
       test('during connect', () async {
         final requestStarted = Completer<void>();
@@ -1541,5 +1711,30 @@ final class _BlockedMutex implements Mutex {
   }) async {
     await abortTrigger;
     throw AbortException('lock');
+  }
+}
+
+final class _CustomCheckpointAuthenticator
+    with CustomCheckpointRequestConnector {
+  final Future<String> Function(String, String) _postCheckpointRequest;
+
+  _CustomCheckpointAuthenticator(this._postCheckpointRequest);
+
+  @override
+  Future<String> resolveCredentials() async => 'test token';
+
+  @override
+  void invalidateCredentials() {}
+
+  @override
+  Future<String> postCheckpointRequest(String clientId, String requestId) {
+    return _postCheckpointRequest(clientId, requestId);
+  }
+}
+
+final class _DisallowHttpClient extends http.BaseClient {
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) {
+    throw UnsupportedError('http');
   }
 }
