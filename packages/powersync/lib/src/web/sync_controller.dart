@@ -60,9 +60,11 @@ class SyncWorkerHandle implements StreamingSync {
             await connector.uploader!.upload(abortSignal);
             return (JSObject(), null);
           case SyncWorkerMessageType.invalidCredentialsCallback:
+          case SyncWorkerMessageType.prefetchCredentialsCallback:
             final credentials = await connector.authenticator!
                 .prefetchCredentials(
-                  invalidate: true,
+                  invalidate:
+                      type == SyncWorkerMessageType.invalidCredentialsCallback,
                   abortSignal: abortSignal,
                 );
             return (

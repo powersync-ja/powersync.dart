@@ -860,6 +860,7 @@ final class _ActiveRustStreamingIteration {
       }
     } finally {
       abort.completeAbort();
+      abort.abort(); // to complete signals passed to connector calls
     }
   }
 
@@ -991,26 +992,28 @@ final class _ActiveRustStreamingIteration {
         sync._lastCoreSyncStatus = status;
         sync._emitStatusUpdate(SyncStatusUpdate(core: status));
       case FetchCredentials(:final didExpire):
+        final fetchNew = _abortController.scoped(
+          (signal) => _authenticator.prefetchCredentials(
+            abortSignal: signal,
+            invalidate: didExpire,
+          ),
+        );
+
         if (didExpire) {
-          await _abortController.scoped(
-            (signal) => _authenticator.prefetchCredentials(
-              invalidate: true,
-              abortSignal: signal,
-            ),
-          );
+          await fetchNew;
         } else {
-          _authenticator
-              .prefetchCredentials(abortSignal: _abortController.onAbort)
-              .then(
-                (_) {
-                  if (!_aborted) {
-                    sync._nonLineSyncEvents.add(const TokenRefreshComplete());
-                  }
-                },
-                onError: (Object e, StackTrace s) {
-                  sync.logger.warning('Could not prefetch credentials', e, s);
-                },
-              );
+          fetchNew.then(
+            (_) {
+              if (!_aborted) {
+                sync._nonLineSyncEvents.add(const TokenRefreshComplete());
+              }
+            },
+            onError: (Object e, StackTrace s) {
+              if (!_abortController.isAbortException(e)) {
+                sync.logger.warning('Could not prefetch credentials', e, s);
+              }
+            },
+          );
         }
       case DidCompleteSync():
         sync._emitStatusUpdate(

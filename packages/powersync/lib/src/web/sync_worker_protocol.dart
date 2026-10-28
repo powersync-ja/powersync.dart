@@ -67,6 +67,7 @@ enum SyncWorkerMessageType {
 
   invalidCredentialsCallback,
   credentialsCallback,
+  prefetchCredentialsCallback,
 
   /// Notifies the receiver that the sender is no longer interested in the
   /// result of a request it has sent earlier.
@@ -397,6 +398,7 @@ final class WorkerCommunicationChannel {
             case SyncWorkerMessageType.abortSynchronization:
             case SyncWorkerMessageType.credentialsCallback:
             case SyncWorkerMessageType.invalidCredentialsCallback:
+            case SyncWorkerMessageType.prefetchCredentialsCallback:
             case SyncWorkerMessageType.uploadCrud:
             case SyncWorkerMessageType.requestCheckpoint:
               requestId = (message.payload as JSNumber).toDartInt;
@@ -457,7 +459,7 @@ final class WorkerCommunicationChannel {
               return;
           }
 
-          final abortSignal = _incomingRequests[requestId] = Completer.sync();
+          final abortSignal = _incomingRequests[requestId] = Completer();
           try {
             await _respond(
               requestId,
@@ -634,12 +636,15 @@ final class WorkerCommunicationChannel {
     return serialized?.asCredentials();
   }
 
-  Future<PowerSyncCredentials?> invalidCredentialsCallback(
+  Future<PowerSyncCredentials?> prefetchCredentialsCallback(
+    bool invalidate,
     Future<void> abortSignal,
   ) async {
     final serialized =
         await _numericRequest(
-              SyncWorkerMessageType.invalidCredentialsCallback,
+              invalidate
+                  ? SyncWorkerMessageType.invalidCredentialsCallback
+                  : SyncWorkerMessageType.prefetchCredentialsCallback,
               abortSignal: abortSignal,
             )
             as SerializedCredentials?;
@@ -772,7 +777,7 @@ final class RemoteAuthenticator implements InternalAuthenticator {
   Future<PowerSyncCredentials?> prefetchCredentials({
     bool invalidate = false,
     required Future<void> abortSignal,
-  }) => channel.invalidCredentialsCallback(abortSignal);
+  }) => channel.prefetchCredentialsCallback(invalidate, abortSignal);
 }
 
 final class RemoteUploader implements InternalMutationUploader {
