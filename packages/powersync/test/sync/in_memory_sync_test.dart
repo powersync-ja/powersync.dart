@@ -1721,13 +1721,18 @@ final class _CustomCheckpointAuthenticator
   _CustomCheckpointAuthenticator(this._postCheckpointRequest);
 
   @override
-  Future<String> resolveCredentials() async => 'test token';
+  Future<String> resolveCredentials(Future<void> abortSignal) async =>
+      'test token';
 
   @override
   void invalidateCredentials() {}
 
   @override
-  Future<String> postCheckpointRequest(String clientId, String requestId) {
+  Future<String> postCheckpointRequest(
+    String clientId,
+    String requestId,
+    Future<void> abortSignal,
+  ) {
     return _postCheckpointRequest(clientId, requestId);
   }
 }

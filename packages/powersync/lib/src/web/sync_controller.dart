@@ -42,7 +42,7 @@ class SyncWorkerHandle implements StreamingSync {
           : null,
       logger: database.logger,
       exposedHttpClient: options.httpClient?.call(),
-      requestHandler: (type, payload) async {
+      requestHandler: (type, payload, abortSignal) async {
         switch (type) {
           case SyncWorkerMessageType.requestEndpoint:
             final endpoint = await (database.database as WebSqliteConnection)
@@ -57,11 +57,14 @@ class SyncWorkerHandle implements StreamingSync {
               [endpoint.connectPort].toJS,
             );
           case SyncWorkerMessageType.uploadCrud:
-            await connector.uploader!.upload();
+            await connector.uploader!.upload(abortSignal);
             return (JSObject(), null);
           case SyncWorkerMessageType.invalidCredentialsCallback:
             final credentials = await connector.authenticator!
-                .prefetchCredentials(invalidate: true);
+                .prefetchCredentials(
+                  invalidate: true,
+                  abortSignal: abortSignal,
+                );
             return (
               credentials != null
                   ? SerializedCredentials.from(credentials)
@@ -70,7 +73,7 @@ class SyncWorkerHandle implements StreamingSync {
             );
           case SyncWorkerMessageType.credentialsCallback:
             final credentials = await connector.authenticator!
-                .getCredentialsCached();
+                .getCredentialsCached(abortSignal);
             return (
               credentials != null
                   ? SerializedCredentials.from(credentials)
@@ -80,7 +83,11 @@ class SyncWorkerHandle implements StreamingSync {
           case SyncWorkerMessageType.customCheckpointRequest:
             final request = payload as CustomCheckpointRequest;
             final resolved = await connector.authenticator!
-                .postCheckpointRequest(request.clientId, request.requestId);
+                .postCheckpointRequest(
+                  request.clientId,
+                  request.requestId,
+                  abortSignal,
+                );
 
             return (resolved?.toJS, null);
           default:

@@ -189,14 +189,14 @@ Future<(Client, WorkerCommunicationChannel)> createRemoteClient(
 
   final local = WorkerCommunicationChannel(
     port: channel.port1,
-    requestHandler: (type, payload) async {
+    requestHandler: (type, payload, _) async {
       throw UnimplementedError();
     },
     exposedHttpClient: original,
   );
   final remote = WorkerCommunicationChannel(
     port: channel.port2,
-    requestHandler: (type, payload) async {
+    requestHandler: (type, payload, _) async {
       throw UnimplementedError();
     },
   );

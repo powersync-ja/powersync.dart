@@ -16,7 +16,15 @@ abstract interface class Authenticator {
   /// while a database is connected. Implementations should consider caching
   /// credentials, and can use [invalidateCredentials] as a signal for cache
   /// eviction.
-  Future<String> resolveCredentials();
+  ///
+  /// {@template powersync_connector_abort_signal}
+  /// The `abortSignal` is a future that completes when the PowerSync SDK is no
+  /// longer interested in the value. It completes when the sync is aborted
+  /// while a call to this method is active.
+  /// To avoid leaking callbacks, the future also completes shortly after the
+  /// returned future completes.
+  /// {@endtemplate}
+  Future<String> resolveCredentials(Future<void> abortSignal);
 
   /// A notification from the SDK that the current credentials have expired.
   void invalidateCredentials();
@@ -29,15 +37,26 @@ abstract interface class Authenticator {
 /// into the database, a custom backend is ocmmonly used to validate uploaded
 /// mutations.
 abstract interface class MutationUploader {
-  const factory MutationUploader(
-    Future<void> Function(PowerSyncDatabase) upload,
+  /// Creates a mutation uploader from a function performing the upload.
+  factory MutationUploader(
+    Future<void> Function(PowerSyncDatabase database) upload,
   ) = _FunctionMutationUploader;
+
+  /// Creates a mutation uploader from a function performing the upload.
+  ///
+  /// {@macro powersync_connector_abort_signal}
+  const factory MutationUploader.abortable(
+    Future<void> Function(PowerSyncDatabase database, Future<void> abortSignal)
+    upload,
+  ) = _FunctionMutationUploader.withAbortSignal;
 
   /// Uploads local mutations recorded on the database.
   ///
   /// Implementations can use [PowerSyncDatabase.getCrudTransactions] to inspect
   /// local mutations on the database.
-  Future<void> upload(PowerSyncDatabase database);
+  ///
+  /// {@macro powersync_connector_abort_signal}
+  Future<void> upload(PowerSyncDatabase database, Future<void> abortSignal);
 }
 
 /// A request to connect a PowerSync database for downloads, uploads or both.
@@ -143,7 +162,7 @@ abstract class PowerSyncBackendConnector extends ConnectRequest
   }
 
   @override
-  Future<String> resolveCredentials() async {
+  Future<String> resolveCredentials(Future<void> _) async {
     final credentials = await getCredentialsCached();
     if (credentials == null) {
       throw StateError('Not logged in');
@@ -198,7 +217,7 @@ abstract class PowerSyncBackendConnector extends ConnectRequest
   Future<void> uploadData(PowerSyncDatabase database);
 
   @override
-  Future<void> upload(PowerSyncDatabase database) {
+  Future<void> upload(PowerSyncDatabase database, Future<void> _) {
     return uploadData(database);
   }
 }
@@ -224,17 +243,29 @@ abstract mixin class CustomCheckpointRequestConnector implements Authenticator {
   /// [clientId] is a random uuid generated for this device, and [requestId] is
   /// an incrementing 64-bit integer (encoded as a string to avoid precision
   /// issues with JavaScript targets).
-  Future<String> postCheckpointRequest(String clientId, String requestId);
+  ///
+  /// {@macro powersync_connector_abort_signal}
+  Future<String> postCheckpointRequest(
+    String clientId,
+    String requestId,
+    Future<void> abortSignal,
+  );
 }
 
 final class _FunctionMutationUploader implements MutationUploader {
-  final Future<void> Function(PowerSyncDatabase) _upload;
+  final Future<void> Function(PowerSyncDatabase, Future<void>) _upload;
 
-  const _FunctionMutationUploader(this._upload);
+  factory _FunctionMutationUploader(
+    Future<void> Function(PowerSyncDatabase) upload,
+  ) {
+    return _FunctionMutationUploader.withAbortSignal((db, _) => upload(db));
+  }
+
+  const _FunctionMutationUploader.withAbortSignal(this._upload);
 
   @override
-  Future<void> upload(PowerSyncDatabase database) {
-    return _upload(database);
+  Future<void> upload(PowerSyncDatabase database, Future<void> abortSignal) {
+    return _upload(database, abortSignal);
   }
 }
 
