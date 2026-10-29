@@ -317,7 +317,7 @@ class StreamingSyncImplementation implements StreamingSync {
           }
 
           checkedCrudItem = nextCrudItem;
-          await uploader.upload();
+          await abort.scoped(uploader.upload);
           _emitStatusUpdate(
             SyncStatusUpdate(uploadError: SyncStatusUpdate.resetSentinel),
           );
@@ -453,13 +453,17 @@ class StreamingSyncImplementation implements StreamingSync {
 
     // First, check if we can use a custom checkpoint request implementation.
     if (authenticator.mightPostCheckpointRequests) {
-      if (await authenticator.postCheckpointRequest(clientId, checkpointRequest)
+      if (await authenticator.postCheckpointRequest(
+            clientId,
+            checkpointRequest,
+            abortTrigger,
+          )
           case final customResponse?) {
         return customResponse;
       }
     }
 
-    final credentials = await authenticator.getCredentialsCached();
+    final credentials = await authenticator.getCredentialsCached(abortTrigger);
     if (credentials == null) {
       throw CredentialsException("Not logged in");
     }
@@ -482,7 +486,10 @@ class StreamingSyncImplementation implements StreamingSync {
     );
 
     if (response.statusCode == 401) {
-      await authenticator.prefetchCredentials(invalidate: true);
+      await authenticator.prefetchCredentials(
+        invalidate: true,
+        abortSignal: abortTrigger,
+      );
     }
     if (response.statusCode == 404) {
       throw checkpoint.instanceNotSupported;
@@ -499,7 +506,9 @@ class StreamingSyncImplementation implements StreamingSync {
     InternalAuthenticator authenticator,
     AbortController abort,
   ) async {
-    final credentials = await authenticator.getCredentialsCached();
+    final credentials = await abort.scoped(
+      (signal) => authenticator.getCredentialsCached(signal),
+    );
     if (credentials == null) {
       throw CredentialsException("Not logged in");
     }
@@ -516,7 +525,12 @@ class StreamingSyncImplementation implements StreamingSync {
     });
 
     if (response.statusCode == 401) {
-      await authenticator.prefetchCredentials(invalidate: true);
+      await abort.scoped(
+        (signal) => authenticator.prefetchCredentials(
+          invalidate: true,
+          abortSignal: signal,
+        ),
+      );
     }
     if (response.statusCode != 200) {
       throw SyncResponseException.fromResponse(response);
@@ -550,7 +564,7 @@ class StreamingSyncImplementation implements StreamingSync {
     const ndJson = 'application/x-ndjson';
     const bson = 'application/vnd.powersync.bson-stream';
 
-    final credentials = await authenticator.getCredentialsCached();
+    final credentials = await authenticator.getCredentialsCached(onAbort);
     if (credentials == null) {
       throw CredentialsException('Not logged in');
     }
@@ -566,7 +580,10 @@ class StreamingSyncImplementation implements StreamingSync {
     final res = await _client.send(request);
 
     if (res.statusCode == 401) {
-      await authenticator.prefetchCredentials(invalidate: true);
+      await authenticator.prefetchCredentials(
+        invalidate: true,
+        abortSignal: onAbort,
+      );
     }
     if (res.statusCode != 200) {
       throw await SyncResponseException.fromStreamedResponse(res);
@@ -843,6 +860,7 @@ final class _ActiveRustStreamingIteration {
       }
     } finally {
       abort.completeAbort();
+      abort.abort(); // to complete signals passed to connector calls
     }
   }
 
@@ -974,17 +992,26 @@ final class _ActiveRustStreamingIteration {
         sync._lastCoreSyncStatus = status;
         sync._emitStatusUpdate(SyncStatusUpdate(core: status));
       case FetchCredentials(:final didExpire):
+        final fetchNew = _abortController.scoped(
+          (signal) => _authenticator.prefetchCredentials(
+            abortSignal: signal,
+            invalidate: didExpire,
+          ),
+        );
+
         if (didExpire) {
-          await _authenticator.prefetchCredentials(invalidate: true);
+          await fetchNew;
         } else {
-          _authenticator.prefetchCredentials().then(
+          fetchNew.then(
             (_) {
               if (!_aborted) {
                 sync._nonLineSyncEvents.add(const TokenRefreshComplete());
               }
             },
             onError: (Object e, StackTrace s) {
-              sync.logger.warning('Could not prefetch credentials', e, s);
+              if (!_abortController.isAbortException(e)) {
+                sync.logger.warning('Could not prefetch credentials', e, s);
+              }
             },
           );
         }

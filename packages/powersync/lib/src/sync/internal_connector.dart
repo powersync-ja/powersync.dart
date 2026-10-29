@@ -14,7 +14,7 @@ abstract interface class InternalAuthenticator {
   bool get mightPostCheckpointRequests;
 
   /// Fetch or return cached credentials.
-  Future<PowerSyncCredentials?> getCredentialsCached();
+  Future<PowerSyncCredentials?> getCredentialsCached(Future<void> abortSignal);
 
   /// Ask the backend connector to fetch a new set of credentials.
   ///
@@ -23,17 +23,21 @@ abstract interface class InternalAuthenticator {
   ///
   /// A call to [getCredentialsCached] after this future completes should return
   /// the same credentials.
-  Future<PowerSyncCredentials?> prefetchCredentials({bool invalidate = false});
+  Future<PowerSyncCredentials?> prefetchCredentials({
+    bool invalidate = false,
+    required Future<void> abortSignal,
+  });
 
   FutureOr<String?> postCheckpointRequest(
     String clientId,
     String checkpointRequestId,
+    Future<void> abortSignal,
   );
 }
 
 @internal
 abstract interface class InternalMutationUploader {
-  Future<void> upload();
+  Future<void> upload(Future<void> abortSignal);
 }
 
 /// A view over a backend connector that does not require a reference to the
@@ -81,12 +85,15 @@ final class LegacyAuthenticator implements InternalAuthenticator {
   }
 
   @override
-  Future<PowerSyncCredentials?> getCredentialsCached() async {
+  Future<PowerSyncCredentials?> getCredentialsCached(Future<void> _) async {
     return connector.getCredentialsCached();
   }
 
   @override
-  Future<PowerSyncCredentials?> prefetchCredentials({bool invalidate = false}) {
+  Future<PowerSyncCredentials?> prefetchCredentials({
+    bool invalidate = false,
+    required Future<void> abortSignal,
+  }) {
     if (invalidate) {
       connector.invalidateCredentials();
     }
@@ -97,9 +104,14 @@ final class LegacyAuthenticator implements InternalAuthenticator {
   FutureOr<String?> postCheckpointRequest(
     String clientId,
     String checkpointRequestId,
+    Future<void> abortSignal,
   ) {
     if (connector case final CustomCheckpointRequestConnector custom) {
-      return custom.postCheckpointRequest(clientId, checkpointRequestId);
+      return custom.postCheckpointRequest(
+        clientId,
+        checkpointRequestId,
+        abortSignal,
+      );
     }
 
     return null;
@@ -118,35 +130,46 @@ final class SplitAuthenticator implements InternalAuthenticator {
   }
 
   @override
-  Future<PowerSyncCredentials?> getCredentialsCached() {
-    return _resolveCredentials(false);
+  Future<PowerSyncCredentials?> getCredentialsCached(Future<void> abortSignal) {
+    return _resolveCredentials(false, abortSignal);
   }
 
   @override
   FutureOr<String?> postCheckpointRequest(
     String clientId,
     String checkpointRequestId,
+    Future<void> abortSignal,
   ) {
     if (_authenticator case final CustomCheckpointRequestConnector connector) {
-      return connector.postCheckpointRequest(clientId, checkpointRequestId);
+      return connector.postCheckpointRequest(
+        clientId,
+        checkpointRequestId,
+        abortSignal,
+      );
     }
 
     return null;
   }
 
   @override
-  Future<PowerSyncCredentials?> prefetchCredentials({bool invalidate = false}) {
-    return _resolveCredentials(invalidate);
+  Future<PowerSyncCredentials?> prefetchCredentials({
+    bool invalidate = false,
+    required Future<void> abortSignal,
+  }) {
+    return _resolveCredentials(invalidate, abortSignal);
   }
 
-  Future<PowerSyncCredentials> _resolveCredentials(bool invalidateFirst) async {
+  Future<PowerSyncCredentials> _resolveCredentials(
+    bool invalidateFirst,
+    Future<void> abortSignal,
+  ) async {
     if (invalidateFirst) {
       _authenticator.invalidateCredentials();
     }
 
     return PowerSyncCredentials(
       endpoint: _endpoint,
-      token: await _authenticator.resolveCredentials(),
+      token: await _authenticator.resolveCredentials(abortSignal),
     );
   }
 }
@@ -158,5 +181,6 @@ final class DatabaseBoundUploader implements InternalMutationUploader {
   DatabaseBoundUploader(this._uploader, this._database);
 
   @override
-  Future<void> upload() => _uploader.upload(_database);
+  Future<void> upload(Future<void> abortSignal) =>
+      _uploader.upload(_database, abortSignal);
 }

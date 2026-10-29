@@ -60,6 +60,9 @@ final class NativePowerSyncDatabase extends BasePowerSyncDatabase {
       'crud': group.crudMutex,
     });
     final diagnostics = StreamController<String>();
+    // Connector calls currently being handled for the sync isolate, keyed by
+    // their abort token.
+    final pendingConnectorCalls = <int, Completer<void>>{};
 
     SyncIsolatePort? initPort;
     final hasInitPort = Completer<void>();
@@ -80,6 +83,10 @@ final class NativePowerSyncDatabase extends BasePowerSyncDatabase {
       receiveExit.close();
       diagnostics.close();
       mutexServer.handleChildIsolateExit();
+      for (final pending in pendingConnectorCalls.values) {
+        pending.complete();
+      }
+      pendingConnectorCalls.clear();
 
       abort.completeAbort();
     }
@@ -89,23 +96,41 @@ final class NativePowerSyncDatabase extends BasePowerSyncDatabase {
       await waitForShutdown();
     }
 
+    Future<void> handleConnectorCall<T>(
+      PortCompleter<T> completer,
+      int abortToken,
+      Future<T> Function(Future<void> abortSignal) body,
+    ) {
+      final abortSignal = pendingConnectorCalls[abortToken] = Completer();
+      return completer.handle(() => body(abortSignal.future)).whenComplete(() {
+        if (pendingConnectorCalls.remove(abortToken) case final signal?) {
+          signal.complete();
+        }
+      });
+    }
+
     Future<void> handleMessage(Object? data) async {
       final (type, payload) = data as SyncIsolateToClientMessage;
       switch (type) {
         case SyncIsolateToClientMessageType.getCredentialsCached:
-          await (payload as PortCompleter).handle(() async {
-            final token = await connector.authenticator!.getCredentialsCached();
+          final (completer, abortToken) =
+              payload as (PortCompleter<PowerSyncCredentials?>, int);
+          await handleConnectorCall(completer, abortToken, (abortSignal) async {
+            final token = await connector.authenticator!.getCredentialsCached(
+              abortSignal,
+            );
             logger.fine('Credentials: $token');
             return token;
           });
         case SyncIsolateToClientMessageType.prefetchCredentials:
           logger.fine('Refreshing credentials');
-          final (completer, invalidate) =
-              payload as (PortCompleter<PowerSyncCredentials?>, bool);
+          final (completer, abortToken, invalidate) =
+              payload as (PortCompleter<PowerSyncCredentials?>, int, bool);
 
-          await completer.handle(() async {
-            return await connector.authenticator!.prefetchCredentials(
+          await handleConnectorCall(completer, abortToken, (abortSignal) {
+            return connector.authenticator!.prefetchCredentials(
               invalidate: invalidate,
+              abortSignal: abortSignal,
             );
           });
         case SyncIsolateToClientMessageType.init:
@@ -116,18 +141,22 @@ final class NativePowerSyncDatabase extends BasePowerSyncDatabase {
             port.sendChangedSubscriptions(streams);
           });
         case SyncIsolateToClientMessageType.uploadCrud:
-          await (payload as PortCompleter).handle(() async {
-            await connector.uploader!.upload();
+          final (completer, abortToken) = payload as (PortCompleter<void>, int);
+          await handleConnectorCall(completer, abortToken, (abortSignal) {
+            return connector.uploader!.upload(abortSignal);
           });
         case SyncIsolateToClientMessageType.customCheckpointRequest:
-          final (completer, clientId, requestId) =
-              payload as (PortCompleter<String?>, String, String);
-          await completer.handle(() async {
+          final (completer, abortToken, clientId, requestId) =
+              payload as (PortCompleter<String?>, int, String, String);
+          await handleConnectorCall(completer, abortToken, (abortSignal) async {
             return await connector.authenticator!.postCheckpointRequest(
               clientId,
               requestId,
+              abortSignal,
             );
           });
+        case SyncIsolateToClientMessageType.abortConnectorCall:
+          pendingConnectorCalls.remove(payload as int)?.complete();
         case SyncIsolateToClientMessageType.statusUpdate:
           final update = payload as SyncStatusUpdate;
           if (update.downloadError case final SerializedError e) {
@@ -309,14 +338,15 @@ Future<void> _syncIsolate(_PowerSyncDatabaseIsolateArgs args) async {
   runZonedGuarded(
     () async {
       final storage = BucketStorage(database);
+      final connectorCalls = _ConnectorCalls(results, sPort);
       final sync = openedStreamingSync = StreamingSyncImplementation(
         adapter: storage,
         schemaJson: args.schemaJson,
         connector: InternalConnector(
           args.hasAuthenticator
-              ? _ClientPortAuthenticator(results, sPort)
+              ? _ClientPortAuthenticator(connectorCalls)
               : null,
-          args.hasUploader ? _ClientPortUploader(results, sPort) : null,
+          args.hasUploader ? _ClientPortUploader(connectorCalls) : null,
         ),
         crudUpdateTriggerStream: database.onChange([
           'ps_crud',
@@ -362,47 +392,88 @@ final class _IsolateSyncHandle implements RemoteStreamingSyncHandle {
   }
 }
 
-final class _ClientPortAuthenticator implements InternalAuthenticator {
+/// Forwards connector calls from the sync isolate to the client, along with
+/// their abort signals.
+final class _ConnectorCalls {
   final IsolateResultCollection _results;
-  final SyncClientPort _port;
+  final SyncClientPort port;
+  int _nextAbortToken = 0;
 
-  _ClientPortAuthenticator(this._results, this._port);
+  _ConnectorCalls(this._results, this.port);
+
+  /// Sends a request for a connector call to the client isolate.
+  ///
+  /// If [abortSignal] completes before we have a response, also asks the client
+  /// to abort the call.
+  Future<T> abortableCall<T>(
+    Future<void> abortSignal,
+    void Function(PortCompleter<T> completer, int abortToken) send,
+  ) {
+    final abortToken = _nextAbortToken++;
+    final result = _results.createPending<T>();
+    send(result.completer, abortToken);
+
+    var hasResponse = false;
+    abortSignal.then((_) {
+      if (!hasResponse) port.sendAbortConnectorCall(abortToken);
+    });
+    return result.future.whenComplete(() => hasResponse = true);
+  }
+}
+
+final class _ClientPortAuthenticator implements InternalAuthenticator {
+  final _ConnectorCalls _calls;
+
+  _ClientPortAuthenticator(this._calls);
 
   @override
   bool get mightPostCheckpointRequests => true;
 
   @override
-  Future<PowerSyncCredentials?> getCredentialsCached() {
-    final r = _results.createPending<PowerSyncCredentials?>();
-    _port.sendGetCredentialsCached(r.completer);
-    return r.future;
+  Future<PowerSyncCredentials?> getCredentialsCached(Future<void> abortSignal) {
+    return _calls.abortableCall(
+      abortSignal,
+      _calls.port.sendGetCredentialsCached,
+    );
   }
 
   @override
-  FutureOr<String?> postCheckpointRequest(String clientId, String requestId) {
-    final r = _results.createPending<String?>();
-    _port.sendCustomCheckpointRequest(r.completer, clientId, requestId);
-    return r.future;
+  FutureOr<String?> postCheckpointRequest(
+    String clientId,
+    String requestId,
+    Future<void> abortSignal,
+  ) {
+    return _calls.abortableCall<String?>(abortSignal, (completer, abortToken) {
+      _calls.port.sendCustomCheckpointRequest(
+        completer,
+        abortToken,
+        clientId,
+        requestId,
+      );
+    });
   }
 
   @override
-  Future<PowerSyncCredentials?> prefetchCredentials({bool invalidate = false}) {
-    final r = _results.createPending<PowerSyncCredentials?>();
-    _port.sendPrefetchCredentials(r.completer, invalidate);
-    return r.future;
+  Future<PowerSyncCredentials?> prefetchCredentials({
+    bool invalidate = false,
+    required Future<void> abortSignal,
+  }) {
+    return _calls.abortableCall<PowerSyncCredentials?>(abortSignal, (
+      completer,
+      abortToken,
+    ) {
+      _calls.port.sendPrefetchCredentials(completer, abortToken, invalidate);
+    });
   }
 }
 
 final class _ClientPortUploader implements InternalMutationUploader {
-  final IsolateResultCollection _results;
-  final SyncClientPort _port;
+  final _ConnectorCalls _calls;
 
-  _ClientPortUploader(this._results, this._port);
+  _ClientPortUploader(this._calls);
 
   @override
-  Future<void> upload() {
-    final r = _results.createPending<void>();
-    _port.sendUploadCrud(r.completer);
-    return r.future;
+  Future<void> upload(Future<void> abortSignal) {
+    return _calls.abortableCall(abortSignal, _calls.port.sendUploadCrud);
   }
 }

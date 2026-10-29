@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:powersync/powersync.dart';
 import 'package:sqlite_async/sqlite_async.dart';
 import 'package:test/test.dart';
@@ -41,6 +43,46 @@ void main() {
 
       await expectLater(disconnect1, completes);
       await expectLater(disconnect2, completes);
+    });
+
+    test('aborts pending connector calls on disconnect', () async {
+      final db = await testUtils.setupPowerSync(path: path, schema: testSchema);
+      final didRequestCredentials = Completer<void>();
+      final didAbort = Completer<void>();
+
+      await db.connect(
+        connector: ConnectRequest.downloadOnly(
+          endpoint: 'http://localhost:1',
+          authenticator: _CallbackAuthenticator((abortSignal) async {
+            didRequestCredentials.complete();
+            await abortSignal;
+            didAbort.complete();
+            throw StateError('aborted');
+          }),
+        ),
+      );
+
+      await didRequestCredentials.future;
+      await db.disconnect();
+      expect(didAbort.isCompleted, isTrue);
+    });
+
+    test('completes abort signal after connector call', () async {
+      final db = await testUtils.setupPowerSync(path: path, schema: testSchema);
+      final abortSignal = Completer<Future<void>>();
+
+      await db.connect(
+        connector: ConnectRequest.downloadOnly(
+          endpoint: 'http://localhost:1',
+          authenticator: _CallbackAuthenticator((signal) async {
+            if (!abortSignal.isCompleted) abortSignal.complete(signal);
+            return 'token';
+          }),
+        ),
+      );
+
+      await (await abortSignal.future);
+      await db.disconnect();
     });
 
     test('disconnectAndClear clears DB', () async {
@@ -92,4 +134,18 @@ void main() {
       expect(await db.getAll('SELECT name FROM ps_buckets'), isEmpty);
     });
   });
+}
+
+final class _CallbackAuthenticator implements Authenticator {
+  final Future<String> Function(Future<void> abortSignal) _resolve;
+
+  _CallbackAuthenticator(this._resolve);
+
+  @override
+  Future<String> resolveCredentials(Future<void> abortSignal) {
+    return _resolve(abortSignal);
+  }
+
+  @override
+  void invalidateCredentials() {}
 }

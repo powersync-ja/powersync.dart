@@ -63,7 +63,7 @@ class ConnectedClient {
   ConnectedClient(MessagePort port, this._worker) {
     channel = WorkerCommunicationChannel(
       port: port,
-      requestHandler: (type, payload) async {
+      requestHandler: (type, payload, _) async {
         switch (type) {
           case SyncWorkerMessageType.startSynchronization:
             final request = payload as StartSynchronization;

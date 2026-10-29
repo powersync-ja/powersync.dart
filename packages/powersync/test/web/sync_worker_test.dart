@@ -71,7 +71,7 @@ void main() {
     final handle = createWorkerHandle(
       connector: InternalConnector(
         _CallbackAuthenticator(
-          getCredentials: () async {
+          getCredentials: (_) async {
             throw UnsupportedError('Expected error from fetchCredentials');
           },
         ),
@@ -113,7 +113,7 @@ void main() {
     handle = createWorkerHandle(
       connector: InternalConnector(
         _CallbackAuthenticator(
-          getCredentials: () async {
+          getCredentials: (_) async {
             // When the fetchCredentials request is sent, there should be a sync
             // process.
             final syncRunner = syncWorker.requestedSyncTasks.values.single;
@@ -139,6 +139,30 @@ void main() {
     final syncRunner = syncWorker.requestedSyncTasks.values.single;
     expect(syncRunner.sync, isNull);
     expect(syncRunner.connections, isEmpty);
+  });
+
+  test('forwards abort signals for pending requests', () async {
+    final didRequestCredentials = Completer<void>();
+    final didAbort = Completer<void>();
+    final handle = createWorkerHandle(
+      connector: InternalConnector(
+        _CallbackAuthenticator(
+          getCredentials: (abortSignal) async {
+            didRequestCredentials.complete();
+            await abortSignal;
+            didAbort.complete();
+            throw StateError('aborted');
+          },
+        ),
+        null,
+      ),
+    );
+
+    await handle.streamingSync();
+    await didRequestCredentials.future;
+    await handle.abort();
+    await expectLater(didAbort.future, completes);
+    await handle.close();
   });
 
   test('reports errors to clients connecting later', () async {
@@ -245,7 +269,7 @@ void main() {
     final handle = createWorkerHandle(
       connector: InternalConnector(
         _CallbackAuthenticator(
-          getCredentials: () async => PowerSyncCredentials(
+          getCredentials: (_) async => PowerSyncCredentials(
             endpoint: 'http://test.powersync.example.org',
             token: 'token',
           ),
@@ -323,7 +347,7 @@ void main() {
     final a = createWorkerHandle(
       connector: InternalConnector(
         _CallbackAuthenticator(
-          getCredentials: () async => PowerSyncCredentials(
+          getCredentials: (_) async => PowerSyncCredentials(
             endpoint: 'http://test.powersync.example.org',
             token: 'token',
           ),
@@ -350,7 +374,8 @@ void main() {
 }
 
 final class _CallbackAuthenticator implements InternalAuthenticator {
-  final Future<PowerSyncCredentials?> Function()? getCredentials;
+  final Future<PowerSyncCredentials?> Function(Future<void> abortSignal)?
+  getCredentials;
   final Future<String> Function(String, String)? postCheckpoints;
 
   _CallbackAuthenticator({required this.getCredentials, this.postCheckpoints});
@@ -359,21 +384,27 @@ final class _CallbackAuthenticator implements InternalAuthenticator {
   bool get mightPostCheckpointRequests => postCheckpoints != null;
 
   @override
-  Future<PowerSyncCredentials?> getCredentialsCached() async {
-    return await getCredentials?.call();
+  Future<PowerSyncCredentials?> getCredentialsCached(
+    Future<void> abortSignal,
+  ) async {
+    return await getCredentials?.call(abortSignal);
   }
 
   @override
   FutureOr<String?> postCheckpointRequest(
     String clientId,
     String checkpointRequestId,
+    Future<void> abortSignal,
   ) {
     return postCheckpoints?.call(clientId, checkpointRequestId);
   }
 
   @override
-  Future<PowerSyncCredentials?> prefetchCredentials({bool invalidate = false}) {
-    return getCredentialsCached();
+  Future<PowerSyncCredentials?> prefetchCredentials({
+    bool invalidate = false,
+    required Future<void> abortSignal,
+  }) {
+    return getCredentialsCached(abortSignal);
   }
 }
 
@@ -383,7 +414,7 @@ final class _MockUploader implements InternalMutationUploader {
   _MockUploader(this._upload);
 
   @override
-  Future<void> upload() => _upload();
+  Future<void> upload(Future<void> abortSignal) => _upload();
 }
 
 final class _ThrowingBackendConnector extends PowerSyncBackendConnector {

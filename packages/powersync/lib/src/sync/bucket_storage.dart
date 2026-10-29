@@ -37,23 +37,28 @@ extension type BucketStorage(SqliteConnection _internalDb) {
   Future<bool> updateTargetCheckpointRequest(
     Future<String> Function() checkpointCallback,
   ) async {
-    final currentTarget = await _internalDb.readTransaction(
-      (db) => db.targetCheckpointRequestId(),
-    );
+    final seqBefore = await _internalDb.readTransaction((tx) async {
+      final currentTarget = await tx.targetCheckpointRequestId();
+      if (currentTarget != maxOpId) {
+        // Nothing to update
+        return null;
+      }
 
-    if (currentTarget != maxOpId) {
+      final anyData = await tx.getOptional('SELECT 1 FROM ps_crud LIMIT 1');
+      if (anyData != null) {
+        return null;
+      }
+
+      final rs = await tx.getOptional(
+        'SELECT seq FROM main.sqlite_sequence WHERE name = \'ps_crud\'',
+      );
+      return rs?['seq'] as int?;
+    });
+    if (seqBefore == null) {
       // Nothing to update
       return false;
     }
 
-    final rs = await select(
-      'SELECT seq FROM main.sqlite_sequence WHERE name = \'ps_crud\'',
-    );
-    if (rs.isEmpty) {
-      // Nothing to update
-      return false;
-    }
-    int seqBefore = rs.first['seq'] as int;
     var opId = await checkpointCallback();
 
     return await _internalDb.writeTransaction((tx) async {

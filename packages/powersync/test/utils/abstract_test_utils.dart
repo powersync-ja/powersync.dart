@@ -168,7 +168,11 @@ final class TestCustomCheckpointConnector extends TestConnector
   }) : _postCheckpointRequest = postCheckpointRequest;
 
   @override
-  Future<String> postCheckpointRequest(String clientId, String requestId) {
+  Future<String> postCheckpointRequest(
+    String clientId,
+    String requestId,
+    Future<void> _,
+  ) {
     return _postCheckpointRequest(clientId, requestId);
   }
 }

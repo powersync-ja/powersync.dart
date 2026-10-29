@@ -1,3 +1,6 @@
+/// @docImport 'package:sqlite_async/sqlite_async.dart';
+library;
+
 import 'dart:async';
 import 'dart:convert';
 import 'dart:js_interop';
@@ -8,6 +11,7 @@ import 'package:logging/logging.dart';
 import 'package:meta/meta.dart';
 import 'package:powersync/src/schema.dart';
 import 'package:powersync/src/sync/options.dart';
+import 'package:sqlite_async/sqlite_async.dart';
 import 'package:web/web.dart' hide HttpRequest, Client;
 
 import '../connector.dart';
@@ -63,6 +67,14 @@ enum SyncWorkerMessageType {
 
   invalidCredentialsCallback,
   credentialsCallback,
+  prefetchCredentialsCallback,
+
+  /// Notifies the receiver that the sender is no longer interested in the
+  /// result of a request it has sent earlier.
+  ///
+  /// The payload is the numeric request id of the original request. That
+  /// request must still complete (e.g. with an [AbortException]).
+  abortRequest,
 
   /// Notifies clients that the sync status has changed - the payload consists
   /// of [SerializedSyncStatus].
@@ -209,7 +221,12 @@ extension type ErrorResponse._(JSObject _) implements JSObject {
   external JSString get errorMessage;
 
   static const recognizedTypeNone = 0;
+
+  /// A [RequestAbortedException] from `package:http`.
   static const recognizedTypeRequestAbortedException = 1;
+
+  /// An [AbortException] from `package:sqlite_async`.
+  static const recognizedTypeAbortException = 2;
 }
 
 @anonymous
@@ -308,6 +325,10 @@ extension type CustomCheckpointRequest._(JSObject _) implements JSObject {
 
 final class WorkerCommunicationChannel {
   final Map<int, Completer<JSAny?>> _pendingRequests = {};
+
+  /// Abort signals for requests sent by the remote that we're currently
+  /// handling, keyed by their request id.
+  final Map<int, Completer<void>> _incomingRequests = {};
   final Completer<void> _closed = Completer();
   int _nextRequestId = 0;
   bool _hasError = false;
@@ -321,7 +342,11 @@ final class WorkerCommunicationChannel {
   late final Future<String> lockName = _acquireLock();
 
   final MessagePort port;
-  final FutureOr<(JSAny?, JSArray?)> Function(SyncWorkerMessageType, JSAny)
+  final FutureOr<(JSAny?, JSArray?)> Function(
+    SyncWorkerMessageType type,
+    JSAny payload,
+    Future<void> abortSignal,
+  )
   requestHandler;
   final StreamController<(SyncWorkerMessageType, JSAny)> _events =
       StreamController();
@@ -373,6 +398,7 @@ final class WorkerCommunicationChannel {
             case SyncWorkerMessageType.abortSynchronization:
             case SyncWorkerMessageType.credentialsCallback:
             case SyncWorkerMessageType.invalidCredentialsCallback:
+            case SyncWorkerMessageType.prefetchCredentialsCallback:
             case SyncWorkerMessageType.uploadCrud:
             case SyncWorkerMessageType.requestCheckpoint:
               requestId = (message.payload as JSNumber).toDartInt;
@@ -411,6 +437,9 @@ final class WorkerCommunicationChannel {
                   ErrorResponse.recognizedTypeNone) {
                 ErrorResponse.recognizedTypeRequestAbortedException =>
                   RequestAbortedException(),
+                ErrorResponse.recognizedTypeAbortException => AbortException(
+                  'aborted over web channel',
+                ),
                 _ => payload.errorMessage.toDart,
               };
 
@@ -424,12 +453,25 @@ final class WorkerCommunicationChannel {
               final msg = (message.payload as JSString).toDart;
               _logger.info('[Sync Worker]: $msg');
               return;
+            case SyncWorkerMessageType.abortRequest:
+              final id = (message.payload as JSNumber).toDartInt;
+              _incomingRequests.remove(id)?.complete();
+              return;
           }
 
-          await _respond(
-            requestId,
-            () => requestHandler(type, message.payload),
-          );
+          final abortSignal = _incomingRequests[requestId] = Completer();
+          try {
+            await _respond(
+              requestId,
+              () => requestHandler(type, message.payload, abortSignal.future),
+            );
+          } finally {
+            if (_incomingRequests.remove(requestId) case final signal?) {
+              // Complete abort trigger after response to ensure we don't leave
+              // listeners behind.
+              signal.complete();
+            }
+          }
         });
   }
 
@@ -458,6 +500,7 @@ final class WorkerCommunicationChannel {
             recognizedType: switch (e) {
               RequestAbortedException() =>
                 ErrorResponse.recognizedTypeRequestAbortedException,
+              AbortException() => ErrorResponse.recognizedTypeAbortException,
               _ => ErrorResponse.recognizedTypeNone,
             },
             errorMessage: e.toString().toJS,
@@ -477,10 +520,24 @@ final class WorkerCommunicationChannel {
     return (id, completer.future);
   }
 
-  Future<JSAny?> _numericRequest(SyncWorkerMessageType type) {
+  Future<JSAny?> _numericRequest(
+    SyncWorkerMessageType type, {
+    Future<void>? abortSignal,
+  }) {
     final (id, future) = _newRequest();
     port.postMessage(SyncWorkerMessage(type: type.name, payload: id.toJS));
+    _forwardAbort(id, abortSignal);
     return future;
+  }
+
+  /// Sends a [SyncWorkerMessageType.abortRequest] message for request [id] if
+  /// [abortSignal] completes before a response has been received.
+  void _forwardAbort(int id, Future<void>? abortSignal) {
+    abortSignal?.then((_) {
+      if (_pendingRequests.containsKey(id) && !_closed.isCompleted) {
+        notify(SyncWorkerMessageType.abortRequest, id.toJS);
+      }
+    });
   }
 
   void notify(SyncWorkerMessageType notificationType, JSAny payload) {
@@ -567,27 +624,44 @@ final class WorkerCommunicationChannel {
         as WebEndpoint;
   }
 
-  Future<PowerSyncCredentials?> credentialsCallback() async {
+  Future<PowerSyncCredentials?> credentialsCallback(
+    Future<void> abortSignal,
+  ) async {
     final serialized =
-        await _numericRequest(SyncWorkerMessageType.credentialsCallback)
+        await _numericRequest(
+              SyncWorkerMessageType.credentialsCallback,
+              abortSignal: abortSignal,
+            )
             as SerializedCredentials?;
     return serialized?.asCredentials();
   }
 
-  Future<PowerSyncCredentials?> invalidCredentialsCallback() async {
+  Future<PowerSyncCredentials?> prefetchCredentialsCallback(
+    bool invalidate,
+    Future<void> abortSignal,
+  ) async {
     final serialized =
-        await _numericRequest(SyncWorkerMessageType.invalidCredentialsCallback)
+        await _numericRequest(
+              invalidate
+                  ? SyncWorkerMessageType.invalidCredentialsCallback
+                  : SyncWorkerMessageType.prefetchCredentialsCallback,
+              abortSignal: abortSignal,
+            )
             as SerializedCredentials?;
     return serialized?.asCredentials();
   }
 
-  Future<void> uploadCrud() async {
-    await _numericRequest(SyncWorkerMessageType.uploadCrud);
+  Future<void> uploadCrud(Future<void> abortSignal) async {
+    await _numericRequest(
+      SyncWorkerMessageType.uploadCrud,
+      abortSignal: abortSignal,
+    );
   }
 
   Future<String?> customCheckpointRequest(
     String clientId,
     String requestId,
+    Future<void> abortSignal,
   ) async {
     final (id, completion) = _newRequest();
     port.postMessage(
@@ -600,6 +674,7 @@ final class WorkerCommunicationChannel {
         type: SyncWorkerMessageType.customCheckpointRequest.name,
       ),
     );
+    _forwardAbort(id, abortSignal);
 
     final response = await completion;
     return (response as JSString?)?.toDart;
@@ -647,6 +722,10 @@ final class WorkerCommunicationChannel {
       for (final pending in _pendingRequests.values) {
         pending.completeError(const ChannelClosedException());
       }
+      for (final abortSignal in _incomingRequests.values) {
+        abortSignal.complete();
+      }
+      _incomingRequests.clear();
 
       _closed.complete();
     }
@@ -679,19 +758,26 @@ final class RemoteAuthenticator implements InternalAuthenticator {
   bool get mightPostCheckpointRequests => true;
 
   @override
-  Future<PowerSyncCredentials?> getCredentialsCached() =>
-      channel.credentialsCallback();
+  Future<PowerSyncCredentials?> getCredentialsCached(
+    Future<void> abortSignal,
+  ) => channel.credentialsCallback(abortSignal);
 
   @override
   FutureOr<String?> postCheckpointRequest(
     String clientId,
     String checkpointRequestId,
-  ) => channel.customCheckpointRequest(clientId, checkpointRequestId);
+    Future<void> abortSignal,
+  ) => channel.customCheckpointRequest(
+    clientId,
+    checkpointRequestId,
+    abortSignal,
+  );
 
   @override
   Future<PowerSyncCredentials?> prefetchCredentials({
     bool invalidate = false,
-  }) => channel.invalidCredentialsCallback();
+    required Future<void> abortSignal,
+  }) => channel.prefetchCredentialsCallback(invalidate, abortSignal);
 }
 
 final class RemoteUploader implements InternalMutationUploader {
@@ -700,7 +786,8 @@ final class RemoteUploader implements InternalMutationUploader {
   RemoteUploader(this.channel);
 
   @override
-  Future<void> upload() => channel.uploadCrud();
+  Future<void> upload(Future<void> abortSignal) =>
+      channel.uploadCrud(abortSignal);
 }
 
 final class ChannelClosedException implements Exception {

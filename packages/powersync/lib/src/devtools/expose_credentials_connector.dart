@@ -27,14 +27,17 @@ final class ExposeCredentialsConnector implements InternalAuthenticator {
   bool get mightPostCheckpointRequests => inner.mightPostCheckpointRequests;
 
   @override
-  Future<PowerSyncCredentials?> getCredentialsCached() {
-    return inner.getCredentialsCached().then(_exposeCredentials);
+  Future<PowerSyncCredentials?> getCredentialsCached(Future<void> abortSignal) {
+    return inner.getCredentialsCached(abortSignal).then(_exposeCredentials);
   }
 
   @override
-  Future<PowerSyncCredentials?> prefetchCredentials({bool invalidate = false}) {
+  Future<PowerSyncCredentials?> prefetchCredentials({
+    bool invalidate = false,
+    required Future<void> abortSignal,
+  }) {
     return inner
-        .prefetchCredentials(invalidate: invalidate)
+        .prefetchCredentials(invalidate: invalidate, abortSignal: abortSignal)
         .then(_exposeCredentials);
   }
 
@@ -42,5 +45,6 @@ final class ExposeCredentialsConnector implements InternalAuthenticator {
   FutureOr<String?> postCheckpointRequest(
     String clientId,
     String checkpointRequestId,
-  ) => inner.postCheckpointRequest(clientId, checkpointRequestId);
+    Future<void> abortSignal,
+  ) => inner.postCheckpointRequest(clientId, checkpointRequestId, abortSignal);
 }

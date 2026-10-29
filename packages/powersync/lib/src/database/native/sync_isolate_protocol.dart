@@ -17,22 +17,34 @@ typedef ClientToSyncIsolateMessage = (ClientToSyncIsolateMessageType, Object?);
 /// Type of messages sent from the sync isolate to the main app.
 enum SyncIsolateToClientMessageType {
   /// Invokes [PowerSyncBackendConnector.getCredentialsCached], payload is a
-  /// [PortCompleter] expecting the [PowerSyncCredentials].
+  /// ([PortCompleter], `int abortToken`) pair, the completer expecting the
+  /// [PowerSyncCredentials].
   getCredentialsCached,
 
-  /// Prefetch credentials, payload is a ([PortCompleter], `bool invalidate`)
-  /// pair.
+  /// Prefetch credentials, payload is a ([PortCompleter], `int abortToken`,
+  /// `bool invalidate`) record.
   prefetchCredentials,
 
   /// The sync isolate is ready to take commands, payload is a
   /// [SyncIsolatePort].
   init,
 
-  /// Upload the CRUD queue, payload is a [PortCompleter].
+  /// Upload the CRUD queue, payload is a ([PortCompleter], `int abortToken`)
+  /// pair.
   uploadCrud,
 
-  /// Invoke [CustomCheckpointRequestConnector.postCheckpointRequest].
+  /// Invoke [CustomCheckpointRequestConnector.postCheckpointRequest], payload
+  /// is a ([PortCompleter], `int abortToken`, `String clientId`,
+  /// `String requestId`) record.
   customCheckpointRequest,
+
+  /// The sync isolate is no longer interested in the result of a connector
+  /// call ([getCredentialsCached], [prefetchCredentials], [uploadCrud] or
+  /// [customCheckpointRequest]). The payload is the `int abortToken` that was
+  /// sent with the original call.
+  ///
+  /// The sync isolate still waits for a response to the original call.
+  abortConnectorCall,
 
   /// The sync status has changed, payload is a [SyncStatusUpdate].
   statusUpdate,
@@ -106,34 +118,46 @@ extension type SyncClientPort(SendPort port) {
 
   void sendGetCredentialsCached(
     PortCompleter<PowerSyncCredentials?> completer,
+    int abortToken,
   ) {
-    send(SyncIsolateToClientMessageType.getCredentialsCached, completer);
+    send(SyncIsolateToClientMessageType.getCredentialsCached, (
+      completer,
+      abortToken,
+    ));
   }
 
   void sendPrefetchCredentials(
     PortCompleter<PowerSyncCredentials?> completer,
+    int abortToken,
     bool invalidate,
   ) {
     send(SyncIsolateToClientMessageType.prefetchCredentials, (
       completer,
+      abortToken,
       invalidate,
     ));
   }
 
-  void sendUploadCrud(PortCompleter<void> completer) {
-    send(SyncIsolateToClientMessageType.uploadCrud, completer);
+  void sendUploadCrud(PortCompleter<void> completer, int abortToken) {
+    send(SyncIsolateToClientMessageType.uploadCrud, (completer, abortToken));
   }
 
   void sendCustomCheckpointRequest(
     PortCompleter<String?> completer,
+    int abortToken,
     String clientId,
     String requestId,
   ) {
     send(SyncIsolateToClientMessageType.customCheckpointRequest, (
       completer,
+      abortToken,
       clientId,
       requestId,
     ));
+  }
+
+  void sendAbortConnectorCall(int abortToken) {
+    send(SyncIsolateToClientMessageType.abortConnectorCall, abortToken);
   }
 
   void sendLog(LogRecord record) {
