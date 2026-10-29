@@ -207,16 +207,18 @@ base class Table extends TableOptions {
        _isDirect = false,
        super(localOnly: false, insertOnly: true);
 
-  /// Creates a direct table, storing data directly instead of through an
-  /// intermediate view around a JSON table.
+  /// Creates a direct, managed table.
   ///
-  /// Direct tables are also managed by the PowerSync SDK, which is responsible
-  /// for creating, altering and dropping them.
+  /// Enabling this flag makes PowerSync store data directly as SQLite rows
+  /// instead of using an intermediate view around a JSON store.
   ///
+  /// The table is still managed by the PowerSync SDK, which is responsible for
+  /// creating, altering and dropping them.
   /// You can query raw tables like JSON-based tables, and mutations are
   /// consistently tracked as pending uploads.
+  /// For more information on managed tables, see [the documentation](https://docs.powersync.com/client-sdks/advanced/performance-optimization#managed-views-vs-managed-tables).
   ///
-  /// For more information on direct tables, see [the documentation](https://docs.powersync.com/client-sdks/advanced/performance-optimization#direct-tables).
+  /// Direct tables are currently in alpha.
   @experimental
   const Table.direct(
     this.name,
