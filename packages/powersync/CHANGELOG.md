@@ -1,3 +1,7 @@
+## 2.6.1
+
+- Support `code_assets` v2.0.0
+
 ## 2.6.0
 
 - Update PowerSync SQLite core extension to 0.5.4 ([release notes](https://github.com/powersync-ja/powersync-sqlite-core/releases/tag/v0.5.4)).
