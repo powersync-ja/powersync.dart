@@ -45,7 +45,7 @@ final class PowerSyncInstanceProvider extends $FunctionalProvider<
   }
 }
 
-String _$powerSyncInstanceHash() => r'd4ccd204e3e5b32f7e6111601de19179cbdd9f41';
+String _$powerSyncInstanceHash() => r'e26eafa73cf0cca0dd4db79ea3fd2be38ea962d7';
 
 @ProviderFor(didCompleteSync)
 final didCompleteSyncProvider = DidCompleteSyncFamily._();

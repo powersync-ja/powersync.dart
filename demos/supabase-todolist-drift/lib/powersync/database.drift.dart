@@ -309,7 +309,7 @@ class $$TodoItemsTableTableManager extends i0.RootTableManager<
           ),
           withReferenceMapper: (p0) => p0
               .map((e) => (
-                    e.readTable(table),
+                    e.readTable<i1.$TodoItemsTable, i1.TodoItem>(table),
                     i1.$$TodoItemsTableReferences(db, table, e)
                   ))
               .toList(),
@@ -571,7 +571,7 @@ class $$ListItemsTableTableManager extends i0.RootTableManager<
           ),
           withReferenceMapper: (p0) => p0
               .map((e) => (
-                    e.readTable(table),
+                    e.readTable<i1.$ListItemsTable, i1.ListItem>(table),
                     i1.$$ListItemsTableReferences(db, table, e)
                   ))
               .toList(),
@@ -587,17 +587,19 @@ class $$ListItemsTableTableManager extends i0.RootTableManager<
               getPrefetchedDataCallback: (items) async {
                 return [
                   if (todoItemsRefs)
-                    await i0.$_getPrefetchedData<i1.ListItem,
-                            i1.$ListItemsTable, i1.TodoItem>(
+                    await i0.$_getPrefetchedDataByColumns<
+                            i1.ListItem,
+                            i1.$ListItemsTable,
+                            i1.TodoItem,
+                            i1.$TodoItemsTable>(
                         currentTable: table,
                         referencedTable: i1.$$ListItemsTableReferences
                             ._todoItemsRefsTable(db),
                         managerFromTypedResult: (p0) => i1
                             .$$ListItemsTableReferences(db, table, p0)
                             .todoItemsRefs,
-                        referencedItemsForCurrentItem: (item,
-                                referencedItems) =>
-                            referencedItems.where((e) => e.listId == item.id),
+                        currentColumn: 'id',
+                        referencedColumn: 'list_id',
                         typedResults: items)
                 ];
               },

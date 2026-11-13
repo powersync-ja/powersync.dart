@@ -9,6 +9,7 @@
 // coverage:ignore-file
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
+
 import 'package:auto_route/auto_route.dart' as _i10;
 import 'package:camera/camera.dart' as _i12;
 import 'package:material_ui/material_ui.dart' as _i11;

@@ -30,3 +30,9 @@ linter:
 analyzer:
   exclude:
     - lib/firebase.dart # Exclude this as it imports a file that is not checked in
+    - build/**
+    - android/**
+    - ios/**
+    - windows/**
+    - macos/**
+    - linux/**

@@ -618,10 +618,10 @@ packages:
     dependency: transitive
     description:
       name: flutter_expandable_fab
-      sha256: "2a488600924fd2a041679ad889807ee5670414a7a518cf11d4854b9898b3504f"
+      sha256: fdcab005a453fa452fa68e24031cedfeb811d5bd13513fa3caa6bb3b2097353b
       url: "https://pub.dev"
     source: hosted
-    version: "2.5.2"
+    version: "3.0.0"
   flutter_hooks:
     dependency: transitive
     description:
