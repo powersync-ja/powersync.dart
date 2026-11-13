@@ -11,7 +11,7 @@ Trello clone app built with [Flutter](https://flutter.dev/), [PowerSync](https:/
 Ensure you have [melos](https://melos.invertase.dev/~melos-latest/getting-started) installed.
 
 1. `cd demos/supabase-trello`
-2. `melos prepare`
+2. `dart run melos prepare`
 3. `cp .env.template .env`
 4. Insert your Supabase and PowerSync project credentials into `.env` (See instructions below)
 5. `flutter run`

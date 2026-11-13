@@ -11,7 +11,7 @@ We suggest you first set up the `powersync-nodejs-firebase-backend-todolist-demo
 Ensure you have [melos](https://melos.invertase.dev/~melos-latest/getting-started) installed.
 
 1. `cd demos/firebase-nodejs-todolist`
-2. `melos prepare`
+2. `dart run melos prepare`
 3. `cp lib/app_config_template.dart lib/app_config.dart`
 4. Insert your Supabase and PowerSync project credentials into `lib/app_config.dart` (See instructions below)
 5. `flutter run`

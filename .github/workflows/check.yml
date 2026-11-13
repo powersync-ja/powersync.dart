@@ -64,7 +64,7 @@ jobs:
         run: ./tool/build.sh
         working-directory: packages/diagnostics-integration
       - name: Publish dry-run
-        run: melos publish --dry-run --yes
+        run: dart run melos publish --dry-run --yes
 
       - working-directory: packages/js-assets
         run: |

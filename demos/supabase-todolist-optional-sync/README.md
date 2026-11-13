@@ -15,7 +15,7 @@ For an overview of the mechanics behind this, see [the explanation further below
 Ensure you have [melos](https://melos.invertase.dev/~melos-latest/getting-started) installed.
 
 1. `cd demos/supabase-todolist-optional-sync`
-2. `melos prepare`
+2. `dart run melos prepare`
 3. `flutter run`
 
 Create some data and notice how the data persists after a refresh or reopening the app.

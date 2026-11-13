@@ -18,12 +18,11 @@ runs:
       shell: sh
       run: |
         dart pub get
-        dart pub global activate melos
     - name: Install dependencies
       shell: sh
       env:
         IS_IN_POWERSYNC_CI: 1
-      run: melos run prepare
+      run: dart run melos run prepare
     - name: List assets
       shell: sh
       run: ls -al packages/powersync/assets/
