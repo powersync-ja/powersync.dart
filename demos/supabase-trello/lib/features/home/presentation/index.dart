@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_expandable_fab/flutter_expandable_fab.dart';
 import 'package:logging/logging.dart';
 import 'package:powersync/powersync.dart' as power_sync;

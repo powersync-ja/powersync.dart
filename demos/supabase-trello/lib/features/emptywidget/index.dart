@@ -1,7 +1,7 @@
 // ignore_for_file: constant_identifier_names, camel_case_extensions
 
 import 'dart:math';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// {@tool snippet}
 ///

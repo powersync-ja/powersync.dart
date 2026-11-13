@@ -12,10 +12,10 @@ class QueriesDrift extends i1.ModularAccessor {
         'SELECT"self"."id" AS "nested_0.id", "self"."created_at" AS "nested_0.created_at", "self"."name" AS "nested_0.name", "self"."owner_id" AS "nested_0.owner_id", (SELECT count() FROM todos WHERE list_id = self.id AND completed = TRUE) AS completed_count, (SELECT count() FROM todos WHERE list_id = self.id AND completed = FALSE) AS pending_count FROM lists AS self ORDER BY created_at',
         variables: [],
         readsFrom: {
-          todoItems,
-          listItems,
+          this.todoItems,
+          this.listItems,
         }).asyncMap((i0.QueryRow row) async => i2.ListItemWithStats(
-          await listItems.mapFromRow(row, tablePrefix: 'nested_0'),
+          await this.listItems.mapFromRow(row, tablePrefix: 'nested_0'),
           row.read<int>('completed_count'),
           row.read<int>('pending_count'),
         ));

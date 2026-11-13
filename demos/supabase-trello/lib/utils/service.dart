@@ -3,7 +3,7 @@
 import 'dart:developer';
 
 import 'package:file_picker/file_picker.dart';
-import 'package:flutter/material.dart' hide Card;
+import 'package:material_ui/material_ui.dart' hide Card;
 import 'package:trelloappclone_flutter/features/home/presentation/custom_search.dart';
 import 'package:trelloappclone_flutter/utils/color.dart';
 import 'package:trelloappclone_flutter/models/listboard.dart';

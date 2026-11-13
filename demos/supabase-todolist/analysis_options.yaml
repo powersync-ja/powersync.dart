@@ -13,6 +13,14 @@ analyzer:
   errors:
     # We're using experimental attachment APIs in our demos, don't warn for those.
     experimental_member_use: ignore
+  exclude:
+    - build/**
+    - android/**
+    - ios/**
+    - web/**
+    - windows/**
+    - macos/**
+    - linux/**
 
 linter:
   # The lint rules applied to this project can be customized in the

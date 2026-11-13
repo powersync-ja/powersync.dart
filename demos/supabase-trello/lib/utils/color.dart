@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 const brandColor = Color(0xff38b6ff);
 const whiteShade = Color(0xfff0f0f0);

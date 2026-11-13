@@ -1,6 +1,6 @@
 import 'boardview_controller.dart';
 import 'vs_scrollbar.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'dart:core';
 import 'board_list.dart';
 
