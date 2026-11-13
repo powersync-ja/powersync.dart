@@ -14,10 +14,9 @@ runs:
       with:
         name: sqlite3-wasm
         path: packages/sqlite3_wasm_build/dist/
-    - name: Install Melos
+    - name: Install dependencies
       shell: sh
-      run: |
-        dart pub get
+      run: dart pub get
     - name: Install dependencies
       shell: sh
       env:
