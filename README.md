@@ -21,5 +21,5 @@ Additional packages in this repository are:
 
 - [attachments helper](https://github.com/powersync-ja/powersync.dart/tree/main/packages/powersync_attachments_helper) (deprecated, a newer version of this is available in the `powersync` package).
 
-To configure the monorepo for development, run `dart pub get` and `melos prepare` after cloning.
+To configure the monorepo for development, run `dart pub get` and `dart run melos prepare` after cloning.
 

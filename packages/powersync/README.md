@@ -34,9 +34,9 @@ The easiest way to test Flutter Web support is to run the [Supabase Todo-List](h
 
 1. Clone [this repo](https://github.com/powersync-ja/powersync.dart/tree/main).
 
-- Note: If you are an existing user updating to the latest code after a git pull, run `melos exec 'flutter pub upgrade'` in the repo's root directory and make sure it succeeds.
+- Note: If you are an existing user updating to the latest code after a git pull, run `dart run melos exec 'flutter pub upgrade'` in the repo's root directory and make sure it succeeds.
 
-2. Run `melos prepare` in the repo's root
+2. Run `dart run melos prepare` in the repo's root
 3. cd into the `demos/supabase-todolist` folder
 4. If you haven’t yet: `cp lib/app_config_template.dart lib/app_config.dart` (optionally update this config with your own Supabase and PowerSync project details).
 5. Run `flutter run -d chrome`
