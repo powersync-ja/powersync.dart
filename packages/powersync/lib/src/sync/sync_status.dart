@@ -171,8 +171,9 @@ final class SyncStatus {
   /// in priority `2` necessarily includes a consistent view over data in
   /// priority `1`.
   SyncPriorityStatus statusForPriority(StreamPriority priority) {
+    // Status entries are always sorted from high to low priority entries
     assert(
-      priorityStatusEntries.isSortedByCompare(
+      priorityStatusEntries.reversed.isSortedByCompare(
         (e) => e.priority,
         StreamPriority.comparator,
       ),

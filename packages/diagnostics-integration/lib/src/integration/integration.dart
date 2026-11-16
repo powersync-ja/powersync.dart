@@ -69,6 +69,7 @@ final class DartSdkIntegration(final Ref _ref) {
       connected: status != null && (status.connected || status.connecting),
       sqliteCoreVersion: coreVersion.columnAt(0) as String,
       sdk: 'Dart',
+      databasePath: db.ref.path,
     );
   }
 

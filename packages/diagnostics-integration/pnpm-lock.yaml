@@ -167,11 +167,11 @@ importers:
   .:
     dependencies:
       '@powersync/diagnostics-core':
-        specifier: 0.0.2
-        version: 0.0.2
+        specifier: 0.0.3
+        version: 0.0.3
       '@powersync/diagnostics-ui':
-        specifier: 0.0.2
-        version: 0.0.2(vue@3.5.44)
+        specifier: 0.0.3
+        version: 0.0.3(vue@3.5.44)
       '@types/node':
         specifier: ^26.6.2
         version: 26.6.5
@@ -241,11 +241,11 @@ packages:
   '@oxc-project/types@0.154.0':
     resolution: {integrity: sha512-KYOUGQFlLWR+s4QMV2Q9ko38TZm7EdO87Qm7rvZLqk/webse/cDjtyxKhg/47l0byCbs/k46LT8qc4PKjAikzA==}
 
-  '@powersync/diagnostics-core@0.0.2':
-    resolution: {integrity: sha512-wNte31ki99v0ST/gt/4BYThRVe2u/lcNdaybxIcuck6TNzneTBIIxPBwpITd3eR6ctFOplgwqCMtOI2pfrC5rw==}
+  '@powersync/diagnostics-core@0.0.3':
+    resolution: {integrity: sha512-rzAgYF/g2GZODcvXlFXf1ZG2eXlsP71gBRf7Uz9mBDKL2ya6MLBCPAf7ApRShQM0f2EBmSBPC8D16UWZ5Wg/bQ==}
 
-  '@powersync/diagnostics-ui@0.0.2':
-    resolution: {integrity: sha512-a55iMhNXK8T0y2tvJO11KYIHjgpHnAI/X5soimHsh/6EvLQ6T5rg15EfEQwKpClxNKiCzD08eLhsPH8KUPBjJQ==}
+  '@powersync/diagnostics-ui@0.0.3':
+    resolution: {integrity: sha512-ZUBk89pXzsOhdVlczYdLW40MRzw+Kl4VMJfjdTqrDCQTVQ8Dm9kkAGbjvD8pSvu6BESkHk5WPVlaPHELew92PA==}
     peerDependencies:
       vue: ^3.5.42
 
@@ -811,14 +811,14 @@ snapshots:
 
   '@oxc-project/types@0.154.0': {}
 
-  '@powersync/diagnostics-core@0.0.2':
+  '@powersync/diagnostics-core@0.0.3':
     dependencies:
       comlink: 4.4.2
 
-  '@powersync/diagnostics-ui@0.0.2(vue@3.5.44)':
+  '@powersync/diagnostics-ui@0.0.3(vue@3.5.44)':
     dependencies:
       '@nanostores/vue': 1.1.0(nanostores@1.5.5)(vue@3.5.44)
-      '@powersync/diagnostics-core': 0.0.2
+      '@powersync/diagnostics-core': 0.0.3
       '@tanstack/vue-virtual': 3.13.45(vue@3.5.44)
       clsx: 2.1.1
       fuse.js: 7.5.0

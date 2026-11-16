@@ -227,16 +227,10 @@ extension type ProtocolInfo._(JSObject _) implements JSObject {
 
     /// A label for the SDK behind the integration (e.g. `@powersync/web`, `powersync` (Dart)); null when unknown.
     required String? sdk,
-  });
 
-  external String? get endpoint;
-  external String? get userId;
-  external String? get clientId;
-  external String? get connectionMethod;
-  external JSObject? get params;
-  external bool get connected;
-  external String? get sqliteCoreVersion;
-  external String? get sdk;
+    /// Full path to the database on the device the app is running on.
+    required String? databasePath,
+  });
 }
 
 // --- schema ---

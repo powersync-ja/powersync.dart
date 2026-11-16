@@ -1,3 +1,7 @@
+## 2.6.2
+
+- Fix failed assertion when multiple priority entries are in status ([#499](https://github.com/powersync-ja/powersync.dart/issues/499)).
+
 ## 2.6.1
 
 - Support `code_assets` v2.0.0

@@ -576,6 +576,47 @@ void _declareTests(String name, bool bson) {
           expect(rows, hasLength(1));
         },
       );
+
+      test("can read entries when multiple priorities are active", () async {
+        // Regression test for https://github.com/powersync-ja/powersync.dart/issues/499
+        final status = await waitForConnection();
+        final checkpoint = {
+          'checkpoint': Checkpoint(
+            lastOpId: '0',
+            writeCheckpoint: null,
+            checksums: [
+              BucketChecksum(bucket: 'partial', priority: 1, checksum: 0),
+              BucketChecksum(bucket: 'full', priority: 3, checksum: 0),
+            ],
+          ),
+        };
+
+        syncService.addLine(checkpoint);
+        syncService.addLine(checkpointComplete());
+        await database.waitForFirstSync();
+
+        syncService.addLine(checkpoint);
+        syncService.addLine(checkpointComplete(priority: 1));
+
+        await expectLater(
+          status,
+          emitsThrough(
+            isSyncStatus(downloading: true).having(
+              (e) => e.priorityStatusEntries,
+              'priorityStatusEntries',
+              hasLength(2),
+            ),
+          ),
+        );
+
+        final full = database.currentStatus.statusForPriority(
+          StreamPriority.fullSyncPriority,
+        );
+        final partial = database.currentStatus.statusForPriority(
+          StreamPriority(1),
+        );
+        expect(partial.lastSyncedAt!.isAfter(full.lastSyncedAt!), isTrue);
+      });
     });
 
     test('reconnects when token expires', () async {
