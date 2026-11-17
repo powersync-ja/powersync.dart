@@ -67,7 +67,7 @@ class SupabaseConnector implements Authenticator {
   }
 }
 
-late final MutationUploader upload =
+final MutationUploader upload =
     MutationUploader((PowerSyncDatabase database) async {
   // This function is called whenever there is data to upload, whether the
   // device is online or offline.
