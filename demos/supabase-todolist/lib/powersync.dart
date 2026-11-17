@@ -4,10 +4,10 @@ import 'package:logging/logging.dart';
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:powersync/powersync.dart';
+import 'package:powersync_flutter_demo/app_config_template.dart';
 import 'package:powersync_flutter_demo/migrations/fts_setup.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import './app_config.dart';
 import './models/schema.dart';
 import './supabase.dart';
 
@@ -26,14 +26,14 @@ final List<RegExp> fatalResponseCodes = [
 ];
 
 /// Use Supabase for authentication and data upload.
-class SupabaseConnector extends PowerSyncBackendConnector {
+class SupabaseConnector implements Authenticator {
   Future<void>? _refreshFuture;
 
   SupabaseConnector();
 
   /// Get a Supabase token to authenticate against the PowerSync instance.
   @override
-  Future<PowerSyncCredentials?> fetchCredentials() async {
+  Future<String> resolveCredentials(Future<void> abortSignal) async {
     // Wait for pending session refresh if any
     await _refreshFuture;
 
@@ -41,22 +41,10 @@ class SupabaseConnector extends PowerSyncBackendConnector {
     final session = Supabase.instance.client.auth.currentSession;
     if (session == null) {
       // Not logged in
-      return null;
+      return '';
     }
 
-    // Use the access token to authenticate against PowerSync
-    final token = session.accessToken;
-
-    // userId and expiresAt are for debugging purposes only
-    final userId = session.user.id;
-    final expiresAt = session.expiresAt == null
-        ? null
-        : DateTime.fromMillisecondsSinceEpoch(session.expiresAt! * 1000);
-    return PowerSyncCredentials(
-        endpoint: AppConfig.powersyncUrl,
-        token: token,
-        userId: userId,
-        expiresAt: expiresAt);
+    return session.accessToken;
   }
 
   @override
@@ -77,59 +65,58 @@ class SupabaseConnector extends PowerSyncBackendConnector {
         .timeout(const Duration(seconds: 5))
         .then((response) => null, onError: (error) => null);
   }
+}
 
-  // Upload pending changes to Supabase.
-  @override
-  Future<void> uploadData(PowerSyncDatabase database) async {
-    // This function is called whenever there is data to upload, whether the
-    // device is online or offline.
-    // If this call throws an error, it is retried periodically.
-    final transaction = await database.getNextCrudTransaction();
-    if (transaction == null) {
-      return;
+late final MutationUploader upload =
+    MutationUploader((PowerSyncDatabase database) async {
+  // This function is called whenever there is data to upload, whether the
+  // device is online or offline.
+  // If this call throws an error, it is retried periodically.
+  final transaction = await database.getNextCrudTransaction();
+  if (transaction == null) {
+    return;
+  }
+
+  final rest = Supabase.instance.client.rest;
+  CrudEntry? lastOp;
+  try {
+    // Note: If transactional consistency is important, use database functions
+    // or edge functions to process the entire transaction in a single call.
+    for (var op in transaction.crud) {
+      lastOp = op;
+
+      final table = rest.from(op.table);
+      if (op.op == UpdateType.put) {
+        var data = Map<String, dynamic>.of(op.opData!);
+        data['id'] = op.id;
+        await table.upsert(data);
+      } else if (op.op == UpdateType.patch) {
+        await table.update(op.opData!).eq('id', op.id);
+      } else if (op.op == UpdateType.delete) {
+        await table.delete().eq('id', op.id);
+      }
     }
 
-    final rest = Supabase.instance.client.rest;
-    CrudEntry? lastOp;
-    try {
-      // Note: If transactional consistency is important, use database functions
-      // or edge functions to process the entire transaction in a single call.
-      for (var op in transaction.crud) {
-        lastOp = op;
-
-        final table = rest.from(op.table);
-        if (op.op == UpdateType.put) {
-          var data = Map<String, dynamic>.of(op.opData!);
-          data['id'] = op.id;
-          await table.upsert(data);
-        } else if (op.op == UpdateType.patch) {
-          await table.update(op.opData!).eq('id', op.id);
-        } else if (op.op == UpdateType.delete) {
-          await table.delete().eq('id', op.id);
-        }
-      }
-
-      // All operations successful.
+    // All operations successful.
+    await transaction.complete();
+  } on PostgrestException catch (e) {
+    if (e.code != null &&
+        fatalResponseCodes.any((re) => re.hasMatch(e.code!))) {
+      /// Instead of blocking the queue with these errors,
+      /// discard the (rest of the) transaction.
+      ///
+      /// Note that these errors typically indicate a bug in the application.
+      /// If protecting against data loss is important, save the failing records
+      /// elsewhere instead of discarding, and/or notify the user.
+      log.severe('Data upload error - discarding $lastOp', e);
       await transaction.complete();
-    } on PostgrestException catch (e) {
-      if (e.code != null &&
-          fatalResponseCodes.any((re) => re.hasMatch(e.code!))) {
-        /// Instead of blocking the queue with these errors,
-        /// discard the (rest of the) transaction.
-        ///
-        /// Note that these errors typically indicate a bug in the application.
-        /// If protecting against data loss is important, save the failing records
-        /// elsewhere instead of discarding, and/or notify the user.
-        log.severe('Data upload error - discarding $lastOp', e);
-        await transaction.complete();
-      } else {
-        // Error may be retryable - e.g. network error or temporary server error.
-        // Throwing an error here causes this call to be retried after a delay.
-        rethrow;
-      }
+    } else {
+      // Error may be retryable - e.g. network error or temporary server error.
+      // Throwing an error here causes this call to be retried after a delay.
+      rethrow;
     }
   }
-}
+});
 
 /// Global reference to the database
 late final PowerSyncDatabase db;
@@ -165,28 +152,30 @@ Future<void> openDatabase() async {
 
   await loadSupabase();
 
-  SupabaseConnector? currentConnector;
-
   if (isLoggedIn()) {
     // If the user is already logged in, connect immediately.
     // Otherwise, connect once logged in.
-    currentConnector = SupabaseConnector();
-    db.connect(connector: currentConnector, options: options);
+    final authenticator = SupabaseConnector();
+    db.connect(
+        connector: ConnectRequest(
+            endpoint: AppConfig.powersyncUrl,
+            authenticator: authenticator,
+            uploader: upload));
   }
 
   Supabase.instance.client.auth.onAuthStateChange.listen((data) async {
     final AuthChangeEvent event = data.event;
     if (event == AuthChangeEvent.signedIn) {
       // Connect to PowerSync when the user is signed in
-      currentConnector = SupabaseConnector();
-      db.connect(connector: currentConnector!, options: options);
+      final authenticator = SupabaseConnector();
+      db.connect(
+          connector: ConnectRequest(
+              endpoint: AppConfig.powersyncUrl,
+              authenticator: authenticator,
+              uploader: upload));
     } else if (event == AuthChangeEvent.signedOut) {
       // Implicit sign out - disconnect, but don't delete data
-      currentConnector = null;
       await db.disconnect();
-    } else if (event == AuthChangeEvent.tokenRefreshed) {
-      // Supabase token refreshed - trigger token refresh for PowerSync.
-      currentConnector?.prefetchCredentials();
     }
   });
 
