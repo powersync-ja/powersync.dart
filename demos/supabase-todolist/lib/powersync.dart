@@ -157,10 +157,12 @@ Future<void> openDatabase() async {
     // Otherwise, connect once logged in.
     final authenticator = SupabaseConnector();
     db.connect(
-        connector: ConnectRequest(
-            endpoint: AppConfig.powersyncUrl,
-            authenticator: authenticator,
-            uploader: upload));
+      connector: ConnectRequest(
+        endpoint: AppConfig.powersyncUrl,
+        authenticator: authenticator,
+        uploader: authenticator.upload,
+      ),
+    );
   }
 
   Supabase.instance.client.auth.onAuthStateChange.listen((data) async {
