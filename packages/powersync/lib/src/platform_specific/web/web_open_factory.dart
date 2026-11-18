@@ -51,6 +51,9 @@ base class WebPowerSyncOpenFactory extends WebSqliteOpenFactory {
     return [
       ...?encryptionOptions?.pragmaStatements(),
       ...super.pragmaStatements(options),
+      // Match the native factory, so triggers behave the same on all
+      // platforms.
+      'PRAGMA recursive_triggers = TRUE',
     ];
   }
 }

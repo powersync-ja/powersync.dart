@@ -145,6 +145,17 @@ void main() {
       await db.execute('VACUUM');
     });
 
+    test('enables recursive triggers', () async {
+      final db = await testUtils.setupPowerSync(path: path);
+
+      expect(await db.get('PRAGMA recursive_triggers'), {
+        'recursive_triggers': 1,
+      });
+      expect(await db.writeLock((tx) => tx.get('PRAGMA recursive_triggers')), {
+        'recursive_triggers': 1,
+      });
+    });
+
     test('should have a client id', () async {
       final db = await testUtils.setupPowerSync(path: path);
 
