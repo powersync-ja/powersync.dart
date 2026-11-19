@@ -26,7 +26,7 @@ final List<RegExp> fatalResponseCodes = [
 ];
 
 /// Use Supabase for authentication and data upload.
-class SupabaseConnector implements Authenticator {
+class SupabaseConnector implements Authenticator, MutationUploader {
   Future<void>? _refreshFuture;
 
   SupabaseConnector();
@@ -66,8 +66,11 @@ class SupabaseConnector implements Authenticator {
         .then((response) => null, onError: (error) => null);
   }
 
-  final MutationUploader upload =
-      MutationUploader((PowerSyncDatabase database) async {
+  @override
+  Future<void> upload(
+    PowerSyncDatabase database,
+    Future<void> abortSignal,
+  ) async {
     // This function is called whenever there is data to upload, whether the
     // device is online or offline.
     // If this call throws an error, it is retried periodically.
@@ -115,7 +118,7 @@ class SupabaseConnector implements Authenticator {
         rethrow;
       }
     }
-  });
+  }
 }
 
 /// Global reference to the database
@@ -160,7 +163,7 @@ Future<void> openDatabase() async {
       connector: ConnectRequest(
         endpoint: AppConfig.powersyncUrl,
         authenticator: authenticator,
-        uploader: authenticator.upload,
+        uploader: authenticator,
       ),
     );
   }
@@ -174,7 +177,7 @@ Future<void> openDatabase() async {
         connector: ConnectRequest(
           endpoint: AppConfig.powersyncUrl,
           authenticator: authenticator,
-          uploader: authenticator.upload,
+          uploader: authenticator,
         ),
       );
     } else if (event == AuthChangeEvent.signedOut) {
