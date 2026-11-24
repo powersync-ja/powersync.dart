@@ -20,6 +20,9 @@ abstract interface class InternalAuthenticator {
   ///
   /// [invalidate] describes whether the current ([getCredentialsCached])
   /// credentials are already invalid, or whether this call is a pre-fetch.
+  /// Implementations without a way to force-refresh credentials (like
+  /// [SplitAuthenticator]) invalidate regardless, since resolving credentials
+  /// might otherwise return cached credentials that are about to expire.
   ///
   /// A call to [getCredentialsCached] after this future completes should return
   /// the same credentials.
@@ -156,7 +159,11 @@ final class SplitAuthenticator implements InternalAuthenticator {
     bool invalidate = false,
     required Future<void> abortSignal,
   }) {
-    return _resolveCredentials(invalidate, abortSignal);
+    // Unlike PowerSyncBackendConnector, authenticators don't have a dedicated
+    // method to fetch new credentials. Pre-fetches need to invalidate too, as
+    // resolveCredentials might otherwise return the cached token that is about
+    // to expire.
+    return _resolveCredentials(true, abortSignal);
   }
 
   Future<PowerSyncCredentials> _resolveCredentials(

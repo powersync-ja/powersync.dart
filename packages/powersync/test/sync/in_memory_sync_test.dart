@@ -632,6 +632,61 @@ void _declareTests(String name, bool bson) {
       expect(credentialsCallbackCount, 2);
     });
 
+    group('pre-expiry token refresh', () {
+      // A retry delay far exceeding the reconnect timeout, so that the tests
+      // fail if the client only reconnects after treating the refresh as an
+      // error.
+      const slowRetries = SyncOptions(retryDelay: Duration(minutes: 1));
+      const reconnectTimeout = Duration(seconds: 5);
+
+      test('invalidates cached credentials of authenticator', () async {
+        configureServer();
+        final authenticator = _CachingAuthenticator();
+        await database.connect(
+          connector: ConnectRequest.downloadOnly(
+            endpoint: mockServer.url.toString(),
+            authenticator: authenticator,
+          ),
+          options: slowRetries,
+        );
+        await waitForConnection(connectHere: false);
+        expect(authenticator.events, ['resolve:token1']);
+
+        // When the sync service says the token is about to expire
+        syncService.addLine({'token_expires_in': 10});
+        final reconnect = syncService.waitForReconnect();
+
+        // The client should reconnect immediately after refreshing the token.
+        // The SDK should have evicted the cache before resolving again, so
+        // that the next connection uses a fresh token.
+        final nextRequest = await reconnect.timeout(reconnectTimeout);
+        expect(nextRequest.headers['Authorization'], 'Token token2');
+        expect(authenticator.events.take(3), [
+          'resolve:token1',
+          'invalidate',
+          'resolve:token2',
+        ]);
+      });
+
+      test('fetches new credentials on backend connector', () async {
+        final connector = _RecordingInvalidateConnector(credentialsCallback);
+        await waitForConnection(connector: connector, options: slowRetries);
+        expect(credentialsCallbackCount, 1);
+
+        // When the sync service says the token is about to expire
+        syncService.addLine({'token_expires_in': 10});
+        final reconnect = syncService.waitForReconnect();
+
+        // The client should reconnect immediately after refreshing the token.
+        // The legacy connector fetches new credentials without invalidating
+        // the current ones first.
+        final nextRequest = await reconnect.timeout(reconnectTimeout);
+        expect(nextRequest.headers['Authorization'], 'Token token2');
+        expect(credentialsCallbackCount, 2);
+        expect(connector.invalidateCount, 0);
+      });
+    });
+
     test('handles checkpoints during the upload process', () async {
       final status = await waitForConnection();
 
@@ -1775,6 +1830,38 @@ final class _CustomCheckpointAuthenticator
     Future<void> abortSignal,
   ) {
     return _postCheckpointRequest(clientId, requestId);
+  }
+}
+
+/// An [Authenticator] that caches tokens until it is told to invalidate them.
+final class _CachingAuthenticator implements Authenticator {
+  final List<String> events = [];
+  var _tokenCount = 0;
+  String? _cached;
+
+  @override
+  Future<String> resolveCredentials(Future<void> abortSignal) async {
+    final token = _cached ??= 'token${++_tokenCount}';
+    events.add('resolve:$token');
+    return token;
+  }
+
+  @override
+  void invalidateCredentials() {
+    events.add('invalidate');
+    _cached = null;
+  }
+}
+
+final class _RecordingInvalidateConnector extends TestConnector {
+  var invalidateCount = 0;
+
+  _RecordingInvalidateConnector(super.fetchCredentialsCallback);
+
+  @override
+  void invalidateCredentials() {
+    invalidateCount++;
+    super.invalidateCredentials();
   }
 }
 
