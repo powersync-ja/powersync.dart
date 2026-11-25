@@ -24,47 +24,18 @@ final List<RegExp> fatalResponseCodes = [
 ];
 
 /// Use Supabase for authentication and data upload.
-class SupabaseConnector extends PowerSyncBackendConnector {
-  PowerSyncDatabase db;
-
+class SupabaseConnector implements Authenticator, MutationUploader {
   Future<void>? _refreshFuture;
 
-  SupabaseConnector(this.db);
+  SupabaseConnector();
 
   /// Get a Supabase token to authenticate against the PowerSync instance.
   @override
-  Future<PowerSyncCredentials?> fetchCredentials() async {
+  Future<String> resolveCredentials(Future<void> abortSignal) async {
     // Wait for pending session refresh if any
     await _refreshFuture;
 
-    // Use Supabase token for PowerSync
-    final existingSession = Supabase.instance.client.auth.currentSession;
-    if (existingSession?.accessToken == null) {
-      // Not logged in
-      return null;
-    }
-
-    // Force session refresh.
-    final authResponse = await Supabase.instance.client.auth.refreshSession();
-    final session = authResponse.session;
-    if (session == null) {
-      // Probably shouldn't happen
-      return null;
-    }
-
-    // Use the access token to authenticate against PowerSync
-    final token = session.accessToken;
-
-    // userId and expiresAt are for debugging purposes only
-    final userId = session.user.id;
-    final expiresAt = session.expiresAt == null
-        ? null
-        : DateTime.fromMillisecondsSinceEpoch(session.expiresAt! * 1000);
-    return PowerSyncCredentials(
-        endpoint: dotenv.env['POWERSYNC_URL']!,
-        token: token,
-        userId: userId,
-        expiresAt: expiresAt);
+    return Supabase.instance.client.auth.currentSession?.accessToken ?? '';
   }
 
   @override
@@ -86,9 +57,11 @@ class SupabaseConnector extends PowerSyncBackendConnector {
         .then((response) => null, onError: (error) => null);
   }
 
-  // Upload pending changes to Supabase.
   @override
-  Future<void> uploadData(PowerSyncDatabase database) async {
+  Future<void> upload(
+    PowerSyncDatabase database,
+    Future<void> abortSignal,
+  ) async {
     // This function is called whenever there is data to upload, whether the
     // device is online or offline.
     // If this call throws an error, it is retried periodically.
@@ -201,14 +174,28 @@ class PowerSyncClient {
     if (isLoggedIn() && !_offlineMode) {
       // If the user is already logged in, connect immediately.
       // Otherwise, connect once logged in.
-      _db.connect(connector: SupabaseConnector(_db));
+      final connector = SupabaseConnector();
+      _db.connect(
+        connector: ConnectRequest(
+          endpoint: dotenv.env['POWERSYNC_URL']!,
+          authenticator: connector,
+          uploader: connector,
+        ),
+      );
     }
 
     Supabase.instance.client.auth.onAuthStateChange.listen((data) async {
       final AuthChangeEvent event = data.event;
       if (event == AuthChangeEvent.signedIn) {
         // Connect to PowerSync when the user is signed in
-        _db.connect(connector: SupabaseConnector(_db));
+        final connector = SupabaseConnector();
+        _db.connect(
+          connector: ConnectRequest(
+            endpoint: dotenv.env['POWERSYNC_URL']!,
+            authenticator: connector,
+            uploader: connector,
+          ),
+        );
       } else if (event == AuthChangeEvent.signedOut) {
         // Implicit sign out - disconnect, but don't delete data
         await _db.disconnect();
@@ -230,7 +217,14 @@ class PowerSyncClient {
     log.info('Switching to Online mode');
     _offlineMode = false;
     if (isLoggedIn()) {
-      _db.connect(connector: SupabaseConnector(_db));
+      final connector = SupabaseConnector();
+      _db.connect(
+        connector: ConnectRequest(
+          endpoint: dotenv.env['POWERSYNC_URL']!,
+          authenticator: connector,
+          uploader: connector,
+        ),
+      );
     }
   }
 
