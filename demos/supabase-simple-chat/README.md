@@ -9,5 +9,5 @@ Ensure you have [melos](https://melos.invertase.dev/~melos-latest/getting-starte
 1. `cd demos/supabase-simple-chat`
 2. `dart run melos prepare`
 3. `cp lib/app_config_template.dart lib/app_config.dart`
-4. Insert your Supabase project credentials into `lib/app_config.dart`
+4. Set your Supabase project credentials and PowerSync instance URL in `lib/app_config.dart`
 5. `flutter run`
