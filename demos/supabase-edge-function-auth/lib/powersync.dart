@@ -7,6 +7,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:powersync/powersync.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import './app_config.dart';
 import './models/schema.dart';
 import './supabase.dart';
 
@@ -25,17 +26,19 @@ final List<RegExp> fatalResponseCodes = [
 ];
 
 /// Use Supabase for authentication and data upload.
-class SupabaseConnector extends PowerSyncBackendConnector {
-  // ignore: unused_field
-  Future<void>? _refreshFuture;
+class SupabaseConnector implements Authenticator, MutationUploader {
+  String? _token;
 
   SupabaseConnector();
 
-  /// Get a Supabase token to authenticate against the PowerSync instance.
+  /// Get a PowerSync token from the Supabase Edge Function.
   @override
-  Future<PowerSyncCredentials?> fetchCredentials() async {
-    // Get PowerSync token using a Supabase edge function.
-    // This can work even if the user is not signed in if the function allows it.
+  Future<String> resolveCredentials(Future<void> abortSignal) async {
+    if (_token case String token) {
+      return token;
+    }
+
+    // The Supabase client uses and refreshes the session for this request.
     final authResponse = await Supabase.instance.client.functions
         .invoke('powersync-auth', method: HttpMethod.get);
     if (authResponse.status != 200) {
@@ -43,37 +46,20 @@ class SupabaseConnector extends PowerSyncBackendConnector {
           "Failed to get PowerSync Token, code=${authResponse.status}");
     }
 
-    Map<String, dynamic> data = authResponse.data;
-    // The token.
-    String token = data['token'];
-    // Use the PowerSync URL from the response instead of hardcoding.
-    String powersyncUrl = data['powersync_url'];
-
-    return PowerSyncCredentials(endpoint: powersyncUrl, token: token);
+    final data = authResponse.data as Map<String, dynamic>;
+    return _token = data['token'] as String;
   }
 
   @override
   void invalidateCredentials() {
-    // Trigger a session refresh if auth fails on PowerSync.
-    // Generally, sessions should be refreshed automatically by Supabase.
-    // However, in some cases it can be a while before the session refresh is
-    // retried. We attempt to trigger the refresh as soon as we get an auth
-    // failure on PowerSync.
-    //
-    // This could happen if the device was offline for a while and the session
-    // expired, and nothing else attempt to use the session it in the meantime.
-    //
-    // Timeout the refresh call to avoid waiting for long retries,
-    // and ignore any errors. Errors will surface as expired tokens.
-    _refreshFuture = Supabase.instance.client.auth
-        .refreshSession()
-        .timeout(const Duration(seconds: 5))
-        .then((response) => null, onError: (error) => null);
+    _token = null;
   }
 
-  // Upload pending changes to Supabase.
   @override
-  Future<void> uploadData(PowerSyncDatabase database) async {
+  Future<void> upload(
+    PowerSyncDatabase database,
+    Future<void> abortSignal,
+  ) async {
     // This function is called whenever there is data to upload, whether the
     // device is online or offline.
     // If this call throws an error, it is retried periodically.
@@ -153,28 +139,34 @@ Future<void> openDatabase() async {
 
   await loadSupabase();
 
-  SupabaseConnector? currentConnector;
-
   if (isLoggedIn()) {
     // If the user is already logged in, connect immediately.
     // Otherwise, connect once logged in.
-    currentConnector = SupabaseConnector();
-    db.connect(connector: currentConnector);
+    final connector = SupabaseConnector();
+    db.connect(
+      connector: ConnectRequest(
+        endpoint: AppConfig.powersyncUrl,
+        authenticator: connector,
+        uploader: connector,
+      ),
+    );
   }
 
   Supabase.instance.client.auth.onAuthStateChange.listen((data) async {
     final AuthChangeEvent event = data.event;
     if (event == AuthChangeEvent.signedIn) {
       // Connect to PowerSync when the user is signed in
-      currentConnector = SupabaseConnector();
-      db.connect(connector: currentConnector!);
+      final connector = SupabaseConnector();
+      db.connect(
+        connector: ConnectRequest(
+          endpoint: AppConfig.powersyncUrl,
+          authenticator: connector,
+          uploader: connector,
+        ),
+      );
     } else if (event == AuthChangeEvent.signedOut) {
       // Implicit sign out - disconnect, but don't delete data
-      currentConnector = null;
       await db.disconnect();
-    } else if (event == AuthChangeEvent.tokenRefreshed) {
-      // Supabase token refreshed - trigger token refresh for PowerSync.
-      currentConnector?.prefetchCredentials();
     }
   });
 }
