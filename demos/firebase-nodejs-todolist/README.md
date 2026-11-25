@@ -13,7 +13,7 @@ Ensure you have [melos](https://melos.invertase.dev/~melos-latest/getting-starte
 1. `cd demos/firebase-nodejs-todolist`
 2. `dart run melos prepare`
 3. `cp lib/app_config_template.dart lib/app_config.dart`
-4. Insert your Supabase and PowerSync project credentials into `lib/app_config.dart` (See instructions below)
+4. Set `backendUrl` to your Node.js backend URL and `powersyncUrl` to your PowerSync instance URL in `lib/app_config.dart`. For an existing setup, use the instance URL returned by the backend as `powerSyncUrl`.
 5. `flutter run`
 
 # Add your Firebase app
