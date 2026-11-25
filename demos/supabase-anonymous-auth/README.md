@@ -18,4 +18,4 @@ flutter run
 
 # Configure the app
 
-Copy the contents of  [lib/app_config_template.dart](./lib/app_config_template.dart) into `lib/app_config.dart`, and alter the values to use the credentials of your new Supabase project.
+Copy [lib/app_config_template.dart](./lib/app_config_template.dart) to `lib/app_config.dart` and set your Supabase project URL, publishable key, and PowerSync instance URL. If you already have a local configuration, add `AppConfig.powersyncUrl` using the PowerSync instance URL returned by the anonymous Edge Function as `powersync_url`.
