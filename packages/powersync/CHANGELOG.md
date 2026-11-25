@@ -1,3 +1,8 @@
+## 2.6.3 (unreleased)
+
+- Fix the pre-expiry token refresh not calling `Authenticator.invalidateCredentials()`, which caused
+  caching authenticators to reconnect with a token about to expire.
+
 ## 2.6.2
 
 - Fix failed assertion when multiple priority entries are in status ([#499](https://github.com/powersync-ja/powersync.dart/issues/499)).

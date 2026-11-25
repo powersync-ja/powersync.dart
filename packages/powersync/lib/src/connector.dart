@@ -10,7 +10,7 @@ import 'sync/internal_connector.dart';
 /// Authenticates the PowerSync SDK against a PowerSync service, allowing it to
 /// download changes.
 abstract interface class Authenticator {
-  /// Resolves a JWT t use when connecting to a PowerSync service.
+  /// Resolves a JWT to use when connecting to a PowerSync service.
   ///
   /// The SDK does not cache this value and will call this method multiple times
   /// while a database is connected. Implementations should consider caching
@@ -26,7 +26,11 @@ abstract interface class Authenticator {
   /// {@endtemplate}
   Future<String> resolveCredentials(Future<void> abortSignal);
 
-  /// A notification from the SDK that the current credentials have expired.
+  /// Invoked by the SDK when the PowerSync service has rejected credentials
+  /// previously returned by [resolveCredentials].
+  ///
+  /// If the authenticator returns cached tokens, it can use this as a hint to
+  /// refresh its local state.
   void invalidateCredentials();
 }
 

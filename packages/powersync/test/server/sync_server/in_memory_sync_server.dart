@@ -120,6 +120,17 @@ final class MockSyncService {
     addLine({'token_expires_in': tokenExpiresIn});
   }
 
+  /// Returns the next sync stream request, for when the client is expected to
+  /// reconnect on its own (without the service ending the current stream).
+  ///
+  /// Lines added after calling this are sent to the new stream, so queue lines
+  /// for the current stream first.
+  Future<Request> waitForReconnect() {
+    controller = StreamController();
+    _listener = Completer();
+    return _listener.future;
+  }
+
   void endCurrentListener() {
     controller.close();
     controller = StreamController();
