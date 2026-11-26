@@ -2,8 +2,6 @@ import 'package:logging/logging.dart';
 import 'package:powersync/powersync.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../app_config.dart';
-
 final _log = Logger('powersync-supabase');
 
 /// Postgres Response codes that we cannot recover from by retrying.
@@ -19,14 +17,14 @@ final List<RegExp> fatalResponseCodes = [
 ];
 
 /// Use Supabase for authentication and data upload.
-class SupabaseConnector extends PowerSyncBackendConnector {
+class SupabaseConnector implements Authenticator, MutationUploader {
   Future<void>? _refreshFuture;
 
   SupabaseConnector();
 
   /// Get a Supabase token to authenticate against the PowerSync instance.
   @override
-  Future<PowerSyncCredentials?> fetchCredentials() async {
+  Future<String> resolveCredentials(Future<void> abortSignal) async {
     // Wait for pending session refresh if any
     await _refreshFuture;
 
@@ -34,22 +32,10 @@ class SupabaseConnector extends PowerSyncBackendConnector {
     final session = Supabase.instance.client.auth.currentSession;
     if (session == null) {
       // Not logged in
-      return null;
+      return '';
     }
 
-    // Use the access token to authenticate against PowerSync
-    final token = session.accessToken;
-
-    // userId and expiresAt are for debugging purposes only
-    final userId = session.user.id;
-    final expiresAt = session.expiresAt == null
-        ? null
-        : DateTime.fromMillisecondsSinceEpoch(session.expiresAt! * 1000);
-    return PowerSyncCredentials(
-        endpoint: AppConfig.powersyncUrl,
-        token: token,
-        userId: userId,
-        expiresAt: expiresAt);
+    return session.accessToken;
   }
 
   @override
@@ -71,9 +57,11 @@ class SupabaseConnector extends PowerSyncBackendConnector {
         .then((response) => null, onError: (error) => null);
   }
 
-  // Upload pending changes to Supabase.
   @override
-  Future<void> uploadData(PowerSyncDatabase database) async {
+  Future<void> upload(
+    PowerSyncDatabase database,
+    Future<void> abortSignal,
+  ) async {
     // This function is called whenever there is data to upload, whether the
     // device is online or offline.
     // If this call throws an error, it is retried periodically.

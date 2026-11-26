@@ -27,72 +27,54 @@ final List<RegExp> fatalResponseCodes = [
 ];
 
 /// Use Custom Node.js backend for authentication and data upload.
-class BackendConnector extends PowerSyncBackendConnector {
-  PowerSyncDatabase db;
-  //ignore: unused_field
-  Future<void>? _refreshFuture;
+class BackendConnector implements Authenticator, MutationUploader {
+  String? _token;
 
-  BackendConnector(this.db);
+  BackendConnector();
 
   /// Get a token to authenticate against the PowerSync instance.
   @override
-  Future<PowerSyncCredentials?> fetchCredentials() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
-      // Not logged in
-      return null;
+  Future<String> resolveCredentials(Future<void> abortSignal) async {
+    if (_token case String token) {
+      return token;
     }
-    final idToken = await user.getIdToken();
 
-    var url = Uri.parse("${AppConfig.backendUrl}/api/auth/token");
+    final idToken = await FirebaseAuth.instance.currentUser?.getIdToken();
+    if (idToken == null) {
+      throw StateError('No Firebase ID token available');
+    }
 
-    Map<String, String> headers = {
-      'Authorization': 'Bearer $idToken',
-      'Content-Type': 'application/json', // Adjust content-type if needed
-    };
-
+    final url = Uri.parse('${AppConfig.backendUrl}/api/auth/token');
     final response = await http.get(
       url,
-      headers: headers,
+      headers: {
+        'Authorization': 'Bearer $idToken',
+        'Content-Type': 'application/json',
+      },
     );
 
-    if (response.statusCode == 200) {
-      final body = response.body;
-      Map<String, dynamic> parsedBody = jsonDecode(body);
-      // Use the access token to authenticate against PowerSync
-      // userId and expiresAt are for debugging purposes only
-      final expiresAt = parsedBody['expiresAt'] == null
-          ? null
-          : DateTime.fromMillisecondsSinceEpoch(
-              parsedBody['expiresAt']! * 1000);
-      return PowerSyncCredentials(
-          endpoint: parsedBody['powerSyncUrl'],
-          token: parsedBody['token'],
-          userId: parsedBody['userId'],
-          expiresAt: expiresAt);
-    } else {
-      print('Request failed with status: ${response.statusCode}');
-      return null;
+    if (response.statusCode != 200) {
+      throw http.ClientException(
+        'Failed to get PowerSync token, status=${response.statusCode}',
+        url,
+      );
     }
+
+    final data = jsonDecode(response.body) as Map<String, dynamic>;
+    return _token = data['token'] as String;
   }
 
   @override
   void invalidateCredentials() {
-    // Trigger a session refresh if auth fails on PowerSync.
-    // However, in some cases it can be a while before the session refresh is
-    // retried. We attempt to trigger the refresh as soon as we get an auth
-    // failure on PowerSync.
-    //
-    // This could happen if the device was offline for a while and the session
-    // expired, and nothing else attempt to use the session it in the meantime.
-    //
-    // Timeout the refresh call to avoid waiting for long retries,
-    // and ignore any errors. Errors will surface as expired tokens.
+    _token = null;
   }
 
   // Upload pending changes to Node.js Backend.
   @override
-  Future<void> uploadData(PowerSyncDatabase database) async {
+  Future<void> upload(
+    PowerSyncDatabase database,
+    Future<void> abortSignal,
+  ) async {
     // This function is called whenever there is data to upload, whether the
     // device is online or offline.
     // If this call throws an error, it is retried periodically.
@@ -240,7 +222,6 @@ Future<void> openDatabase() async {
     logger: attachedLogger,
   );
   await db.initialize();
-  BackendConnector? currentConnector;
 
   await loadFirebase();
 
@@ -248,8 +229,14 @@ Future<void> openDatabase() async {
   if (userLoggedIn) {
     // If the user is already logged in, connect immediately.
     // Otherwise, connect once logged in.
-    currentConnector = BackendConnector(db);
-    db.connect(connector: currentConnector);
+    final connector = BackendConnector();
+    db.connect(
+      connector: ConnectRequest(
+        endpoint: AppConfig.powersyncUrl,
+        authenticator: connector,
+        uploader: connector,
+      ),
+    );
   } else {
     log.info('User not logged in, setting connection');
   }
@@ -257,10 +244,15 @@ Future<void> openDatabase() async {
   FirebaseAuth.instance.authStateChanges().listen((User? user) async {
     if (user != null) {
       // Connect to PowerSync when the user is signed in
-      currentConnector = BackendConnector(db);
-      db.connect(connector: currentConnector!);
+      final connector = BackendConnector();
+      db.connect(
+        connector: ConnectRequest(
+          endpoint: AppConfig.powersyncUrl,
+          authenticator: connector,
+          uploader: connector,
+        ),
+      );
     } else {
-      currentConnector = null;
       await db.disconnect();
     }
   });

@@ -26,14 +26,20 @@ final List<RegExp> fatalResponseCodes = [
   RegExp(r'^42501$'),
 ];
 
-class DjangoConnector extends PowerSyncBackendConnector {
+class DjangoConnector implements Authenticator, MutationUploader {
+  String? _token;
+
   DjangoConnector();
 
   final ApiClient apiClient = ApiClient(AppConfig.djangoUrl);
 
   /// Get a token to authenticate against the PowerSync instance.
   @override
-  Future<PowerSyncCredentials?> fetchCredentials() async {
+  Future<String> resolveCredentials(Future<void> abortSignal) async {
+    if (_token case String token) {
+      return token;
+    }
+
     final userId = await getUserId();
     if (userId == null) {
       throw Exception('User does not have session');
@@ -41,13 +47,20 @@ class DjangoConnector extends PowerSyncBackendConnector {
     // Somewhat contrived to illustrate usage, see auth docs here:
     // https://docs.powersync.com/usage/installation/authentication-setup/custom
     final session = await apiClient.getToken(userId);
-    return PowerSyncCredentials(
-        endpoint: AppConfig.powersyncUrl, token: session['token']);
+    return _token = session['token'] as String;
+  }
+
+  @override
+  void invalidateCredentials() {
+    _token = null;
   }
 
   // Upload pending changes to Postgres via Django backend
   @override
-  Future<void> uploadData(PowerSyncDatabase database) async {
+  Future<void> upload(
+    PowerSyncDatabase database,
+    Future<void> abortSignal,
+  ) async {
     final transaction = await database.getNextCrudTransaction();
 
     if (transaction == null) {
@@ -124,13 +137,17 @@ Future<void> openDatabase() async {
     _dbInitialized = true;
   }
 
-  DjangoConnector? currentConnector;
-
   if (await isLoggedIn()) {
     // If the user is already logged in, connect immediately.
     // Otherwise, connect once logged in.
-    currentConnector = DjangoConnector();
-    db.connect(connector: currentConnector);
+    final connector = DjangoConnector();
+    db.connect(
+      connector: ConnectRequest(
+        endpoint: AppConfig.powersyncUrl,
+        authenticator: connector,
+        uploader: connector,
+      ),
+    );
   }
 }
 

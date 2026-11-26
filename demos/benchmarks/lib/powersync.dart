@@ -15,21 +15,27 @@ import './models/schema.dart';
 
 final log = Logger('powersync-supabase');
 
-/// Use Supabase for authentication and data upload.
-class BackendConnector extends PowerSyncBackendConnector {
+/// Use a configured PowerSync token and upload through the demo backend.
+class BackendConnector implements Authenticator, MutationUploader {
   http.Client client;
 
   BackendConnector() : client = http.Client();
 
   @override
-  Future<PowerSyncCredentials?> fetchCredentials() async {
-    return PowerSyncCredentials(
-        endpoint: AppConfig.powersyncUrl, token: AppConfig.token);
+  Future<String> resolveCredentials(Future<void> abortSignal) async {
+    return AppConfig.token;
   }
 
-  // Upload pending changes to Supabase.
   @override
-  Future<void> uploadData(PowerSyncDatabase database) async {
+  void invalidateCredentials() {
+    // The benchmark uses a fixed token supplied in app configuration.
+  }
+
+  @override
+  Future<void> upload(
+    PowerSyncDatabase database,
+    Future<void> abortSignal,
+  ) async {
     // This function is called whenever there is data to upload, whether the
     // device is online or offline.
     // If this call throws an error, it is retried periodically.
@@ -86,7 +92,12 @@ Future<String> getDatabasePath() async {
   return join(dir.path, dbFilename);
 }
 
-var currentConnector = BackendConnector();
+final _connector = BackendConnector();
+final _connectRequest = ConnectRequest(
+  endpoint: AppConfig.powersyncUrl,
+  authenticator: _connector,
+  uploader: _connector,
+);
 
 const options = SyncOptions(
   params: {'size_bucket': AppConfig.sizeBucket},
@@ -96,7 +107,7 @@ const options = SyncOptions(
 Future<void> resync() async {
   await db.disconnectAndClear();
   timer.start(db);
-  db.connect(connector: currentConnector, options: options);
+  db.connect(connector: _connectRequest, options: options);
 }
 
 Future<void> openDatabase() async {
@@ -108,5 +119,5 @@ Future<void> openDatabase() async {
   BenchmarkItem.updateItemBenchmarks();
 
   timer.start(db);
-  db.connect(connector: currentConnector, options: options);
+  db.connect(connector: _connectRequest, options: options);
 }

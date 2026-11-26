@@ -26,14 +26,14 @@ final List<RegExp> fatalResponseCodes = [
 ];
 
 /// Use Supabase for authentication and data upload.
-class SupabaseConnector extends PowerSyncBackendConnector {
+class SupabaseConnector implements Authenticator, MutationUploader {
   Future<void>? _refreshFuture;
 
   SupabaseConnector();
 
   /// Get a Supabase token to authenticate against the PowerSync instance.
   @override
-  Future<PowerSyncCredentials?> fetchCredentials() async {
+  Future<String> resolveCredentials(Future<void> abortSignal) async {
     // Wait for pending session refresh if any
     await _refreshFuture;
 
@@ -41,22 +41,10 @@ class SupabaseConnector extends PowerSyncBackendConnector {
     final session = Supabase.instance.client.auth.currentSession;
     if (session == null) {
       // Not logged in
-      return null;
+      return '';
     }
 
-    // Use the access token to authenticate against PowerSync
-    final token = session.accessToken;
-
-    // userId and expiresAt are for debugging purposes only
-    final userId = session.user.id;
-    final expiresAt = session.expiresAt == null
-        ? null
-        : DateTime.fromMillisecondsSinceEpoch(session.expiresAt! * 1000);
-    return PowerSyncCredentials(
-        endpoint: AppConfig.powersyncUrl,
-        token: token,
-        userId: userId,
-        expiresAt: expiresAt);
+    return session.accessToken;
   }
 
   @override
@@ -78,9 +66,11 @@ class SupabaseConnector extends PowerSyncBackendConnector {
         .then((response) => null, onError: (error) => null);
   }
 
-  // Upload pending changes to Supabase.
   @override
-  Future<void> uploadData(PowerSyncDatabase database) async {
+  Future<void> upload(
+    PowerSyncDatabase database,
+    Future<void> abortSignal,
+  ) async {
     // This function is called whenever there is data to upload, whether the
     // device is online or offline.
     // If this call throws an error, it is retried periodically.
@@ -180,25 +170,26 @@ Future<void> connectDatabase() async {
   if (!isLoggedIn()) {
     log.severe("Can't connect database without being signed in");
   }
-  SupabaseConnector? currentConnector;
   var isSyncMode = await getSyncEnabled();
 
   if (!isSyncMode) {
     await switchToSyncedSchema(db, getUserId());
   }
 
-  currentConnector = SupabaseConnector();
-  await db.connect(connector: currentConnector);
+  final connector = SupabaseConnector();
+  await db.connect(
+    connector: ConnectRequest(
+      endpoint: AppConfig.powersyncUrl,
+      authenticator: connector,
+      uploader: connector,
+    ),
+  );
 
   Supabase.instance.client.auth.onAuthStateChange.listen((data) async {
     final AuthChangeEvent event = data.event;
     if (event == AuthChangeEvent.signedOut) {
       // Implicit sign out - disconnect, but don't delete data
-      currentConnector = null;
       await db.disconnect();
-    } else if (event == AuthChangeEvent.tokenRefreshed) {
-      // Supabase token refreshed - trigger token refresh for PowerSync.
-      currentConnector?.prefetchCredentials();
     }
   });
 }

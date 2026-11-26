@@ -30,23 +30,33 @@ Future<PowerSyncDatabase> powerSyncInstance(Ref ref) async {
         : const CheckpointMode.legacy(),
   );
 
-  SupabaseConnector? currentConnector;
   if (ref.read(sessionProvider).value != null) {
-    currentConnector = SupabaseConnector();
-    db.connect(connector: currentConnector, options: syncOptions);
+    final connector = SupabaseConnector();
+    db.connect(
+      connector: ConnectRequest(
+        endpoint: AppConfig.powersyncUrl,
+        authenticator: connector,
+        uploader: connector,
+      ),
+      options: syncOptions,
+    );
   }
 
   final instance = Supabase.instance.client.auth;
   final sub = instance.onAuthStateChange.listen((data) async {
     final event = data.event;
     if (event == AuthChangeEvent.signedIn) {
-      currentConnector = SupabaseConnector();
-      db.connect(connector: currentConnector!, options: syncOptions);
+      final connector = SupabaseConnector();
+      db.connect(
+        connector: ConnectRequest(
+          endpoint: AppConfig.powersyncUrl,
+          authenticator: connector,
+          uploader: connector,
+        ),
+        options: syncOptions,
+      );
     } else if (event == AuthChangeEvent.signedOut) {
-      currentConnector = null;
       await db.disconnect();
-    } else if (event == AuthChangeEvent.tokenRefreshed) {
-      currentConnector?.prefetchCredentials();
     }
   });
   ref.onDispose(sub.cancel);

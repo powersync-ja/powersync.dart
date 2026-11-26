@@ -3,7 +3,7 @@ import 'package:powersync/powersync.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:supabase_tutorial_chat_app/app_config_template.dart';
+import 'package:supabase_tutorial_chat_app/app_config.dart';
 import 'package:supabase_tutorial_chat_app/supabase.dart';
 import './models/schema.dart';
 import 'package:logging/logging.dart';
@@ -44,32 +44,59 @@ Future<void> openDatabase() async {
 
   await loadSupabase();
 
-  SupabaseConnector? currentConnector;
-
   if (isLoggedIn()) {
-    currentConnector = SupabaseConnector();
-    db.connect(connector: currentConnector);
+    final connector = SupabaseConnector();
+    db.connect(
+      connector: ConnectRequest(
+        endpoint: AppConfig.powersyncUrl,
+        authenticator: connector,
+        uploader: connector,
+      ),
+    );
   }
 
   Supabase.instance.client.auth.onAuthStateChange.listen((data) async {
     final AuthChangeEvent event = data.event;
     if (event == AuthChangeEvent.signedIn) {
-      currentConnector = SupabaseConnector();
-      db.connect(connector: currentConnector!);
+      final connector = SupabaseConnector();
+      db.connect(
+        connector: ConnectRequest(
+          endpoint: AppConfig.powersyncUrl,
+          authenticator: connector,
+          uploader: connector,
+        ),
+      );
     } else if (event == AuthChangeEvent.signedOut) {
-      currentConnector = null;
       await db.disconnect();
-    } else if (event == AuthChangeEvent.tokenRefreshed) {
-      currentConnector?.prefetchCredentials();
     }
   });
 }
 
-class SupabaseConnector extends PowerSyncBackendConnector {
+class SupabaseConnector implements Authenticator, MutationUploader {
+  Future<void>? _refreshFuture;
+
   SupabaseConnector();
 
   @override
-  Future<void> uploadData(PowerSyncDatabase database) async {
+  Future<String> resolveCredentials(Future<void> abortSignal) async {
+    await _refreshFuture;
+    return Supabase.instance.client.auth.currentSession?.accessToken ?? '';
+  }
+
+  @override
+  void invalidateCredentials() {
+    // Refresh the Supabase session before resolving the next PowerSync token.
+    _refreshFuture = Supabase.instance.client.auth
+        .refreshSession()
+        .timeout(const Duration(seconds: 5))
+        .then((response) => null, onError: (error) => null);
+  }
+
+  @override
+  Future<void> upload(
+    PowerSyncDatabase database,
+    Future<void> abortSignal,
+  ) async {
     log.info('uploading data...');
     final transaction = await database.getNextCrudTransaction();
     if (transaction == null) {
@@ -101,19 +128,5 @@ class SupabaseConnector extends PowerSyncBackendConnector {
         rethrow;
       }
     }
-  }
-
-  @override
-  Future<PowerSyncCredentials?> fetchCredentials() async {
-    final session = Supabase.instance.client.auth.currentSession;
-
-    if (session == null) {
-      // not logged in
-      return null;
-    }
-
-    final token = session.accessToken;
-
-    return PowerSyncCredentials(endpoint: AppConfig.powersyncUrl, token: token);
   }
 }
